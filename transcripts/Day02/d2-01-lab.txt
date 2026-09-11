@@ -1,0 +1,86 @@
+00:00 - 00:03: Nếu đội hỗ trợ muốn làm phần mềm để học viên nhắn hỏi
+00:03 - 00:06: và nhận trả lời, bạn đã biết khó khăn cần giải quyết chưa?
+00:07 - 00:10: Phần mềm trò chuyện như vậy gọi là trợ lý hội thoại,
+00:10 - 00:13: nhưng tên gọi chưa cho biết học viên đang vướng điều gì.
+00:14 - 00:17: Mình sẽ theo tình huống minh họa Lan tìm hướng dẫn nộp bài,
+00:17 - 00:20: bắt đầu từ khó khăn rồi mới chọn cách giải quyết.
+00:21 - 00:24: Lan là học viên mới, sắp nộp bài lần đầu,
+00:24 - 00:27: nhưng hướng dẫn nằm rải rác trên nhiều trang của khóa học.
+00:28 - 00:32: Dũng là nhân viên hỗ trợ phải trả lời những câu hỏi lặp lại,
+00:32 - 00:35: như gửi đường dẫn rồi hỏi Lan học lớp nào.
+00:36 - 00:39: Cuối video, bạn sẽ viết một câu nêu rõ khó khăn
+00:39 - 00:42: và chọn cách đo xem khó khăn ấy có giảm không.
+00:44 - 00:48: Công việc Lan muốn hoàn thành là gửi đúng bài vào đúng nơi trước thời hạn.
+00:49 - 00:53: Trò chuyện với máy chỉ có ích nếu giúp Lan hoàn thành công việc ấy.
+00:54 - 00:56: Trở ngại hiện tại là Lan chưa xác định
+00:56 - 00:58: được hướng dẫn nào áp dụng cho lớp của mình.
+00:59 - 01:02: Đề nghị làm trợ lý hội thoại đã nói đến cách giải quyết,
+01:02 - 01:06: trong khi nhóm còn cần xác nhận vì sao Lan gặp khó khăn.
+01:07 - 01:09: Nếu chỉ lo xây phần mềm trò chuyện,
+01:09 - 01:12: nhóm có thể bỏ qua chỗ khiến Lan không tìm được đúng hướng dẫn.
+01:13 - 01:16: Trợ lý hội thoại trả lời nhanh nhưng gửi nhầm hướng dẫn
+01:16 - 01:19: thì Lan vẫn chưa nhận được kết quả cần thiết.
+01:20 - 01:23: Một nút hướng dẫn đặt đúng chỗ cũng có thể giúp Lan,
+01:23 - 01:25: dù phương án này không dùng trí tuệ nhân tạo.
+01:26 - 01:29: Vì vậy, mình viết rõ Lan vướng điều gì trước,
+01:29 - 01:32: còn cách giải quyết sẽ chọn sau khi đã hiểu khó khăn đó.
+01:34 - 01:36: Trước tiên là ai gặp khó khăn,
+01:36 - 01:39: vì học viên mới có thể vướng những chỗ mà học viên cũ không gặp.
+01:41 - 01:44: Tiếp theo, mình xác định Lan vướng ở bước tìm hướng dẫn,
+01:44 - 01:46: chọn nơi nộp hay tải tệp.
+01:47 - 01:50: Mình cũng hỏi những học viên khác có thường gặp khó khăn này không,
+01:50 - 01:52: vì một trường hợp chưa nói lên tình hình cả lớp.
+01:54 - 01:58: Sau đó, mình tìm hậu quả cụ thể, như Lan phải chờ lâu,
+01:58 - 02:01: nộp nhầm nơi, hoặc Dũng phải trả lời lại.
+02:02 - 02:05: Nhóm xem học viên tự tìm hướng dẫn và ghi chỗ họ dừng lại,
+02:05 - 02:07: rồi đối chiếu với điều họ kể.
+02:09 - 02:11: Khi trao đổi, mình hỏi Lan đã tìm hướng dẫn ở đâu
+02:11 - 02:14: trước tiên, để biết điều thực sự xảy ra.
+02:15 - 02:19: Các yêu cầu hỗ trợ đã lưu giúp mình thấy câu hỏi nào lặp lại,
+02:19 - 02:21: nhưng cần đọc kỹ và hỏi thêm để hiểu lý do.
+02:23 - 02:26: Nếu số học viên tăng, số câu hỏi cũng có thể tăng
+02:26 - 02:28: dù mỗi người không gặp khó khăn nhiều hơn.
+02:30 - 02:32: Những ghi chép trên màn hình minh họa cách tìm bằng chứng,
+02:32 - 02:34: không phải kết quả khảo sát thật.
+02:36 - 02:39: Yêu cầu ban đầu chỉ nói làm trợ lý hội thoại hỗ trợ học viên,
+02:39 - 02:41: nên mình cần viết lại cho rõ khó khăn.
+02:43 - 02:45: Mình bắt đầu bằng người đang gặp khó khăn,
+02:45 - 02:46: ở đây là học viên mới trong khóa học.
+02:48 - 02:52: Tiếp theo, mình nêu họ khó tìm đúng hướng dẫn khi chuẩn bị nộp bài lần đầu.
+02:53 - 02:56: Cuối cùng là hậu quả phải chờ hỗ trợ và hỏi lại nhiều lần.
+02:58 - 03:00: Học viên mới khó tìm đúng hướng dẫn cho lớp mình
+03:00 - 03:03: trước lần nộp bài đầu tiên, nên phải chờ hỗ trợ và hỏi lại.
+03:04 - 03:07: Câu vừa viết giúp nhóm hiểu cần giải quyết việc gì,
+03:07 - 03:10: còn trợ lý hội thoại có giúp được hay không vẫn phải thử.
+03:12 - 03:14: Mình chọn theo dõi thời gian tìm đúng hướng dẫn,
+03:14 - 03:17: gọi là một chỉ số để kiểm tra việc này có nhanh hơn không.
+03:18 - 03:21: Trong phiếu minh họa, Lan bắt đầu lúc bảy giờ tối
+03:21 - 03:24: và tìm đúng hướng dẫn của lớp sau đó tám phút.
+03:25 - 03:27: Thời gian tìm trong ví dụ là tám phút,
+03:27 - 03:30: chứ không chỉ là thời gian Dũng gõ câu trả lời cuối cùng.
+03:32 - 03:35: Mình ghi vị trí và nội dung hai lượt hỏi lại trên trục thời gian
+03:35 - 03:37: để tìm hiểu Lan vướng ở bước nào.
+03:38 - 03:41: Khi thử cách mới, nhóm vẫn giao cùng việc tìm hướng dẫn
+03:41 - 03:44: và chỉ dừng đồng hồ khi tìm đúng hướng dẫn của lớp.
+03:46 - 03:50: Nhóm cho rằng hướng dẫn khó tìm là nguyên nhân chính,
+03:50 - 03:52: nhưng đây mới là một giả định cần kiểm tra.
+03:53 - 03:57: Nếu Lan đã thấy hướng dẫn nhưng không hiểu từ ngữ bên trong,
+03:57 - 04:00: việc đổi vị trí đường dẫn có thể chưa giúp nhiều.
+04:01 - 04:04: Mình cần xem thêm để biết Lan thiếu đường dẫn,
+04:04 - 04:07: thiếu thông tin hay đã thấy hướng dẫn mà vẫn không hiểu.
+04:09 - 04:12: Điều nhóm muốn đạt là Lan tìm đúng hướng dẫn dễ hơn,
+04:12 - 04:14: còn Dũng bớt phải trả lời những câu hỏi lặp lại.
+04:16 - 04:19: Số câu trả lời máy tạo ra chưa chứng minh khó khăn đã giảm,
+04:19 - 04:23: vì Lan có thể phải hỏi nhiều lần mới nhận được hướng dẫn đúng.
+04:24 - 04:27: Trước khi xây, hãy ghi cạnh nhau khó khăn cần giải quyết,
+04:27 - 04:30: con số sẽ đo và điều nhóm còn chưa xác nhận.
+04:32 - 04:34: Đề nghị làm một trợ lý được tự chọn cách xử lý
+04:34 - 04:38: rồi gửi thư điện tử còn thiếu thông tin gì để quyết định có nên xây?
+04:44 - 04:46: Mình cần biết ai gặp vấn đề, khó khăn ở bước nào
+04:46 - 04:49: và có bằng chứng gì cho thấy khó khăn ấy đang xảy ra.
+04:51 - 04:55: Mình cũng cần biết kết quả mong muốn và hậu quả của việc gửi thư điện tử sai.
+04:56 - 04:58: Tên giải pháp chưa cho biết những điều đó,
+04:58 - 05:01: nên nhóm chưa đủ cơ sở quyết định có nên xây hệ thống ấy.
+05:03 - 05:06: Bạn hãy viết lại yêu cầu ấy thành một câu nêu rõ khó khăn
+05:06 - 05:08: và chọn một con số để theo dõi kết quả.
+05:10 - 05:14: Từ câu vấn đề và cách kiểm tra, mình sẽ tìm các hướng giải quyết ở video sau.
