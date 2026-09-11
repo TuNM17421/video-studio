@@ -1,0 +1,45 @@
+<!-- @dsCard group="Colors" viewport="700x250" name="Color meaning" subtitle="blue = data · red = chosen / transformed · bgAlt = machine · dotInactive = track" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Color meaning</title>
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 250px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+  #root { width: 700px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var src = { x: 40, y: 150, w: 230, h: 130 };
+  var box = { x: 390, y: 110, w: 520, h: 210 };
+  var out = { x: 1040, y: 150, w: 300, h: 130 };
+  VK.mountCard('#root', {
+    width: 1400, height: 500, duration: 150, frame: 120,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.Card, { x: src.x, y: src.y, w: src.w, h: src.h, label: 'DỮ LIỆU', lines: ['ĐẦU VÀO', 'chưa xử lý'] }),
+        h(VK.GlassBox, { x: box.x, y: box.y, w: box.w, h: box.h, label: 'CỖ MÁY · bgAlt', active: VK.pulse(f, 70) },
+          h('path', { d: 'M 563 130 V 300 M 737 130 V 300', stroke: C.dotInactive, strokeWidth: 3 }),
+          h(VK.SvgText, { x: 476, y: 222, size: 22, weight: 700, color: C.accentStrong }, 'Embedding'),
+          h(VK.SvgText, { x: 650, y: 222, size: 22, weight: 700, color: C.accentStrong }, 'Attention'),
+          h(VK.SvgText, { x: 823, y: 222, size: 22, weight: 700, color: C.accentStrong }, 'MLP')),
+        h(VK.Flow, { points: [VK.anchor(src, 'right'), VK.anchor(box, 'left', 0.53)], frame: f, start: 10, end: 60, hideIn: [src, box] }),
+        h(VK.Flow, { points: [VK.anchor(box, 'right', 0.53), VK.anchor(out, 'left')], frame: f, start: 80, end: 125, color: C.red, hideIn: [box, out] }),
+        h(VK.Card, { x: out.x, y: out.y, w: out.w, h: out.h, accent: C.red, label: 'ĐÃ CHỌN', lines: ['ĐẦU RA', 'đã biến đổi'], active: VK.pulse(f, 125) }),
+        h(VK.Chip, { x: 40, y: 400, label: 'accent = dữ liệu, trung tính', size: 22, h: 44 }),
+        h(VK.Chip, { x: 395, y: 400, label: 'red = nhấn, đã chọn, rủi ro', tone: 'red', size: 22, h: 44 }),
+        h(VK.Chip, { x: 745, y: 400, label: 'bgAlt = cỗ máy, thẻ', tone: 'muted', size: 22, h: 44 }),
+        h(VK.Chip, { x: 1015, y: 400, label: 'dotInactive = đường ray', tone: 'muted', size: 22, h: 44 })
+      );
+    }
+  });
+</script>
+</body>
+</html>

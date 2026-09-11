@@ -16,9 +16,8 @@ thumbnail, poster** đúng style của khoá học. Mọi kích thước là px 
 
 1. **Khung**: 1920×1080, 30 fps, nền trắng. Sơ đồ dùng **toạ độ px tuyệt đối** — không để flex/grid
    tự co giãn khi phần tử xuất hiện lần lượt (chỗ của mọi phần tử được giữ sẵn, chỉ đổi opacity).
-2. **Màu**: **9 token** `lightColors` cho mọi thứ (bảng ở mục Màu), cộng **4 màu vai trò** (tím, xanh lá, cam,
-   vàng đậm) chỉ cho nhãn vùng / viền / nền nhạt khi kịch bản mã hóa vai trò bằng màu. Không thêm hex khác,
-   không gradient, không màu thương hiệu khác (trừ logo `Brand`). Tint, bóng, glow = chính các màu đó ở alpha.
+2. **Màu**: chỉ **9 token** `lightColors` (bảng ở mục Màu). Không thêm hex, không gradient, không màu
+   thương hiệu khác. Tint, bóng, glow = chính các màu đó ở alpha.
 3. **Chữ**: chỉ **Montserrat 500 / 600 / 700** (có subset tiếng Việt). Monospace chỉ cho code.
 4. **Nghĩa của màu**: xanh `accent` = dữ liệu / trung tính / chưa xử lý · đỏ `red` = điểm nhấn / đã
    chọn / đã biến đổi / hành động / rủi ro / đáp án · `bgAlt` = thân thẻ và "cỗ máy kính" ·
@@ -151,19 +150,8 @@ Chi tiết và danh mục copy mẫu: [`guidelines/content-and-copy.md`](guideli
   và nhãn nhỏ**, không phải mảng lớn. Mảng lớn luôn là trắng / `bgAlt`.
 - Công thức alpha được phép: bóng navy `rgba(11,42,77,.16)`; glow xanh `rgba(29,97,153,.25)`;
   glow đỏ `rgba(199,33,39,.24)`; heatmap = đỏ ở 8–100 % opacity.
-- Không dùng: gradient, nền tối cho scene nội dung. Bảng màu nền tối `colors` là legacy — **không dùng cho video mới**.
-
-**Màu vai trò (duyệt 11/09/2026, phương án B)** — `ROLE` / `ROLE_OF` trong `lib/tokens.js`, `--role-*` trong CSS.
-Chỉ dùng cho **nhãn vùng, viền và nền nhạt** gọi tên một vai trò mà kịch bản mã hóa màu; không dùng cho chữ thân,
-số liệu hay hạt. Đỏ vẫn giữ nghĩa nhấn / chặn / rủi ro.
-
-| Vai trò (`ROLE_OF`) | Viền | Nền nhạt | Kịch bản dùng cho |
-|---|---|---|---|
-| `input` | `#1d6199` (accent) | `#e0edf8` | đầu vào, nhận thức |
-| `process` / `reasoning` | `#5b4b9a` tím | `#e8e6f1` | xử lý, suy luận, khối "vai trò" |
-| `output` | `#2f7d57` xanh lá | `#e1ede7` | đầu ra, đã duyệt / đạt |
-| `check` / `action` | `#c8641e` cam | `#f7e9e0` | cần kiểm tra, hành động, lỗi công cụ |
-| `memory` | `#a87a0c` vàng đậm | `#f3ecdd` | trí nhớ, ngữ cảnh, đang chờ |
+- Không dùng: gradient, xanh lá cho "đúng" (đúng = đỏ Check hoặc xanh accent), vàng cho "cảnh báo",
+  nền tối cho scene nội dung. Bảng màu nền tối `colors` là legacy — **không dùng cho video mới**.
 
 ### 3 · Chữ
 
@@ -273,11 +261,6 @@ Chi tiết connector, hạt, pulse, geometry guard: [`guidelines/motion-and-conn
 - **Công nghệ có tên** (Kafka, Airflow, Kubernetes, vLLM, MLflow…) → **logo SVG chính thức**, giữ màu
   gốc, không nhuộm logo nhiều màu; vùng xung quanh vẫn dùng token. Icon chung chỉ cho khái niệm chung
   (tài liệu, dữ liệu, người dùng, cảnh báo). Không có asset đúng nghĩa → tự vẽ sơ đồ nhỏ bằng primitives.
-- **Bộ Lucide chuẩn hóa** (`components/icons/LineIcon.jsx`, ISC): 40 icon khái niệm hệ thống (`lock`, `mail`,
-  `server`, `wrench`, `braces`, `search`, `octagon-x`, `user-check`…). Grid 24 vẽ ở nét 1,125 = đúng nét 3 px/64
-  của bộ vẽ tay. Mọi prop `icon` và `<Icon name>` nhận cả hai bộ tên. Cần thêm tên → import + thêm vào `LINE_ICONS`.
-- **Logo**: `<Brand name>` (anthropic, claude, gemini, meta, huggingface, github, python, mcp — bản vẽ Simple Icons
-  CC0, nhãn hiệu thuộc chủ sở hữu, giữ màu gốc). OpenAI / Copilot chưa có — lấy từ brand kit chính thức.
 - **Không**: emoji, icon font, clip-art, ảnh stock, ảnh chụp. Hình từ paper (vd. Figure 2 "Attention
   Is All You Need") hiển thị nguyên bản trong khung trắng, ghi nguồn.
 
@@ -307,22 +290,7 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | beats | `Recap`, `QuestionCard` | recap rail có số, câu hỏi kiểm tra |
 | roadmap | `DayMap` | bản đồ ngày học của video tổng quan: 3 thẻ câu hỏi (full) ↔ dải 6 phần dưới header (strip) |
 | figures | `Person`, `DocumentSheet`, `FormSheet`, `SpeechBubble`, `Stopwatch` | nhân vật và đồ vật cho tình huống MINH HỌA; phiếu có ô trống = chưa đo; đồng hồ không số |
-| icons | `Icon` + 20 `*Icon`, `LineIcon` | đặt icon trong SVG theo tâm; `LineIcon` = 40 icon Lucide chuẩn hóa |
-| brand | `Brand` | logo sản phẩm có tên (gọi đúng tên, không trang trí) |
-| labels | `IllustrativeStamp` | dấu MINH HỌA chuẩn (6 nhãn · tag / stamp / watermark); nhiều component có prop `illustrative` |
-| control | `Gate`, `PermissionBoundary`, `ApprovalStep` | cổng quyền / duyệt / đối chiếu (mở · chặn · lỗi · chờ), vùng quyền, bước người duyệt |
-| control | `StopGate`, `StepCounter` | cửa dừng của vòng agent, bộ đếm lượt 0/3 → 3/3 |
-| ui | `BrowserFrame`, `ChatWindow`, `Cursor`, `UIButton`, `EmailCard`, `Tray` | giao diện giả lập (luôn MINH HỌA): cửa sổ web, chat nhả chữ theo token, con trỏ, nút, thư, khay |
-| code | `CodeBlock`, `JsonView`, `LogCard` | code tô màu theo palette, JSON có chú thích tiếng Việt + nối mã khớp, nhật ký thực thi |
-| system | `Swimlane`, `ToolCard`, `ArchitectureNode` | làn hệ thống, thẻ khai báo công cụ 3 vùng, khối kiến trúc host/client/server/API |
-| system | `DecisionNode`, `BranchRouter` | nút quyết định hình thoi, rẽ nhánh theo độ tự tin / 4 nhánh |
-| loop | `AgentLoop` | vòng ReAct / 4 khối agent / bánh đà, hạt chạy vòng, nhánh thoát và nhánh lỗi |
-| table | `DataTable` | bảng hiện từng hàng, ô trạng thái (đạt · chặn · chờ · chưa thử · lỗi), cột TRƯỚC/SAU |
-| context | `Envelope`, `ContextBudget`, `ContextTray`, `FilingCabinet` | gói gửi đi / không gửi, thanh ngân sách ngữ cảnh có phần dư, khay ngữ cảnh, tủ hồ sơ ngoài |
-| figures | `Magnifier`, `SourceCard` | kính lúp soi dòng, thẻ nguồn trích đoạn (đã đối chiếu / không có nguồn) |
-
-Helpers mới: `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
-(`@remotion/paths`, d3-shape/scale/interpolate, flubber, dagre: `curvePath`, `pointOnPath`, `drawOn`, `morphPath`, `layoutGraph`).
+| icons | `Icon` + 20 `*Icon` | đặt icon trong SVG theo tâm |
 
 ---
 

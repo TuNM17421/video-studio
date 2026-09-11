@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react';
-import type { IconName, AnyIconName } from '../icons/Icons';
+import type { IconName } from '../icons/Icons';
 
 export interface GlassNodeProps {
   /** Center x. */
@@ -8,7 +8,7 @@ export interface GlassNodeProps {
   y: number;
   label: string;
   subtitle?: string;
-  icon?: AnyIconName;
+  icon?: IconName;
   /** Official logo element for a NAMED technology (48×48 box at the icon slot). */
   logo?: ReactNode;
   /** Default 240. */

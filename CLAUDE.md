@@ -1,5 +1,17 @@
 # Claude-Design — lesson videos for VinUni "AI in Action 20K"
 
+## Two design systems — pick one per video
+| Folder | Use | Claude Design project | Rules |
+|---|---|---|---|
+| `vinuni-lesson-video-ds/` | **stable** — official videos (N2-00) | 2e5e9d7a-7f11-4481-8a55-f337b3bb24d9 | only the 9 colors; verify must pass clean |
+| `vinuni-lesson-video-ds-lab/` | **lab** — new directions from the brainstorm (AgentLoop, Gate, Swimlane, ChatWindow, CodeBlock…) | a72bc554-fd0e-4083-a13e-6c10273d28aa (`/design-sync`, `.design-sync/config.json`) | may add colors in `lib/tokens.js` and new component groups |
+
+Every tool takes the folder from `VK_DS` (default = stable):
+`VK_DS=vinuni-lesson-video-ds-lab node tools/build.mjs`, same for `tools/verify.mjs`; serve the chosen folder
+on its own port (stable 8765, lab 8766) and pass `--base http://127.0.0.1:8766` to `tools/render.mjs`.
+Never copy lab changes into the stable folder unless the user asks to promote them. `~/Claude-Design` is a
+git repo (local only, `.env`/audio/MP4 ignored): commit before and after larger changes.
+
 Videos are built here, outside the Video-studio repo (`~/Coding/Video-studio` is read-only for this work:
 style source, `node_modules` for esbuild/react/ffmpeg/Chrome). Read `vinuni-lesson-video-ds/README.md`
 (rules, tokens, components) and `vinuni-lesson-video-ds/SKILL.md` before designing anything.
@@ -31,8 +43,8 @@ Source script, prompts and outputs live in `projects/<video-id>/` (script copy, 
 6. Deliverables: `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`
    (format `MM:SS - MM:SS: text`) and `chapters/DayNN/<id>-chương.txt` (format `MM:SS: tên chương`,
    chapter = scene boundary / script section, title summarised from the narration).
-7. Optional: push the design system to Claude Design with DesignSync (project "VinUni Lesson Video",
-   id 2e5e9d7a-7f11-4481-8a55-f337b3bb24d9) — only after the user approves the file list.
+7. Optional: push to Claude Design — stable folder → project 2e5e9d7a (DesignSync finalize_plan +
+   write_files), lab folder → project a72bc554 (`/design-sync`) — only after the user approves the file list.
 
 ## Notes
 - ElevenLabs is used only here; the Video-studio repo itself mandates Google Cloud TTS.

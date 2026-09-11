@@ -1,6 +1,10 @@
 # design-sync notes — VinUni Lesson Video DS
 
 ## Repo layout / build wiring
+- **2026-09-11: this sync now reads `vinuni-lesson-video-ds-lab/`** (the brainstorm direction). The stable
+  `vinuni-lesson-video-ds/` (9 colors, project 2e5e9d7a) is no longer the source of project a72bc554.
+  `cfg.entry` and the `.ds-sync/node_modules/vinuni-lesson-video-ds` symlink point at the lab folder; read
+  "vinuni-lesson-video-ds/" below as "vinuni-lesson-video-ds-lab/".
 - Not a published npm package. The DS lives in `vinuni-lesson-video-ds/` (hand-authored JSX + per-file `.d.ts`).
   For the converter it got a `package.json`, root `index.js` / `index.d.ts` barrels, `components/index.d.ts`
   and `lib/index.d.ts` (types for tokens/motion/geometry/captions/player/series). `cfg.entry` = `vinuni-lesson-video-ds/index.js`.

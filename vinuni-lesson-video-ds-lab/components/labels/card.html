@@ -1,0 +1,56 @@
+<!-- @dsCard group="Components" viewport="700x220" name="Labels · Pill, Chip, NumberBadge, StatusDot, ZoneLabel, CornerTag" subtitle="outline · active · solid · muted pills; flat chips; step badges; editorial lane labels" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Labels</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 220px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  function note(x, y, t) { return h(VK.SvgText, { x: x, y: y, size: 18, weight: 600, anchor: 'start', color: C.textMuted }, t); }
+  VK.mountCard('#root', {
+    width: 1400, height: 440, frame: 0,
+    render: function () {
+      return h(VK.Fragment, null,
+        h(VK.Pill, { x: 40, y: 40, label: 'THAO TÁC RÕ' }),
+        note(40, 122, 'outline'),
+        h(VK.Pill, { x: 270, y: 40, label: 'ĐẦU RA NGÔN NGỮ', active: true }),
+        note(270, 122, 'active'),
+        h(VK.Pill, { x: 560, y: 40, label: 'MINH HỌA', variant: 'solid' }),
+        note(560, 122, 'solid'),
+        h(VK.Pill, { x: 740, y: 40, label: 'CHẶN', variant: 'solid', active: true }),
+        note(740, 122, 'solid · active'),
+        h(VK.Pill, { x: 900, y: 40, label: 'MINH HỌA', variant: 'muted' }),
+        note(900, 122, 'muted'),
+        h(VK.CornerTag, { label: 'SO SÁNH', right: 1360, y: 44 }),
+        note(1180, 122, 'CornerTag'),
+        h(VK.Chip, { x: 40, y: 200, label: 'ĐỌC' }),
+        h(VK.Chip, { x: 130, y: 200, label: 'CHẶN', tone: 'red' }),
+        h(VK.Chip, { x: 240, y: 200, label: 'Có mã · là văn bản', tone: 'muted' }),
+        note(40, 278, 'Chip · blue / red / muted'),
+        h(VK.NumberBadge, { x: 560, y: 218, value: '01' }),
+        h(VK.NumberBadge, { x: 630, y: 218, value: '02', active: true }),
+        note(536, 278, 'NumberBadge'),
+        h(VK.StatusDot, { x: 780, y: 218 }),
+        h(VK.StatusDot, { x: 815, y: 218, active: true }),
+        note(760, 278, 'StatusDot'),
+        h(VK.ZoneLabel, { x: 1010, y: 218, label: 'OPERATIONS' }),
+        h(VK.ZoneLabel, { x: 1250, y: 218, label: 'GOVERNANCE', color: C.red }),
+        note(920, 278, 'ZoneLabel · editorial'),
+        h('path', { d: 'M 40 330 H 1360', stroke: C.dotInactive, strokeWidth: 2 }),
+        h(VK.SvgText, { x: 40, y: 385, size: 20, weight: 600, anchor: 'start', color: C.text }, 'Pill 50 px · 18/700 IN HOA · bề rộng tự tính từ nhãn · đỏ = đang nói tới / đã chọn / cảnh báo')
+      );
+    }
+  });
+</script>
+</body>
+</html>

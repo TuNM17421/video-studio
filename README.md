@@ -9,7 +9,8 @@ của nó được dùng chỉ-đọc để build bundle.
 
 | Đường dẫn | Nội dung |
 |---|---|
-| `vinuni-lesson-video-ds/` | **Design system — thư mục để import vào Claude Design** |
+| `vinuni-lesson-video-ds/` | **Design system ổn định** (9 màu): dùng cho video chính thức, đồng bộ với project Claude Design `2e5e9d7a…` |
+| `vinuni-lesson-video-ds-lab/` | **Design system thử nghiệm**: hướng mới từ buổi brainstorm, có thêm màu và nhóm component. Đồng bộ với project `a72bc554…` |
 | `vinuni-lesson-video-ds.zip` | Bản nén của thư mục trên, để tải lên nếu cần |
 | `tools/` | Script build bundle (`build.mjs`), chụp ảnh QA (`shoot.mjs`), kiểm tra (`verify.mjs`). Không cần import |
 | `tts-elevenlabs/` | Project phụ: gọi ElevenLabs TTS → `voice.wav` + `voice.cues.json` theo frame. Khoá đặt trong `.env`, không import |

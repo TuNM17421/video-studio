@@ -1,6 +1,6 @@
 import React from 'react';
 import { CLAMP, interpolate, spring } from '../../lib/motion.js';
-import { iconComponent } from '../icons/Icons.jsx';
+import { ICONS } from '../icons/Icons.jsx';
 
 /**
  * Brand title card (HTML, full frame, white): red eyebrow · icon in a 120 px bgAlt circle
@@ -11,7 +11,7 @@ export function BrandTitle({ eyebrow, title, icon = 'neural-net', frame }) {
   const opacity = interpolate(frame, [0, 18], [0, 1], CLAMP);
   const scale = spring({ frame, config: { damping: 200 }, from: 0.94, to: 1 });
   const iconScale = spring({ frame, config: { damping: 12 } });
-  const IconCmp = iconComponent(icon);
+  const IconCmp = ICONS[icon];
   return (
     <div className="vk-center">
       <div className="vk-center__inner" style={{ opacity, transform: `scale(${scale})` }}>

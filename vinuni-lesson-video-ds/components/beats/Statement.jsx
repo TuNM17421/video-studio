@@ -1,6 +1,6 @@
 import React from 'react';
 import { CLAMP, interpolate, spring } from '../../lib/motion.js';
-import { iconComponent } from '../icons/Icons.jsx';
+import { ICONS } from '../icons/Icons.jsx';
 
 /**
  * Closing statement (HTML, full frame on bgAlt): red eyebrow · icon in a 100 px white circle
@@ -10,7 +10,7 @@ import { iconComponent } from '../icons/Icons.jsx';
 export function Statement({ eyebrow, text, icon = 'chat-bubble', frame }) {
   const opacity = interpolate(frame, [0, 18], [0, 1], CLAMP);
   const scale = spring({ frame, config: { damping: 200 }, from: 0.94, to: 1 });
-  const IconCmp = icon ? iconComponent(icon) : null;
+  const IconCmp = icon ? ICONS[icon] : null;
   return (
     <div className="vk-statement">
       <div className="vk-statement__inner" style={{ opacity, transform: `scale(${scale})` }}>

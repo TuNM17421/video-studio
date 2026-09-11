@@ -4,5 +4,3 @@ export * from './geometry.js';
 export * from './captions.js';
 export * from './player.jsx';
 export * from './series.jsx';
-export * from './text.js';
-export * from './paths.js';

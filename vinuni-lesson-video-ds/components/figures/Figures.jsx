@@ -1,5 +1,5 @@
 import React from 'react';
-import { C, ROLE } from '../../lib/tokens.js';
+import { C } from '../../lib/tokens.js';
 import { clamp01 } from '../../lib/motion.js';
 import { textWidth } from '../../lib/geometry.js';
 import { Multiline, SvgText } from '../text/Text.jsx';
@@ -43,107 +43,33 @@ export function Person({ x, y, r = 66, name, role, active = false, color, opacit
   );
 }
 
-/** Marker-band colors for DocumentSheet `highlight` tones: [band fill, text color]. */
-const MARK = {
-  red: [C.redSoft, C.red],
-  accent: [C.dotInactive, C.accentStrong],
-  amber: [ROLE.amberSoft, C.text],
-};
-
-/**
- * Folded-corner page (215×168 at scale 1) with text lines; `fill` 0–1 draws the lines progressively.
- * Placeholder mode (default): `lines` is a NUMBER of grey bars (first bar colored).
- * Text mode: `lines` is an ARRAY of strings → real text rows (`size` px, row pitch 1.6 × size), the page
- * grows taller to fit (`h` overrides). In both modes: `highlight` [{ line, tone }] paints a marker band
- * behind a row (red · accent · amber), `strike` [i] draws a red strike-through (injected sentence,
- * fabricated claim), `revealLines` (number, may be fractional — drive with countUp(frame, …)) shows only
- * the first N rows, the partial one fading in.
- */
-export function DocumentSheet({
-  x,
-  y,
-  w = 215,
-  h: hProp,
-  label,
-  detail,
-  selected = false,
-  fill = 1,
-  lines = 3,
-  size = 20,
-  highlight,
-  strike,
-  revealLines,
-  opacity = 1,
-}) {
+/** Folded-corner page (215×168 at scale 1) with text lines; `fill` 0–1 draws the lines progressively. */
+export function DocumentSheet({ x, y, w = 215, label, detail, selected = false, fill = 1, lines = 3, opacity = 1 }) {
   if (opacity <= 0.001) return null;
   const k = w / 215;
-  const textMode = Array.isArray(lines);
-  const n = textMode ? lines.length : lines;
+  const h = 168 * k;
+  const fold = 45 * k;
   const c = selected ? C.red : C.accent;
   const f = clamp01(fill);
-  const marks = new Map((highlight || []).map((m) => [m.line, MARK[m.tone] || MARK.amber]));
-  const struck = new Set(strike || []);
-  const rowOpacity = (i) => (revealLines == null ? 1 : clamp01(revealLines - i));
   const rows = [];
-  let h;
-  let fold;
-  if (textMode) {
-    fold = Math.min(45 * k, 52);
-    const pitch = Math.round(size * 1.6);
-    const top = Math.max(fold * 0.55, 26) + 6;
-    const padX = Math.max(24, Math.round(22 * Math.min(k, 1.4)));
-    h = hProp ?? Math.max(168, top + n * pitch + 26);
-    for (let i = 0; i < n; i++) {
-      const o = rowOpacity(i) * clamp01(f * n - i);
-      if (o <= 0.001) continue;
-      const text = lines[i];
-      const ry = y + top + i * pitch;
-      const tw = Math.min(textWidth(text, size, 700) * 1.06, w - 2 * padX + 8);
-      const mk = marks.get(i);
-      const cut = struck.has(i);
-      rows.push(
-        <g key={i} opacity={o < 1 ? o : undefined}>
-          {mk ? <rect x={x + padX - 8} y={ry + 2} width={tw + 16} height={pitch - 4} rx={8} fill={mk[0]} /> : null}
-          <SvgText x={x + padX} y={ry + pitch / 2 + size * 0.36} size={size} weight={600} anchor="start" color={cut ? C.textMuted : mk ? mk[1] : C.text}>
-            {text}
-          </SvgText>
-          {cut ? <path d={`M ${x + padX - 6} ${ry + pitch / 2} H ${x + padX + tw + 6}`} stroke={C.red} strokeWidth={3.5} strokeLinecap="round" /> : null}
-        </g>,
-      );
-    }
-  } else {
-    fold = 45 * k;
-    h = hProp ?? 168 * k;
-    for (let i = 0; i < n; i++) {
-      const full = (i === n - 1 ? 105 : 145) * k;
-      const t = clamp01(f * n - i);
-      const o = rowOpacity(i);
-      if (t <= 0 || o <= 0.001) continue;
-      const ry = y + (63 + i * 27) * k;
-      const mk = marks.get(i);
-      const cut = struck.has(i);
-      rows.push(
-        <g key={i} opacity={o < 1 ? o : undefined}>
-          {mk ? <rect x={x + 22 * k} y={ry - 7 * k} width={full * t + 16 * k} height={24 * k} rx={6 * k} fill={mk[0]} /> : null}
-          <rect x={x + 30 * k} y={ry} width={full * t} height={10 * k} rx={5 * k} fill={cut ? C.redSoft : mk ? mk[1] : i === 0 ? c : C.dotInactive} />
-          {cut ? <path d={`M ${x + 24 * k} ${ry + 5 * k} H ${x + 36 * k + full * t}`} stroke={C.red} strokeWidth={3} strokeLinecap="round" /> : null}
-        </g>,
-      );
-    }
+  for (let i = 0; i < lines; i++) {
+    const full = (i === lines - 1 ? 105 : 145) * k;
+    const t = clamp01(f * lines - i);
+    if (t <= 0) continue;
+    rows.push(<rect key={i} x={x + 30 * k} y={y + (63 + i * 27) * k} width={full * t} height={10 * k} rx={5 * k} fill={i === 0 ? c : C.dotInactive} />);
   }
-  const lk = textMode ? 1 : Math.max(0.8, k);
   return (
     <g opacity={opacity < 1 ? opacity : undefined}>
-      <path d={`M ${x} ${y} H ${x + w - fold} L ${x + w} ${y + fold} V ${y + h} H ${x} Z`} fill={textMode ? C.bg : C.bgAlt} stroke={c} strokeLinejoin="round" strokeWidth={3} />
+      <path d={`M ${x} ${y} H ${x + w - fold} L ${x + w} ${y + fold} V ${y + h} H ${x} Z`} fill={C.bgAlt} stroke={c} strokeLinejoin="round" strokeWidth={3} />
       <path d={`M ${x + w - fold} ${y} V ${y + fold} H ${x + w}`} fill="none" stroke={c} strokeWidth={3} />
       {rows}
       {label ? (
-        <SvgText x={x + w / 2} y={y + h + 42 * lk} size={24} weight={700} color={c}>
+        <SvgText x={x + w / 2} y={y + h + 42 * Math.max(0.8, k)} size={24} weight={700} color={c}>
           {label}
         </SvgText>
       ) : null}
       {detail ? (
-        <SvgText x={x + w / 2} y={y + h + 72 * lk} size={20} color={C.textMuted}>
+        <SvgText x={x + w / 2} y={y + h + 72 * Math.max(0.8, k)} size={20} color={C.textMuted}>
           {detail}
         </SvgText>
       ) : null}

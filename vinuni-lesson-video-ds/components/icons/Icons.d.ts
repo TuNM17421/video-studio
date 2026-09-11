@@ -1,4 +1,3 @@
-import type { LineIconName } from './LineIcon';
 import type { FC, SVGProps } from 'react';
 
 export type IconName =
@@ -32,14 +31,9 @@ export declare const GearIcon: IconComponent;
 
 export declare const ICONS: Readonly<Record<IconName, IconComponent>>;
 export declare const ICON_NAMES: readonly IconName[];
-/** Any name accepted by Icon / every `icon` prop: hand-drawn or LineIcon (Lucide). */
-export type AnyIconName = IconName | LineIconName;
-/** Standalone <svg> component for any icon name (HTML contexts); null when unknown. */
-export declare function iconComponent(name: AnyIconName): IconComponent | null;
 
 export interface IconProps {
-  /** Hand-drawn name, or any LineIcon (Lucide) name — rendered with the matching stroke weight. */
-  name: IconName | LineIconName;
+  name: IconName;
   /** Center x (scene px). */
   x: number;
   /** Center y (scene px). */

@@ -17,14 +17,6 @@ export declare const C: Readonly<{
   dotInactive: string;
 }>;
 export type ColorToken = keyof typeof C;
-/** Role hues (option B): ONLY for zone labels, outlines and soft fills naming a role — never body text, numbers or particles. */
-export declare const ROLE: Readonly<{
-  purple: string; purpleSoft: string; green: string; greenSoft: string;
-  orange: string; orangeSoft: string; amber: string; amberSoft: string;
-}>;
-export type RoleName = 'input' | 'process' | 'reasoning' | 'output' | 'check' | 'action' | 'memory';
-/** Script vocabulary → [stroke, soft fill]: input blue · process/reasoning purple · output green · check/action orange · memory amber. */
-export declare const ROLE_OF: Readonly<Record<RoleName, readonly [string, string]>>;
 export declare const FONT: string;
 export declare const MONO: string;
 export declare const BRAND: string;
@@ -197,43 +189,3 @@ export interface SeriesProps {
 export declare const Series: FC<SeriesProps>;
 export declare function seriesDuration(sequences: readonly SeriesSequence[]): number;
 export declare function seriesStarts(sequences: readonly SeriesSequence[]): number[];
-
-/* ---------------------------------------------------------------- text motion */
-/** Graphemes after NFC normalisation (Vietnamese diacritics never split). */
-export declare function graphemes(str: string): string[];
-/** Typewriter prefix of `str` visible at `frame` (cps = characters per second at 30 fps, default 30). */
-export declare function typeText(str: string, frame: number, start?: number, cps?: number): string;
-/** How many of n items are visible when one appears every `per` frames from `start`. */
-export declare function revealCount(n: number, frame: number, start?: number, per?: number): number;
-/** 0→1 progress of item i in a staggered reveal. */
-export declare function staggered(i: number, frame: number, start?: number, per?: number, dur?: number): number;
-/** vi-VN number formatting ("1.234,5"). */
-export declare function formatNumber(v: number, digits?: number): string;
-/** Seeded PRNG (mulberry32) — the only allowed randomness in scenes. */
-export declare function rng(seed?: number): () => number;
-
-/* ---------------------------------------------------------------- paths & layout (@remotion/paths · d3 · flubber · dagre) */
-export declare function evolvePath(progress: number, path: string): { strokeDasharray: string; strokeDashoffset: number };
-export declare function getLength(path: string): number;
-export declare function getPointAtLength(path: string, length: number): Point;
-export declare function getTangentAtLength(path: string, length: number): Point;
-export declare function interpolatePath(value: number, firstPath: string, secondPath: string): string;
-export declare function reversePath(path: string): string;
-/** Smooth SVG path through points. */
-export declare function curvePath(points: readonly Point[], curve?: 'basis' | 'catmullRom' | 'monotoneX' | 'linear' | 'step'): string;
-/** Point + angle (deg) at progress t (0–1) along a path string. */
-export declare function pointOnPath(d: string, t: number): Point & { angle: number };
-/** Stroke props that draw `d` from 0 to t: <path d={d} {...drawOn(d, t)} />. */
-export declare function drawOn(d: string, t: number): { strokeDasharray: string; strokeDashoffset: number };
-/** Morph between two unrelated shapes (flubber). */
-export declare function morphPath(a: string, b: string, t: number): string;
-/** Color between two tokens at t. */
-export declare function mixColor(a: string, b: string, t: number): string;
-export declare function scaleLinear(domain?: number[], range?: number[]): any;
-export declare function scaleBand(domain?: string[], range?: number[]): any;
-/** Auto-layout a directed graph with dagre. Boxes are top-left in scene px. */
-export declare function layoutGraph(
-  nodes: ReadonlyArray<{ id: string; w: number; h: number }>,
-  edges: ReadonlyArray<{ from: string; to: string }>,
-  opts?: { rankdir?: 'LR' | 'TB' | 'RL' | 'BT'; nodesep?: number; ranksep?: number; marginx?: number; marginy?: number; x?: number; y?: number },
-): { nodes: Record<string, Box>; edges: Array<{ from: string; to: string; points: Point[] }>; width: number; height: number };
