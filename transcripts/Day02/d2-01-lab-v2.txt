@@ -1,105 +1,105 @@
 00:00 - 00:04: Trước khi các bạn chọn cách xây một giải pháp, có một câu hỏi cần được giữ
-00:04 - 00:08: ở giữa cả ngày học: mình đã chắc là đang giải đúng bài toán chưa?
-00:12 - 00:16: Không phải cứ nhìn thấy một giải pháp là đã nhìn thấy nhu cầu cần giải quyết.
-00:17 - 00:22: Cũng không phải cứ có thể đưa AI vào là bài toán đó thật sự cần AI.
-00:23 - 00:27: Vậy trước khi nói đến cấp độ giải pháp, trước khi đề xuất công nghệ,
-00:27 - 00:29: chúng ta cần làm rõ điều gì đang xảy ra,
-00:29 - 00:32: điều gì cần thay đổi, và quyết định nào đang được đặt ra.
-00:34 - 00:38: Sau ngày này, các bạn sẽ phân biệt được bài toán với giải pháp,
-00:38 - 00:41: và biết đặt câu hỏi làm rõ trước khi đề xuất công nghệ.
-00:43 - 00:47: Các bạn sẽ định lượng hóa được một điểm đau bằng hiện trạng, mục tiêu
-00:47 - 00:52: và cách đo, để điểm đau không chỉ được mô tả chung chung mà có thể được nhìn
-00:52 - 00:56: nhận rõ hơn qua những gì đang có, điều cần đạt tới và cách kiểm chứng.
-00:57 - 01:01: Các bạn cũng sẽ áp dụng được ba bước để xác định AI có đáng làm
-01:01 - 01:04: hay không, việc nào nên để AI làm thay con
-01:04 - 01:07: người và việc nào chỉ nên để AI hỗ trợ con người,
-01:07 - 01:12: và giải pháp nên dừng ở cấp độ đơn giản nhất mà vẫn đủ giải quyết bài toán.
-01:14 - 01:17: Sau đó, các bạn sẽ viết được tiêu chí thành công có thể hành động,
-01:17 - 01:19: đồng thời biết ứng xử khi AI sai.
-01:21 - 01:26: Mục tiêu không dừng ở việc gọi tên một giải pháp, mà là làm rõ giải pháp
-01:26 - 01:30: đó cần đạt điều gì và cần được nhìn nhận ra sao khi kết quả không đúng.
-01:31 - 01:35: Cuối ngày, các bạn sẽ hoàn thành được một bản mô tả bài toán đủ chín mục
-01:35 - 01:40: để quyết định nên triển khai, tạm hoãn hay dừng lại, trong buổi thực hành.
-01:41 - 01:45: Nghĩa là các bạn có thể đi từ việc nhận diện bài toán,
-01:45 - 01:49: làm rõ điểm đau và khả năng cần AI, đến việc xác định cấp độ giải pháp,
-01:49 - 01:52: tiêu chí thành công, cách ứng xử khi AI thất bại,
-01:52 - 01:55: rồi đưa bài toán về một dạng đủ rõ để quyết định triển khai.
-01:57 - 02:00: Ngày học này đi theo một lập trường rất rõ:
-02:00 - 02:04: chúng ta sẽ đặt câu hỏi xuyên suốt, thay vì vội đi tìm giải pháp.
-02:05 - 02:09: Bốn câu hỏi trọng tâm sẽ lần lượt dẫn đường cho cả ngày:
-02:09 - 02:13: bài toán có thật sự cần AI không, giải pháp nên ở cấp độ nào,
-02:13 - 02:17: bản mô tả bài toán đã đủ rõ chưa, và khi nào nên quyết định triển khai.
-02:19 - 02:22: Ngày học không đòi hỏi kiến thức kỹ thuật sâu;
-02:22 - 02:26: điều cần có là khả năng đặt câu hỏi và quan sát một quy trình thật.
-02:27 - 02:31: Vì vậy, cách tiếp cận của chúng ta là nhìn bài toán trước,
-02:31 - 02:34: làm rõ trước, rồi mới nói đến công nghệ và quyết định.
-02:36 - 02:38: Bây giờ, mình bắt đầu từ điểm dễ bị bỏ qua nhất:
-02:38 - 02:42: khi giải pháp xuất hiện trước khi bài toán được nhìn thấy rõ.
-02:43 - 02:47: Chúng ta vào Module 1 · Nhìn thấy giải pháp trước khi thấy bài toán.
-02:49 - 02:52: Các bạn chắc đã gặp một yêu cầu rất quen: xây một chatbot AI.
-02:54 - 02:57: Nghe qua, yêu cầu này giống như đã nói rõ việc cần làm,
-02:57 - 03:00: vì nó đã gọi tên một hình hài giải pháp.
-03:01 - 03:04: Nhưng nếu dừng ở đó, chúng ta vẫn chưa biết ai sẽ dùng,
-03:04 - 03:07: họ đang vướng ở đâu, và chatbot cần tham gia vào công việc nào.
-03:09 - 03:12: Điều này đáng bận tâm vì cùng một cái tên chatbot có thể
-03:12 - 03:16: dẫn tới những quy trình, chỉ số và rủi ro rất khác nhau.
-03:17 - 03:21: Trong module này, mình sẽ tập cho các bạn trả lời ba câu hỏi đó trước:
-03:21 - 03:26: ai sẽ dùng, họ đang vướng ở đâu, và chatbot cần tham gia vào công việc nào.
-03:28 - 03:32: Bây giờ mình dùng một ví dụ xuyên suốt: cùng một yêu cầu xây chatbot AI,
-03:32 - 03:34: nhưng đặt nó vào hai nhóm người dùng khác nhau.
-03:36 - 03:40: Ở vế thứ nhất là khách hàng bên ngoài; ở vế thứ hai là nhân sự nội bộ.
-03:42 - 03:44: Các bạn thử dự đoán trước: nếu chỉ đổi đối tượng phục vụ,
-03:44 - 03:47: liệu công việc phía sau có còn giống nhau không?
-03:51 - 03:55: Khi phục vụ khách hàng bên ngoài, quy trình có thể bắt đầu từ một câu hỏi
-03:55 - 03:59: của khách về sản phẩm hoặc chính sách, rồi đi tới việc giải đáp,
-03:59 - 04:02: tư vấn mua hàng, chăm sóc sau mua, hoặc hỗ trợ bán thêm và bán chéo.
-04:04 - 04:08: Khi hỗ trợ nhân sự nội bộ, cùng yêu cầu chatbot lại có thể bắt đầu
-04:08 - 04:11: từ một yêu cầu hỗ trợ, rồi cần phân loại yêu cầu, tra cứu thông
-04:11 - 04:15: tin nghiệp vụ nhanh, đề xuất nháp phản hồi để con người phê duyệt,
-04:15 - 04:18: hoặc chuyển câu hỏi phức tạp và rủi ro cao cho nhân sự hỗ trợ.
-04:20 - 04:24: Ở đây, workflow, tức là chuỗi các bước đang diễn ra để xử lý một việc,
-04:24 - 04:28: giúp các bạn nhìn thấy chatbot sẽ đứng ở đâu trong công việc thực tế.
-04:29 - 04:34: Workflow của khách hàng bên ngoài xoay quanh việc giải đáp và hỗ trợ mua hàng;
-04:34 - 04:37: workflow của nội bộ lại xoay quanh yêu cầu hỗ trợ,
-04:37 - 04:40: tra cứu, soạn nháp và chuyển tiếp.
-04:41 - 04:44: Vì vậy, đừng coi chatbot là toàn bộ bài toán;
-04:44 - 04:47: nó chỉ là một khả năng được đặt vào một workflow cụ thể.
-04:49 - 04:51: Mình đi sâu thêm một bước với ví dụ này.
-04:53 - 04:56: Tình huống thứ nhất là một chatbot phục vụ khách hàng: nó gặp câu hỏi
-04:56 - 05:00: thường gặp về sản phẩm và chính sách, sau đó hỗ trợ tư vấn mua hàng.
-05:02 - 05:06: Tình huống thứ hai là chatbot phục vụ nội bộ: nó tiếp nhận yêu cầu hỗ trợ,
-05:06 - 05:10: tra cứu thông tin nghiệp vụ và chuẩn bị nháp phản hồi.
-05:11 - 05:15: Tình huống thứ ba là khi câu hỏi phức tạp hoặc rủi ro cao xuất hiện:
-05:15 - 05:20: việc xử lý được chuyển cho nhân sự hỗ trợ, thay vì để chatbot tự đi tiếp.
-05:21 - 05:23: Các bạn thấy đấy, đối tượng khác nhau
-05:23 - 05:25: không chỉ đổi giao diện hay cách gọi tên.
-05:26 - 05:30: Nó đổi cả công việc cần xử lý, bước nào được tự động hỗ trợ,
-05:30 - 05:32: và lúc nào con người phải tham gia.
-05:33 - 05:36: Vì thế, cùng một yêu cầu chatbot AI nhưng bên ngoài và bên
-05:36 - 05:40: trong không thể mặc nhiên dùng chung một cách mô tả bài toán.
-05:42 - 05:45: Đến đây, mình muốn dừng lại ở chỗ các bạn dễ nhầm nhất.
-05:46 - 05:50: Nếu nói “hãy làm chatbot”, các bạn có thể bắt đầu nghĩ ngay tới công nghệ.
-05:52 - 05:56: Nhưng hãy đi ngược lại từng bước: trước hết hỏi người dùng đang mắc ở
-05:56 - 06:01: công đoạn nào; tiếp theo xem quy trình hiện tại đang diễn ra ra sao;
-06:01 - 06:05: rồi xác định ai đang bị quá tải và điểm vướng xuất hiện lặp lại ở đâu.
-06:07 - 06:11: pain point, tức là điểm đau cụ thể nơi người dùng gặp khó khăn, phàn nàn
-06:11 - 06:15: hoặc bị tắc nghẽn, là thứ cần được nhận diện trước khi đề xuất giải pháp.
-06:17 - 06:19: Khi chưa hiểu pain point, mình chưa có căn cứ
-06:19 - 06:22: để biết chatbot có đang giải quyết đúng việc hay không.
-06:24 - 06:28: Các bạn cũng cần một metric, tức là chỉ số dùng để theo dõi
-06:28 - 06:31: và đánh giá kết quả của việc cải tiến, vì slide nhấn mạnh
-06:31 - 06:34: rằng các đối tượng khác nhau dẫn tới các chỉ số khác nhau.
-06:36 - 06:39: Ở đây mình không tự gán tên hay giá trị cụ thể cho chỉ số;
-06:39 - 06:44: điều cần nhớ là không được dùng một bộ đo mặc định cho hai bài toán khác nhau.
-06:46 - 06:48: Đó là lý do bắt đầu từ giải pháp thay
-06:48 - 06:51: vì điểm đau là dấu hiệu bài toán chưa sẵn sàng.
-06:53 - 06:57: Những dấu hiệu khác cũng cần cảnh giác là chưa làm rõ quy trình vận hành,
-06:57 - 07:00: chưa có căn cứ đánh giá hiệu quả, hoặc chưa xác định ranh giới
-07:00 - 07:03: khi AI sai và thời điểm con người cần phê duyệt.
-07:04 - 07:08: Khi gặp các dấu hiệu này, mình quay lại làm rõ Problem Statement,
-07:08 - 07:11: tức phần mô tả bài toán cần giải quyết, trước khi chọn công nghệ.
-07:13 - 07:18: Các bạn hãy giữ lại mạch suy nghĩ này: yêu cầu chatbot chỉ cho chúng ta biết
-07:18 - 07:22: hình hài giải pháp; đối tượng phục vụ và pain point mới giúp làm rõ bài toán;
-07:22 - 07:26: workflow cho thấy công việc thực tế; còn metric giúp theo dõi kết quả.
-07:28 - 07:32: Sang “Double Diamond: tìm đúng vấn đề trước khi tìm đúng giải pháp”, mình sẽ
-07:32 - 07:37: nối tiếp bằng cách tìm và định hình đúng vấn đề trước khi lựa chọn giải pháp.
+00:04 - 00:07: ở giữa cả ngày học: mình đã chắc là đang giải đúng bài toán chưa?
+00:11 - 00:15: Không phải cứ nhìn thấy một giải pháp là đã nhìn thấy nhu cầu cần giải quyết.
+00:17 - 00:21: Cũng không phải cứ có thể đưa AI vào là bài toán đó thật sự cần AI.
+00:22 - 00:26: Vậy trước khi nói đến cấp độ giải pháp, trước khi đề xuất công nghệ,
+00:26 - 00:28: chúng ta cần làm rõ điều gì đang xảy ra,
+00:28 - 00:32: điều gì cần thay đổi, và quyết định nào đang được đặt ra.
+00:34 - 00:37: Sau ngày này, các bạn sẽ phân biệt được bài toán với giải pháp,
+00:37 - 00:39: và biết đặt câu hỏi làm rõ trước khi đề xuất công nghệ.
+00:41 - 00:45: Các bạn sẽ định lượng hóa được một điểm đau bằng hiện trạng, mục tiêu
+00:45 - 00:49: và cách đo, để điểm đau không chỉ được mô tả chung chung mà có thể được nhìn
+00:49 - 00:54: nhận rõ hơn qua những gì đang có, điều cần đạt tới và cách kiểm chứng.
+00:55 - 00:59: Các bạn cũng sẽ áp dụng được ba bước để xác định AI có đáng làm
+00:59 - 01:01: hay không, việc nào nên để AI làm thay con
+01:01 - 01:04: người và việc nào chỉ nên để AI hỗ trợ con người,
+01:04 - 01:08: và giải pháp nên dừng ở cấp độ đơn giản nhất mà vẫn đủ giải quyết bài toán.
+01:10 - 01:14: Sau đó, các bạn sẽ viết được tiêu chí thành công có thể hành động,
+01:14 - 01:16: đồng thời biết ứng xử khi AI sai.
+01:18 - 01:22: Mục tiêu không dừng ở việc gọi tên một giải pháp, mà là làm rõ giải pháp
+01:22 - 01:26: đó cần đạt điều gì và cần được nhìn nhận ra sao khi kết quả không đúng.
+01:27 - 01:32: Cuối ngày, các bạn sẽ hoàn thành được một bản mô tả bài toán đủ chín mục
+01:32 - 01:36: để quyết định nên triển khai, tạm hoãn hay dừng lại, trong buổi thực hành.
+01:38 - 01:41: Nghĩa là các bạn có thể đi từ việc nhận diện bài toán,
+01:41 - 01:45: làm rõ điểm đau và khả năng cần AI, đến việc xác định cấp độ giải pháp,
+01:45 - 01:48: tiêu chí thành công, cách ứng xử khi AI thất bại,
+01:48 - 01:52: rồi đưa bài toán về một dạng đủ rõ để quyết định triển khai.
+01:54 - 01:56: Ngày học này đi theo một lập trường rất rõ:
+01:56 - 01:59: chúng ta sẽ đặt câu hỏi xuyên suốt, thay vì vội đi tìm giải pháp.
+02:01 - 02:04: Bốn câu hỏi trọng tâm sẽ lần lượt dẫn đường cho cả ngày:
+02:04 - 02:08: bài toán có thật sự cần AI không, giải pháp nên ở cấp độ nào,
+02:08 - 02:12: bản mô tả bài toán đã đủ rõ chưa, và khi nào nên quyết định triển khai.
+02:13 - 02:16: Ngày học không đòi hỏi kiến thức kỹ thuật sâu;
+02:16 - 02:20: điều cần có là khả năng đặt câu hỏi và quan sát một quy trình thật.
+02:21 - 02:24: Vì vậy, cách tiếp cận của chúng ta là nhìn bài toán trước,
+02:24 - 02:27: làm rõ trước, rồi mới nói đến công nghệ và quyết định.
+02:29 - 02:32: Bây giờ, mình bắt đầu từ điểm dễ bị bỏ qua nhất:
+02:32 - 02:36: khi giải pháp xuất hiện trước khi bài toán được nhìn thấy rõ.
+02:37 - 02:41: Chúng ta vào Module 1 · Nhìn thấy giải pháp trước khi thấy bài toán.
+02:43 - 02:47: Các bạn chắc đã gặp một yêu cầu rất quen: xây một chatbot AI.
+02:48 - 02:51: Nghe qua, yêu cầu này giống như đã nói rõ việc cần làm,
+02:51 - 02:54: vì nó đã gọi tên một hình hài giải pháp.
+02:55 - 02:58: Nhưng nếu dừng ở đó, chúng ta vẫn chưa biết ai sẽ dùng,
+02:58 - 03:02: họ đang vướng ở đâu, và chatbot cần tham gia vào công việc nào.
+03:03 - 03:06: Điều này đáng bận tâm vì cùng một cái tên chatbot có thể
+03:06 - 03:10: dẫn tới những quy trình, chỉ số và rủi ro rất khác nhau.
+03:11 - 03:15: Trong module này, mình sẽ tập cho các bạn trả lời ba câu hỏi đó trước:
+03:15 - 03:20: ai sẽ dùng, họ đang vướng ở đâu, và chatbot cần tham gia vào công việc nào.
+03:22 - 03:26: Bây giờ mình dùng một ví dụ xuyên suốt: cùng một yêu cầu xây chatbot AI,
+03:26 - 03:29: nhưng đặt nó vào hai nhóm người dùng khác nhau.
+03:30 - 03:34: Ở vế thứ nhất là khách hàng bên ngoài; ở vế thứ hai là nhân sự nội bộ.
+03:36 - 03:39: Các bạn thử dự đoán trước: nếu chỉ đổi đối tượng phục vụ,
+03:39 - 03:41: liệu công việc phía sau có còn giống nhau không?
+03:45 - 03:49: Khi phục vụ khách hàng bên ngoài, quy trình có thể bắt đầu từ một câu hỏi
+03:49 - 03:53: của khách về sản phẩm hoặc chính sách, rồi đi tới việc giải đáp,
+03:53 - 03:56: tư vấn mua hàng, chăm sóc sau mua, hoặc hỗ trợ bán thêm và bán chéo.
+03:58 - 04:02: Khi hỗ trợ nhân sự nội bộ, cùng yêu cầu chatbot lại có thể bắt đầu
+04:02 - 04:05: từ một yêu cầu hỗ trợ, rồi cần phân loại yêu cầu, tra cứu thông
+04:05 - 04:09: tin nghiệp vụ nhanh, đề xuất nháp phản hồi để con người phê duyệt,
+04:09 - 04:12: hoặc chuyển câu hỏi phức tạp và rủi ro cao cho nhân sự hỗ trợ.
+04:14 - 04:17: Ở đây, workflow, tức là chuỗi các bước đang diễn ra để xử lý một việc,
+04:17 - 04:21: giúp các bạn nhìn thấy chatbot sẽ đứng ở đâu trong công việc thực tế.
+04:23 - 04:28: Workflow của khách hàng bên ngoài xoay quanh việc giải đáp và hỗ trợ mua hàng;
+04:28 - 04:31: workflow của nội bộ lại xoay quanh yêu cầu hỗ trợ,
+04:31 - 04:33: tra cứu, soạn nháp và chuyển tiếp.
+04:35 - 04:37: Vì vậy, đừng coi chatbot là toàn bộ bài toán;
+04:37 - 04:41: nó chỉ là một khả năng được đặt vào một workflow cụ thể.
+04:43 - 04:45: Mình đi sâu thêm một bước với ví dụ này.
+04:46 - 04:50: Tình huống thứ nhất là một chatbot phục vụ khách hàng: nó gặp câu hỏi
+04:50 - 04:54: thường gặp về sản phẩm và chính sách, sau đó hỗ trợ tư vấn mua hàng.
+04:56 - 05:00: Tình huống thứ hai là chatbot phục vụ nội bộ: nó tiếp nhận yêu cầu hỗ trợ,
+05:00 - 05:03: tra cứu thông tin nghiệp vụ và chuẩn bị nháp phản hồi.
+05:04 - 05:08: Tình huống thứ ba là khi câu hỏi phức tạp hoặc rủi ro cao xuất hiện:
+05:08 - 05:12: việc xử lý được chuyển cho nhân sự hỗ trợ, thay vì để chatbot tự đi tiếp.
+05:14 - 05:16: Các bạn thấy đấy, đối tượng khác nhau
+05:16 - 05:18: không chỉ đổi giao diện hay cách gọi tên.
+05:19 - 05:23: Nó đổi cả công việc cần xử lý, bước nào được tự động hỗ trợ,
+05:23 - 05:25: và lúc nào con người phải tham gia.
+05:26 - 05:29: Vì thế, cùng một yêu cầu chatbot AI nhưng bên ngoài và bên
+05:29 - 05:33: trong không thể mặc nhiên dùng chung một cách mô tả bài toán.
+05:35 - 05:37: Đến đây, mình muốn dừng lại ở chỗ các bạn dễ nhầm nhất.
+05:39 - 05:43: Nếu nói “hãy làm chatbot”, các bạn có thể bắt đầu nghĩ ngay tới công nghệ.
+05:44 - 05:48: Nhưng hãy đi ngược lại từng bước: trước hết hỏi người dùng đang mắc ở
+05:48 - 05:52: công đoạn nào; tiếp theo xem quy trình hiện tại đang diễn ra ra sao;
+05:52 - 05:56: rồi xác định ai đang bị quá tải và điểm vướng xuất hiện lặp lại ở đâu.
+05:57 - 06:01: pain point, tức là điểm đau cụ thể nơi người dùng gặp khó khăn, phàn nàn
+06:01 - 06:06: hoặc bị tắc nghẽn, là thứ cần được nhận diện trước khi đề xuất giải pháp.
+06:07 - 06:10: Khi chưa hiểu pain point, mình chưa có căn cứ
+06:10 - 06:12: để biết chatbot có đang giải quyết đúng việc hay không.
+06:14 - 06:18: Các bạn cũng cần một metric, tức là chỉ số dùng để theo dõi
+06:18 - 06:21: và đánh giá kết quả của việc cải tiến, vì slide nhấn mạnh
+06:21 - 06:25: rằng các đối tượng khác nhau dẫn tới các chỉ số khác nhau.
+06:26 - 06:30: Ở đây mình không tự gán tên hay giá trị cụ thể cho chỉ số;
+06:30 - 06:34: điều cần nhớ là không được dùng một bộ đo mặc định cho hai bài toán khác nhau.
+06:35 - 06:37: Đó là lý do bắt đầu từ giải pháp thay
+06:37 - 06:40: vì điểm đau là dấu hiệu bài toán chưa sẵn sàng.
+06:41 - 06:46: Những dấu hiệu khác cũng cần cảnh giác là chưa làm rõ quy trình vận hành,
+06:46 - 06:49: chưa có căn cứ đánh giá hiệu quả, hoặc chưa xác định ranh giới
+06:49 - 06:52: khi AI sai và thời điểm con người cần phê duyệt.
+06:53 - 06:57: Khi gặp các dấu hiệu này, mình quay lại làm rõ Problem Statement,
+06:57 - 07:01: tức phần mô tả bài toán cần giải quyết, trước khi chọn công nghệ.
+07:03 - 07:07: Các bạn hãy giữ lại mạch suy nghĩ này: yêu cầu chatbot chỉ cho chúng ta biết
+07:07 - 07:12: hình hài giải pháp; đối tượng phục vụ và pain point mới giúp làm rõ bài toán;
+07:12 - 07:16: workflow cho thấy công việc thực tế; còn metric giúp theo dõi kết quả.
+07:17 - 07:21: Sang “Double Diamond: tìm đúng vấn đề trước khi tìm đúng giải pháp”, mình sẽ
+07:21 - 07:25: nối tiếp bằng cách tìm và định hình đúng vấn đề trước khi lựa chọn giải pháp.

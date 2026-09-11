@@ -1,11 +1,11 @@
 00:00: Mở ngày 2: mình đã chắc là đang giải đúng bài toán chưa?
 00:34: Mục tiêu sau ngày học: bài toán, điểm đau, vai trò của AI và tiêu chí thành công.
-01:21: Từ làm rõ bài toán đến quyết định triển khai, tạm hoãn hay dừng.
-01:57: Lập trường của ngày học và bốn câu hỏi dẫn đường.
-02:36: Bước vào Module 1: nhìn thấy giải pháp trước khi thấy bài toán.
-02:49: Yêu cầu "xây một chatbot AI" chưa phải là một bài toán.
-03:28: Đổi đối tượng phục vụ thì workflow cũng đổi.
-04:49: Ba tình huống của chatbot: khách hàng, nội bộ, chuyển cho nhân sự.
-05:42: Đi ngược từ công nghệ về pain point.
-06:24: Metric riêng cho từng bài toán và dấu hiệu bài toán chưa sẵn sàng.
-07:13: Mạch suy nghĩ tiếp theo và chuyển sang Double Diamond.
+01:18: Từ làm rõ bài toán đến quyết định triển khai, tạm hoãn hay dừng.
+01:54: Lập trường của ngày học và bốn câu hỏi dẫn đường.
+02:29: Bước vào Module 1: nhìn thấy giải pháp trước khi thấy bài toán.
+02:43: Yêu cầu "xây một chatbot AI" chưa phải là một bài toán.
+03:22: Đổi đối tượng phục vụ thì workflow cũng đổi.
+04:43: Ba tình huống của chatbot: khách hàng, nội bộ, chuyển cho nhân sự.
+05:35: Đi ngược từ công nghệ về pain point.
+06:14: Metric riêng cho từng bài toán và dấu hiệu bài toán chưa sẵn sàng.
+07:03: Mạch suy nghĩ tiếp theo và chuyển sang Double Diamond.
