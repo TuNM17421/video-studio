@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="700x240" name="Marks · Check, Cross, Bracket, Enclosure" subtitle="hand-drawn check / cross, real vector bracket grouping, dashed red enclosure with a label" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Marks</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 240px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  function note(x, y, t, anchor) { return h(VK.SvgText, { x: x, y: y, size: 19, weight: 600, anchor: anchor || 'middle', color: C.textMuted }, t); }
+  VK.mountCard('#root', {
+    width: 1400, height: 480, frame: 0,
+    render: function () {
+      return h(VK.Fragment, null,
+        h(VK.Check, { x: 110, y: 150 }),
+        note(110, 230, 'Check'),
+        h(VK.Cross, { x: 260, y: 150 }),
+        note(260, 230, 'Cross'),
+        h(VK.Card, { x: 380, y: 60, w: 250, h: 110, accent: C.accent, label: 'BẢN A', lines: ['Cần xử lý gấp'], size: 22 }),
+        h(VK.Card, { x: 660, y: 60, w: 250, h: 110, accent: C.red, label: 'BẢN B', lines: ['Ưu tiên xử lý'], size: 22 }),
+        h(VK.Bracket, { x: 420, y: 190, w: 450, color: C.red }),
+        h(VK.SvgText, { x: 645, y: 250, size: 20, weight: 700, color: C.red }, 'Ý CHÍNH CHUNG'),
+        note(645, 300, 'Bracket · gom nhóm bằng ngoặc thật'),
+        h(VK.Enclosure, { x: 980, y: 70, w: 380, h: 300, label: 'ĐẦU RA NGÔN NGỮ' }),
+        h(VK.Card, { x: 1015, y: 110, w: 310, h: 100, lines: ['NGẮN', 'đã nhận yêu cầu'], size: 21 }),
+        h(VK.Card, { x: 1015, y: 240, w: 310, h: 100, accent: C.red, lines: ['ĐẦY ĐỦ', 'sẽ xác nhận'], size: 21 }),
+        note(1170, 420, 'Enclosure · 15/12 · radius 32'),
+        h('path', { d: 'M 40 360 H 900', stroke: C.dotInactive, strokeWidth: 2 }),
+        note(40, 420, 'Nét 8 px đỏ cho dấu đúng / sai · ngoặc 4 px · không emoji, không xanh lá', 'start')
+      );
+    }
+  });
+</script>
+</body>
+</html>

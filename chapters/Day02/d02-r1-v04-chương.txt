@@ -1,0 +1,6 @@
+00:00: Ai quyết định bước tiếp theo: quy tắc, quy trình định sẵn hay tác tử.
+00:35: Quy tắc: điều kiện viết sẵn và giới hạn khi gặp cách hỏi mới.
+01:23: Quy trình định sẵn: các bước chính được đặt trước.
+02:13: Tác tử: mô hình chọn công cụ, cùng quyền và giới hạn.
+03:13: Chọn cách đủ dùng cho từng việc hỗ trợ học viên.
+04:04: Kiểm tra: quy trình có dùng mô hình đã là tác tử chưa?

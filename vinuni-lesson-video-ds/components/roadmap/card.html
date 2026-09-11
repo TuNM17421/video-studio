@@ -1,0 +1,39 @@
+<!-- @dsCard group="Components" viewport="700x300" name="DayMap · bản đồ ngày học" subtitle="Full layout (three questions) and docked strip (six parts, the active one in red) for overview videos" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>DayMap</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 300px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+  .lab { padding: 8px 14px 2px; color: var(--color-red); font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+  .lab span { margin-left: 6px; color: var(--color-text-muted); font-weight: 600; letter-spacing: 0; text-transform: none; }
+</style>
+</head>
+<body>
+<div class="lab">dock = 1 · strip<span>phần 3 đang được giới thiệu</span></div>
+<div id="strip"></div>
+<div class="lab">dock = 0 · full<span>ba câu hỏi của ngày</span></div>
+<div id="full"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h;
+  var ZONES = [
+    { title: 'XÁC ĐỊNH VIỆC', question: ['Cần cải thiện gì?'], parts: [{ n: 1, label: 'Tìm khó khăn' }, { n: 2, label: 'Mô tả và đo' }] },
+    { title: 'CHỌN CÁCH', question: ['Làm thế nào?'], parts: [{ n: 3, label: 'AI có giúp?' }, { n: 4, label: 'Tổ chức việc' }] },
+    { title: 'KIỂM TRA ĐIỀU KIỆN', question: ['Đã sẵn sàng chưa?'], parts: [{ n: 5, label: 'Kết quả và lỗi' }, { n: 6, label: 'Quyết định' }] }
+  ];
+  VK.mountCard('#strip', {
+    width: 1720, height: 130, frame: 0,
+    render: function () { return h('g', { transform: 'translate(-100 -276)' }, h(VK.DayMap, { zones: ZONES, dock: 1, activePart: 2, activeGlow: 0.6 })); }
+  });
+  VK.mountCard('#full', {
+    width: 1640, height: 340, frame: 0,
+    render: function () { return h('g', { transform: 'translate(-140 -400)' }, h(VK.DayMap, { zones: ZONES, dock: 0 })); }
+  });
+</script>
+</body>
+</html>

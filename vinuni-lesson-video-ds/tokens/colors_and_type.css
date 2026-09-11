@@ -1,0 +1,223 @@
+/* ==========================================================================
+   VinUni Lesson Video — colors & type · v1.0
+   --------------------------------------------------------------------------
+   Extracted from the Video-studio Remotion repo:
+     src/theme.ts (lightColors) · src/primitives/lightScene.tsx · src/primitives/scenes.tsx
+     src/videos/Day01…Day05/rebuild-v1/** (canonical) · src/videos/Day28/** (editorial variant)
+   Every size is a CSS pixel on the 1920×1080 video canvas (1 px = 1 video pixel).
+   HARD RULE: a scene may only use the semantic color tokens below (and navy/blue/red
+   at alpha for shadows or glows). Never introduce a new hue, hex value or font.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Montserrat";
+  src: url("../fonts/Montserrat-VariableFont_wght.ttf") format("truetype");
+  /* The Remotion renderer loads only weights 500/600/700 (latin + vietnamese subsets).
+     Declaring the variable font as a 500–700 range reproduces that exactly:
+     requests for 800/900 clamp to 700, requests for 400 resolve to 500. */
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* ---------------------------------------------------------------- brand scale
+     VinUni-inspired palette; names follow the original --vu-* design tokens. */
+  --vu-blue-900: #0b2a4d;
+  --vu-blue-800: #103e70;
+  --vu-blue-700: #134d8b;
+  --vu-blue-600: #1d6199;
+  --vu-blue-400: #5d9bc8;
+  --vu-blue-300: #8fbdde;
+  --vu-blue-200: #bed9ee;
+  --vu-blue-100: #e0edf8;
+  --vu-blue-50: #f2f7fc;
+  --vu-red-700: #c72127;
+  --vu-red-500: #d73a40;
+  --vu-red-100: #ffe0e1;
+  --vu-neutral-0: #ffffff;
+  --vu-neutral-700: #4a4a4a;
+
+  /* ---------------------------------------------------------------- semantic tokens
+     = lightColors in src/theme.ts — the ONLY colors allowed on a light lesson scene. */
+  --color-bg: var(--vu-neutral-0);              /* lightColors.bg          canvas */
+  --color-bg-alt: var(--vu-blue-50);            /* lightColors.bgAlt       card / glassbox fill */
+  --color-text: var(--vu-blue-900);             /* lightColors.text        ink, subtitle bar */
+  --color-text-muted: var(--vu-neutral-700);    /* lightColors.textMuted   secondary copy */
+  --color-accent: var(--vu-blue-600);           /* lightColors.accent      data, flows, strokes */
+  --color-accent-strong: var(--vu-blue-700);    /* lightColors.accentStrong strong blue labels */
+  --color-red: var(--vu-red-700);               /* lightColors.red         emphasis, chosen, risk */
+  --color-red-soft: var(--vu-red-100);          /* lightColors.redSoft     active / warning fill */
+  --color-dot-inactive: var(--vu-blue-100);     /* lightColors.dotInactive tracks, dividers, grid */
+
+  /* ---------------------------------------------------------------- roles
+     What a color MEANS inside a diagram. Use the role, not a random token. */
+  --role-data: var(--color-accent);             /* unprocessed data, particles, default flow */
+  --role-emphasis: var(--color-red);            /* transformed / chosen / action / answer / risk */
+  --role-machine: var(--color-bg-alt);          /* glassbox + card fill */
+  --role-track: var(--color-dot-inactive);      /* connector base, bar track, divider, grid */
+  --role-active-fill: var(--color-red-soft);    /* active card overlay, warning card, tag fill */
+  --role-label: var(--color-accent-strong);     /* small strong-blue section labels */
+
+  /* ---------------------------------------------------------------- role hues (option B, 2026-09-11)
+     Only for zone labels, outlines and soft fills naming a role the scripts color-code:
+     input = accent · process/reasoning = purple · output = green · check/action = orange · memory = amber.
+     Never body text, numbers or particles. Red keeps emphasis / risk. */
+  --role-purple: #5b4b9a;
+  --role-purple-soft: #e8e6f1;
+  --role-green: #2f7d57;
+  --role-green-soft: #e1ede7;
+  --role-orange: #c8641e;
+  --role-orange-soft: #f7e9e0;
+  --role-amber: #a87a0c;
+  --role-amber-soft: #f3ecdd;
+
+  /* ---------------------------------------------------------------- legacy dark theme
+     `colors` in theme.ts — only for old dark TTS videos; never for new work. */
+  --legacy-dark-bg: var(--vu-blue-900);
+  --legacy-dark-bg-alt: var(--vu-blue-800);
+  --legacy-dark-accent: var(--vu-blue-400);
+  --legacy-dark-accent-strong: var(--vu-blue-200);
+  --legacy-dark-red: var(--vu-red-500);
+  --legacy-dark-text: var(--vu-neutral-0);
+  --legacy-dark-text-muted: var(--vu-blue-300);
+
+  /* ---------------------------------------------------------------- elevation
+     Flat by default. Shadows/glows are navy, blue or red at alpha — never a new hue. */
+  --shadow-hero: 0 12px 28px rgba(11, 42, 77, 0.16);   /* hero glassbox / engine */
+  --shadow-block: 0 10px 24px rgba(11, 42, 77, 0.18);  /* front face of a stacked block */
+  --shadow-icon: 0 8px 18px rgba(11, 42, 77, 0.16);    /* closing-statement icon badge */
+  --shadow-soft: 0 8px 20px var(--vu-blue-100);        /* floating caption card */
+  --shadow-caption: 0 -8px 24px var(--vu-blue-100);    /* subtitle bar */
+  --glow-accent: 0 0 24px rgba(29, 97, 153, 0.25);
+  --glow-red: 0 0 18px rgba(199, 33, 39, 0.24);
+  --glow-particle: 0 0 8px currentColor;
+
+  /* ---------------------------------------------------------------- typography */
+  --font-sans: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;   /* code-anatomy scenes only */
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;   /* maximum rendered weight; 800/900 in source code render as 700 */
+
+  /* type scale — px on the 1920×1080 canvas */
+  --fs-section-number: 92px;  /* chapter number (red) */
+  --fs-hook: 72px;            /* hook question / opening headline */
+  --fs-display: 62px;         /* brand title card */
+  --fs-section-label: 54px;   /* chapter label beside the number */
+  --fs-title-lg: 54px;        /* large scene title, editorial title */
+  --fs-title: 50px;           /* default scene title (centered header) */
+  --fs-question: 44px;        /* centered check question */
+  --fs-headline: 40px;        /* compact scene headline */
+  --fs-statement: 40px;       /* closing statement (weight 500) */
+  --fs-token: 36px;           /* token chip text */
+  --fs-caption: 29px;         /* burned-in subtitle */
+  --fs-card-title: 28px;      /* HTML card title */
+  --fs-eyebrow: 26px;         /* red uppercase eyebrow */
+  --fs-icon-label: 25px;      /* label under an icon badge */
+  --fs-body: 24px;            /* card lines, diagram body */
+  --fs-kicker: 22px;          /* editorial kicker */
+  --fs-card-sub: 21px;        /* card subtitle (muted) */
+  --fs-watermark: 21px;       /* brand watermark */
+  --fs-label: 18px;           /* pill / section label */
+  --fs-micro: 17px;           /* card label, tag, badge */
+  --fs-footer: 17px;          /* scene footer */
+
+  --lh-tight: 1.08;
+  --lh-title: 1.16;
+  --lh-snug: 1.22;
+  --lh-body: 1.35;
+  --lh-relaxed: 1.5;
+
+  --ls-eyebrow: 5px;
+  --ls-kicker: 4px;
+  --ls-label: 1.2px;
+  --ls-micro: 1.1px;
+  --ls-zone: 1.5px;
+  --ls-hook: -1.2px;
+  --ls-title-editorial: -1.4px;
+
+  /* ---------------------------------------------------------------- canvas & layout
+     Fixed pixel geometry. Diagrams use absolute coordinates, never flex reflow. */
+  --canvas-w: 1920px;
+  --canvas-h: 1080px;
+  --fps: 30;
+  --safe-x: 120px;             /* dividers, footers, caption padding reference */
+  --content-x-min: 80px;       /* outermost card edge */
+  --eyebrow-top: 70px;
+  --title-baseline: 176px;     /* SVG title baseline in the centered header */
+  --divider-y: 220px;
+  --divider-x0: 96px;
+  --divider-x1: 1824px;
+  --tag-top: 228px;            /* corner tag / MINH HỌA badge, right edge at x = 1792 */
+  --content-top: 250px;
+  --content-bottom: 960px;
+  --caption-h: 96px;           /* subtitle bar owns y 984–1080 */
+  --footer-bottom: 48px;
+  --watermark-top: 46px;
+  --watermark-right: 56px;
+  --grid-step: 120px;          /* editorial (Day28) background grid, first line at 80 px */
+
+  /* ---------------------------------------------------------------- shape */
+  --radius-bar: 9px;
+  --radius-chip: 14px;
+  --radius-token: 16px;
+  --radius-card: 18px;         /* HTML cards */
+  --radius-card-svg: 22px;     /* SVG cards (rebuild-v1) */
+  --radius-glass: 30px;
+  --radius-enclosure: 32px;
+  --radius-pill: 999px;
+
+  --stroke-hair: 2px;
+  --stroke-pill: 2.5px;
+  --stroke-card: 3px;
+  --stroke-bracket: 4px;
+  --stroke-flow: 5px;
+  --stroke-active: 5px;
+  --stroke-mark: 8px;          /* check / cross */
+
+  --dash-card: 12 10;
+  --dash-flow: 13 11;
+  --dash-enclosure: 15 12;
+
+  /* ---------------------------------------------------------------- motion
+     Frames are the timing authority; ms values assume 30 fps. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* appear / reveal   (Easing.bezier(.16,1,.3,1)) */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);   /* smooth move, draw (≈ Easing.inOut(Easing.cubic)) */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);         /* hook exit */
+  --ease-linear: linear;                           /* particle travel, parameter sweeps */
+  --dur-fade-fast: 400ms;   /* 12 f */
+  --dur-arrow: 467ms;       /* 14 f — arrowhead fade at the end of a flow */
+  --dur-fade: 600ms;        /* 18 f */
+  --dur-appear: 800ms;      /* 24 f — default reveal */
+  --dur-pulse: 1800ms;      /* 54 f — one receiving-card pulse */
+  --dur-hook: 5000ms;       /* 150 f — hook question overlay */
+}
+
+/* ============================================================== type roles */
+.vk-t-section-number { font: 700 var(--fs-section-number) / 1 var(--font-sans); color: var(--color-red); }
+.vk-t-hook { font: 700 var(--fs-hook) / var(--lh-title) var(--font-sans); letter-spacing: var(--ls-hook); color: var(--color-text); }
+.vk-t-display { font: 700 var(--fs-display) / 1.25 var(--font-sans); color: var(--color-text); }
+.vk-t-section-label { font: 700 var(--fs-section-label) / 1.15 var(--font-sans); color: var(--color-text); }
+.vk-t-title { font: 700 var(--fs-title) / var(--lh-title) var(--font-sans); color: var(--color-text); }
+.vk-t-title-editorial { font: 700 var(--fs-title-lg) / var(--lh-tight) var(--font-sans); letter-spacing: var(--ls-title-editorial); color: var(--color-text); }
+.vk-t-question { font: 700 var(--fs-question) / 1.4 var(--font-sans); color: var(--color-text); }
+.vk-t-headline { font: 700 var(--fs-headline) / 1.25 var(--font-sans); color: var(--color-text); }
+.vk-t-statement { font: 500 var(--fs-statement) / var(--lh-relaxed) var(--font-sans); color: var(--color-text); }
+.vk-t-token { font: 700 var(--fs-token) / 1 var(--font-sans); color: var(--color-text); }
+.vk-t-caption { font: 600 var(--fs-caption) / 1.3 var(--font-sans); color: var(--color-bg); }
+.vk-t-card-title { font: 700 var(--fs-card-title) / 1.18 var(--font-sans); color: var(--color-text); }
+.vk-t-eyebrow { font: 700 var(--fs-eyebrow) / 1.2 var(--font-sans); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--color-red); }
+.vk-t-icon-label { font: 600 var(--fs-icon-label) / 1.25 var(--font-sans); color: var(--color-text); }
+.vk-t-body { font: 600 var(--fs-body) / var(--lh-body) var(--font-sans); color: var(--color-text); }
+.vk-t-kicker { font: 700 var(--fs-kicker) / 1.2 var(--font-sans); letter-spacing: var(--ls-kicker); text-transform: uppercase; color: var(--color-red); }
+.vk-t-card-sub { font: 600 var(--fs-card-sub) / var(--lh-snug) var(--font-sans); color: var(--color-text-muted); }
+.vk-t-watermark { font: 700 var(--fs-watermark) / 1 var(--font-sans); letter-spacing: 0.5px; color: var(--color-text); }
+.vk-t-label { font: 700 var(--fs-label) / 1.2 var(--font-sans); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--color-accent-strong); }
+.vk-t-micro { font: 700 var(--fs-micro) / 1.2 var(--font-sans); letter-spacing: var(--ls-micro); text-transform: uppercase; color: var(--color-accent); }
+.vk-t-footer { font: 600 var(--fs-footer) / 1.2 var(--font-sans); color: var(--color-text-muted); }
+.vk-t-mono { font: 600 22px / 1.45 var(--font-mono); color: var(--color-text); }
+
+.vk-accent-red { color: var(--color-red); }
+.vk-accent-blue { color: var(--color-accent); }
+.vk-muted { color: var(--color-text-muted); }

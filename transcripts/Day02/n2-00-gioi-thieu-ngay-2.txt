@@ -1,0 +1,34 @@
+00:00 - 00:03: Nếu được nhờ làm một trợ lý trí tuệ nhân tạo, bạn sẽ bắt đầu
+00:03 - 00:07: bằng việc chọn công cụ hay tìm hiểu người dùng đang gặp khó khăn gì?
+00:08 - 00:10: Chào bạn, ngày hai giúp chúng ta làm rõ vấn đề
+00:10 - 00:13: trước khi quyết định dùng công nghệ để giải quyết.
+00:14 - 00:17: Bạn sẽ học cách xác định việc cần cải thiện, chọn cách giải quyết
+00:17 - 00:20: và kiểm tra xem đã đủ điều kiện để bắt đầu làm hay chưa.
+00:21 - 00:23: Đầu tiên, bạn sẽ học cách tìm khó khăn thật sự
+00:23 - 00:26: đằng sau một đề nghị như làm trợ lý hỗ trợ học viên.
+00:27 - 00:30: Qua ví dụ một học viên tìm hướng dẫn nộp bài,
+00:30 - 00:33: bạn sẽ quan sát họ tìm ở đâu và hỏi bước nào khiến họ mất thời gian.
+00:34 - 00:37: Phần hai giúp bạn viết rõ ai đang gặp khó,
+00:37 - 00:41: họ vướng ở bước nào và việc đó gây chậm trễ hoặc sai sót gì.
+00:42 - 00:45: Bạn sẽ ghi lại hiện nay học viên mất bao lâu để tìm đúng hướng dẫn,
+00:45 - 00:48: chọn thời gian muốn rút ngắn, rồi đo lại sau khi cải thiện.
+00:49 - 00:52: Phần ba đặt câu hỏi: trí tuệ nhân tạo, hay AI,
+00:52 - 00:55: có thực sự giúp ích cho công việc ấy hay không.
+00:56 - 00:59: Bạn sẽ cân nhắc những việc có thể giao AI làm thay
+00:59 - 01:01: và những việc AI nên hỗ trợ để con người quyết định.
+01:02 - 01:05: Ở phần bốn, bạn sẽ so sánh hai cách tổ chức công việc:
+01:05 - 01:08: con người đặt sẵn quy tắc và các bước xử lý,
+01:08 - 01:11: hoặc để AI chọn bước tiếp theo dựa trên kết quả vừa nhận được.
+01:12 - 01:15: Mục đích là chọn cách đủ giải quyết công việc,
+01:15 - 01:17: đồng thời cân nhắc chi phí, thời gian chờ và rủi ro.
+01:18 - 01:21: Phần năm giúp bạn xác định thế nào là kết quả đạt yêu cầu
+01:21 - 01:24: và cần làm gì khi hệ thống AI cho ra kết quả sai.
+01:25 - 01:29: Bạn sẽ xem hai lỗi thường gặp: hệ thống AI báo nhầm rằng một người cần giúp
+01:29 - 01:33: dù họ không gặp khó, hoặc bỏ sót người thật sự đang cần hỗ trợ.
+01:34 - 01:36: Phần sáu giúp bạn hoàn chỉnh bản mô tả vấn đề,
+01:36 - 01:40: cách giải quyết dự kiến và những điều phải kiểm tra trước khi bắt đầu làm.
+01:41 - 01:44: Bạn sẽ cân nhắc đi tiếp, chuẩn bị thêm hoặc dừng đề xuất,
+01:44 - 01:47: dựa vào lợi ích dự kiến và khả năng kiểm soát rủi ro.
+01:48 - 01:52: Sau hôm nay, bạn sẽ biết bài toán nào thật sự cần AI,
+01:52 - 01:56: AI nên làm thay hay hỗ trợ con người, và khi nào nên làm tiếp,
+01:56 - 01:58: chuẩn bị thêm hoặc dừng ý tưởng sản phẩm đó.

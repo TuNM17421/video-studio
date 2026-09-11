@@ -1,0 +1,9 @@
+00:00: Bắt đầu từ đâu: làm rõ vấn đề trước khi dùng công nghệ.
+00:14: Lộ trình ngày 2: xác định việc, chọn cách, kiểm tra điều kiện.
+00:21: Tìm khó khăn thật sự đằng sau lời đề nghị.
+00:34: Viết rõ người, việc, ảnh hưởng và đo thời gian hiện tại.
+00:49: AI có giúp ích không: AI làm thay hay hỗ trợ con người.
+01:02: Con người đặt sẵn bước làm hay AI chọn bước tiếp theo.
+01:18: Đánh giá kết quả AI: báo nhầm và bỏ sót.
+01:34: Hoàn chỉnh bản mô tả và chọn hướng đi.
+01:48: Sau hôm nay: cần AI không, AI làm gì, làm tiếp hay dừng.

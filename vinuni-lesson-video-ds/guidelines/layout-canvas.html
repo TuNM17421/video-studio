@@ -1,0 +1,55 @@
+<!-- @dsCard group="Spacing" viewport="700x394" name="Canvas & safe zones" subtitle="1920×1080 grid: header 70/176/220, content y 250–960, caption bar 984–1080" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Canvas & safe zones</title>
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 394px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+  svg { display: block; width: 700px; height: 394px; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" font-family="Montserrat, sans-serif">
+  <rect x="0" y="0" width="1920" height="1080" fill="#ffffff" />
+  <!-- content zone -->
+  <rect x="80" y="250" width="1760" height="710" rx="24" fill="#f2f7fc" stroke="#1d6199" stroke-width="4" stroke-dasharray="18 14" />
+  <text x="960" y="560" text-anchor="middle" font-size="54" font-weight="700" fill="#134d8b">VÙNG NỘI DUNG</text>
+  <text x="960" y="630" text-anchor="middle" font-size="38" font-weight="600" fill="#4a4a4a">y 250 – 960 · x 80 – 1840 · toạ độ tuyệt đối</text>
+  <!-- header -->
+  <text x="960" y="100" text-anchor="middle" font-size="26" font-weight="700" letter-spacing="5" fill="#c72127">NGÀY 05 · THIẾT KẾ SẢN PHẨM AI</text>
+  <text x="960" y="176" text-anchor="middle" font-size="50" font-weight="700" fill="#0b2a4d">Hai kiểu kỳ vọng</text>
+  <path d="M 96 220 H 1824" stroke="#e0edf8" stroke-width="3" />
+  <rect x="1608" y="228" width="184" height="42" rx="21" fill="#ffe0e1" stroke="#c72127" stroke-width="2" />
+  <text x="1700" y="255" text-anchor="middle" font-size="17" font-weight="700" fill="#c72127">MINH HỌA</text>
+  <!-- watermark -->
+  <circle cx="1576" cy="58" r="5" fill="#c72127" />
+  <text x="1590" y="66" font-size="21" font-weight="700" fill="#0b2a4d" opacity="0.75">VinUni · AI in Action 20K</text>
+  <!-- footer + caption bar -->
+
+  <rect x="0" y="984" width="1920" height="96" fill="#0b2a4d" opacity="0.94" />
+  <rect x="0" y="984" width="1920" height="2" fill="#1d6199" />
+  <text x="960" y="1043" text-anchor="middle" font-size="30" font-weight="600" fill="#ffffff">Phụ đề burned-in · 29 px · một dòng ≤ 78 ký tự</text>
+  <text x="120" y="1041" font-size="22" font-weight="600" fill="#e0edf8">footer · ẩn dưới phụ đề</text>
+  <!-- rulers -->
+  <g font-size="30" font-weight="700" fill="#c72127">
+    <text x="20" y="80">70</text>
+    <text x="20" y="182">176</text>
+    <text x="20" y="232">220</text>
+    <text x="20" y="262">250</text>
+    <text x="20" y="956">960</text>
+  </g>
+  <g stroke="#c72127" stroke-width="3">
+    <path d="M 70 70 H 190" />
+    <path d="M 80 176 H 190" stroke-dasharray="8 8" />
+  </g>
+  <text x="1880" y="130" text-anchor="end" font-size="28" font-weight="700" fill="#1d6199">top 46 · right 56</text>
+</svg>
+<script>
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { document.documentElement.dataset.vkReady = '1'; });
+</script>
+</body>
+</html>

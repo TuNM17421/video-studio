@@ -1,0 +1,44 @@
+<!-- @dsCard group="Colors" viewport="700x300" name="Color tokens" subtitle="lightColors — the only 9 colors allowed on a lesson scene" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Color tokens</title>
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 300px; overflow: hidden; background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); }
+  .wrap { padding: 14px 16px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .head b { font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--color-red); }
+  .head span { font-size: 11px; font-weight: 600; color: var(--color-text-muted); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .sw { border: 1px solid var(--color-dot-inactive); border-radius: 10px; overflow: hidden; background: var(--color-bg); }
+  .chip { height: 34px; }
+  .meta { padding: 6px 9px 7px; }
+  .name { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; }
+  .name code { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--color-text-muted); }
+  .role { margin-top: 2px; font-size: 10.5px; font-weight: 600; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><b>lightColors · 9 token</b><span>không thêm hex · alpha của chính các màu này cho bóng / glow</span></div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:var(--color-bg);border-bottom:1px solid var(--color-dot-inactive)"></div><div class="meta"><div class="name">bg <code>#ffffff</code></div><div class="role">nền canvas · thân pill</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-bg-alt)"></div><div class="meta"><div class="name">bgAlt <code>#f2f7fc</code></div><div class="role">thân thẻ · cỗ máy glassbox</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-dot-inactive)"></div><div class="meta"><div class="name">dotInactive <code>#e0edf8</code></div><div class="role">ray connector · divider · track</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-accent)"></div><div class="meta"><div class="name">accent <code>#1d6199</code></div><div class="role">dữ liệu · hạt · viền thẻ · flow</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-accent-strong)"></div><div class="meta"><div class="name">accentStrong <code>#134d8b</code></div><div class="role">nhãn xanh đậm · node active</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-text)"></div><div class="meta"><div class="name">text <code>#0b2a4d</code></div><div class="role">mực chính · nền thanh phụ đề</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-red)"></div><div class="meta"><div class="name">red <code>#c72127</code></div><div class="role">nhấn · đã chọn · rủi ro · eyebrow</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-red-soft)"></div><div class="meta"><div class="name">redSoft <code>#ffe0e1</code></div><div class="role">lớp phủ active · thẻ cảnh báo · tag</div></div></div>
+    <div class="sw"><div class="chip" style="background:var(--color-text-muted)"></div><div class="meta"><div class="name">textMuted <code>#4a4a4a</code></div><div class="role">chữ phụ · ghi chú · footer</div></div></div>
+  </div>
+</div>
+<script>
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { document.documentElement.dataset.vkReady = '1'; });
+</script>
+</body>
+</html>

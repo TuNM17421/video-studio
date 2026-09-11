@@ -1,0 +1,12 @@
+{
+  "name": "vinuni-tts-elevenlabs",
+  "private": true,
+  "type": "module",
+  "description": "ElevenLabs TTS for VinUni lesson-video cues: one continuous master + frame-accurate cue manifest",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "check": "node tts.mjs check",
+    "n2-00:dry": "node tts.mjs generate --cues ../vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n2-00-gioi-thieu-ngay-2/cues.js --pronounce pronounce.json --dry-run",
+    "n2-00": "node tts.mjs generate --cues ../vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n2-00-gioi-thieu-ngay-2/cues.js --pronounce pronounce.json"
+  }
+}

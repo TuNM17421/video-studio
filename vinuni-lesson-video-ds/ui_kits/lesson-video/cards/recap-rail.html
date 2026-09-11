@@ -1,0 +1,23 @@
+<!-- @dsCard group="Scenes" viewport="1280x720" name="Scene · Recap có số" subtitle="Bốn ý đánh số trên rail đỏ + câu chốt" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Scene · Recap có số</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 1280px; height: 720px; overflow: hidden; background: var(--vu-blue-900); }
+  #root { position: relative; width: 1280px; height: 720px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  var scene = VK.sceneById('recap-rail');
+  VK.mountFrame('#root', { scene: scene.component, duration: scene.duration });
+</script>
+</body>
+</html>

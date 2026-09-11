@@ -1,0 +1,41 @@
+<!-- @dsCard group="Brand" viewport="700x394" name="Scene chrome" subtitle="Eyebrow · title · divider · MINH HỌA tag · watermark · footer · navy subtitle bar" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Scene chrome</title>
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 394px; overflow: hidden; background: var(--color-bg); }
+  #root { position: relative; width: 700px; height: 394px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var a = { x: 300, y: 420, w: 480, h: 190 };
+  var b = { x: 1140, y: 420, w: 480, h: 190 };
+  function ChromeDemo() {
+    var f = VK.useFrame();
+    return h(VK.SceneFrame, {
+      frame: f,
+      eyebrow: 'NGÀY 05 · THIẾT KẾ SẢN PHẨM AI',
+      title: 'Cùng điều kiện, cùng kết quả?',
+      tag: 'MINH HỌA',
+      footer: { left: '02 / 06 · Sản phẩm AI và ba lớp bất định' },
+      caption: 'Phụ đề burned-in: thanh navy 96 px, chữ trắng 29 px, một dòng tối đa 78 ký tự.'
+    },
+      h(VK.Card, { x: a.x, y: a.y, w: a.w, h: a.h, label: 'PHẦN MỀM THEO QUY TẮC', lines: ['Cùng điều kiện', '→ cùng kết quả'], size: 30, lineHeight: 42 }),
+      h(VK.Flow, { points: [VK.anchor(a, 'right'), VK.anchor(b, 'left')], progress: 1, color: C.red }),
+      h(VK.Card, { x: b.x, y: b.y, w: b.w, h: b.h, accent: C.red, label: 'ĐẦU RA NGÔN NGỮ', lines: ['“Ưu tiên xử lý”', '“Cần xử lý gấp”'], size: 30, lineHeight: 42 }),
+      h(VK.Pill, { x: 770, y: 680, w: 380, label: 'CHƯA ĐỦ ĐỂ CHẤM NGÔN NGỮ', active: true })
+    );
+  }
+  VK.mountFrame('#root', { scene: ChromeDemo, duration: 1, frame: 0 });
+</script>
+</body>
+</html>
