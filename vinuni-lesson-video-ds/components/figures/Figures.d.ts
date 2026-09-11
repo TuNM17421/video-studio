@@ -19,18 +19,37 @@ export interface PersonProps {
 }
 export declare const Person: FC<PersonProps>;
 
+export interface DocumentSheetLineMark {
+  /** Row index (0-based). */
+  line: number;
+  /** Marker band: 'red' (risk / injected), 'accent' (neutral), 'amber' (the policy line that matters). */
+  tone?: 'red' | 'accent' | 'amber';
+}
 export interface DocumentSheetProps {
   x: number;
   y: number;
-  /** Page width (height = 168/215 × w). Default 215. */
+  /** Page width (placeholder mode: height = 168/215 × w). Default 215. Text mode wants ≥ 420. */
   w?: number;
+  /** Page height override. Default: 168/215 × w, or tall enough for every text row in text mode. */
+  h?: number;
   label?: string;
   detail?: string;
   selected?: boolean;
   /** 0–1 draws the text lines progressively. */
   fill?: number;
-  /** Number of text lines. Default 3. */
-  lines?: number;
+  /**
+   * NUMBER → that many placeholder bars (default 3, the original look).
+   * ARRAY of strings → real text rows (one short sentence each; no wrapping — keep each row inside the page).
+   */
+  lines?: number | readonly string[];
+  /** Text-mode row size in px. Default 20 (row pitch 1.6 × size). */
+  size?: number;
+  /** Marker bands behind rows. */
+  highlight?: readonly DocumentSheetLineMark[];
+  /** Row indexes drawn with a red strike-through (injected sentence, fabricated claim). */
+  strike?: readonly number[];
+  /** Show only the first N rows (fractional → the next row fades in). Drive with countUp(frame, a, b, 0, n). */
+  revealLines?: number;
   opacity?: number;
 }
 export declare const DocumentSheet: FC<DocumentSheetProps>;

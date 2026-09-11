@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react';
-import type { IconName } from '../icons/Icons';
+import type { IconName, AnyIconName } from '../icons/Icons';
 
 export interface CardProps {
   x: number;
@@ -11,7 +11,7 @@ export interface CardProps {
   /** Uppercase micro label, top-left. */
   label?: string;
   /** 30 px icon left of the label. */
-  icon?: IconName;
+  icon?: AnyIconName;
   opacity?: number;
   /** 0–1 red-soft overlay + red stroke. Drive with pulse(). */
   active?: number;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { C } from '../../lib/tokens.js';
+import { LINE_ICONS, LineIcon } from './LineIcon.jsx';
 
 /*
  * Hand-drawn line icons — exact port of the source repo's src/primitives/icons.tsx.
@@ -235,9 +236,31 @@ export const ICONS = Object.freeze({
 
 export const ICON_NAMES = Object.freeze(Object.keys(ICONS));
 
+const lineCmpCache = new Map();
+/**
+ * Standalone-<svg> component for any icon name (hand-drawn or LineIcon), for HTML contexts that render
+ * `<Cmp width height color />` (BrandTitle, SectionCard, Statement). Unknown names → null.
+ */
+export function iconComponent(name) {
+  if (ICONS[name]) return ICONS[name];
+  const node = LINE_ICONS[name];
+  if (!node) return null;
+  if (!lineCmpCache.has(name)) {
+    const Cmp = (props) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.125} strokeLinecap="round" strokeLinejoin="round" {...props}>
+        {node.map(([tag, attrs], i) => React.createElement(tag, { key: i, ...attrs }))}
+      </svg>
+    );
+    lineCmpCache.set(name, Cmp);
+  }
+  return lineCmpCache.get(name);
+}
+
 /** Place an icon inside a scene SVG, centered on (x, y). */
 export function Icon({ name, x, y, size = 48, color = C.accent, opacity = 1 }) {
   const Cmp = ICONS[name];
+  // Not a hand-drawn name → the normalised Lucide set (same stroke weight), so every `icon` prop in the kit accepts both.
+  if (!Cmp && LINE_ICONS[name]) return <LineIcon name={name} x={x} y={y} size={size} color={color} opacity={opacity} />;
   if (!Cmp || opacity <= 0.001) return null;
   return (
     <Cmp

@@ -20,6 +20,34 @@ export const C = Object.freeze({
   dotInactive: '#e0edf8', //  connector base, bar track, divider, grid
 });
 
+/**
+ * Role colors (approved 2026-09-11, option B). NOT part of the 9-color body palette:
+ * use them only for zone labels, outlines and soft fills that name a ROLE the script color-codes
+ * (input blue · processing/reasoning purple · output green · check/action orange · memory amber).
+ * Never for body text, numbers or particles; red keeps its meaning (emphasis / risk).
+ */
+export const ROLE = Object.freeze({
+  purple: '#5b4b9a',
+  purpleSoft: '#e8e6f1',
+  green: '#2f7d57',
+  greenSoft: '#e1ede7',
+  orange: '#c8641e',
+  orangeSoft: '#f7e9e0',
+  amber: '#a87a0c',
+  amberSoft: '#f3ecdd',
+});
+
+/** Script vocabulary → [stroke, soft fill]. `input` reuses the body accent. */
+export const ROLE_OF = Object.freeze({
+  input: ['#1d6199', '#e0edf8'],
+  process: [ROLE.purple, ROLE.purpleSoft],
+  reasoning: [ROLE.purple, ROLE.purpleSoft],
+  output: [ROLE.green, ROLE.greenSoft],
+  check: [ROLE.orange, ROLE.orangeSoft],
+  action: [ROLE.orange, ROLE.orangeSoft],
+  memory: [ROLE.amber, ROLE.amberSoft],
+});
+
 export const FONT = "'Montserrat', 'Segoe UI', system-ui, sans-serif";
 export const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 export const BRAND = 'VinUni · AI in Action 20K';

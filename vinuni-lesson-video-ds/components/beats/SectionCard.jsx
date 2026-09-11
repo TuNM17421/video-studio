@@ -1,6 +1,6 @@
 import React from 'react';
 import { CLAMP, interpolate, spring } from '../../lib/motion.js';
-import { ICONS } from '../icons/Icons.jsx';
+import { iconComponent } from '../icons/Icons.jsx';
 
 /**
  * Chapter break (HTML, full frame, white): red eyebrow · optional icon in a 90 px red-ringed
@@ -10,7 +10,7 @@ import { ICONS } from '../icons/Icons.jsx';
 export function SectionCard({ number, label, eyebrow, icon, frame }) {
   const opacity = interpolate(frame, [0, 16], [0, 1], CLAMP);
   const scale = spring({ frame, config: { damping: 14, stiffness: 120 } });
-  const IconCmp = icon ? ICONS[icon] : null;
+  const IconCmp = icon ? iconComponent(icon) : null;
   return (
     <div className="vk-section">
       {eyebrow ? (

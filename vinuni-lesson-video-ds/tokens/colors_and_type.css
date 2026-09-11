@@ -59,6 +59,19 @@
   --role-active-fill: var(--color-red-soft);    /* active card overlay, warning card, tag fill */
   --role-label: var(--color-accent-strong);     /* small strong-blue section labels */
 
+  /* ---------------------------------------------------------------- role hues (option B, 2026-09-11)
+     Only for zone labels, outlines and soft fills naming a role the scripts color-code:
+     input = accent · process/reasoning = purple · output = green · check/action = orange · memory = amber.
+     Never body text, numbers or particles. Red keeps emphasis / risk. */
+  --role-purple: #5b4b9a;
+  --role-purple-soft: #e8e6f1;
+  --role-green: #2f7d57;
+  --role-green-soft: #e1ede7;
+  --role-orange: #c8641e;
+  --role-orange-soft: #f7e9e0;
+  --role-amber: #a87a0c;
+  --role-amber-soft: #f3ecdd;
+
   /* ---------------------------------------------------------------- legacy dark theme
      `colors` in theme.ts — only for old dark TTS videos; never for new work. */
   --legacy-dark-bg: var(--vu-blue-900);

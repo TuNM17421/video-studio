@@ -1,11 +1,11 @@
 import type { FC } from 'react';
-import type { IconName } from '../icons/Icons';
+import type { IconName, AnyIconName } from '../icons/Icons';
 
 export interface SectionCardProps {
   number: number | string;
   label: string;
   eyebrow?: string;
-  icon?: IconName;
+  icon?: AnyIconName;
   frame: number;
 }
 /** Full-frame chapter break (HTML) — SceneFrame overlay with header={false}. */

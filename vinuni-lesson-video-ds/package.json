@@ -6,5 +6,18 @@
   "type": "module",
   "module": "index.js",
   "types": "index.d.ts",
-  "peerDependencies": { "react": ">=18", "react-dom": ">=18" }
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "3.1.1",
+    "@remotion/paths": "4.0.523",
+    "d3-interpolate": "3.0.1",
+    "d3-scale": "4.0.2",
+    "d3-shape": "3.2.0",
+    "flubber": "0.4.2",
+    "lucide": "1.44.0",
+    "simple-icons": "16.30.0"
+  }
 }

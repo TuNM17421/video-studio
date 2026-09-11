@@ -1,4 +1,5 @@
 import React from 'react';
+import { isHiddenIllustrativeLabel } from '../labels/IllustrativeStamp.jsx';
 import { BRAND, C, LAYOUT } from '../../lib/tokens.js';
 import { CLAMP, interpolate } from '../../lib/motion.js';
 import { pillWidth } from '../../lib/geometry.js';
@@ -41,7 +42,8 @@ export function SceneFooter({ left, right }) {
 
 /** Red-soft tag right-aligned under the divider (SVG): "MINH HỌA", "SO SÁNH", "GLASSBOX". */
 export function CornerTag({ label, opacity = 1, right = LAYOUT.tagRight, y = LAYOUT.tagTop }) {
-  if (!label || opacity <= 0.001) return null;
+  // Lab: the "MINH HỌA" corner card is not drawn (see isHiddenIllustrativeLabel); other tags are.
+  if (!label || opacity <= 0.001 || isHiddenIllustrativeLabel(label)) return null;
   const w = Math.max(184, pillWidth(label, 17) + 6);
   const x = right - w;
   return (

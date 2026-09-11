@@ -16,14 +16,15 @@ thumbnail, poster** đúng style của khoá học. Mọi kích thước là px 
 
 1. **Khung**: 1920×1080, 30 fps, nền trắng. Sơ đồ dùng **toạ độ px tuyệt đối** — không để flex/grid
    tự co giãn khi phần tử xuất hiện lần lượt (chỗ của mọi phần tử được giữ sẵn, chỉ đổi opacity).
-2. **Màu**: chỉ **9 token** `lightColors` (bảng ở mục Màu). Không thêm hex, không gradient, không màu
-   thương hiệu khác. Tint, bóng, glow = chính các màu đó ở alpha.
+2. **Màu**: **9 token** `lightColors` cho mọi thứ (bảng ở mục Màu), cộng **4 màu vai trò** (tím, xanh lá, cam,
+   vàng đậm) chỉ cho nhãn vùng / viền / nền nhạt khi kịch bản mã hóa vai trò bằng màu. Không thêm hex khác,
+   không gradient, không màu thương hiệu khác (trừ logo `Brand`). Tint, bóng, glow = chính các màu đó ở alpha.
 3. **Chữ**: chỉ **Montserrat 500 / 600 / 700** (có subset tiếng Việt). Monospace chỉ cho code.
 4. **Nghĩa của màu**: xanh `accent` = dữ liệu / trung tính / chưa xử lý · đỏ `red` = điểm nhấn / đã
    chọn / đã biến đổi / hành động / rủi ro / đáp án · `bgAlt` = thân thẻ và "cỗ máy kính" ·
    `dotInactive` = đường ray, divider, trạng thái chưa kích hoạt.
 5. **Header chuẩn**: eyebrow đỏ IN HOA giãn chữ `NGÀY 0N · CHỦ ĐỀ NGÀY` (top 70) → tiêu đề 50 px đậm
-   căn giữa (baseline 176) → divider 3 px (y 220, x 96→1824) → tag đỏ góc phải (`MINH HỌA`,
+   căn giữa (baseline 176) → divider 3 px (y 220, x 96→1824) → tag đỏ góc phải (`VÍ DỤ`, `CÂU HỎI`,
    `SO SÁNH`, `GLASSBOX`…).
 6. **Luôn có**: watermark `● VinUni · AI in Action 20K` ở góc phải trên và **phụ đề burned-in** =
    thanh navy cao 96 px ở đáy, chữ trắng 29 px, một dòng ≤ 78 ký tự mỗi trang.
@@ -39,8 +40,10 @@ thumbnail, poster** đúng style của khoá học. Mọi kích thước là px 
 11. **Chuyển động tất định**: mọi thứ là hàm thuần của frame (không `Math.random`, không CSS
     transition, không đồng hồ thật). Reveal 24 f, pulse 54 f, hook 150 f. Trạng thái cuối giữ đủ
     lâu để đọc (≥ 60 f).
-12. **Trung thực**: số liệu, tỉ lệ, model, log trong hình là ví dụ biên tập → gắn nhãn `MINH HỌA`,
-    `giả định`, "số liệu minh họa". Không dùng logo làm "bằng chứng".
+12. **Trung thực**: số liệu, tỉ lệ, model, log trong hình là ví dụ biên tập, không trình bày như kết quả thật.
+    Không dùng logo làm "bằng chứng". **Lab (11/09/2026): không vẽ card / tag / con dấu `MINH HỌA`** —
+    `CornerTag`, `IllustrativeStamp` và prop `illustrative` của component bỏ qua mọi nhãn chứa "MINH HỌA"
+    (`isHiddenIllustrativeLabel`). Các tag khác (`VÍ DỤ`, `CÂU HỎI`, `BÀI TẬP`, `CHƯA CHẠY THẬT`…) vẫn hiện.
 
 ---
 
@@ -87,7 +90,7 @@ nghĩa ở lần đầu: "độ ngẫu nhiên (temperature)". Không chèn tiế
 | Nhãn thẻ (micro) | IN HOA, 1–3 từ | `YÊU CẦU` · `KẾT QUẢ` · `BẢN A` · `NHẬN THỨC` |
 | Nội dung thẻ | tối đa 2–3 dòng; dòng 1 IN HOA/đậm (danh từ chính), dòng 2 thường (giải thích) | `ĐÈN SÁNG` / cùng trạng thái |
 | Pill / chip | IN HOA rất ngắn, có thể dùng → | `CHỌN → NỐI → LẶP LẠI` · `CHẶN` · `ĐỌC` |
-| Tag góc | IN HOA, nói rõ tính chất hình | `MINH HỌA` · `DỮ LIỆU · KẾT QUẢ · MINH HỌA` · `SO SÁNH` |
+| Tag góc | IN HOA, nói rõ tính chất hình | `VÍ DỤ` · `CÂU HỎI` · `SO SÁNH` (lab: không dùng `MINH HỌA`) |
 | Ghi chú | câu thường, màu muted | "Cách chia token và số liệu minh họa" · "Model A (giả định)" |
 | Phụ đề | câu nói thật, ≤ 78 ký tự / trang, ngắt ở dấu câu | "Thường là không: họ chọn từ khác nhưng vẫn giữ ý chính." |
 
@@ -95,7 +98,7 @@ nghĩa ở lần đầu: "độ ngẫu nhiên (temperature)". Không chèn tiế
 phần trăm `50%`; ngoặc kép cong `“…”`; khoảng thời gian `21:00`.
 
 **Không dùng**: emoji, dấu chấm than, câu dài viết IN HOA, thuật ngữ không giải nghĩa, số liệu
-không nguồn mà không gắn `MINH HỌA`, logo công nghệ để "chứng minh" một kết luận.
+không nguồn trình bày như kết quả thật, logo công nghệ để "chứng minh" một kết luận.
 
 Chi tiết và danh mục copy mẫu: [`guidelines/content-and-copy.md`](guidelines/content-and-copy.md).
 
@@ -111,7 +114,7 @@ Chi tiết và danh mục copy mẫu: [`guidelines/content-and-copy.md`](guideli
   70 │                  N G À Y  0 5  ·  T H I Ế T  K Ế  S Ả N  P H Ẩ M  A I       eyebrow 26 px đỏ
  176 │                           Hai kiểu kỳ vọng                                   tiêu đề 50 px · baseline
  220 │   ────────────────────────────────────────────────────────────────────       divider 3 px · x 96→1824
- 228 │                                                         ( MINH HỌA )         tag · mép phải x 1792
+ 228 │                                                         (  VÍ DỤ  )         tag · mép phải x 1792
  250 │   ┌ vùng nội dung · x 80 → 1840 ───────────────────────────────────┐
      │   │  thẻ · glassbox · flow · biểu đồ — toạ độ tuyệt đối            │
  960 │   └────────────────────────────────────────────────────────────────┘
@@ -150,8 +153,19 @@ Chi tiết và danh mục copy mẫu: [`guidelines/content-and-copy.md`](guideli
   và nhãn nhỏ**, không phải mảng lớn. Mảng lớn luôn là trắng / `bgAlt`.
 - Công thức alpha được phép: bóng navy `rgba(11,42,77,.16)`; glow xanh `rgba(29,97,153,.25)`;
   glow đỏ `rgba(199,33,39,.24)`; heatmap = đỏ ở 8–100 % opacity.
-- Không dùng: gradient, xanh lá cho "đúng" (đúng = đỏ Check hoặc xanh accent), vàng cho "cảnh báo",
-  nền tối cho scene nội dung. Bảng màu nền tối `colors` là legacy — **không dùng cho video mới**.
+- Không dùng: gradient, nền tối cho scene nội dung. Bảng màu nền tối `colors` là legacy — **không dùng cho video mới**.
+
+**Màu vai trò (duyệt 11/09/2026, phương án B)** — `ROLE` / `ROLE_OF` trong `lib/tokens.js`, `--role-*` trong CSS.
+Chỉ dùng cho **nhãn vùng, viền và nền nhạt** gọi tên một vai trò mà kịch bản mã hóa màu; không dùng cho chữ thân,
+số liệu hay hạt. Đỏ vẫn giữ nghĩa nhấn / chặn / rủi ro.
+
+| Vai trò (`ROLE_OF`) | Viền | Nền nhạt | Kịch bản dùng cho |
+|---|---|---|---|
+| `input` | `#1d6199` (accent) | `#e0edf8` | đầu vào, nhận thức |
+| `process` / `reasoning` | `#5b4b9a` tím | `#e8e6f1` | xử lý, suy luận, khối "vai trò" |
+| `output` | `#2f7d57` xanh lá | `#e1ede7` | đầu ra, đã duyệt / đạt |
+| `check` / `action` | `#c8641e` cam | `#f7e9e0` | cần kiểm tra, hành động, lỗi công cụ |
+| `memory` | `#a87a0c` vàng đậm | `#f3ecdd` | trí nhớ, ngữ cảnh, đang chờ |
 
 ### 3 · Chữ
 
@@ -261,6 +275,11 @@ Chi tiết connector, hạt, pulse, geometry guard: [`guidelines/motion-and-conn
 - **Công nghệ có tên** (Kafka, Airflow, Kubernetes, vLLM, MLflow…) → **logo SVG chính thức**, giữ màu
   gốc, không nhuộm logo nhiều màu; vùng xung quanh vẫn dùng token. Icon chung chỉ cho khái niệm chung
   (tài liệu, dữ liệu, người dùng, cảnh báo). Không có asset đúng nghĩa → tự vẽ sơ đồ nhỏ bằng primitives.
+- **Bộ Lucide chuẩn hóa** (`components/icons/LineIcon.jsx`, ISC): 40 icon khái niệm hệ thống (`lock`, `mail`,
+  `server`, `wrench`, `braces`, `search`, `octagon-x`, `user-check`…). Grid 24 vẽ ở nét 1,125 = đúng nét 3 px/64
+  của bộ vẽ tay. Mọi prop `icon` và `<Icon name>` nhận cả hai bộ tên. Cần thêm tên → import + thêm vào `LINE_ICONS`.
+- **Logo**: `<Brand name>` (anthropic, claude, gemini, meta, huggingface, github, python, mcp — bản vẽ Simple Icons
+  CC0, nhãn hiệu thuộc chủ sở hữu, giữ màu gốc). OpenAI / Copilot chưa có — lấy từ brand kit chính thức.
 - **Không**: emoji, icon font, clip-art, ảnh stock, ảnh chụp. Hình từ paper (vd. Figure 2 "Attention
   Is All You Need") hiển thị nguyên bản trong khung trắng, ghi nguồn.
 
@@ -290,7 +309,22 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | beats | `Recap`, `QuestionCard` | recap rail có số, câu hỏi kiểm tra |
 | roadmap | `DayMap` | bản đồ ngày học của video tổng quan: 3 thẻ câu hỏi (full) ↔ dải 6 phần dưới header (strip) |
 | figures | `Person`, `DocumentSheet`, `FormSheet`, `SpeechBubble`, `Stopwatch` | nhân vật và đồ vật cho tình huống MINH HỌA; phiếu có ô trống = chưa đo; đồng hồ không số |
-| icons | `Icon` + 20 `*Icon` | đặt icon trong SVG theo tâm |
+| icons | `Icon` + 20 `*Icon`, `LineIcon` | đặt icon trong SVG theo tâm; `LineIcon` = 40 icon Lucide chuẩn hóa |
+| brand | `Brand` | logo sản phẩm có tên (gọi đúng tên, không trang trí) |
+| labels | `IllustrativeStamp` | dấu nhãn (tag / stamp / watermark); **lab: nhãn chứa "MINH HỌA" không được vẽ** — prop `illustrative` vẫn nhận nhưng không hiện card MINH HỌA |
+| control | `Gate`, `PermissionBoundary`, `ApprovalStep` | cổng quyền / duyệt / đối chiếu (mở · chặn · lỗi · chờ), vùng quyền, bước người duyệt |
+| control | `StopGate`, `StepCounter` | cửa dừng của vòng agent, bộ đếm lượt 0/3 → 3/3 |
+| ui | `BrowserFrame`, `ChatWindow`, `Cursor`, `UIButton`, `EmailCard`, `Tray` | giao diện giả lập (luôn MINH HỌA): cửa sổ web, chat nhả chữ theo token, con trỏ, nút, thư, khay |
+| code | `CodeBlock`, `JsonView`, `LogCard` | code tô màu theo palette, JSON có chú thích tiếng Việt + nối mã khớp, nhật ký thực thi |
+| system | `Swimlane`, `ToolCard`, `ArchitectureNode` | làn hệ thống, thẻ khai báo công cụ 3 vùng, khối kiến trúc host/client/server/API |
+| system | `DecisionNode`, `BranchRouter` | nút quyết định hình thoi, rẽ nhánh theo độ tự tin / 4 nhánh |
+| loop | `AgentLoop` | vòng ReAct / 4 khối agent / bánh đà, hạt chạy vòng, nhánh thoát và nhánh lỗi |
+| table | `DataTable` | bảng hiện từng hàng, ô trạng thái (đạt · chặn · chờ · chưa thử · lỗi), cột TRƯỚC/SAU |
+| context | `Envelope`, `ContextBudget`, `ContextTray`, `FilingCabinet` | gói gửi đi / không gửi, thanh ngân sách ngữ cảnh có phần dư, khay ngữ cảnh, tủ hồ sơ ngoài |
+| figures | `Magnifier`, `SourceCard` | kính lúp soi dòng, thẻ nguồn trích đoạn (đã đối chiếu / không có nguồn) |
+
+Helpers mới: `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
+(`@remotion/paths`, d3-shape/scale/interpolate, flubber, dagre: `curvePath`, `pointOnPath`, `drawOn`, `morphPath`, `layoutGraph`).
 
 ---
 
