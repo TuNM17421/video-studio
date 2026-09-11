@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowSquareOut, Check, CheckCircle, FilmStrip, Info, ListChecks, Microphone, Monitor, Palette, X } from "@phosphor-icons/react";
+import { ExportOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty, Steps, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import type { StageId, StyleDef, VideoDetail } from "@/lib/types";
 import { Shell } from "./shell";
@@ -9,12 +10,12 @@ import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
 import { CuesStep, RenderStep, ScenesStep, VoiceStep } from "./steps";
 
 type Step = "plan" | "cues" | "voice" | "scenes" | "render";
-const STEPS: { id: Step; title: string; description: string; icon: typeof Palette }[] = [
-  { id: "plan", title: "Kế hoạch", description: "Style và nội dung", icon: Palette },
-  { id: "cues", title: "Lời & cue", description: "Chốt lời đọc", icon: ListChecks },
-  { id: "voice", title: "Giọng đọc", description: "ElevenLabs", icon: Microphone },
-  { id: "scenes", title: "Dựng cảnh", description: "Theo giọng thật", icon: Monitor },
-  { id: "render", title: "Render", description: "MP4 và bàn giao", icon: FilmStrip },
+const STEPS: { id: Step; title: string; description: string }[] = [
+  { id: "plan", title: "Kế hoạch", description: "Style và nội dung" },
+  { id: "cues", title: "Lời & cue", description: "Chốt lời đọc" },
+  { id: "voice", title: "Giọng đọc", description: "ElevenLabs" },
+  { id: "scenes", title: "Dựng cảnh", description: "Theo giọng thật" },
+  { id: "render", title: "Render", description: "MP4 và bàn giao" },
 ];
 
 function complete(step: Step, d: VideoDetail | null) {
@@ -65,9 +66,9 @@ function Preview({ detail, styles, draftStyle, hasKey }: { detail: VideoDetail |
     <div className="slide-visual vs-preview-frame">
       {scenes && id
         ? <FramePreview src={dsUrl(`ui_kits/lesson-video/index.html?scene=${encodeURIComponent(id)}&frame=${previewFrame}`)} />
-        : cover ? <img src={fileUrl(`styles/previews/${cover.image}`)} alt="" /> : <div className="preview-empty"><FilmStrip size={32} weight="light" /></div>}
+        : cover ? <img src={fileUrl(`styles/previews/${cover.image}`)} alt="" /> : <Empty className="preview-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có bản xem trước" />}
     </div>
-    {scenes && id && <div className="preview-caption"><a className="text-button" href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank" rel="noreferrer">Mở trình phát<ArrowSquareOut size={13} /></a></div>}
+    {scenes && id && <div className="preview-caption"><Button type="link" href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank" icon={<ExportOutlined />} iconPlacement="end">Mở trình phát</Button></div>}
     <div className="project-summary"><h3>{detail?.state.request.title || id || "Chưa đặt tên"}</h3></div>
     <dl className="project-facts">
       <div><dt>Style</dt><dd>{style?.name || "—"}</dd></div>
@@ -98,6 +99,8 @@ export default function Studio() {
     api<StyleDef[]>("/api/styles").then((list) => { setStyles(list); if (list.length) setDraft((d) => (list.some((s) => s.id === d.request.style) ? d : emptyDraft(list[list.length - 1].id))); }).catch((e) => setError(e.message));
     return () => window.removeEventListener("popstate", read);
   }, []);
+  // The server state decides which production gate should open after loading a video.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (detail && autoStep) { setStep(nextStep(detail)); setAutoStep(false); } }, [detail, autoStep]);
 
   async function act(fn: () => Promise<unknown>) {
@@ -120,23 +123,30 @@ export default function Studio() {
   const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop } : null;
   const current = STEPS.find((s) => s.id === step)!;
   const shown = error || loadError;
+  const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
 
   return <Shell page={id ? "videos" : "new"} crumb={id || "Video mới"} hasKey={hasKey}>
     <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div><h1>{detail?.state.request.title || id || "Video mới"}</h1></div></div>
-    <nav className="workflow vs-workflow" aria-label="Các bước dựng video">{STEPS.map((item, index) => {
-      const enabled = item.id === "plan" || !!detail;
-      const done = complete(item.id, detail) && !!detail;
-      return <button key={item.id} disabled={!enabled} aria-current={step === item.id ? "step" : undefined} className={`workflow-step ${step === item.id ? "is-current" : ""} ${done ? "is-complete" : ""}`} onClick={() => setStep(item.id)}>
-        <span className="step-number">{done && step !== item.id ? <Check size={16} weight="bold" /> : index + 1}</span>
-        <span className="step-copy"><strong>{item.title}</strong><span>{item.description}</span></span>
-        {index < STEPS.length - 1 && <span className="step-connector" />}
-      </button>;
-    })}</nav>
-    {shown && <div className="feedback feedback-error" role="alert"><Info size={21} /><div><strong>Thao tác chưa hoàn tất</strong><p>{shown}</p></div><button className="icon-button" aria-label="Đóng thông báo lỗi" onClick={() => setError(null)}><X size={18} /></button></div>}
-    {detail && !detail.managed && <div className="feedback feedback-success"><CheckCircle size={20} /><p>Video này được làm ngoài Video Studio: chỉ xem được file và kết quả.</p></div>}
+    <div className="vs-production-rail">
+      <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
+      <Steps
+        className="workflow vs-workflow"
+        current={STEPS.findIndex((item) => item.id === step)}
+        responsive={false}
+        onChange={(index) => { const target = STEPS[index]; if (target.id === "plan" || detail) setStep(target.id); }}
+        items={STEPS.map((item) => ({
+          title: item.title,
+          content: item.description,
+          disabled: item.id !== "plan" && !detail,
+          status: complete(item.id, detail) && detail ? "finish" : step === item.id ? "process" : "wait",
+        }))}
+      />
+    </div>
+    {shown && <Alert className="feedback" type="error" showIcon closable message="Thao tác chưa hoàn tất" description={shown} onClose={() => setError(null)} />}
+    {detail && !detail.managed && <Alert className="feedback" type="info" showIcon message="Video được làm ngoài Video Studio" description="Bạn chỉ có thể xem tệp và kết quả của video này." />}
     <div className="editor-layout">
       <section className="editor-panel" aria-label={current.title}>
-        <div className="panel-heading"><div><h2>{current.title}</h2></div><span className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</span></div>
+        <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
         {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}

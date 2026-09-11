@@ -190,7 +190,7 @@ dialog::backdrop {
 .workspace-label {
   font-size: var(--vu-text-2xs);
   font-weight: var(--vu-font-bold);
-  color: var(--subtle);
+  color: var(--vu-neutral-700);
   letter-spacing: var(--vu-tracking-caps);
   text-transform: uppercase;
   margin: 44px 12px 12px;
@@ -274,12 +274,12 @@ dialog::backdrop {
   gap: 5px;
   font-size: 9px;
   letter-spacing: 1.1px;
-  color: var(--vu-neutral-400);
+  color: var(--vu-neutral-600);
 }
 .sidebar-footer span + span {
   font-size: 10px;
   letter-spacing: 0;
-  color: var(--vu-neutral-400);
+  color: var(--vu-neutral-600);
 }
 .workspace {
   min-width: 0;
@@ -555,6 +555,13 @@ dialog::backdrop {
 .button-primary:hover:not(:disabled) {
   background: var(--vu-surface-brand-hover);
 }
+.button-danger {
+  color: var(--vu-text-inverse);
+  background: var(--vu-red-700);
+}
+.button-danger:hover:not(:disabled) {
+  background: var(--vu-red-800);
+}
 .button-secondary {
   background: var(--surface);
   border-color: var(--border);
@@ -599,7 +606,7 @@ dialog::backdrop {
   gap: 6px;
   background: transparent;
   border: 0;
-  color: var(--vu-neutral-500);
+  color: var(--vu-neutral-700);
   font-size: 11px;
   font-weight: 500;
   padding: 7px 0;
@@ -807,7 +814,7 @@ dialog::backdrop {
   font-size: 10px;
   font-weight: 400;
   line-height: 1.7;
-  color: var(--vu-neutral-400);
+  color: var(--vu-neutral-600);
   letter-spacing: 0;
 }
 .draft-section > .field-hint {
@@ -826,11 +833,11 @@ dialog::backdrop {
   align-items: center;
   gap: 6px;
   font-size: 9px;
-  color: var(--vu-neutral-400);
+  color: var(--vu-neutral-600);
   line-height: 1.5;
 }
 .privacy-inline svg {
-  color: var(--vu-neutral-400);
+  color: var(--vu-neutral-600);
 }
 .preview-panel {
   overflow: hidden;
@@ -876,13 +883,13 @@ dialog::backdrop {
   align-items: center;
   flex-direction: column;
   gap: 11px;
-  color: var(--vu-neutral-400);
+  color: var(--vu-neutral-600);
   padding: 12px;
   text-align: center;
 }
 .preview-empty > span {
   font-size: 9px;
-  color: var(--vu-neutral-400);
+  color: var(--vu-neutral-600);
 }
 .preview-caption {
   display: flex;

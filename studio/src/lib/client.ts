@@ -48,6 +48,8 @@ export function useVideo(id: string | null) {
 
   useEffect(() => {
     alive.current = true;
+    // A new id is a new event stream; clear the previous video's snapshot first.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDetail(null);
     setLogs([]);
     setJob(null);
@@ -79,6 +81,8 @@ export function useKeyStatus() {
   const refresh = useCallback(async () => {
     try { setHasKey((await api<{ hasKey: boolean }>("/api/voice-key")).hasKey); } catch {}
   }, []);
+  // Initial synchronization with the server-owned, in-memory key state.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void refresh(); }, [refresh]);
   return { hasKey, setHasKey, refresh };
 }

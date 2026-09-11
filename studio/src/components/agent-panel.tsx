@@ -1,11 +1,13 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChatCircleText, CheckCircle, CircleNotch, PaperPlaneTilt, Robot, Stop, Terminal, Warning, Wrench } from "@phosphor-icons/react";
+import { CheckCircleOutlined, CommentOutlined, LoadingOutlined, RobotOutlined, SendOutlined, StopOutlined, ToolOutlined, WarningOutlined } from "@ant-design/icons";
+import { Button, Collapse, Input, Progress, Tag } from "antd";
 import type { JobInfo, LogEntry, StageStatus } from "@/lib/types";
+import { ConfirmDialog } from "./confirm-dialog";
 
-const ICONS: Record<LogEntry["kind"], typeof Robot> = {
-  agent: Robot, tool: Wrench, result: CheckCircle, system: Terminal, error: Warning, output: Terminal,
+const ICONS: Record<LogEntry["kind"], typeof RobotOutlined> = {
+  agent: RobotOutlined, tool: ToolOutlined, result: CheckCircleOutlined, system: ToolOutlined, error: WarningOutlined, output: ToolOutlined,
 };
 
 function time(t: number) {
@@ -13,15 +15,33 @@ function time(t: number) {
 }
 
 export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () => void }) {
+  const [confirmStopFor, setConfirmStopFor] = useState<number | null>(null);
   if (!job || job.status !== "running") return null;
   const percent = job.progress?.percent ?? null;
-  return <div className="job-progress" role="status">
-    <CircleNotch size={19} className="spin" />
-    <span>{job.progress?.message || "Đang xử lý…"}</span>
-    <strong>{percent === null ? "" : `${Math.round(percent)}%`}</strong>
-    {onStop && <button className="text-button vs-stop" onClick={onStop}><Stop size={14} weight="fill" />Dừng</button>}
-    <div className={`progress-track ${percent === null ? "is-indeterminate" : ""}`}><span style={{ width: percent === null ? "32%" : `${percent}%` }} /></div>
-  </div>;
+  const taskLabel: Record<JobInfo["kind"], string> = {
+    cues: "Lời & cue",
+    voice: "Giọng đọc",
+    scenes: "Dựng cảnh",
+    render: "Render MP4",
+    deliver: "Bàn giao",
+    "dry-run": "Kiểm tra giọng",
+  };
+  return <>
+    <div className="job-progress" role="status">
+      <LoadingOutlined spin />
+      <span>{job.progress?.message || "Đang xử lý…"}</span>
+      <strong>{percent === null ? "" : `${Math.round(percent)}%`}</strong>
+      {onStop && <Button type="text" danger size="small" className="vs-stop" icon={<StopOutlined />} onClick={() => setConfirmStopFor(job.startedAt)}>Dừng</Button>}
+      <Progress className={percent === null ? "is-indeterminate" : ""} percent={percent ?? 36} showInfo={false} status="active" strokeLinecap="butt" />
+    </div>
+    {confirmStopFor === job.startedAt && <ConfirmDialog
+      title={`Dừng tác vụ ${taskLabel[job.kind]}?`}
+      description="Tiến trình đang chạy sẽ dừng ngay. Các tệp đã ghi vẫn được giữ lại."
+      confirmLabel="Dừng tác vụ"
+      onCancel={() => setConfirmStopFor(null)}
+      onConfirm={() => { setConfirmStopFor(null); onStop?.(); }}
+    />}
+  </>;
 }
 
 /** Log lines since the last start of the given stage (entries are appended in order). */
@@ -35,13 +55,14 @@ export function AgentLog({ logs, open = false }: { logs: LogEntry[]; open?: bool
   const ref = useRef<HTMLOListElement>(null);
   useEffect(() => { ref.current?.scrollTo({ top: ref.current.scrollHeight }); }, [logs.length]);
   if (!logs.length) return null;
-  return <details className="vs-log" open={open}>
-    <summary><Terminal size={15} />Nhật ký <span className="quiet-label">{logs.length} dòng</span></summary>
-    <ol ref={ref}>{logs.map((entry, i) => {
+  return <Collapse className="vs-log" defaultActiveKey={open ? ["log"] : []} items={[{
+    key: "log",
+    label: <span className="vs-log-label"><ToolOutlined />Nhật ký <span className="quiet-label">{logs.length} dòng</span></span>,
+    children: <ol ref={ref}>{logs.map((entry, i) => {
       const Icon = ICONS[entry.kind];
-      return <li key={i} className={`vs-log-${entry.kind}`}><Icon size={14} /><span className="mono vs-log-time">{time(entry.t)}</span><span className="vs-log-text">{entry.text}</span></li>;
-    })}</ol>
-  </details>;
+      return <li key={i} className={`vs-log-${entry.kind}`}><Icon /><span className="mono vs-log-time">{time(entry.t)}</span><span className="vs-log-text">{entry.text}</span></li>;
+    })}</ol>,
+  }]} />;
 }
 
 /** **bold** and `code` inside one line, as React nodes (never raw HTML). */
@@ -81,7 +102,7 @@ export function AgentSummary({ logs }: { logs: LogEntry[] }) {
   if (!result || result.kind !== "result") return null;
   const text = result.text.split("\n").slice(1).join("\n").trim();
   if (!text) return null;
-  return <div className="vs-summary"><div className="vs-summary-heading"><Robot size={16} />Tóm tắt của agent</div><Markdown text={text} /></div>;
+  return <div className="vs-summary"><div className="vs-summary-heading"><RobotOutlined />Tóm tắt của agent</div><Markdown text={text} /></div>;
 }
 
 export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boolean; onSend: (message: string) => Promise<void>; placeholder: string }) {
@@ -93,13 +114,15 @@ export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boole
   }
   return <div className="vs-feedback">
     <label className="field">Góp ý cho agent
-      <textarea rows={3} value={text} disabled={disabled || sending} maxLength={4000} placeholder={placeholder} onChange={(e) => setText(e.target.value)} />
+      <Input.TextArea rows={3} value={text} disabled={disabled || sending} maxLength={4000} showCount placeholder={placeholder} onChange={(e) => setText(e.target.value)} />
     </label>
-    <button className="button button-secondary compact" disabled={disabled || sending || !text.trim()} onClick={send}><PaperPlaneTilt size={16} />Gửi góp ý</button>
+    <Button loading={sending} disabled={disabled || sending || !text.trim()} icon={<SendOutlined />} onClick={send}>Gửi góp ý</Button>
   </div>;
 }
 
 export function StageBadge({ status }: { status: StageStatus }) {
   const label = { idle: "Chưa chạy", running: "Đang chạy", review: "Chờ duyệt", done: "Xong", error: "Lỗi" }[status];
-  return <span className={`vs-badge is-${status}`}>{status === "running" ? <CircleNotch size={12} className="spin" /> : status === "review" ? <ChatCircleText size={12} /> : null}{label}</span>;
+  const color = { idle: "default", running: "processing", review: "warning", done: "success", error: "error" }[status];
+  const icon = status === "running" ? <LoadingOutlined spin /> : status === "review" ? <CommentOutlined /> : status === "done" ? <CheckCircleOutlined /> : status === "error" ? <WarningOutlined /> : undefined;
+  return <Tag className={`vs-badge is-${status}`} color={color} icon={icon}>{label}</Tag>;
 }

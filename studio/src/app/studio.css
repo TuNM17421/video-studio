@@ -42,7 +42,7 @@
 .vs-optional {
   font-size: 10px;
   font-weight: var(--vu-font-medium);
-  color: var(--subtle);
+  color: var(--vu-neutral-600);
   margin-left: 4px;
 }
 .vs-check {
@@ -230,7 +230,7 @@ button.vs-tile:hover {
   align-items: center;
   gap: 10px;
   font-size: 11px;
-  color: var(--subtle);
+  color: var(--vu-neutral-600);
   border: 1px dashed var(--vu-blue-200);
   border-radius: 7px;
   padding: 16px;
@@ -238,6 +238,69 @@ button.vs-tile:hover {
 }
 
 /* ── plan form ──────────────────────────────────────────────────────────── */
+.vs-form-requirements {
+  min-height: 34px;
+  margin: 0 0 18px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-left: 3px solid var(--vu-red-700);
+  background: var(--vu-neutral-50);
+  color: var(--vu-neutral-700);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.vs-required {
+  margin-left: 2px;
+  color: var(--vu-red-700);
+  font-size: 14px;
+  font-weight: var(--vu-font-bold);
+  line-height: 1;
+}
+.vs-form-requirements > .vs-required {
+  margin-left: 0;
+}
+.vs-section-title,
+.vs-field-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.vs-field-label {
+  width: fit-content;
+}
+.vs-validation-slot {
+  min-height: 17px;
+  display: block;
+}
+.vs-validation-message {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+  font-weight: var(--vu-font-medium);
+  line-height: 1.45;
+}
+.vs-validation-message > svg {
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+.vs-validation-message.is-error {
+  color: var(--vu-red-800);
+}
+.vs-validation-message.is-ok {
+  color: var(--vu-green-700);
+}
+.field input[aria-invalid="true"],
+.field input[aria-invalid="true"]:hover,
+.field input[aria-invalid="true"]:focus {
+  border-color: var(--vu-red-700);
+  box-shadow: 0 0 0 3px var(--vu-red-50);
+}
 .vs-drop {
   display: flex;
   align-items: center;
@@ -252,6 +315,11 @@ button.vs-tile:hover {
 }
 .vs-drop.is-dragging {
   background: var(--vu-blue-100);
+}
+.vs-drop.is-invalid {
+  border-color: var(--vu-red-700);
+  background: var(--vu-red-50);
+  color: var(--vu-red-800);
 }
 .vs-drop .button {
   margin-left: auto;
@@ -365,7 +433,7 @@ button.vs-tile:hover {
   padding: 4px 8px;
   white-space: nowrap;
   background: var(--vu-neutral-100);
-  color: var(--subtle);
+  color: var(--vu-neutral-700);
 }
 .vs-badge.is-running {
   background: var(--vu-blue-50);
@@ -562,10 +630,94 @@ button.vs-tile:hover {
 }
 
 /* ── scenes + render ────────────────────────────────────────────────────── */
+.vs-qa-section {
+  margin: 0 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.vs-qa-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--vu-neutral-50);
+}
+.vs-qa-toolbar > div:first-child {
+  flex: 1 0 100%;
+}
+.vs-qa-toolbar h3 {
+  margin: 0;
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: 13px;
+}
+.vs-qa-toolbar p {
+  margin: 4px 0 0;
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.vs-qa-mode {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.vs-qa-mode button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: var(--vu-neutral-700);
+  font-size: 11px;
+  font-weight: var(--vu-font-semibold);
+}
+.vs-qa-mode button:last-child {
+  border-right: 0;
+}
+.vs-qa-mode button[aria-pressed="true"] {
+  background: var(--vu-blue-800);
+  color: white;
+}
+.vs-qa-filter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--vu-neutral-700);
+  font-size: 11px;
+  font-weight: var(--vu-font-semibold);
+}
+.vs-qa-filter select {
+  min-height: 36px;
+  max-width: 170px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 28px 6px 9px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+}
+.vs-qa-count {
+  margin-left: auto;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .vs-qa {
   list-style: none;
-  margin: 0 0 8px;
-  padding: 0;
+  margin: 0;
+  padding: 14px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 10px;
@@ -578,7 +730,8 @@ button.vs-tile:hover {
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
-  padding: 4px;
+  padding: 5px;
+  text-align: left;
 }
 .vs-qa button:hover {
   border-color: var(--vu-blue-300);
@@ -589,9 +742,42 @@ button.vs-tile:hover {
   object-fit: cover;
   border-radius: 3px;
 }
-.vs-qa span {
+.vs-qa button > span {
+  width: 100%;
+  padding: 2px 3px 3px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 7px;
+}
+.vs-qa strong {
+  color: var(--vu-blue-900);
+  font-size: 11px;
+}
+.vs-qa small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--vu-neutral-600);
+  font-family: var(--vs-font-utility);
   font-size: 10px;
-  color: var(--subtle);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.vs-qa-pagination {
+  min-height: 50px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.vs-qa-pagination span {
+  min-width: 84px;
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+  text-align: center;
 }
 .vs-lightbox {
   position: fixed;
@@ -602,17 +788,121 @@ button.vs-tile:hover {
   place-items: center;
   padding: 32px;
 }
-.vs-lightbox img {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 6px;
+.vs-lightbox-dialog {
+  width: min(1180px, 100%);
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface);
   box-shadow: var(--vu-shadow-lg);
 }
-.vs-lightbox .icon-button {
+.vs-lightbox-head {
+  min-height: 62px;
+  padding: 12px 16px 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.vs-lightbox-head h2 {
+  margin: 4px 0 0;
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: 16px;
+}
+.vs-lightbox-image {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 20px 62px;
+  background: var(--vu-neutral-900);
+}
+.vs-lightbox-image img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 190px);
+  object-fit: contain;
+  border-radius: 6px;
+}
+.vs-lightbox-nav {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 50%;
+  width: 40px;
+  height: 52px;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 10%);
+  color: white;
+  transform: translateY(-50%);
+}
+.vs-lightbox-nav:hover:not(:disabled) {
+  background: rgb(255 255 255 / 20%);
+}
+.vs-lightbox-nav.is-previous {
+  left: 12px;
+}
+.vs-lightbox-nav.is-next {
+  right: 12px;
+}
+.vs-lightbox-file {
+  align-self: flex-start;
+  margin: 10px 16px 12px;
+  font-size: 10px;
+}
+
+/* ── guarded actions ───────────────────────────────────────────────────── */
+.vs-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--vu-z-modal);
+  padding: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--vu-overlay-scrim);
+}
+.vs-confirm-dialog {
+  width: min(440px, 100%);
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 2px 12px;
+  padding: 22px;
+  border-top: 4px solid var(--vu-red-700);
+  border-radius: 8px;
   background: var(--surface);
+  box-shadow: var(--vu-shadow-lg);
+}
+.vs-confirm-icon {
+  grid-row: 1 / 3;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--vu-red-50);
+  color: var(--vu-red-700);
+}
+.vs-confirm-copy h2 {
+  margin: 1px 0 7px;
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: 17px;
+}
+.vs-confirm-copy p {
+  color: var(--vu-neutral-600);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.vs-confirm-actions {
+  grid-column: 1 / -1;
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 .vs-deliverables {
   list-style: none;
@@ -681,7 +971,7 @@ button.vs-tile:hover {
   border-bottom: 1px solid var(--line);
   margin-bottom: 22px;
 }
-.vs-tabs button {
+.vs-tabs > .ant-tabs-nav .ant-tabs-tab-btn {
   border: 0;
   background: transparent;
   padding: 10px 16px;
@@ -691,9 +981,8 @@ button.vs-tile:hover {
   border-bottom: 3px solid transparent;
   margin-bottom: -1px;
 }
-.vs-tabs button.is-active {
+.vs-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn {
   color: var(--vu-blue-900);
-  border-bottom-color: var(--red);
 }
 .vs-stack {
   display: grid;
@@ -847,6 +1136,307 @@ button.vs-tile:hover {
   border-bottom: 0;
 }
 
+/* ── production-focused desktop refresh ───────────────────────────────── */
+:root {
+  --vs-font-body: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vs-font-display: var(--font-montserrat), Montserrat, Arial, sans-serif;
+  --vs-font-utility: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+.studio-shell {
+  font-family: var(--vs-font-body);
+}
+.brand,
+.page-heading h1,
+.panel-heading h2,
+.vs-section-title,
+.vs-index-toolbar h2 {
+  font-family: var(--vs-font-display);
+}
+.mono,
+.vs-doc,
+.vs-log-time {
+  font-family: var(--vs-font-utility);
+}
+
+.vs-production-rail {
+  overflow: hidden;
+  margin-bottom: 27px;
+  background: var(--surface);
+  border: 1px solid var(--vu-blue-100);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 28px -24px rgb(11 42 77 / 55%);
+}
+.vs-production-rail-head {
+  min-height: 31px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: var(--vu-blue-900);
+  color: white;
+  font-family: var(--vs-font-display);
+  font-size: 10px;
+  font-weight: var(--vu-font-bold);
+  letter-spacing: var(--vu-tracking-caps);
+}
+.vs-production-rail-head strong {
+  color: var(--vu-blue-200);
+  font-family: var(--vs-font-body);
+  font-size: 11px;
+  font-weight: var(--vu-font-medium);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.vs-production-rail .workflow {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.vs-showcase-details {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 8px;
+  background: var(--vu-blue-50);
+}
+.vs-showcase-details > summary {
+  min-height: 62px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  cursor: pointer;
+  list-style: none;
+}
+.vs-showcase-details > summary::-webkit-details-marker {
+  display: none;
+}
+.vs-showcase-details > summary > span:first-child {
+  display: grid;
+  gap: 4px;
+}
+.vs-showcase-details > summary strong {
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: 13px;
+}
+.vs-showcase-details > summary small {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-details-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--vu-blue-700);
+  font-size: 12px;
+  font-weight: var(--vu-font-semibold);
+  white-space: nowrap;
+}
+.vs-details-action::after {
+  content: "+";
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: 4px;
+  background: white;
+  font-family: var(--vs-font-utility);
+}
+.vs-showcase-details[open] .vs-details-action::after {
+  content: "−";
+}
+.vs-showcase-details > .vs-showcase {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--vu-blue-100);
+  border-radius: 0;
+}
+
+.vs-loading-state {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--vu-neutral-600);
+  font-size: 13px;
+}
+.vs-library-feedback {
+  margin: 22px;
+}
+.vs-load-more {
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-load-more .button {
+  min-height: 38px;
+  padding: 7px 14px;
+  font-size: 12px;
+}
+
+.vs-index-toolbar {
+  padding: 22px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.vs-index-toolbar .eyebrow {
+  font-size: 10px;
+}
+.vs-index-toolbar h2 {
+  margin: 8px 0 0;
+  color: var(--vu-blue-900);
+  font-size: 18px;
+}
+.vs-index-controls {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.vs-index-controls .field {
+  margin: 0;
+}
+.vs-index-controls .vs-search {
+  max-width: 330px;
+}
+.vs-index-controls select {
+  min-width: 170px;
+}
+.vs-video-progress {
+  min-width: 330px;
+}
+.vs-progress-line,
+.vs-progress-labels {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+.vs-progress-line span {
+  height: 7px;
+  background: var(--vu-neutral-200);
+}
+.vs-progress-line .is-done {
+  background: var(--vu-green-700);
+}
+.vs-progress-line .is-running {
+  background: var(--vu-blue-600);
+}
+.vs-progress-line .is-review {
+  background: var(--vu-amber-700);
+}
+.vs-progress-line .is-error {
+  background: var(--vu-red-700);
+}
+.vs-progress-labels {
+  margin-top: 6px;
+  color: var(--vu-neutral-600);
+  font-size: 10px;
+}
+.vs-next-stage {
+  margin-top: 6px !important;
+  color: var(--vu-neutral-600) !important;
+  white-space: nowrap;
+}
+.vs-production-table th:nth-child(1) { width: 27%; }
+.vs-production-table th:nth-child(2) { width: 9%; }
+.vs-production-table th:nth-child(3) { width: 38%; }
+.vs-production-table th:nth-child(4) { width: 18%; }
+.vs-production-table th:last-child { width: 8%; }
+.vs-production-table tbody tr {
+  transition: background-color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-production-table tbody tr:hover {
+  background: var(--vu-blue-50);
+}
+
+.vs-drawer-scrim {
+  animation: vs-scrim-in 160ms var(--vu-ease-standard) both;
+}
+.vs-drawer {
+  animation: vs-drawer-in 220ms var(--vu-ease-standard) both;
+}
+@keyframes vs-scrim-in {
+  from { background: rgb(28 36 49 / 0%); }
+}
+@keyframes vs-drawer-in {
+  from { transform: translateX(24px); opacity: 0; }
+}
+
+@media (min-width: 901px) {
+  .main-content {
+    max-width: 1500px;
+  }
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 28px;
+  }
+  .preview-panel {
+    position: sticky;
+    top: 24px;
+  }
+  .quiet-label {
+    color: var(--vu-neutral-600);
+    font-size: 11px;
+  }
+  .breadcrumb {
+    color: var(--vu-neutral-600);
+    font-size: 12px;
+  }
+  .preview-panel .panel-heading h2 {
+    font-size: 13px;
+  }
+  .project-summary h3 {
+    font-size: 14px;
+  }
+  .project-facts > div {
+    font-size: 12px;
+  }
+  .project-facts dt,
+  .preview-caption,
+  .preview-empty {
+    color: var(--vu-neutral-600);
+  }
+  .vs-table {
+    font-size: 13px;
+  }
+  .vs-table th {
+    color: var(--vu-neutral-600);
+    font-size: 11px;
+  }
+  .vs-table td small,
+  .vs-tile-name small,
+  .vs-swatch-copy small,
+  .vs-optional,
+  .vs-showcase-sub,
+  .vs-deliverables small,
+  .vs-log-time,
+  .vs-qa span {
+    color: var(--vu-neutral-600);
+    font-size: 11px;
+  }
+  .vs-badge {
+    font-size: 11px;
+  }
+  .vs-library-grid {
+    grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  }
+}
+
 @media (max-width: 1020px) {
   .vs-grid-3,
   .vs-grid-4 {
@@ -873,4 +1463,514 @@ button.vs-tile:hover {
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+/* ── Ant Design component bridge ─────────────────────────────────────────
+  : The product layout and VinUni palette remain custom; Ant owns component
+   states, keyboard behavior, focus management and interaction contracts. */
+.ant-app {
+  min-height: 100dvh;
+  color: var(--text);
+}
+
+.studio-shell.ant-layout {
+  flex-direction: row;
+  background: var(--background);
+}
+.sidebar.ant-layout-sider {
+  min-width: 224px !important;
+  max-width: 224px !important;
+  background: var(--surface) !important;
+}
+.sidebar .ant-layout-sider-children {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.workspace.ant-layout {
+  min-width: 0;
+  background: var(--background);
+}
+.topbar.ant-layout-header {
+  line-height: normal;
+  background: var(--vu-blue-900);
+}
+.breadcrumb.ant-breadcrumb,
+.breadcrumb.ant-breadcrumb a,
+.breadcrumb.ant-breadcrumb .ant-breadcrumb-link {
+  color: rgb(255 255 255 / 72%);
+}
+.breadcrumb.ant-breadcrumb li:last-child .ant-breadcrumb-link {
+  color: white;
+}
+.breadcrumb .anticon {
+  margin-right: 6px;
+}
+
+.vs-sidebar-menu.ant-menu {
+  width: 100%;
+  border-inline-end: 0 !important;
+  background: transparent;
+  font-size: 14px;
+}
+.vs-sidebar-menu.ant-menu .ant-menu-item {
+  width: 100%;
+  height: 46px;
+  margin: 2px 0;
+  padding-inline: 14px !important;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+}
+.vs-sidebar-menu.ant-menu .ant-menu-item::after {
+  display: none;
+}
+.vs-sidebar-menu.ant-menu .ant-menu-item-selected {
+  border-left-color: var(--vu-blue-700);
+  font-weight: var(--vu-font-bold);
+}
+.vs-sidebar-menu.ant-menu .ant-menu-item-icon {
+  font-size: 18px;
+}
+.vs-key-status .ant-badge {
+  margin-left: auto;
+}
+
+.ant-btn {
+  box-shadow: none;
+}
+.ant-btn:disabled,
+.ant-btn.ant-btn-disabled {
+  opacity: 1;
+}
+.ant-btn-primary:not(:disabled) {
+  background: var(--vu-blue-700);
+}
+.ant-btn-primary:not(:disabled):hover {
+  background: var(--vu-blue-800) !important;
+}
+.ant-btn-link {
+  height: auto;
+  padding-inline: 4px;
+  font-weight: var(--vu-font-semibold);
+}
+.ant-btn:focus-visible,
+.ant-input:focus-visible,
+.ant-input-affix-wrapper:focus-visible {
+  outline: none;
+}
+
+.ant-form-item.field {
+  margin-bottom: 17px;
+}
+.ant-form-item.field .ant-form-item-label,
+.vs-style-form-item .ant-form-item-label {
+  padding-bottom: 7px;
+  text-align: left;
+}
+.ant-form-item.field .ant-form-item-label > label,
+.vs-style-form-item .ant-form-item-label > label {
+  height: auto;
+  font-weight: var(--vu-font-bold);
+}
+.ant-form-item .ant-form-item-explain {
+  margin-top: 5px;
+  min-height: 18px;
+}
+.field .ant-select,
+.field .ant-input-number {
+  width: 100%;
+}
+.field .ant-input-affix-wrapper input,
+.field .ant-input-number input,
+.vs-search input {
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  outline: none;
+}
+.field .ant-input-number {
+  min-height: var(--vu-control-md);
+}
+.field .ant-input-number-input-wrap,
+.field .ant-input-number-input {
+  min-height: calc(var(--vu-control-md) - 2px);
+}
+.field .ant-select-selector {
+  min-height: var(--vu-control-md);
+  align-items: center;
+}
+.ant-input-textarea-show-count .ant-input-data-count {
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: var(--vu-font-semibold);
+}
+.vs-script-field .ant-upload-wrapper,
+.vs-script-field .ant-upload-drag {
+  width: 100%;
+}
+.vs-script-field .vs-drop {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.vs-script-field .ant-upload-drag {
+  min-height: 186px;
+  border-color: var(--vu-blue-300);
+  background: var(--vu-blue-50);
+}
+.vs-script-field .vs-drop.is-invalid .ant-upload-drag {
+  border-color: var(--vu-red-700);
+  background: var(--vu-red-50);
+}
+.vs-script-field .ant-upload-drag-icon {
+  margin-bottom: 8px !important;
+}
+.vs-script-field .ant-upload-drag-icon .anticon {
+  color: var(--vu-blue-700) !important;
+  font-size: 34px;
+}
+.vs-script-field .ant-upload-text {
+  color: var(--vu-blue-900) !important;
+  font-family: var(--vs-font-display);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-script-field .ant-upload-hint {
+  margin: 5px 0 12px !important;
+  color: var(--subtle) !important;
+  font-size: 12px !important;
+}
+.vs-file .ant-upload-wrapper {
+  width: auto;
+}
+
+.vs-style-picker.ant-radio-group {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.vs-style-option.ant-radio-wrapper {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  display: block;
+}
+.vs-style-option.ant-radio-wrapper > .ant-radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.vs-style-option.ant-radio-wrapper > span:last-child {
+  display: grid;
+  min-width: 0;
+  padding-inline: 0;
+}
+.vs-collapse-label {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.vs-collapse-label small {
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: var(--vu-font-medium);
+}
+.vs-showcase-details.ant-collapse,
+.vs-prompt.ant-collapse,
+.vs-log.ant-collapse {
+  padding: 0;
+  overflow: hidden;
+}
+.vs-showcase-details .ant-collapse-header,
+.vs-prompt .ant-collapse-header,
+.vs-log .ant-collapse-header {
+  align-items: center !important;
+  min-height: 46px;
+}
+.vs-showcase-details .ant-collapse-content-box,
+.vs-prompt .ant-collapse-content-box,
+.vs-log .ant-collapse-content-box {
+  padding: 16px !important;
+}
+.vs-prompt .ant-collapse-header-text > span,
+.vs-log-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--vu-blue-800);
+  font-size: 12px;
+  font-weight: var(--vu-font-bold);
+}
+.vs-log-label .quiet-label {
+  margin-left: auto;
+}
+.vs-log ol {
+  margin-top: 0;
+}
+.vs-scope.ant-form-item {
+  display: block;
+}
+.vs-scope-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+.vs-scope-options .ant-checkbox-wrapper {
+  font-size: 12px;
+}
+.vs-facts.ant-descriptions {
+  display: block;
+  margin-bottom: 18px;
+}
+.vs-facts .ant-descriptions-item-label {
+  width: 160px;
+  color: var(--subtle);
+  font-size: 12px;
+}
+.vs-facts .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.vs-workflow.ant-steps {
+  display: flex;
+  padding: 0;
+  background: var(--surface);
+}
+.vs-workflow.ant-steps .ant-steps-item {
+  min-width: 0;
+}
+.vs-workflow.ant-steps .ant-steps-item-container {
+  padding: 12px 10px 14px;
+}
+.vs-workflow.ant-steps .ant-steps-item-title {
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: 13px;
+  font-weight: var(--vu-font-bold);
+}
+.vs-workflow.ant-steps .ant-steps-item-content {
+  min-width: 0;
+}
+.vs-workflow.ant-steps .ant-steps-item-content-wrapper {
+  color: var(--subtle);
+  font-size: 11px;
+}
+.vs-workflow.ant-steps .ant-steps-item-process .ant-steps-item-icon {
+  background: var(--vu-blue-700);
+  border-color: var(--vu-blue-700);
+}
+.vs-workflow.ant-steps .ant-steps-item-finish .ant-steps-item-icon {
+  background: var(--vu-green-50);
+  border-color: var(--vu-green-700);
+}
+.vs-workflow.ant-steps .ant-steps-item-finish .ant-steps-icon {
+  color: var(--vu-green-700);
+}
+
+.feedback.ant-alert {
+  margin: 0 0 18px;
+  border-radius: 4px;
+}
+.feedback.ant-alert .ant-alert-message {
+  font-family: var(--vs-font-display);
+  font-weight: var(--vu-font-bold);
+}
+.step-empty.ant-empty {
+  padding: 42px 24px;
+}
+.step-empty .ant-empty-description {
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-badge.ant-tag,
+.pill-label.ant-tag {
+  margin-inline-end: 0;
+}
+.pill-label.ant-tag {
+  border: 0;
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-700);
+}
+.job-progress .ant-progress {
+  grid-column: 1 / -1;
+  width: 100%;
+  line-height: 1;
+}
+.job-progress .ant-progress-inner {
+  border-radius: 0;
+}
+.job-progress .ant-progress-bg {
+  border-radius: 0;
+}
+.job-progress .ant-progress.is-indeterminate .ant-progress-bg {
+  animation: progress-slide 1.4s ease-in-out infinite;
+}
+.vs-key-field.ant-input-affix-wrapper {
+  flex: 1;
+  min-width: 220px;
+}
+.vs-grid-4 .ant-form-item {
+  min-width: 0;
+}
+
+.vs-qa-mode.ant-segmented {
+  flex: 0 0 auto;
+}
+.vs-qa-filter .ant-select {
+  min-width: 160px;
+}
+.vs-qa > li > .ant-btn {
+  width: 100%;
+  height: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.vs-qa-pagination .ant-pagination {
+  margin: 0;
+}
+.vs-lightbox-dialog.ant-modal {
+  max-height: none;
+  display: block;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+.vs-lightbox-dialog .ant-modal-content {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.vs-lightbox-dialog .ant-modal-header {
+  margin: 0;
+  padding: 14px 56px 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.vs-lightbox-dialog .ant-modal-title h2 {
+  margin-top: 4px;
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: 16px;
+}
+.vs-lightbox-dialog .ant-modal-close {
+  top: 12px;
+}
+
+.vs-tabs.ant-tabs {
+  display: block;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.vs-tabs > .ant-tabs-nav {
+  margin-bottom: 22px;
+}
+.vs-tabs > .ant-tabs-nav .ant-tabs-tab {
+  padding: 0;
+}
+.vs-tabs > .ant-tabs-nav .ant-tabs-tab-btn {
+  padding: 11px 16px;
+}
+.vs-filter > .ant-select {
+  min-width: 200px;
+}
+.vs-library-grid .vs-tile.ant-btn {
+  height: auto;
+  display: flex;
+  padding: 0;
+  white-space: normal;
+}
+.vs-library-grid .vs-tile.ant-btn:hover {
+  border-color: var(--vu-blue-300);
+  background: var(--surface);
+}
+.vs-video-list .ant-btn {
+  width: 100%;
+  height: 42px;
+  justify-content: flex-start;
+  border-radius: 0;
+  font-family: var(--vs-font-utility);
+}
+.vs-drawer.ant-drawer {
+  width: auto;
+  max-width: none;
+  height: auto;
+  padding: 0;
+  display: block;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+.vs-drawer .ant-drawer-title h2 {
+  margin-top: 4px;
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: 20px;
+}
+.vs-drawer .ant-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vs-production-table.ant-table-wrapper {
+  width: 100%;
+}
+.vs-production-table .ant-table-thead > tr > th {
+  font-size: 10px;
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+}
+.vs-video-cell,
+.vs-video-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.vs-video-cell strong {
+  color: var(--vu-blue-900);
+}
+.vs-video-cell small,
+.vs-video-state small {
+  margin-top: 3px;
+  color: var(--subtle);
+  font-size: 10px;
+}
+
+.vs-confirm-dialog.ant-modal {
+  width: min(440px, calc(100vw - 32px)) !important;
+  display: block;
+  padding: 0;
+  border-top: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.vs-confirm-dialog .ant-modal-content {
+  overflow: hidden;
+  border-top: 4px solid var(--vu-red-700);
+  border-radius: 8px;
+}
+.vs-confirm-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+}
+.vs-confirm-title .anticon {
+  color: var(--vu-red-700);
+}
+.vs-confirm-description {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
 }

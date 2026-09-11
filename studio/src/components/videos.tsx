@@ -1,33 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowRight, CircleNotch } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRightOutlined, LoadingOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty, Input, Select, Table } from "antd";
+import type { TableProps } from "antd";
 import { api, useKeyStatus } from "@/lib/client";
-import type { StageId, VideoSummary } from "@/lib/types";
+import type { VideoSummary } from "@/lib/types";
+import { completedStages, matchesVideo, nextStageLabel, overallStageStatus, VIDEO_STAGES, type VideoFilter } from "@/lib/video-status";
 import { Shell } from "./shell";
 import { StageBadge } from "./agent-panel";
 
-const LABELS: [StageId, string][] = [["cues", "Cue"], ["voice", "Giọng"], ["scenes", "Cảnh"], ["render", "MP4"], ["deliver", "Bàn giao"]];
+function VideoProgress({ video }: { video: VideoSummary }) {
+  const done = completedStages(video.stages);
+  return <div className="vs-video-progress" aria-label={`${done} trên 5 cổng đã hoàn tất. Mốc hiện tại: ${nextStageLabel(video.stages)}`}>
+    <div className="vs-progress-line" aria-hidden="true">{VIDEO_STAGES.map(({ id }) => <span key={id} className={`is-${video.stages[id]}`} />)}</div>
+    <div className="vs-progress-labels" aria-hidden="true">{VIDEO_STAGES.map(({ id, short }) => <span key={id}>{short}</span>)}</div>
+  </div>;
+}
 
 export default function Videos() {
   const [videos, setVideos] = useState<VideoSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<VideoFilter>("all");
   const { hasKey } = useKeyStatus();
   useEffect(() => { api<VideoSummary[]>("/api/videos").then(setVideos).catch((e) => setError(e.message)); }, []);
+  const filtered = useMemo(() => videos?.filter((video) => matchesVideo(video, query, filter)) || [], [videos, query, filter]);
+  const columns: TableProps<VideoSummary>["columns"] = [
+    { title: "Video", key: "video", render: (_, video) => <div className="vs-video-cell"><strong>{video.id}</strong>{video.title !== video.id && <small>{video.title}</small>}{!video.managed && <small>làm ngoài Video Studio</small>}</div> },
+    { title: "Ngày", dataIndex: "day", key: "day", render: (day: string) => day || "—" },
+    { title: "Tiến độ 5 cổng", key: "progress", render: (_, video) => <VideoProgress video={video} /> },
+    { title: "Trạng thái", key: "status", render: (_, video) => <div className="vs-video-state"><StageBadge status={overallStageStatus(video.stages)} /><small className="vs-next-stage">{nextStageLabel(video.stages)}</small></div> },
+    { title: <span className="sr-only">Thao tác</span>, key: "action", align: "right", render: (_, video) => <Button type="link" href={`/?id=${video.id}`} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở</Button> },
+  ];
   return <Shell page="videos" crumb="Các video" hasKey={hasKey}>
     <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> projects/</div><h1>Các video</h1></div></div>
-    {error && <div className="feedback feedback-error"><p>{error}</p></div>}
-    <section className="editor-panel">
-      <div className="vs-table-wrap"><table className="vs-table">
-        <thead><tr><th>Video</th><th>Ngày</th>{LABELS.map(([, l]) => <th key={l}>{l}</th>)}<th /></tr></thead>
-        <tbody>{videos?.map((v) => <tr key={v.id}>
-          <td><strong>{v.id}</strong>{v.title !== v.id && <small>{v.title}</small>}{!v.managed && <small>làm ngoài Video Studio</small>}</td>
-          <td>{v.day || "—"}</td>
-          {LABELS.map(([s]) => <td key={s}><StageBadge status={v.stages[s]} /></td>)}
-          <td><a className="text-button" href={`/?id=${v.id}`}>{v.running ? <CircleNotch size={14} className="spin" /> : null}Mở<ArrowRight size={14} /></a></td>
-        </tr>)}</tbody>
-      </table></div>
-      {videos && !videos.length && <div className="step-empty"><h3>Chưa có video</h3></div>}
+    {error && <Alert className="feedback" type="error" showIcon message="Không tải được danh sách video" description={error} />}
+    <section className="editor-panel vs-video-index">
+      <div className="vs-index-toolbar">
+        <div><span className="eyebrow">LUỒNG SẢN XUẤT</span><h2>Theo dõi từng cổng duyệt</h2></div>
+        <div className="vs-index-controls">
+          <Input.Search className="vs-search" allowClear value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, tên hoặc ngày…" aria-label="Tìm video" />
+          <Select aria-label="Lọc trạng thái" value={filter} onChange={(value) => setFilter(value)} options={[{ value: "all", label: "Tất cả trạng thái" }, { value: "active", label: "Đang xử lý" }, { value: "attention", label: "Cần chú ý" }, { value: "done", label: "Đã hoàn tất" }]} />
+          <span className="quiet-label">{filtered.length} / {videos?.length || 0} VIDEO</span>
+        </div>
+      </div>
+      <Table className="vs-table vs-production-table" rowKey="id" columns={columns} dataSource={filtered} pagination={false} loading={!videos && !error} locale={{ emptyText: videos?.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có video phù hợp. Đổi từ khóa hoặc bộ lọc trạng thái." /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có video. Tạo video đầu tiên để bắt đầu luồng sản xuất." /> }} />
     </section>
     <footer className="workspace-footer" />
   </Shell>;

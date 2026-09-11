@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, FilmSlate } from "@phosphor-icons/react";
+import { CheckOutlined } from "@ant-design/icons";
+import { Collapse, Empty, Radio } from "antd";
 import { fileUrl } from "@/lib/client";
 import type { PaletteColor, Showcase, StyleDef } from "@/lib/types";
 
@@ -18,8 +19,7 @@ function Tiles({ items }: { items: Showcase[] }) {
   </li>)}</ul>;
 }
 
-/** Palette, representative components and sample video of one style (with its base style's first). */
-export function StyleShowcase({ style }: { style: StyleDef }) {
+function ShowcaseContent({ style }: { style: StyleDef }) {
   return <div className="vs-showcase">
     <div className="vs-showcase-block">
       <h4>Màu</h4>
@@ -37,21 +37,36 @@ export function StyleShowcase({ style }: { style: StyleDef }) {
       <h4>Video mẫu</h4>
       {style.sampleVideo
         ? <video className="video-player" src={fileUrl(style.sampleVideo)} controls preload="metadata" />
-        : <div className="vs-sample-empty"><FilmSlate size={28} weight="light" /><span>Chưa có video mẫu</span></div>}
+        : <Empty className="vs-sample-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có video mẫu" />}
     </div>
   </div>;
 }
 
-export function StylePicker({ styles, value, onChange, disabled }: { styles: StyleDef[]; value: string; onChange: (id: string) => void; disabled?: boolean }) {
-  return <fieldset className="vs-style-picker" disabled={disabled}><legend className="sr-only">Style</legend>
+/** Palette, representative components and sample video of one style (with its base style's first). */
+export function StyleShowcase({ style, collapsible = false }: { style: StyleDef; collapsible?: boolean }) {
+  if (!collapsible) return <ShowcaseContent style={style} />;
+
+  const colors = (style.base?.palette.length || 0) + style.palette.length;
+  const components = (style.base?.showcase.length || 0) + style.showcase.length;
+  return <Collapse
+    className="vs-showcase-details"
+    items={[{
+      key: "showcase",
+      label: <span className="vs-collapse-label"><strong>Khám phá {style.name}</strong><small>{colors} màu · {components} component tiêu biểu · video mẫu</small></span>,
+      children: <ShowcaseContent style={style} />,
+    }]}
+  />;
+}
+
+export function StylePicker({ styles, value, onChange, disabled, labelledBy }: { styles: StyleDef[]; value: string; onChange: (id: string) => void; disabled?: boolean; labelledBy?: string }) {
+  return <Radio.Group className="vs-style-picker" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} aria-required="true" aria-labelledby={labelledBy}>
     {styles.map((s) => {
       const colors = [...(s.base?.palette || []), ...s.palette];
-      return <label key={s.id} className={`visual-style-option vs-style-option ${value === s.id ? "is-selected" : ""}`}>
-        <input type="radio" name="style" value={s.id} checked={value === s.id} onChange={() => onChange(s.id)} />
+      return <Radio key={s.id} value={s.id} className={`visual-style-option vs-style-option ${value === s.id ? "is-selected" : ""}`}>
         <span className="vs-style-strip" aria-hidden="true">{colors.map((c) => <span key={c.hex} style={{ background: c.hex }} />)}</span>
-        <strong>{s.name}{value === s.id && <Check size={14} weight="bold" aria-hidden="true" />}</strong>
+        <strong>{s.name}{value === s.id && <CheckOutlined aria-hidden="true" />}</strong>
         <small>{s.summary}</small>
-      </label>;
+      </Radio>;
     })}
-  </fieldset>;
+  </Radio.Group>;
 }

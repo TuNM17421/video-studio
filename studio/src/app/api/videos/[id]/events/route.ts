@@ -12,11 +12,28 @@ export const GET = handle(async (req: Request, ctx: { params: Promise<{ id: stri
   let cleanup = () => {};
   const stream = new ReadableStream({
     start(controller) {
-      const send = (data: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      let closed = false;
+      let cleaned = false;
+      const enqueue = (value: string) => {
+        if (closed) return;
+        try { controller.enqueue(encoder.encode(value)); }
+        catch { closed = true; cleanup(); }
+      };
+      const send = (data: unknown) => enqueue(`data: ${JSON.stringify(data)}\n\n`);
       const unsubscribe = subscribe(id, send);
-      const ping = setInterval(() => controller.enqueue(encoder.encode(": ping\n\n")), 15000);
-      cleanup = () => { unsubscribe(); clearInterval(ping); };
-      req.signal.addEventListener("abort", () => { cleanup(); try { controller.close(); } catch {} });
+      const ping = setInterval(() => enqueue(": ping\n\n"), 15000);
+      cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        unsubscribe();
+        clearInterval(ping);
+      };
+      req.signal.addEventListener("abort", () => {
+        if (closed) return;
+        closed = true;
+        cleanup();
+        try { controller.close(); } catch {}
+      }, { once: true });
     },
     cancel() { cleanup(); },
   });

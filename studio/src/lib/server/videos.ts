@@ -18,10 +18,10 @@ function stateFile(id: string) {
 /** Day of a video made outside the studio: where its transcript or chapters live. */
 function findDay(id: string) {
   for (const root of ["transcripts", "chapters"]) {
-    const dir = path.join(REPO, root);
+    const dir = path.join(/* turbopackIgnore: true */ REPO, root);
     if (!exists(dir)) continue;
-    for (const day of fs.readdirSync(dir)) {
-      const files = fs.readdirSync(path.join(dir, day));
+    for (const day of fs.readdirSync(/* turbopackIgnore: true */ dir)) {
+      const files = fs.readdirSync(/* turbopackIgnore: true */ path.join(dir, day));
       if (files.some((f) => f === `${id}.txt` || f.startsWith(`${id}-`))) return day;
     }
   }

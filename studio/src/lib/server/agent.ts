@@ -3,6 +3,26 @@ import type { StageId } from "../types";
 import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
 import { readState, setStage, styleName, updateState } from "./videos";
 
+interface AgentStreamBlock {
+  type?: string;
+  text?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+  is_error?: boolean;
+  content?: unknown;
+}
+
+interface AgentStreamMessage {
+  type?: string;
+  subtype?: string;
+  session_id?: string;
+  message?: { content?: AgentStreamBlock[] };
+  total_cost_usd?: number;
+  num_turns?: number;
+  is_error?: boolean;
+  result?: string;
+}
+
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
 
 /**
@@ -93,14 +113,15 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
     input: prompt,
     onLine(line, stream) {
       if (stream === "stderr") return log(id, "error", short(line, 400));
-      let msg: Record<string, any>;
+      let msg: AgentStreamMessage;
       try { msg = JSON.parse(line); } catch { return; }
-      if (msg.type === "system" && msg.subtype === "init" && !resume) {
-        updateState(id, (s) => { s.sessionId = msg.session_id; });
+      if (msg.type === "system" && msg.subtype === "init" && !resume && msg.session_id) {
+        const nextSessionId = msg.session_id;
+        updateState(id, (s) => { s.sessionId = nextSessionId; });
       } else if (msg.type === "assistant") {
         for (const block of msg.message?.content || []) {
           if (block.type === "text" && block.text?.trim()) log(id, "agent", block.text.trim());
-          if (block.type === "tool_use") {
+          if (block.type === "tool_use" && block.name) {
             tools++;
             log(id, "tool", describeTool(block.name, block.input || {}));
             setProgress(id, null, `Agent đang làm việc · ${tools} thao tác`);
