@@ -67,6 +67,35 @@ export function Scene({ n, frame, overlay, title, tag, children }) {
   );
 }
 
+/**
+ * A card in a role tone. `hot` (0–1, drive with pulse()) thickens the stroke to 5 px and deepens the
+ * soft fill in the SAME hue — this video never flashes a neutral card red (DAY02 feedback).
+ * `lines`: first line bold. `label`: micro uppercase label top-left.
+ */
+export function RoleCard({ x, y, w, h, tone = 'neutral', label, lines = [], size = 26, lineHeight, dashed, hot = 0, opacity = 1, muted = 0, align = 'middle', children }) {
+  const o = opacity * (1 - clamp01(muted) * 0.64);
+  if (o <= 0.001) return null;
+  const [stroke, soft] = TONE[tone] || TONE.neutral;
+  const a = clamp01(hot);
+  const lh = lineHeight ?? Math.round(size * 1.3);
+  const tx = align === 'start' ? x + 28 : x + w / 2;
+  return (
+    <g opacity={o < 1 ? o : undefined}>
+      <rect x={x} y={y} width={w} height={h} rx={22} fill={tone === 'neutral' ? C.bgAlt : soft} stroke={stroke} strokeWidth={3 + 2 * a} strokeDasharray={dashed ? '12 10' : undefined} />
+      {a > 0.001 ? <rect x={x - 6} y={y - 6} width={w + 12} height={h + 12} rx={27} fill="none" stroke={stroke} strokeWidth={3} opacity={a * 0.35} /> : null}
+      {label ? (
+        <SvgText x={x + 24} y={y + 34} size={17} weight={700} anchor="start" color={stroke} letterSpacing={1.2}>
+          {label}
+        </SvgText>
+      ) : null}
+      {lines.length ? (
+        <Multiline x={tx} y={y + h / 2 + (label ? 14 : 0)} lines={lines} size={size} lineHeight={lh} firstWeight={700} color={C.text} anchor={align} />
+      ) : null}
+      {children}
+    </g>
+  );
+}
+
 /** Small uppercase zone label with a colored dot (lab ZoneLabel look, tone from TONE). */
 export function ToneLabel({ x, y, tone = 'neutral', children, anchor = 'start', opacity = 1, size = 18 }) {
   if (opacity <= 0.001) return null;
@@ -84,8 +113,8 @@ export function ToneLabel({ x, y, tone = 'neutral', children, anchor = 'start', 
 
 /* ── the running example: one chatbot request, two groups of users (câu 19–51) ─────────────────── */
 
-/** The central "chatbot" block — the solution shape. Purple (SOLUTION). `w` ≥ 260. */
-export function ChatbotBlock({ x, y, w = 300, h = 120, label = 'CHATBOT AI', sub, hot = 0, opacity = 1, muted = 0, dashed }) {
+/** The central "chatbot" block — the solution shape. Purple (SOLUTION). Keep `w` ≥ 340 or the icon touches the label. */
+export function ChatbotBlock({ x, y, w = 360, h = 120, label = 'CHATBOT AI', sub, hot = 0, opacity = 1, muted = 0, dashed }) {
   return (
     <RoleCard x={x} y={y} w={w} h={h} tone="solution" hot={hot} opacity={opacity} muted={muted} dashed={dashed} lines={sub ? [label, sub] : [label]} size={28}>
       <LineIcon name="bot" x={x + 44} y={y + h / 2} size={40} color={ROLE.purple} />
