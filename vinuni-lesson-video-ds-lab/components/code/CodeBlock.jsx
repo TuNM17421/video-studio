@@ -2,7 +2,7 @@ import React from 'react';
 import { C, MONO, alpha } from '../../lib/tokens.js';
 import { appear, clamp01 } from '../../lib/motion.js';
 import { graphemes, typeText } from '../../lib/text.js';
-import { illustrativeTag } from '../labels/IllustrativeStamp.jsx';
+import { illustrativeTag, isHiddenIllustrativeLabel } from '../labels/IllustrativeStamp.jsx';
 import { Chip } from '../labels/Pill.jsx';
 import { pillWidth } from '../../lib/geometry.js';
 
@@ -157,6 +157,7 @@ export function CodeCard({ x, y, w, h, dashed = false }) {
 export function illustrativeTagWidth(illustrative) {
   if (!illustrative) return 0;
   const label = typeof illustrative === 'string' ? illustrative : 'MINH HỌA';
+  if (isHiddenIllustrativeLabel(label)) return 0;
   return pillWidth(label, 17) + label.length * 1.1;
 }
 

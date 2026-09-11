@@ -24,7 +24,7 @@ thumbnail, poster** đúng style của khoá học. Mọi kích thước là px 
    chọn / đã biến đổi / hành động / rủi ro / đáp án · `bgAlt` = thân thẻ và "cỗ máy kính" ·
    `dotInactive` = đường ray, divider, trạng thái chưa kích hoạt.
 5. **Header chuẩn**: eyebrow đỏ IN HOA giãn chữ `NGÀY 0N · CHỦ ĐỀ NGÀY` (top 70) → tiêu đề 50 px đậm
-   căn giữa (baseline 176) → divider 3 px (y 220, x 96→1824) → tag đỏ góc phải (`MINH HỌA`,
+   căn giữa (baseline 176) → divider 3 px (y 220, x 96→1824) → tag đỏ góc phải (`VÍ DỤ`, `CÂU HỎI`,
    `SO SÁNH`, `GLASSBOX`…).
 6. **Luôn có**: watermark `● VinUni · AI in Action 20K` ở góc phải trên và **phụ đề burned-in** =
    thanh navy cao 96 px ở đáy, chữ trắng 29 px, một dòng ≤ 78 ký tự mỗi trang.
@@ -40,8 +40,10 @@ thumbnail, poster** đúng style của khoá học. Mọi kích thước là px 
 11. **Chuyển động tất định**: mọi thứ là hàm thuần của frame (không `Math.random`, không CSS
     transition, không đồng hồ thật). Reveal 24 f, pulse 54 f, hook 150 f. Trạng thái cuối giữ đủ
     lâu để đọc (≥ 60 f).
-12. **Trung thực**: số liệu, tỉ lệ, model, log trong hình là ví dụ biên tập → gắn nhãn `MINH HỌA`,
-    `giả định`, "số liệu minh họa". Không dùng logo làm "bằng chứng".
+12. **Trung thực**: số liệu, tỉ lệ, model, log trong hình là ví dụ biên tập, không trình bày như kết quả thật.
+    Không dùng logo làm "bằng chứng". **Lab (11/09/2026): không vẽ card / tag / con dấu `MINH HỌA`** —
+    `CornerTag`, `IllustrativeStamp` và prop `illustrative` của component bỏ qua mọi nhãn chứa "MINH HỌA"
+    (`isHiddenIllustrativeLabel`). Các tag khác (`VÍ DỤ`, `CÂU HỎI`, `BÀI TẬP`, `CHƯA CHẠY THẬT`…) vẫn hiện.
 
 ---
 
@@ -88,7 +90,7 @@ nghĩa ở lần đầu: "độ ngẫu nhiên (temperature)". Không chèn tiế
 | Nhãn thẻ (micro) | IN HOA, 1–3 từ | `YÊU CẦU` · `KẾT QUẢ` · `BẢN A` · `NHẬN THỨC` |
 | Nội dung thẻ | tối đa 2–3 dòng; dòng 1 IN HOA/đậm (danh từ chính), dòng 2 thường (giải thích) | `ĐÈN SÁNG` / cùng trạng thái |
 | Pill / chip | IN HOA rất ngắn, có thể dùng → | `CHỌN → NỐI → LẶP LẠI` · `CHẶN` · `ĐỌC` |
-| Tag góc | IN HOA, nói rõ tính chất hình | `MINH HỌA` · `DỮ LIỆU · KẾT QUẢ · MINH HỌA` · `SO SÁNH` |
+| Tag góc | IN HOA, nói rõ tính chất hình | `VÍ DỤ` · `CÂU HỎI` · `SO SÁNH` (lab: không dùng `MINH HỌA`) |
 | Ghi chú | câu thường, màu muted | "Cách chia token và số liệu minh họa" · "Model A (giả định)" |
 | Phụ đề | câu nói thật, ≤ 78 ký tự / trang, ngắt ở dấu câu | "Thường là không: họ chọn từ khác nhưng vẫn giữ ý chính." |
 
@@ -96,7 +98,7 @@ nghĩa ở lần đầu: "độ ngẫu nhiên (temperature)". Không chèn tiế
 phần trăm `50%`; ngoặc kép cong `“…”`; khoảng thời gian `21:00`.
 
 **Không dùng**: emoji, dấu chấm than, câu dài viết IN HOA, thuật ngữ không giải nghĩa, số liệu
-không nguồn mà không gắn `MINH HỌA`, logo công nghệ để "chứng minh" một kết luận.
+không nguồn trình bày như kết quả thật, logo công nghệ để "chứng minh" một kết luận.
 
 Chi tiết và danh mục copy mẫu: [`guidelines/content-and-copy.md`](guidelines/content-and-copy.md).
 
@@ -112,7 +114,7 @@ Chi tiết và danh mục copy mẫu: [`guidelines/content-and-copy.md`](guideli
   70 │                  N G À Y  0 5  ·  T H I Ế T  K Ế  S Ả N  P H Ẩ M  A I       eyebrow 26 px đỏ
  176 │                           Hai kiểu kỳ vọng                                   tiêu đề 50 px · baseline
  220 │   ────────────────────────────────────────────────────────────────────       divider 3 px · x 96→1824
- 228 │                                                         ( MINH HỌA )         tag · mép phải x 1792
+ 228 │                                                         (  VÍ DỤ  )         tag · mép phải x 1792
  250 │   ┌ vùng nội dung · x 80 → 1840 ───────────────────────────────────┐
      │   │  thẻ · glassbox · flow · biểu đồ — toạ độ tuyệt đối            │
  960 │   └────────────────────────────────────────────────────────────────┘
@@ -309,7 +311,7 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | figures | `Person`, `DocumentSheet`, `FormSheet`, `SpeechBubble`, `Stopwatch` | nhân vật và đồ vật cho tình huống MINH HỌA; phiếu có ô trống = chưa đo; đồng hồ không số |
 | icons | `Icon` + 20 `*Icon`, `LineIcon` | đặt icon trong SVG theo tâm; `LineIcon` = 40 icon Lucide chuẩn hóa |
 | brand | `Brand` | logo sản phẩm có tên (gọi đúng tên, không trang trí) |
-| labels | `IllustrativeStamp` | dấu MINH HỌA chuẩn (6 nhãn · tag / stamp / watermark); nhiều component có prop `illustrative` |
+| labels | `IllustrativeStamp` | dấu nhãn (tag / stamp / watermark); **lab: nhãn chứa "MINH HỌA" không được vẽ** — prop `illustrative` vẫn nhận nhưng không hiện card MINH HỌA |
 | control | `Gate`, `PermissionBoundary`, `ApprovalStep` | cổng quyền / duyệt / đối chiếu (mở · chặn · lỗi · chờ), vùng quyền, bước người duyệt |
 | control | `StopGate`, `StepCounter` | cửa dừng của vòng agent, bộ đếm lượt 0/3 → 3/3 |
 | ui | `BrowserFrame`, `ChatWindow`, `Cursor`, `UIButton`, `EmailCard`, `Tray` | giao diện giả lập (luôn MINH HỌA): cửa sổ web, chat nhả chữ theo token, con trỏ, nút, thư, khay |

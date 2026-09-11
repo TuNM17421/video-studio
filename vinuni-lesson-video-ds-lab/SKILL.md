@@ -33,7 +33,7 @@ the content voice, the motion grammar and the scene patterns. Then work from the
 
 - Only the 9 `C` colors (alpha variants allowed), only Montserrat 500/600/700, no emoji, no gradients.
 - Header chrome, watermark and subtitle bar present; content stays inside y 250–960.
-- Every visible object maps to a narrated idea; illustrative numbers carry `MINH HỌA`.
+- Every visible object maps to a narrated idea. Lab: no `MINH HỌA` card/tag/stamp is drawn (the components drop it).
 - Particles ride the drawn connector, hide on card faces, and each arrival pulses its card once.
 - Frame constants are named, fit inside the scene duration, and the final state holds long enough to read.
 - Captions are contiguous, ≤ 78 characters per page, with correct Vietnamese diacritics.

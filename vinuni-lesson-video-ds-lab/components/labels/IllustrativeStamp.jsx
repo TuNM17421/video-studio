@@ -14,13 +14,20 @@ export const ILLUSTRATIVE_LABELS = Object.freeze([
 ]);
 
 /**
+ * Lab decision (11/09/2026): the "MINH HỌA" card is no longer drawn anywhere — corner tags, component
+ * tags and stamps whose label contains "MINH HỌA" render nothing. Other labels (VÍ DỤ, CÂU HỎI,
+ * CHƯA CHẠY THẬT, PHƯƠNG ÁN THIẾT KẾ…) still render. Props stay accepted so scenes need no change.
+ */
+export const isHiddenIllustrativeLabel = (label) => typeof label === 'string' && /MINH HỌA/i.test(label.normalize('NFC'));
+
+/**
  * The standard "MINH HỌA" mark for illustrative data, screens, logs and numbers (SVG).
  * variant 'tag' (default): red-soft pill with red stroke, 17 px bold letter-spaced — the corner tag.
  * 'stamp': rotated outline stamp (−6°) laid over a result / table · 'watermark': large faint diagonal text.
  * anchor: which point of the stamp (x, y) refers to — 'top-left' | 'top-right' | 'center'.
  */
 export function IllustrativeStamp({ x, y, label = 'MINH HỌA', variant = 'tag', anchor = 'top-left', opacity = 1, size }) {
-  if (opacity <= 0.001) return null;
+  if (opacity <= 0.001 || isHiddenIllustrativeLabel(label)) return null;
   const o = opacity < 1 ? opacity : undefined;
   if (variant === 'watermark') {
     const s = size ?? 96;
@@ -67,5 +74,6 @@ export function IllustrativeStamp({ x, y, label = 'MINH HỌA', variant = 'tag',
 export function illustrativeTag(illustrative, box, opacity = 1) {
   if (!illustrative) return null;
   const label = typeof illustrative === 'string' ? illustrative : 'MINH HỌA';
+  if (isHiddenIllustrativeLabel(label)) return null;
   return <IllustrativeStamp x={box.x + box.w - 12} y={box.y + 12} label={label} anchor="top-right" opacity={opacity} />;
 }

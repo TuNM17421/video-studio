@@ -24,3 +24,6 @@ export declare function illustrativeTag(
   box: { x: number; y: number; w: number; h: number },
   opacity?: number,
 ): ReactNode;
+
+/** Lab (11/09/2026): true for labels containing "MINH HỌA" — those are never drawn (CornerTag, stamps, component tags). */
+export declare function isHiddenIllustrativeLabel(label: unknown): boolean;
