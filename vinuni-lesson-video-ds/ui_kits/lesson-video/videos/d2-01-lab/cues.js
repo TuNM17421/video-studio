@@ -12,6 +12,9 @@
  * `frames` / `speech` = measured voice (frames at 30 fps) written by tools after TTS; before that the
  * script estimate `seconds` is used. `section` = the script's part (1–6), used for chapters.
  */
+import { VOICE } from './voice.js';
+import { createSpeech } from '../../../../lib/speech.js';
+
 const RAW = [
   // ── Phần 1 · Mở đầu — đề nghị làm trợ lý hội thoại ──────────────────────────
   {
@@ -326,24 +329,9 @@ export const CUES = RAW.map((c) => {
 });
 export const DURATION = cursor;
 
-const syllables = (s) => s.trim().split(/\s+/).filter(Boolean).length;
-
 /**
- * Scene-local frame at which `phrase` starts being spoken in cue `n`. With the measured `speech` frames
- * the position is the phrase's syllable share of the recorded sentence; before recording, 3 syllables/s.
- * Use it to sync beats: a card appears 4–8 frames before its words.
+ * spokenAt(n, phrase) = scene-local frame at which `phrase` starts being said in cue `n` (real word
+ * timestamps once the voice is bound, else an estimate); speechEnd(n) = frame the narration ends.
+ * Sync beats a few frames before their words. See lib/speech.js.
  */
-export function spokenAt(n, phrase) {
-  const c = RAW[n - 1];
-  const i = c.text.indexOf(phrase);
-  if (i < 0) throw new Error(`"${phrase}" is not in the narration of câu ${n}`);
-  const before = syllables(c.text.slice(0, i));
-  if (c.speech) return Math.round((before / syllables(c.text)) * c.speech);
-  return Math.round(before * (FPS / 3));
-}
-
-/** Scene-local frame the narration of cue `n` ends (before the trailing pause). */
-export const speechEnd = (n) => {
-  const c = RAW[n - 1];
-  return c.speech ?? Math.round(syllables(c.text) * (FPS / 3));
-};
+export const { spokenAt, speechEnd } = createSpeech(RAW, VOICE);

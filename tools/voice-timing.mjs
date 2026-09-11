@@ -3,19 +3,25 @@
  * Bind a recorded narration to a design-system video: voice.cues.json (from tts-elevenlabs or any
  * generator with the same shape) → <video dir>/voice.js, which timeline.js reads to retime every scene.
  *
- *   node tools/voice-timing.mjs <voice.cues.json> <ui_kits/lesson-video/videos/<name>>
+ *   node tools/voice-timing.mjs <voice.cues.json> <ui_kits/lesson-video/videos/<name>> [--write-cues]
  *   node tools/voice-timing.mjs --clear <video dir>          back to the authored (script-estimate) timing
+ *
+ * Voice-first pipeline: pass --write-cues right after recording (before building scenes). It also writes
+ * each câu's measured `frames` / `speech` into cues.js, so scenes are authored at the real length (no
+ * rescale) and spokenAt() (lib/speech.js) uses the word timestamps carried in voice.js.
  *
  * Fails if the narration text of any cue differs from cues.js (the recording would be stale).
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const [a, b] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const writeCues = argv.includes('--write-cues');
+const [a, b] = argv.filter((x) => x !== '--write-cues');
 const fail = (m) => {
   console.error(`✗ ${m}`);
   process.exit(1);
@@ -31,8 +37,8 @@ if (a === '--clear') {
 if (!a || !b) fail('usage: node tools/voice-timing.mjs <voice.cues.json> <video dir>');
 
 const manifest = JSON.parse(fs.readFileSync(a, 'utf8'));
-const cuesSrc = fs.readFileSync(path.join(b, 'cues.js'), 'utf8');
-const { CUES } = await import(`data:text/javascript;base64,${Buffer.from(cuesSrc).toString('base64')}`);
+const cuesFile = path.join(b, 'cues.js');
+const { CUES } = await import(`${pathToFileURL(path.resolve(cuesFile)).href}?t=${Date.now()}`);
 if (manifest.fps !== 30) fail(`manifest fps ${manifest.fps} ≠ 30`);
 if (manifest.cues.length !== CUES.length) fail(`manifest has ${manifest.cues.length} cues, cues.js has ${CUES.length}`);
 manifest.cues.forEach((m, i) => {
@@ -47,9 +53,30 @@ const voice = {
   source: path.relative(ROOT, path.resolve(a)).split(path.sep).join('/'),
   audioSha256: fs.existsSync(wavPath) ? crypto.createHash('sha256').update(fs.readFileSync(wavPath)).digest('hex') : null,
   durationInFrames: manifest.durationInFrames,
-  cues: manifest.cues.map((m) => ({ n: m.n, durationInFrames: m.durationInFrames, speechFrames: m.speechFrames, text: m.text })),
+  cues: manifest.cues.map((m) => ({
+    n: m.n,
+    durationInFrames: m.durationInFrames,
+    speechFrames: m.speechFrames,
+    text: m.text,
+    // word starts (ElevenLabs timestamps) for spokenAt(); absent for câu recorded without timestamps
+    ...(m.words ? { ttsText: m.ttsText, words: m.words } : {}),
+    ...(m.alignText ? { alignText: m.alignText } : {}),
+  })),
 };
-fs.writeFileSync(path.join(b, 'voice.js'), `${HEADER}export const VOICE = ${JSON.stringify(voice, null, 2)};\n`);
+// words arrays stay on one line each so voice.js remains readable
+const json = JSON.stringify(voice, null, 2).replace(/"words": \[[\s\S]*?\n {6}\]/g, (m) => `"words": ${JSON.stringify(JSON.parse(m.slice(9)))}`);
+fs.writeFileSync(path.join(b, 'voice.js'), `${HEADER}export const VOICE = ${json};\n`);
+if (writeCues) {
+  // cues.js entries start with `n: <n>,`; replace or insert frames/speech right after it.
+  let src = fs.readFileSync(cuesFile, 'utf8');
+  for (const m of manifest.cues) {
+    const re = new RegExp(`(\\bn: ${m.n},)((?: (?:frames|speech): \\d+,)*)`);
+    if (!re.test(src)) fail(`cannot find "n: ${m.n}," in ${cuesFile}`);
+    src = src.replace(re, `$1 frames: ${m.durationInFrames},${m.speechFrames ? ` speech: ${m.speechFrames},` : ''}`);
+  }
+  fs.writeFileSync(cuesFile, src);
+  console.log(`✓ ${cuesFile} · frames/speech written for ${manifest.cues.length} câu`);
+}
 const authored = CUES.reduce((s, c) => s + (c.end - c.start), 0);
 console.log(`✓ ${path.join(b, 'voice.js')} · ${voice.durationInFrames} f (${(voice.durationInFrames / 30).toFixed(2)} s) · authored ${authored} f`);
 console.log('  scale per câu: ' + manifest.cues.map((m, i) => ((CUES[i].end - CUES[i].start) / m.durationInFrames).toFixed(2)).join(' '));
