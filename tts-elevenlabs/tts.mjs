@@ -122,8 +122,18 @@ async function loadCues(file) {
   // cues.js is a dependency-free ES module; import it from source without needing "type": "module".
   const mod = await import(`data:text/javascript;base64,${Buffer.from(src).toString('base64')}`);
   const cues = mod.CUES || mod.default;
-  if (!Array.isArray(cues) || !cues.every((c) => c.text)) fail(`${file} must export CUES = [{ n, text, … }]`);
-  return cues.map((c, i) => ({ n: c.n ?? i + 1, text: c.text.trim(), authoredFrames: c.end != null ? c.end - c.start : null }));
+  if (!Array.isArray(cues) || !cues.every((c) => c.text || c.silent)) fail(`${file} must export CUES = [{ n, text, … }]`);
+  // Optional per cue: `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as
+  // '[curious]'; never shown or captioned) · `silent` = seconds of silence instead of speech (text '') ·
+  // `pauseAfter` = seconds of silence after this cue (overrides --pause).
+  return cues.map((c, i) => ({
+    n: c.n ?? i + 1,
+    text: c.text.trim(),
+    voice: c.voice || '',
+    silent: c.silent || 0,
+    pauseAfter: c.pauseAfter,
+    authoredFrames: c.end != null ? c.end - c.start : null,
+  }));
 }
 
 function ttsText(text, pronounce) {
@@ -176,17 +186,20 @@ async function generate() {
   const mock = Boolean(args.mock);
   if (!args['dry-run'] && !mock) need('key', 'voice');
 
+  // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400).
+  const v3 = /^eleven_v3/.test(cfg.model);
+  const spoken = (j) => (cues[j] && cues[j].text ? ttsText(cues[j].text, pronounce) : undefined);
   const items = cues.map((c, i) => {
-    const text = ttsText(c.text, pronounce);
+    const text = c.silent ? '' : `${v3 && c.voice ? `${c.voice} ` : ''}${ttsText(c.text, pronounce)}`;
     const body = {
       text,
       model_id: cfg.model,
       language_code: cfg.language || undefined,
       voice_settings: cfg.settings,
-      previous_text: i > 0 ? ttsText(cues[i - 1].text, pronounce) : undefined,
-      next_text: i < cues.length - 1 ? ttsText(cues[i + 1].text, pronounce) : undefined,
+      previous_text: v3 ? undefined : spoken(i - 1),
+      next_text: v3 ? undefined : spoken(i + 1),
     };
-    const hash = sha256(JSON.stringify({ voice: cfg.voice, format: cfg.format, mock, ...body }));
+    const hash = c.silent ? `silent-${c.silent}-${sampleRate}` : sha256(JSON.stringify({ voice: cfg.voice, format: cfg.format, mock, ...body }));
     return { ...c, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`) };
   });
 
@@ -208,7 +221,9 @@ async function generate() {
     if (fs.existsSync(c.cache) && !(selected && args.force)) continue;
     if (!selected) fail(`câu ${c.n} is not cached and not in --only; synthesize it first`);
     let pcm;
-    if (mock) {
+    if (c.silent) {
+      pcm = Buffer.alloc(Math.round(c.silent * sampleRate) * 2);
+    } else if (mock) {
       const syllables = c.ttsText.split(/\s+/).length;
       pcm = Buffer.alloc(Math.round((syllables / 3) * sampleRate) * 2); // silent placeholder, 3 syllables/s
     } else {
@@ -227,12 +242,13 @@ async function generate() {
   let frame = 0;
   for (const c of items) {
     const raw = fs.readFileSync(c.cache);
-    const { a, b } = mock ? { a: 0, b: raw.length / 2 } : speechBounds(raw);
+    const { a, b } = mock || c.silent ? { a: 0, b: raw.length / 2 } : speechBounds(raw);
     const lead = Math.min(a, Math.round(0.05 * sampleRate)); // keep ≤ 50 ms of the generator's own lead-in
     const tail = Math.min(raw.length / 2 - b, Math.round(0.08 * sampleRate)); // keep ≤ 80 ms of decay after the last word
     const speech = raw.subarray((a - lead) * 2, (b + tail) * 2);
     const speechSamples = speech.length / 2;
-    const frames = Math.ceil((speechSamples + pauseSamples) / SAMPLES_PER_FRAME);
+    const after = c.silent ? 0 : c.pauseAfter != null ? Math.round(c.pauseAfter * sampleRate) : pauseSamples;
+    const frames = Math.ceil((speechSamples + after) / SAMPLES_PER_FRAME);
     const segment = Buffer.alloc(frames * SAMPLES_PER_FRAME * 2);
     speech.copy(segment, 0);
     parts.push(segment);
@@ -241,7 +257,7 @@ async function generate() {
       startFrame: frame,
       endFrame: frame + frames,
       durationInFrames: frames,
-      speechFrames: Math.ceil(speechSamples / SAMPLES_PER_FRAME),
+      speechFrames: c.silent ? 0 : Math.ceil(speechSamples / SAMPLES_PER_FRAME),
       authoredFrames: c.authoredFrames,
       seconds: +(frame / FPS).toFixed(3),
       speechDurationSeconds: +(speechSamples / sampleRate).toFixed(3),

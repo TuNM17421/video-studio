@@ -27,6 +27,7 @@ const mmss = (frame) => {
 };
 const lines = [];
 for (const c of m.cues) {
+  if (!c.text) continue; // a silent pause cue has no caption
   const pages = cueCaptions([{ start: c.startFrame, end: c.endFrame, text: c.text, pause: c.durationInFrames - c.speechFrames }]);
   const speechEnd = c.startFrame + c.speechFrames;
   pages.forEach((p, i) => {
