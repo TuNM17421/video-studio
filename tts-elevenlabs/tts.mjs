@@ -44,7 +44,7 @@ const cfg = {
   key: process.env.ELEVENLABS_API_KEY || '',
   voice: process.env.ELEVENLABS_VOICE_ID || '',
   model: process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5',
-  language: process.env.ELEVENLABS_LANGUAGE || 'vi',
+  language: process.env.ELEVENLABS_LANGUAGE === 'auto' ? '' : process.env.ELEVENLABS_LANGUAGE || 'vi', // 'auto' = no language_code (lets eleven_v3 read English terms in English)
   format: process.env.ELEVENLABS_OUTPUT_FORMAT || 'pcm_24000',
   settings: {
     stability: Number(process.env.ELEVENLABS_STABILITY ?? 0.5),
