@@ -1,11 +1,11 @@
 # TTS ElevenLabs cho video bài giảng
 
-Project phụ, không cần cài package (Node ≥ 20). Script đọc `cues.js` của một video, gọi ElevenLabs
+Project phụ, không cần cài package riêng (Node ≥ 20). Script đọc `cues.js` của một video, gọi ElevenLabs
 cho từng câu rồi ghép thành **một file giọng liền mạch** kèm **bảng mốc chính xác theo frame**:
 
 ```
-out/<video>/voice.wav          một file master, mono PCM 16-bit
-out/<video>/voice.cues.json    frame bắt đầu/kết thúc từng câu, thời lượng lời, hash lời gốc và text TTS
+out/<video>/voice.wav          một file master, mono PCM 16-bit            (không đưa lên git)
+out/<video>/voice.cues.json    frame bắt đầu/kết thúc từng câu, thời lượng lời, hash lời gốc và text TTS  (có trên git)
 ```
 
 > Repo Video-studio có quy định riêng: sản xuất chính dùng Google Cloud TTS, không dùng ElevenLabs
@@ -15,7 +15,7 @@ out/<video>/voice.cues.json    frame bắt đầu/kết thúc từng câu, thờ
 ## Cài đặt (một lần)
 
 ```console
-cd ~/Claude-Design/tts-elevenlabs
+cd tts-elevenlabs            # từ thư mục gốc repo
 cp .env.example .env        # điền ELEVENLABS_API_KEY và ELEVENLABS_VOICE_ID
 npm run check               # kiểm tra key và giọng, không tốn ký tự
 ```

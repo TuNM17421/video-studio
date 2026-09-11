@@ -2,7 +2,7 @@
 export const VOICE = {
   "generator": "elevenlabs",
   "model": "eleven_turbo_v2_5",
-  "source": "/home/tunm17421/Claude-Design/tts-elevenlabs/out/n2-00-gioi-thieu-ngay-2/voice.cues.json",
+  "source": "tts-elevenlabs/out/n2-00-gioi-thieu-ngay-2/voice.cues.json",
   "audioSha256": "dc335d9f6339de03ec392e25840de210fe82256e4a59376bca5a03d627d35c77",
   "durationInFrames": 3584,
   "cues": [

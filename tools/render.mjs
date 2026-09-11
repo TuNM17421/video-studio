@@ -8,11 +8,12 @@
  *
  * Needs the design-system folder served over HTTP (fonts do not load from file://):
  *   python3 -m http.server 8765 --directory vinuni-lesson-video-ds
- * ffmpeg: $FFMPEG, else the Remotion compositor build in ~/Coding/Video-studio/node_modules (read-only).
+ * ffmpeg: $FFMPEG, else ffmpeg-static from `npm install`, else `ffmpeg` on PATH.
  * The audio must last exactly as long as the video (voice.cues.json frames); a mismatch is an error.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,10 +36,20 @@ const fail = (msg) => {
 if (!args.scene || !args.out) fail('usage: node tools/render.mjs --scene <id> --out <file.mp4> [--audio voice.wav] [--workers 4]');
 
 // ── ffmpeg ────────────────────────────────────────────────────────────────────
-const compositor = path.resolve(HERE, '../../Coding/Video-studio/node_modules/@remotion/compositor-linux-x64-gnu');
-const FFMPEG = process.env.FFMPEG || path.join(compositor, 'ffmpeg');
-const ffEnv = { ...process.env, LD_LIBRARY_PATH: [path.dirname(FFMPEG), process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') };
-if (!fs.existsSync(FFMPEG)) fail(`ffmpeg not found at ${FFMPEG} (set FFMPEG=/path/to/ffmpeg)`);
+const require = createRequire(import.meta.url);
+function findFfmpeg() {
+  if (process.env.FFMPEG) return process.env.FFMPEG;
+  try {
+    const bin = require('ffmpeg-static');
+    if (bin && fs.existsSync(bin)) return bin;
+  } catch {}
+  return 'ffmpeg';
+}
+const FFMPEG = findFfmpeg();
+const ffEnv = process.env;
+if (spawnSync(FFMPEG, ['-version'], { stdio: 'ignore' }).status !== 0) {
+  fail(`ffmpeg not found (${FFMPEG}) — run \`npm install\` at the repo root or set FFMPEG=/path/to/ffmpeg`);
+}
 
 function wavSeconds(file) {
   const b = fs.readFileSync(file);

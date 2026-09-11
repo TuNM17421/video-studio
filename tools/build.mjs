@@ -5,9 +5,8 @@
  *   node tools/build.mjs          → vinuni-lesson-video-ds/dist/vk.js  (window.VK, React bundled)
  *                                 → vinuni-lesson-video-ds/assets/icons/*.svg
  *
- * Needs esbuild + react + react-dom. Lookup order: $VK_NODE_MODULES, tools/node_modules,
- * ./node_modules, then the Video-studio repo (../Coding/Video-studio/node_modules) — used
- * read-only. Standalone: `cd tools && npm i esbuild react react-dom`.
+ * Needs esbuild + react + react-dom from `npm install` at the repo root (./node_modules);
+ * $VK_NODE_MODULES overrides the lookup.
  */
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -17,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-// Which design system to build: the stable one by default, or VK_DS=vinuni-lesson-video-ds-lab.
+// Which design system to build: vinuni-lesson-video-ds, or another folder via VK_DS.
 const DS = path.resolve(ROOT, process.env.VK_DS || 'vinuni-lesson-video-ds');
 if (!fs.existsSync(path.join(DS, 'lib/index.js'))) {
   console.error(`No design system at ${DS}`);
@@ -28,13 +27,11 @@ const VIDEOS_DIR = path.join(DS, 'ui_kits/lesson-video/videos');
 
 const candidates = [
   process.env.VK_NODE_MODULES,
-  path.join(HERE, 'node_modules'),
   path.join(ROOT, 'node_modules'),
-  path.resolve(ROOT, '../Coding/Video-studio/node_modules'),
 ].filter(Boolean);
 const NODE_MODULES = candidates.find((p) => fs.existsSync(path.join(p, 'esbuild')) && fs.existsSync(path.join(p, 'react-dom')));
 if (!NODE_MODULES) {
-  console.error('Cannot find esbuild + react-dom. Run `npm i esbuild react react-dom` in tools/ or set VK_NODE_MODULES.');
+  console.error('Cannot find esbuild + react-dom. Run `npm install` at the repo root or set VK_NODE_MODULES.');
   process.exit(1);
 }
 const require = createRequire(path.join(NODE_MODULES, 'noop.js'));

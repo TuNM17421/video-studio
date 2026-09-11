@@ -282,7 +282,7 @@ async function generate() {
     fps: FPS,
     sampleRate,
     pauseSeconds: pause,
-    cuesSource: cuesFile,
+    cuesSource: path.relative(path.resolve(HERE, '..'), cuesFile).split(path.sep).join('/'), // repo-relative
     cuesSha256: sha256(fs.readFileSync(cuesFile, 'utf8')),
     durationInFrames: frame,
     audioDurationSeconds: +((master.length - 44) / 2 / sampleRate).toFixed(3),

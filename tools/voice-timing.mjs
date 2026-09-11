@@ -11,6 +11,9 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const [a, b] = process.argv.slice(2);
 const fail = (m) => {
@@ -40,7 +43,8 @@ const wavPath = path.join(path.dirname(path.resolve(a)), 'voice.wav');
 const voice = {
   generator: manifest.generator,
   model: manifest.model ?? null,
-  source: path.resolve(a),
+  // repo-relative, so voice.js is the same on every machine
+  source: path.relative(ROOT, path.resolve(a)).split(path.sep).join('/'),
   audioSha256: fs.existsSync(wavPath) ? crypto.createHash('sha256').update(fs.readFileSync(wavPath)).digest('hex') : null,
   durationInFrames: manifest.durationInFrames,
   cues: manifest.cues.map((m) => ({ n: m.n, durationInFrames: m.durationInFrames, speechFrames: m.speechFrames, text: m.text })),

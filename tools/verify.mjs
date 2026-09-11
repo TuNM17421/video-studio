@@ -20,10 +20,9 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-// Stable DS by default; VK_DS=vinuni-lesson-video-ds-lab checks the lab, which may add colors (declared
-// in its lib/tokens.js) and component groups that have no preview card yet (reported as warnings).
+// The design system may add colors (declared in its lib/tokens.js) and component groups that have no
+// preview card yet (reported as warnings). VK_DS points the check at another folder.
 const DS = path.resolve(ROOT, process.env.VK_DS || 'vinuni-lesson-video-ds');
-const LAB = path.basename(DS).endsWith('-lab');
 const warnings = [];
 const SKIP = new Set(['node_modules', 'dist', 'fonts']);
 const walk = (dir) =>
@@ -58,18 +57,13 @@ for (const f of files.filter((x) => x.endsWith('.jsx') && rel(x).startsWith('com
 }
 for (const d of fs.readdirSync(path.join(DS, 'components'), { withFileTypes: true }).filter((x) => x.isDirectory())) {
   const n = fs.readdirSync(path.join(DS, 'components', d.name)).filter((x) => x.endsWith('.html')).length;
-  if (n !== 1) (LAB && n === 0 ? warnings : problems).push(`components/${d.name} has ${n} card files (want 1)`);
+  if (n !== 1) (n === 0 ? warnings : problems).push(`components/${d.name} has ${n} card files (want 1)`);
 }
 
 // 3 · palette + determinism in code
 const PALETTE = new Set(['#ffffff', '#f2f7fc', '#0b2a4d', '#4a4a4a', '#1d6199', '#134d8b', '#c72127', '#ffe0e1', '#e0edf8']);
-if (LAB) {
-  // The lab palette = the 9 base colors + whatever its lib/tokens.js declares (one place to review).
-  const extra = [...fs.readFileSync(path.join(DS, 'lib/tokens.js'), 'utf8').matchAll(/#[0-9a-fA-F]{6}\b/g)].map((m) => m[0].toLowerCase());
-  const added = extra.filter((h) => !PALETTE.has(h));
-  for (const h of added) PALETTE.add(h);
-  if (added.length) warnings.push(`lab palette adds ${added.length} colors: ${[...new Set(added)].join(' ')}`);
-}
+// Palette = the 9 base colors + whatever lib/tokens.js declares (one place to review new colors).
+for (const m of fs.readFileSync(path.join(DS, 'lib/tokens.js'), 'utf8').matchAll(/#[0-9a-fA-F]{6}\b/g)) PALETTE.add(m[0].toLowerCase());
 for (const f of files.filter((x) => /\.(jsx|js)$/.test(x))) {
   const src = fs.readFileSync(f, 'utf8');
   for (const m of src.matchAll(/#[0-9a-fA-F]{6}\b/g)) {
@@ -109,9 +103,7 @@ const videoDirs = fs.existsSync(VIDEOS_DIR)
   : [];
 const NODE_MODULES = [
   process.env.VK_NODE_MODULES,
-  path.join(HERE, 'node_modules'),
   path.join(ROOT, 'node_modules'),
-  path.resolve(ROOT, '../Coding/Video-studio/node_modules'),
 ]
   .filter(Boolean)
   .find((p) => fs.existsSync(path.join(p, 'esbuild')) && fs.existsSync(path.join(p, 'react-dom')));
@@ -213,7 +205,7 @@ console.log(`components: ${files.filter((x) => x.endsWith('.jsx') && rel(x).star
 for (const s of scenes.sort((a, b) => a.file.localeCompare(b.file))) console.log(`  ${s.id.padEnd(20)} ${String(s.duration).padStart(4)} f · ${s.captions} captions`);
 console.log(`videos: ${videoDirs.length}`);
 for (const line of videoReports) console.log(line);
-console.log(`design system: ${path.relative(ROOT, DS)}${LAB ? ' (lab)' : ''}`);
+console.log(`design system: ${path.relative(ROOT, DS)}`);
 for (const w of warnings) console.log(`  ! ${w}`);
 if (problems.length) {
   console.log(`\n${problems.length} problem(s):`);

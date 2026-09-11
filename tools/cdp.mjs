@@ -4,12 +4,30 @@
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 
-export const CHROME =
-  process.env.CHROME ||
-  '/home/tunm17421/Coding/Video-studio/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell';
+// $CHROME, else the Chromium that `npm run setup` downloads for playwright, else a system Chrome/Chromium.
+function findChrome() {
+  if (process.env.CHROME) return process.env.CHROME;
+  try {
+    const { chromium } = createRequire(import.meta.url)('playwright');
+    const bin = chromium.executablePath();
+    if (bin && fs.existsSync(bin)) return bin;
+  } catch {}
+  const system = [
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  ];
+  const found = system.find((p) => fs.existsSync(p));
+  if (found) return found;
+  throw new Error('No Chrome found — run `npm run setup` at the repo root, or set CHROME=/path/to/chrome');
+}
+export const CHROME = findChrome();
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

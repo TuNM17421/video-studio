@@ -1,0 +1,34 @@
+{
+  "name": "vinuni-lesson-video-studio",
+  "private": true,
+  "type": "module",
+  "description": "VinUni \"AI in Action 20K\" lesson videos: design system, build/QA/render tools, ElevenLabs voice.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "postinstall": "node tools/link-ds.mjs",
+    "setup": "playwright install chromium",
+    "build": "node tools/build.mjs",
+    "verify": "node tools/verify.mjs",
+    "serve": "python3 -m http.server 8765 --bind 127.0.0.1 --directory vinuni-lesson-video-ds",
+    "tts:check": "node tts-elevenlabs/tts.mjs check"
+  },
+  "devDependencies": {
+    "@dagrejs/dagre": "3.1.1",
+    "@remotion/paths": "4.0.523",
+    "@types/react": "^19.3.0",
+    "d3-interpolate": "3.0.1",
+    "d3-scale": "4.0.2",
+    "d3-shape": "3.2.0",
+    "esbuild": "0.28.2",
+    "ffmpeg-static": "^5.2.0",
+    "flubber": "0.4.2",
+    "lucide": "1.44.0",
+    "playwright": "1.61.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "simple-icons": "16.30.0",
+    "ts-morph": "^28.0.0"
+  }
+}

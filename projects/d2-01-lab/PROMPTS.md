@@ -1,7 +1,7 @@
 # D2-01 (lab) · Tách yêu cầu giải pháp khỏi vấn đề — ghi chú dựng
 
-- Kịch bản gốc: `kich-ban-goc.md` (N2-01, bản rà 07/09/2026). Design system: **lab** (`vinuni-lesson-video-ds-lab`).
-- Video: `vinuni-lesson-video-ds-lab/ui_kits/lesson-video/videos/d2-01-lab/` · 47 câu (46 câu đọc + 1 khoảng dừng 5 giây).
+- Kịch bản gốc: `kich-ban-goc.md` (N2-01, bản rà 07/09/2026). Design system: `vinuni-lesson-video-ds` (bản lab đã được chọn làm bản chính).
+- Video: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/d2-01-lab/` · 47 câu (46 câu đọc + 1 khoảng dừng 5 giây).
 - Giọng: ElevenLabs `eleven_v3` (thẻ cảm xúc từng câu, trường `voice` trong `cues.js`), nghỉ 1,4 giây sau mỗi câu, 2 giây cuối mỗi phần.
 - Đầu ra: `render/d2-01-lab.mp4`, `transcripts/Day02/d2-01-lab.txt`, `chapters/Day02/d2-01-lab-chương.txt`.
 
@@ -25,8 +25,8 @@ xanh lá = công việc / đúng / kết quả mong muốn · cam = trở ngại
 ## Lệnh
 
 ```console
-cd tts-elevenlabs && ELEVENLABS_MODEL_ID=eleven_v3 node tts.mjs generate --cues ../vinuni-lesson-video-ds-lab/ui_kits/lesson-video/videos/d2-01-lab/cues.js --pronounce pronounce.json --pause 1.4 --out out/d2-01-lab
-node tools/voice-timing.mjs tts-elevenlabs/out/d2-01-lab/voice.cues.json vinuni-lesson-video-ds-lab/ui_kits/lesson-video/videos/d2-01-lab
-VK_DS=vinuni-lesson-video-ds-lab node tools/build.mjs && VK_DS=vinuni-lesson-video-ds-lab node tools/verify.mjs
-node tools/render.mjs --base http://127.0.0.1:8766 --scene d2-01-lab --audio tts-elevenlabs/out/d2-01-lab/voice.wav --out projects/d2-01-lab/render/d2-01-lab.mp4
+cd tts-elevenlabs && ELEVENLABS_MODEL_ID=eleven_v3 node tts.mjs generate --cues ../vinuni-lesson-video-ds/ui_kits/lesson-video/videos/d2-01-lab/cues.js --pronounce pronounce.json --pause 1.4 --out out/d2-01-lab
+node tools/voice-timing.mjs tts-elevenlabs/out/d2-01-lab/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/d2-01-lab
+node tools/build.mjs && node tools/verify.mjs
+node tools/render.mjs --scene d2-01-lab --audio tts-elevenlabs/out/d2-01-lab/voice.wav --out projects/d2-01-lab/render/d2-01-lab.mp4
 ```

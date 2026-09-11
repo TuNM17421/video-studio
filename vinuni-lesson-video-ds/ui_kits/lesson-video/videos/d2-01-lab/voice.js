@@ -2,7 +2,7 @@
 export const VOICE = {
   "generator": "elevenlabs",
   "model": "eleven_v3",
-  "source": "/home/tunm17421/Claude-Design/tts-elevenlabs/out/d2-01-lab/voice.cues.json",
+  "source": "tts-elevenlabs/out/d2-01-lab/voice.cues.json",
   "audioSha256": "abfc540cba10684da11a07d8e498c7f30b252d7b4cd63b26df341df39e85bcca",
   "durationInFrames": 9491,
   "cues": [

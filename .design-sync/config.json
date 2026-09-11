@@ -3,7 +3,7 @@
   "shape": "package",
   "pkg": "vinuni-lesson-video-ds",
   "globalName": "VK",
-  "entry": "vinuni-lesson-video-ds-lab/index.js",
+  "entry": "vinuni-lesson-video-ds/index.js",
   "srcDir": "components",
   "cssEntry": "components/vk.css",
   "tokensGlob": "tokens/*.css",
