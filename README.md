@@ -2,7 +2,8 @@
 
 Repo dựng **video bài giảng** cho khoá *AI in Action 20K* (VinUni): design system React/SVG 1920×1080 · 30 fps,
 bộ công cụ build / QA / render MP4, và giọng đọc ElevenLabs. Từ kịch bản đến MP4 kèm transcript và chapters
-đều chạy được bằng **Claude Code (CLI)**. Design system đồng bộ được lên **Claude Design** (claude.ai/design).
+chạy được bằng web **Video Studio** (`studio/`) hoặc trực tiếp bằng **Claude Code (CLI)**. Design system
+đồng bộ được lên **Claude Design** (claude.ai/design).
 
 ## Có gì bên trong
 
@@ -13,6 +14,9 @@ bộ công cụ build / QA / render MP4, và giọng đọc ElevenLabs. Từ k�
 | `projects/<id>/` | Kịch bản gốc (`kich-ban-goc.md`), ghi chú dựng (`PROMPTS.md`), `render/` (MP4, không đưa lên git) |
 | `tts-elevenlabs/` | Tạo giọng ElevenLabs → `out/<id>/voice.wav` (không đưa lên git) + `voice.cues.json` (có trên git) |
 | `tools/` | `build.mjs`, `verify.mjs`, `shoot.mjs` (chụp ảnh QA), `render.mjs` (MP4), `voice-timing.mjs`, `transcript.mjs` |
+| `studio/` | **Video Studio**: web local chọn style, tạo video và điều khiển agent Claude Code theo từng bước |
+| `styles/` | Danh sách style (`lesson.json`, `lesson-lab.json`: màu, component tiêu biểu, luật) và ảnh preview component |
+| `.claude/skills/make-video/` | Skill `/make-video`: quy trình dựng video, dùng chung cho Video Studio và CLI |
 | `transcripts/DayNN/`, `chapters/DayNN/` | Sản phẩm đi kèm mỗi video |
 | `.design-sync/`, `.ds-sync/` | Cấu hình và công cụ đồng bộ design system lên Claude Design (`/design-sync`) |
 
@@ -48,10 +52,13 @@ cp tts-elevenlabs/.env.example tts-elevenlabs/.env
 npm run tts:check    # kiểm tra key và giọng, không tốn ký tự
 
 npm run build && npm run verify     # phải kết thúc bằng "all checks passed"
+npm run studio:install              # cài Video Studio (một lần)
 ```
 
-- `tts-elevenlabs/.env.example` là file cấu hình **duy nhất** cần điền. `.env` chứa khoá bí mật nên đã
-  nằm trong `.gitignore`: không commit, không gửi lên chat.
+- `tts-elevenlabs/.env` chỉ cần khi **tạo giọng bằng CLI**. Video Studio không dùng file này: key được
+  nhập trên web và chỉ nằm trong RAM. Người chỉ dùng Video Studio thì bỏ qua bước `cp … .env`, và nếu máy
+  đã có `.env` thì nên xoá đi (agent chạy trong repo có thể đọc được file trên đĩa). `.env` đã nằm trong
+  `.gitignore`: không commit, không gửi lên chat.
 - Trên Linux, nếu Chromium báo thiếu thư viện hệ thống thì chạy `npx playwright install-deps chromium`
   (cần sudo).
 - Biến môi trường tuỳ chọn khi muốn dùng bản có sẵn trên máy: `CHROME=/đường/dẫn/chrome`,
@@ -68,33 +75,58 @@ npm run serve        # http://127.0.0.1:8765
 - Trình phát một video: `…/ui_kits/lesson-video/videos/d2-01-lab/player.html`
 - Một frame chính xác: `…/index.html?scene=d2-01-lab&frame=300`
 
+## Video Studio (web)
+
+```console
+npm run studio       # http://127.0.0.1:3100 — chỉ nghe trên máy này
+```
+
+Mỗi video đi qua 5 bước. Agent (Claude Code chạy nền bằng tài khoản đang đăng nhập trên máy) làm các bước
+dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
+
+1. **Kế hoạch.** Chọn style (xem dải màu, component tiêu biểu, video mẫu), nhập mã video, ngày, kịch bản
+   (.md/.txt), thư mục feedback và video cũ nếu có, ghi chú, phạm vi. Bấm **Tạo video**. Nút **Copy prompt**
+   cho prompt tương đương để dán vào Claude Code hoặc Claude Design.
+2. **Lời & cue.** Agent viết `cues.js` (lời nguyên văn), dừng lại cho bạn đọc. Gửi góp ý hoặc **Duyệt**.
+3. **Giọng đọc.** Nhập API key ElevenLabs (chỉ giữ trong RAM của server, `Ctrl + C` là mất), Voice ID,
+   model, khoảng nghỉ → **Kiểm tra** (dry-run, miễn phí: số câu mới, số ký tự sẽ gửi) → **Tạo giọng**. Nút
+   tạo giọng bị khoá khi chưa có key hoặc chưa kiểm tra. Server tự chạy TTS; agent không bao giờ thấy key.
+4. **Dựng cảnh.** Agent dựng cảnh theo độ dài giọng thật và mốc từng từ, build + verify, chụp ảnh QA.
+   Xem ảnh, gửi góp ý hoặc **Duyệt**.
+5. **Render.** Server render MP4 và transcript, sau đó agent viết file chương và `PROMPTS.md`.
+
+- Trang **Các video** mở lại video đang làm dở (trạng thái lưu ở `projects/<id>/.studio/`, không lên git).
+- Trang **Thư viện** xem style, toàn bộ component (tài liệu `.prompt.md`) và các video mẫu.
+- Agent chạy ở chế độ không hỏi: chỉ được sửa file, chạy `tools/*`, `npm run build/verify` và TTS
+  `--dry-run`; bị chặn đọc `.env`, tạo giọng tốn phí, commit/push và `/design-sync`.
+- Khi phát triển Video Studio: `STUDIO_TTS_MOCK=1 npm run studio` tạo giọng im lặng thay vì gọi ElevenLabs.
+
 ## Gen video bằng Claude CLI
 
-Mở Claude Code ở thư mục repo (`claude`). Claude tự đọc `CLAUDE.md` (pipeline, luật thiết kế) và
-`vinuni-lesson-video-ds/README.md`. Bạn chỉ cần đưa kịch bản và yêu cầu, ví dụ:
+Mở Claude Code ở thư mục repo (`claude`). Cách nhanh nhất là bấm **Copy prompt** ở bước Kế hoạch của
+Video Studio rồi dán vào. Hoặc gõ thẳng, ví dụ:
 
-> Dựng video mới `d3-02-...` từ kịch bản đính kèm (`projects/d3-02-.../kich-ban-goc.md`). Làm theo pipeline
-> trong CLAUDE.md, lấy `d2-01-lab` làm mẫu. Tạo giọng ElevenLabs, render MP4, rồi xuất transcript và
-> chapters vào `transcripts/Day03/` và `chapters/Day03/`.
+> /make-video d3-02-... — kịch bản ở `~/Downloads/...md`, Day03, style Lesson Lab Style. Làm đủ giọng,
+> render, transcript và file chương.
 
-Claude sẽ làm lần lượt (bạn duyệt từng bước khi được hỏi):
+Skill `make-video` (`.claude/skills/make-video/SKILL.md`) làm theo thứ tự **tạo giọng trước** (bạn duyệt
+từng bước khi được hỏi):
 
 1. **Kịch bản → cues.** Chép kịch bản vào `projects/<id>/kich-ban-goc.md`, viết `cues.js`: mỗi câu đọc
-   một cue, lời giữ **nguyên văn**.
-2. **Dựng scene.** Mỗi cue một `sNN.jsx`, theo luật trong design system (vùng nội dung, phụ đề ≤ 78 ký tự,
-   màu trong token, font Montserrat, connector…). Kèm `STORYBOARD.md`.
-3. **Build và QA.** `npm run build && npm run verify`, chụp ảnh các frame quan trọng bằng
-   `node tools/shoot.mjs` rồi xem lại.
-4. **Giọng đọc.** Chạy dry-run trước (chưa tốn tiền), sau đó mới gọi API:
+   một cue, lời giữ **nguyên văn**. Chốt lời trước khi tạo giọng.
+2. **Giọng đọc.** Chạy dry-run trước (chưa tốn tiền), sau đó mới gọi API, rồi gắn giọng vào video:
    ```console
-   cd tts-elevenlabs
-   node tts.mjs generate --cues ../vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce pronounce.json --dry-run
-   node tts.mjs generate --cues ../vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce pronounce.json
-   cd ..
-   node tools/voice-timing.mjs tts-elevenlabs/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>
-   npm run build && npm run verify
+   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out tts-elevenlabs/out/<id> --dry-run
+   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out tts-elevenlabs/out/<id>
+   node tools/voice-timing.mjs tts-elevenlabs/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues
    ```
-   Kết quả được cache theo từng câu: chạy lại chỉ tốn ký tự cho câu đã sửa.
+   ElevenLabs trả về mốc thời gian từng ký tự. `--write-cues` ghi độ dài thật của từng câu vào `cues.js`,
+   và `voice.js` giữ mốc từng từ. Kết quả được cache theo từng câu: sửa một câu chỉ tốn ký tự cho câu đó.
+3. **Dựng scene.** Mỗi cue một `sNN.jsx`, dựng đúng độ dài giọng thật; hoạt ảnh đặt theo
+   `spokenAt(n, 'cụm từ')` = lúc cụm từ thật sự được đọc. Theo luật của style và design system (vùng nội
+   dung, phụ đề ≤ 78 ký tự, font Montserrat, connector…). Kèm `STORYBOARD.md`.
+4. **Build và QA.** `npm run build && npm run verify`, chụp ảnh các frame quan trọng bằng
+   `node tools/shoot.mjs` vào `projects/<id>/qa/` rồi xem lại.
 5. **Render MP4** (server xem trước phải đang chạy):
    ```console
    node tools/render.mjs --scene <id> --audio tts-elevenlabs/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4
@@ -112,8 +144,8 @@ Claude sẽ làm lần lượt (bạn duyệt từng bước khi được hỏi)
 7. **Commit.** `git add -A && git commit` rồi push lên branch của bạn. `.gitignore` đã loại MP4, WAV,
    cache giọng và `.env`.
 
-Muốn sửa một video có sẵn (ví dụ `d2-01-lab`) nhưng chưa có `voice.wav` thì gen lại giọng ở bước 4.
-Nếu lời trong `cues.js` không đổi, `voice.cues.json` trên git vẫn khớp nên bước 4 có thể bỏ qua cho đến khi render.
+Muốn sửa một video có sẵn (ví dụ `d2-01-lab`) nhưng chưa có `voice.wav` thì gen lại giọng ở bước 2.
+Nếu lời trong `cues.js` không đổi, `voice.cues.json` trên git vẫn khớp nên chỉ cần `voice.wav` khi render.
 
 ## Đưa design system lên Claude Design (bằng tài khoản của bạn)
 
@@ -145,3 +177,13 @@ các rủi ro khi re-sync.
 Sửa nguồn trong `vinuni-lesson-video-ds/` (`lib/`, `components/`, `ui_kits/lesson-video/scenes/`), rồi chạy
 `npm run build && npm run verify`. Màu mới chỉ được khai báo trong `lib/tokens.js`. Thay đổi lớn làm trên
 branch `lab`, duyệt xong mới merge vào `main`, sau đó `/design-sync` để cập nhật Claude Design.
+
+## Thêm style mới
+
+1. Tạo `styles/<id>.json` theo mẫu `styles/lesson-lab.json`: `name`, `summary`, `extends` (style gốc, nếu có),
+   `palette`, `showcase` (component tiêu biểu + ảnh trong `styles/previews/`), `rules`, `sampleVideo`.
+2. Màu mới khai báo trong `vinuni-lesson-video-ds/lib/tokens.js`; component mới thêm vào design system
+   (trên branch `lab`).
+3. Ảnh preview component lấy từ lần `/design-sync` gần nhất: `python3 studio/scripts/make-previews.py`.
+
+Video Studio và skill `make-video` đọc thẳng các file này, không cần sửa code.
