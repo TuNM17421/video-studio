@@ -74,4 +74,7 @@ commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "k
   `studio/node_modules/next/dist/docs/` before changing studio code.
 - ElevenLabs is used only here; the Video-studio Remotion repo (the original style source) mandates Google
   Cloud TTS. This repo no longer depends on Video-studio.
+- `node tools/voice-sample.mjs --text "…" "Tên=<voice id>" …` đọc thử một đoạn bằng nhiều giọng ElevenLabs,
+  mỗi giọng một WAV trong `voice/samples/` — để chọn người dẫn hoặc lấy mẫu ~10 giây cho model local.
+  Luôn `--dry-run` trước vì mỗi yêu cầu đều bị tính ký tự.
 - Reply to the user in Vietnamese.
