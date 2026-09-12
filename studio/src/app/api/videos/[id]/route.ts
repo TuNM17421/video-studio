@@ -3,7 +3,7 @@ import { handle } from "@/lib/server/http";
 import { currentJob, isRunning, logs } from "@/lib/server/jobs";
 import { assertId, HttpError, rel } from "@/lib/server/paths";
 import { trashVideo } from "@/lib/server/trash-video";
-import { lastDryRun } from "@/lib/server/voice";
+import { lastDryRun, lastImportReport } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
 
 export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -18,6 +18,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     job: currentJob(id),
     logs: logs(id).slice(-300),
     dryRun: lastDryRun(id),
+    importReport: lastImportReport(id),
   };
   return Response.json(detail);
 });

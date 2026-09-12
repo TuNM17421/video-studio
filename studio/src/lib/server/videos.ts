@@ -4,12 +4,12 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isRunning } from "./jobs";
-import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut } from "./paths";
+import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
 
 const execFileP = promisify(execFile);
 const STAGES: StageId[] = ["cues", "voice", "scenes", "render", "deliver"];
 
-export const DEFAULT_VOICE = { voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4 };
+export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "" };
 
 function stateFile(id: string) {
   return path.join(stateDir(id), "state.json");
@@ -44,6 +44,7 @@ export function artifacts(id: string, day: string): Artifacts {
     return f ? path.join(dir, f) : null;
   };
   const voiceJs = path.join(videoDir(id), "voice.js");
+  const wav = path.join(voiceOut(id), "voice.wav");
   const mp4 = firstMp4();
   const ch = chapters();
   const prompts = path.join(projectDir(id), "PROMPTS.md");
@@ -51,6 +52,8 @@ export function artifacts(id: string, day: string): Artifacts {
     script: exists(path.join(projectDir(id), "kich-ban-goc.md")),
     cues: exists(path.join(videoDir(id), "cues.js")),
     voice: exists(path.join(voiceOut(id), "voice.cues.json")) && exists(voiceJs) && !/VOICE = null/.test(fs.readFileSync(voiceJs, "utf8")),
+    voiceWav: exists(wav) ? rel(wav) : null,
+    voiceScript: exists(path.join(voiceScriptDir(id), "doc-thu.md")),
     scenes: exists(path.join(videoDir(id), "video.jsx")),
     mp4: mp4 ? rel(mp4) : null,
     transcript: day && exists(transcriptPath(day, id)) ? rel(transcriptPath(day, id)) : null,
@@ -74,6 +77,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   if (!exists(projectDir(id)) && !exists(videoDir(id))) throw new HttpError(404, `Không có video ${id}.`);
   if (exists(stateFile(id))) {
     const state = JSON.parse(fs.readFileSync(stateFile(id), "utf8")) as VideoState;
+    state.voice = { ...DEFAULT_VOICE, ...state.voice };
     // a server restart kills running agents: never leave a stage stuck in "running"
     if (!isRunning(id)) for (const s of STAGES) if (state.stages[s] === "running") state.stages[s] = "error";
     return { state, managed: true };

@@ -13,7 +13,7 @@ type Step = "plan" | "cues" | "voice" | "scenes" | "render";
 const STEPS: { id: Step; title: string; description: string }[] = [
   { id: "plan", title: "Kế hoạch", description: "Style và nội dung" },
   { id: "cues", title: "Lời & cue", description: "Chốt lời đọc" },
-  { id: "voice", title: "Giọng đọc", description: "ElevenLabs" },
+  { id: "voice", title: "Giọng đọc", description: "Nguồn và bản thu" },
   { id: "scenes", title: "Dựng cảnh", description: "Theo giọng thật" },
   { id: "render", title: "Render", description: "MP4 và bàn giao" },
 ];
@@ -76,7 +76,8 @@ function Preview({ detail, styles, draftStyle, hasKey }: { detail: VideoDetail |
       <div><dt>Số câu</dt><dd>{cues?.cues.length ?? "—"}</dd></div>
       <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>
       <div><dt>Agent</dt><dd>{agent}</dd></div>
-      <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>
+      <div><dt>Nguồn giọng</dt><dd>{detail?.state.voice.source === "import" ? "Audio có sẵn" : "ElevenLabs"}</dd></div>
+      {detail?.state.voice.source !== "import" && <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>}
     </dl>
   </aside>;
 }

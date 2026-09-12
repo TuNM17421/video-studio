@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRightOutlined, CheckCircleFilled, DeleteOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
-import { Alert, Button, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
+import { ArrowRightOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, FolderOpenOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
+import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
-import type { DryRun, JobInfo, LogEntry, VideoDetail, VoiceSettings } from "@/lib/types";
+import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -149,6 +149,53 @@ function CueList({ detail }: { detail: VideoDetail }) {
   })}</div>;
 }
 
+/**
+ * The locked narration, exported so it can be read aloud or fed to a local model. The files land in
+ * projects/<id>/voice-script/; voice-batch.jsonl is already in the shape OmniVoice's batch CLI wants,
+ * so its results come back named 01.wav, 02.wav … and import with no renaming.
+ */
+function ScriptExport({ detail, busy, act }: { detail: VideoDetail; busy: boolean; act: StepProps["act"] }) {
+  const id = detail.state.id;
+  const [script, setScript] = useState<VoiceScript | null>(null);
+  const [copied, setCopied] = useState(false);
+  const written = script !== null || detail.artifacts.voiceScript;
+  const dir = `projects/${id}/voice-script`;
+  const files: [string, string][] = [
+    ["Bản đọc (Markdown)", "doc-thu.md"],
+    ["Lời thuần (TXT)", "doc-thu.txt"],
+    ["Batch cho model local (JSONL)", "voice-batch.jsonl"],
+  ];
+  const write = () => act(async () => setScript(await post(`/api/videos/${id}/voice`, { action: "export-script" }) as VoiceScript));
+  const copy = () => act(async () => {
+    const result = script ?? (await post(`/api/videos/${id}/voice`, { action: "export-script" }) as VoiceScript);
+    setScript(result);
+    await navigator.clipboard.writeText(result.text);
+    setCopied(true);
+  });
+
+  return <section className="vs-script" aria-labelledby="script-export-title">
+    <div className="vs-script-head">
+      <div>
+        <h3 id="script-export-title">Lời đọc để thu ngoài</h3>
+        <p>Gửi cho người đọc, hoặc đưa vào model local rồi nhập audio ngược lại ở bước Giọng đọc.</p>
+      </div>
+      <div className="vs-script-actions">
+        <Button disabled={busy} icon={<CopyOutlined />} onClick={copy}>{copied ? "Đã copy" : "Copy lời đọc"}</Button>
+        <Button type="primary" disabled={busy} icon={<ImportOutlined />} onClick={write}>{written ? "Xuất lại" : "Xuất ra tệp"}</Button>
+      </div>
+    </div>
+    {written && <ul className="vs-deliverables">
+      {files.map(([label, file]) => <li key={file}>
+        <CheckCircleFilled className="is-ok" />
+        <span>{label}</span>
+        <Button type="link" href={fileUrl(`${dir}/${file}`)} target="_blank">{file}</Button>
+      </li>)}
+      <li><CheckCircleFilled className="is-ok" /><span>Mỗi câu một tệp .txt</span><small className="mono">{dir}/cau/</small></li>
+    </ul>}
+    {script && <p className="vs-script-note">{script.spoken}/{script.cues} câu cần thu · đặt tên audio theo số câu: <span className="mono">01.wav, 02.wav …</span></p>}
+  </section>;
+}
+
 export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
   const id = detail.state.id;
   const status = detail.state.stages.cues;
@@ -163,6 +210,7 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
       <AgentSummary logs={runLogs} />
       <CueList detail={detail} />
+      {status === "done" && <ScriptExport detail={detail} busy={busy} act={act} />}
       {(status === "review" || (status === "done" && !voiced)) && <FeedbackBox disabled={busy} placeholder="Ví dụ: tách câu 12 thành hai câu; đổi tên nhân vật Minh thành Dũng…" onSend={(message) => act(() => post(`/api/videos/${id}/agent`, { stage: "cues", message }))} />}
       <AgentLog logs={runLogs} open={status === "running"} />
     </div>
@@ -182,60 +230,185 @@ const MODELS = [
   { id: "eleven_v3", label: "Eleven v3" },
 ];
 
+const SOURCES = [
+  { value: "elevenlabs", label: "Tạo bằng ElevenLabs" },
+  { value: "import", label: "Nhập audio có sẵn" },
+];
+
+/** Whether a scan still describes the folder on screen — same rule as the ElevenLabs dry-run. */
+const scanKey = (s: VoiceSettings) => JSON.stringify([s.importDir, s.pause]);
+
+function matchTag(row: ImportReport["rows"][number]) {
+  if (row.matchRatio == null) return null;
+  return `khớp ${Math.round(row.matchRatio * 100)}%`;
+}
+
+/**
+ * Narration recorded by a member or made by a local model: one audio file per câu in one folder.
+ *
+ * The report is the whole point of this panel. A folder that is quietly off by one — a câu skipped
+ * while recording, the rest shifted up — reaches the MP4 looking fine, so every file is shown against
+ * the câu it landed on, with how much of that câu's words were actually heard in it.
+ */
+function ImportPanel({ detail, settings, setSettings, busy, act }: {
+  detail: VideoDetail;
+  settings: VoiceSettings;
+  setSettings: (v: VoiceSettings) => void;
+  busy: boolean;
+  act: StepProps["act"];
+}) {
+  const id = detail.state.id;
+  const [report, setReport] = useState<ImportReport | null>(detail.importReport);
+  const [scanned, setScanned] = useState(detail.importReport ? scanKey(detail.state.voice) : "");
+  const [force, setForce] = useState(false);
+  const master = useRef<HTMLAudioElement>(null);
+  const fresh = !!report && scanned === scanKey(settings);
+  const problems = report?.rows.filter((r) => r.level === "error").length ?? 0;
+  const warnings = report?.rows.filter((r) => r.level === "warn").length ?? 0;
+  const bound = detail.artifacts.voice ? detail.cues?.cues ?? [] : [];
+
+  async function pick() {
+    await act(async () => {
+      const picked = await api<{ path?: string; cancelled?: boolean }>("/api/fs-picker", { method: "POST", json: { kind: "directory", purpose: "voice" } });
+      if (picked.path) setSettings({ ...settings, importDir: picked.path });
+    });
+  }
+  const scan = () => act(async () => {
+    const result = await post(`/api/videos/${id}/voice`, { action: "scan-import", settings }) as ImportReport;
+    setReport(result);
+    setScanned(scanKey(settings));
+    setForce(false);
+  });
+  const play = (n: number) => {
+    const cue = bound.find((c) => c.n === n);
+    const audio = master.current;
+    if (!cue || !audio) return;
+    audio.currentTime = cue.start / 30;
+    void audio.play();
+  };
+
+  return <>
+    <div className="field-grid vs-import-pick">
+      <Form.Item className="field" label="Thư mục audio · mỗi câu một tệp (01.wav, 02.wav …)">
+        <Input value={settings.importDir} onChange={(e) => setSettings({ ...settings, importDir: e.target.value })} placeholder="/home/…/results" spellCheck={false} autoComplete="off" />
+      </Form.Item>
+      <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
+    </div>
+    <div className="vs-dry">
+      <Button disabled={busy} icon={<FolderOpenOutlined />} onClick={pick}>Chọn thư mục</Button>
+      <Button disabled={busy || !settings.importDir.trim()} icon={<SearchOutlined />} onClick={scan}>Kiểm tra thư mục</Button>
+      {report && <div className={`vs-dry-result ${fresh ? "" : "is-stale"}`}>
+        <strong>{report.matched}/{report.needFile} câu có file · {problems} lỗi · {warnings} cảnh báo{report.align.used ? ` · đối chiếu bằng Whisper ${report.align.model}` : ""}</strong>
+        {!fresh && <small>Thư mục hoặc khoảng nghỉ đã đổi, bấm Kiểm tra lại.</small>}
+      </div>}
+    </div>
+    {report?.align.note && <Alert className="feedback" type="warning" showIcon message={report.align.note} />}
+    {report && <ul className="vs-map">
+      {report.rows.map((r) => <li key={r.n} className={`is-${r.level}`}>
+        <span className="vs-map-key mono">{r.key}</span>
+        <span className="vs-map-file mono">{r.file ?? (r.silent ? "im lặng" : "—")}</span>
+        <span className="vs-map-text">{r.silent ? "(khoảng dừng)" : r.text}</span>
+        <span className="vs-map-meta">{r.seconds ? `${r.seconds}s` : ""}{matchTag(r) ? ` · ${matchTag(r)}` : ""}</span>
+        {r.notes.length > 0 && <span className="vs-map-notes">{r.notes.join(" · ")}</span>}
+        {bound.length > 0 && !r.silent && <Button className="vs-map-play" type="text" size="small" aria-label={`Nghe câu ${r.key}`} icon={<PlayCircleFilled />} onClick={() => play(r.n)} />}
+      </li>)}
+    </ul>}
+    {report && (report.extra.length > 0 || report.clashes.length > 0) && <ul className="vs-map-aside">
+      {report.extra.map((e) => <li key={e.file}>Thừa: <span className="mono">{e.file}</span> — {e.reason}</li>)}
+      {report.clashes.map((c) => <li key={c.file}>Câu {c.n} trùng: dùng <span className="mono">{c.kept}</span>, bỏ qua <span className="mono">{c.file}</span></li>)}
+    </ul>}
+    {detail.artifacts.voiceWav && <div className="audio-result vs-audio">
+      <div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : " · chưa có mốc từng từ"}</span></div>
+      <audio ref={master} controls src={fileUrl(detail.artifacts.voiceWav)} preload="none" />
+    </div>}
+    {fresh && problems > 0 && <Checkbox className="vs-force" checked={force} onChange={(e) => setForce(e.target.checked)}>
+      Vẫn nhập dù {problems} câu có vấn đề — tôi đã nghe lại và chấp nhận
+    </Checkbox>}
+    <Button type="primary" block disabled={busy || !fresh || (problems > 0 && !force)} icon={fresh && (problems === 0 || force) ? <ImportOutlined /> : <LockOutlined />}
+      onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "import", force }))}>
+      {fresh ? `Nhập giọng · ${report?.matched ?? 0} câu` : "Kiểm tra thư mục trước"}
+    </Button>
+  </>;
+}
+
+function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, setHasKey }: {
+  detail: VideoDetail;
+  settings: VoiceSettings;
+  setSettings: (v: VoiceSettings) => void;
+  busy: boolean;
+  act: StepProps["act"];
+  hasKey: boolean;
+  setHasKey: (v: boolean) => void;
+}) {
+  const id = detail.state.id;
+  const [dry, setDry] = useState<DryRun | null>(detail.dryRun);
+  const [checked, setChecked] = useState<string>(detail.dryRun ? JSON.stringify(detail.state.voice) : "");
+  const [key, setKey] = useState("");
+  const fresh = !!dry && checked === JSON.stringify(settings);
+  const locked = !hasKey || !fresh;
+  const saveKey = () => act(async () => { await api("/api/voice-key", { method: "POST", json: { key } }); setHasKey(true); setKey(""); });
+  const check = () => act(async () => {
+    setDry(await api<DryRun>(`/api/videos/${id}/voice`, { method: "POST", json: { action: "dry-run", settings } }));
+    setChecked(JSON.stringify(settings));
+  });
+
+  return <>
+    <div className="vs-key-row">
+      <KeyOutlined />
+      {hasKey
+        ? <><Tag color="success" className="vs-key-on">Đã nhập key</Tag><Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => act(async () => { await api("/api/voice-key", { method: "DELETE" }); setHasKey(false); })}>Xoá key</Button></>
+        : <><Input.Password className="vs-key-field" value={key} onChange={(e) => setKey(e.target.value)} placeholder="API key ElevenLabs" aria-label="API key ElevenLabs" autoComplete="off" spellCheck={false} /><Button disabled={!key.trim() || busy} onClick={saveKey}>Dùng key</Button></>}
+    </div>
+    <div className="field-grid vs-grid-4">
+      <Form.Item className="field" label="Voice ID"><Input value={settings.voiceId} onChange={(e) => setSettings({ ...settings, voiceId: e.target.value.trim() })} spellCheck={false} autoComplete="off" /></Form.Item>
+      <Form.Item className="field" label="Model"><Select value={settings.model} onChange={(model) => setSettings({ ...settings, model })} options={MODELS.map((model) => ({ value: model.id, label: model.label }))} /></Form.Item>
+      <Form.Item className="field" label="Ngôn ngữ"><Select value={settings.language} onChange={(language) => setSettings({ ...settings, language })} options={[{ value: "vi", label: "Tiếng Việt" }, { value: "auto", label: "Tự nhận (v3)" }]} /></Form.Item>
+      <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
+    </div>
+    <div className="vs-dry">
+      <Button disabled={busy || !settings.voiceId} icon={<SearchOutlined />} onClick={check}>Kiểm tra</Button>
+      {dry && <div className={`vs-dry-result ${fresh ? "" : "is-stale"}`}>
+        <strong>{dry.cues.length} câu · {dry.cues.filter((c) => c.cached).length} có sẵn trong cache · {dry.toGenerate} câu mới · {dry.billable.toLocaleString("vi-VN")} ký tự sẽ gửi</strong>
+        {!fresh && <small>Cài đặt đã đổi, bấm Kiểm tra lại.</small>}
+      </div>}
+    </div>
+    {detail.artifacts.voiceWav && <div className="audio-result vs-audio"><div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : ""}</span></div><audio controls src={fileUrl(detail.artifacts.voiceWav)} preload="none" /></div>}
+    <Button type="primary" block disabled={locked || busy} icon={locked ? <LockOutlined /> : <SoundOutlined />} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "generate" }))}>
+      {dry && fresh && dry.billable === 0 ? "Ghép giọng từ cache" : `Tạo giọng${dry && fresh ? ` · ${dry.toGenerate} câu, ${dry.billable.toLocaleString("vi-VN")} ký tự` : ""}`}
+    </Button>
+  </>;
+}
+
 export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKey }: StepProps & { hasKey: boolean; setHasKey: (v: boolean) => void }) {
   const id = detail.state.id;
   const status = detail.state.stages.voice;
   const [settings, setSettings] = useState<VoiceSettings>(detail.state.voice);
-  const [dry, setDry] = useState<DryRun | null>(detail.dryRun);
-  const [checked, setChecked] = useState<string>(detail.dryRun ? JSON.stringify(detail.state.voice) : "");
-  const [key, setKey] = useState("");
   // Voice settings can change after a server-side job refreshes this video.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSettings(detail.state.voice); }, [detail.state.voice]);
   const cuesApproved = detail.state.stages.cues === "done";
-  const fresh = !!dry && checked === JSON.stringify(settings);
-  const runLogs = stageLogs(logs, /^Tạo giọng ·/);
-  async function saveKey() {
-    await act(async () => { await api("/api/voice-key", { method: "POST", json: { key } }); setHasKey(true); setKey(""); });
-  }
-  async function check() {
-    await act(async () => {
-      const result = await api<DryRun>(`/api/videos/${id}/voice`, { method: "POST", json: { action: "dry-run", settings } });
-      setDry(result);
-      setChecked(JSON.stringify(settings));
-    });
-  }
-  const locked = !hasKey || !fresh || !cuesApproved;
+  const runLogs = stageLogs(logs, /^Tạo giọng ·|^Nhập giọng ·/);
+  const panel = { detail, settings, setSettings, busy, act };
+  /** Remember the choice server-side, so a reload does not drop the member back onto the API tab. */
+  const changeSource = (source: VoiceSettings["source"]) => {
+    setSettings({ ...settings, source });
+    void act(() => post(`/api/videos/${id}/voice`, { action: "source", settings: { ...settings, source } }));
+  };
+
   return <>
     <div className="vs-step-body">
       <div className="vs-step-status"><StageBadge status={status} /></div>
       {!cuesApproved && <div className="step-empty"><h3>Duyệt lời & cue trước</h3></div>}
       {cuesApproved && <>
-        <div className="vs-key-row">
-          <KeyOutlined />
-          {hasKey
-            ? <><Tag color="success" className="vs-key-on">Đã nhập key</Tag><Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => act(async () => { await api("/api/voice-key", { method: "DELETE" }); setHasKey(false); })}>Xoá key</Button></>
-            : <><Input.Password className="vs-key-field" value={key} onChange={(e) => setKey(e.target.value)} placeholder="API key ElevenLabs" aria-label="API key ElevenLabs" autoComplete="off" spellCheck={false} /><Button disabled={!key.trim() || busy} onClick={saveKey}>Dùng key</Button></>}
-        </div>
-        <div className="field-grid vs-grid-4">
-          <Form.Item className="field" label="Voice ID"><Input value={settings.voiceId} onChange={(e) => setSettings({ ...settings, voiceId: e.target.value.trim() })} spellCheck={false} autoComplete="off" /></Form.Item>
-          <Form.Item className="field" label="Model"><Select value={settings.model} onChange={(model) => setSettings({ ...settings, model })} options={MODELS.map((model) => ({ value: model.id, label: model.label }))} /></Form.Item>
-          <Form.Item className="field" label="Ngôn ngữ"><Select value={settings.language} onChange={(language) => setSettings({ ...settings, language })} options={[{ value: "vi", label: "Tiếng Việt" }, { value: "auto", label: "Tự nhận (v3)" }]} /></Form.Item>
-          <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
-        </div>
-        <div className="vs-dry">
-          <Button disabled={busy || !settings.voiceId} icon={<SearchOutlined />} onClick={check}>Kiểm tra</Button>
-          {dry && <div className={`vs-dry-result ${fresh ? "" : "is-stale"}`}>
-            <strong>{dry.cues.length} câu · {dry.cues.filter((c) => c.cached).length} có sẵn trong cache · {dry.toGenerate} câu mới · {dry.billable.toLocaleString("vi-VN")} ký tự sẽ gửi</strong>
-            {!fresh && <small>Cài đặt đã đổi, bấm Kiểm tra lại.</small>}
-          </div>}
-        </div>
-        <JobProgress job={job?.kind === "voice" ? job : null} onStop={stop} />
+        <Segmented className="vs-source" aria-label="Nguồn giọng đọc" value={settings.source} onChange={(value) => changeSource(value as VoiceSettings["source"])} options={SOURCES} block />
+        {/* Labels stack above their field, as in the plan form; without it antd lays them out inline. */}
+        <Form layout="vertical" requiredMark={false} component={false}>
+          {settings.source === "import"
+            ? <ImportPanel {...panel} />
+            : <ElevenLabsPanel {...panel} hasKey={hasKey} setHasKey={setHasKey} />}
+        </Form>
+        <JobProgress job={job && ["voice", "import-scan"].includes(job.kind) ? job : null} onStop={stop} />
         {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
-        {detail.artifacts.voice && <div className="audio-result vs-audio"><div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : ""}</span></div><audio controls src={fileUrl(`tts-elevenlabs/out/${id}/voice.wav`)} preload="none" /></div>}
-        <Button type="primary" block disabled={locked || busy} icon={locked ? <LockOutlined /> : <SoundOutlined />} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "generate" }))}>
-          {dry && fresh && dry.billable === 0 ? "Ghép giọng từ cache" : `Tạo giọng${dry && fresh ? ` · ${dry.toGenerate} câu, ${dry.billable.toLocaleString("vi-VN")} ký tự` : ""}`}
-        </Button>
         <AgentLog logs={runLogs} open={status === "running"} />
       </>}
     </div>

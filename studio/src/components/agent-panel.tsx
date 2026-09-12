@@ -25,6 +25,8 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     render: "Render MP4",
     deliver: "Bàn giao",
     "dry-run": "Kiểm tra giọng",
+    "voice-script": "Xuất lời đọc",
+    "import-scan": "Kiểm tra thư mục audio",
   };
   return <>
     <div className="job-progress" role="status">
