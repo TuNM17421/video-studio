@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>DialogueCard — thẻ hội thoại</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { background: var(--color-bg); font-family: var(--font-sans); padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { font-size: 14px; color: #4a4a4a; margin: 0 0 18px; max-width: 900px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h1>DialogueCard</h1>
+<p>Ba nhân vật đối đáp. Mỗi chữ hiện đúng frame nó được nói — ở video thật, các mốc này đến từ
+<code>spokenWords(n)</code>, tức mốc từng từ đo được từ bản thu; trang này mô phỏng bằng nhịp đều.
+Mỗi nhân vật một màu và một phía cố định.</p>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  var h = VK.h;
+  // Nhịp đều thay cho mốc thật, chỉ để xem hình: chữ thứ i của câu bắt đầu ở frame `from + i * per`.
+  function say(text, from, per) {
+    return text.split(/\s+/).map(function (w, i) { return { text: w, frame: from + i * (per || 7) }; });
+  }
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: 560,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.DialogueCard, {
+          x: 150, y: 300, w: 780, side: 'left', speaker: 'Nhật Phong', tone: 'accent', frame: f,
+          words: say('Gần như mọi dự án trí tuệ nhân tạo ở các công ty đều bắt đầu bằng một câu như vậy.', 10),
+        }),
+        f > 150 && h(VK.DialogueCard, {
+          x: 990, y: 560, w: 780, side: 'right', speaker: 'Viên', tone: 'red', frame: f,
+          words: say('Nhưng em làm nhân sự, bài này có phải cho em không ạ?', 170),
+        }),
+        f > 300 && h(VK.DialogueCard, {
+          x: 150, y: 800, w: 900, side: 'left', speaker: 'Cẩm Hồng', tone: 'strong', frame: f,
+          words: say('Hồi đầu mình cũng hỏi y hệt câu đó, mình cũng không phải dân kỹ thuật đâu.', 320),
+        })
+      );
+    }
+  });
+</script>
+</body>
+</html>

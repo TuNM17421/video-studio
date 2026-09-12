@@ -4,6 +4,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isAgentProvider } from "../agent-providers";
+import { cleanModules, moduleById } from "../modules";
+import { defaultVoiceId, listVoices } from "./catalog";
 import { isRunning } from "./jobs";
 import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
 
@@ -11,6 +13,8 @@ const execFileP = promisify(execFile);
 const STAGES: StageId[] = ["cues", "voice", "scenes", "render", "deliver"];
 
 export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "" };
+/** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
+export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
 type LegacyVideoState = Omit<VideoState, "agent"> & {
   agent?: Partial<VideoState["agent"]>;
@@ -26,7 +30,12 @@ export function normalizeVideoState(value: unknown): VideoState {
   const sessionId = typeof currentSession === "string" || currentSession === null
     ? currentSession
     : typeof legacySessionId === "string" ? legacySessionId : null;
-  return { ...state, agent: { provider, sessionId }, voice: { ...DEFAULT_VOICE, ...stored.voice } } as VideoState;
+  return {
+    ...state,
+    agent: { provider, sessionId },
+    request: { ...state.request, modules: cleanModules(state.request?.modules) },
+    voice: { ...DEFAULT_VOICE, ...stored.voice },
+  } as VideoState;
 }
 
 function stateFile(id: string) {
@@ -101,12 +110,12 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   }
   const day = findDay(id);
   const request: VideoRequest = {
-    style: "lesson-lab", day, title: id, scriptName: "kich-ban-goc.md", feedbackDir: "", oldVideoDir: "", notes: "",
+    style: "lesson-lab", modules: [], day, title: id, scriptName: "kich-ban-goc.md", feedbackDir: "", oldVideoDir: "", notes: "",
     scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true },
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: { ...DEFAULT_VOICE }, lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), lastError: null },
     managed: false,
   };
 }
@@ -175,6 +184,26 @@ export function styleName(id: string) {
 }
 
 /** REQUEST.md: what the agent (and anyone running the video by hand) reads first. */
+/** What each chosen capability demands of the script — written into REQUEST.md, which is what the agent reads. */
+function moduleSections(modules: string[]) {
+  const lines: string[] = [];
+  if (modules.includes("dialogue")) {
+    const names = listVoices().voices.map((v) => `${v.name}${v.gender ? ` (${v.gender})` : ""}`).join(" · ");
+    lines.push(
+      "## Hội thoại",
+      "",
+      "Video này có nhiều người nói. Viết kịch bản theo `templates/kich-ban-hoi-thoai.md`, và trong `cues.js`",
+      "mỗi câu phải khai `speaker` (tên một giọng dưới đây) cùng `delivery` (kiểu đọc: ke · giang · nhe · hoi · nhan).",
+      "",
+      `Chỉ được dùng các giọng đã có: ${names}. Tên khác sẽ bị chặn ở bước dry-run.`,
+      "Gom các câu liền nhau của cùng một người lại — ngữ điệu không nối qua ranh giới nhân vật.",
+      "Thẻ hội thoại trên màn hình dùng component `DialogueCard` với `words={spokenWords(n)}`; không viết caption tay.",
+      "",
+    );
+  }
+  return lines;
+}
+
 export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
@@ -187,7 +216,9 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Video cũ: ${r.oldVideoDir ? `\`${r.oldVideoDir}\`` : "không có"}`,
     ...(agentLabel ? [`- Agent: ${agentLabel} (gắn cố định khi tạo video)`] : []),
     `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
+    `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
+    ...moduleSections(r.modules),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",
