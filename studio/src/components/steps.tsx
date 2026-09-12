@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRightOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, FolderOpenOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
 import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
+import { SourcePickerField } from "./source-picker";
 
 export interface StepProps {
   detail: VideoDetail;
@@ -267,12 +268,6 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
   const warnings = report?.rows.filter((r) => r.level === "warn").length ?? 0;
   const bound = detail.artifacts.voice ? detail.cues?.cues ?? [] : [];
 
-  async function pick() {
-    await act(async () => {
-      const picked = await api<{ path?: string; cancelled?: boolean }>("/api/fs-picker", { method: "POST", json: { kind: "directory", purpose: "voice" } });
-      if (picked.path) setSettings({ ...settings, importDir: picked.path });
-    });
-  }
   const scan = () => act(async () => {
     const result = await post(`/api/videos/${id}/voice`, { action: "scan-import", settings }) as ImportReport;
     setReport(result);
@@ -289,13 +284,10 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
 
   return <>
     <div className="field-grid vs-import-pick">
-      <Form.Item className="field" label="Thư mục audio · mỗi câu một tệp (01.wav, 02.wav …)">
-        <Input value={settings.importDir} onChange={(e) => setSettings({ ...settings, importDir: e.target.value })} placeholder="/home/…/results" spellCheck={false} autoComplete="off" />
-      </Form.Item>
+      <SourcePickerField label="Thư mục audio" purpose="voice" value={settings.importDir} disabled={busy} onChange={(importDir) => setSettings({ ...settings, importDir })} />
       <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
     </div>
     <div className="vs-dry">
-      <Button disabled={busy} icon={<FolderOpenOutlined />} onClick={pick}>Chọn thư mục</Button>
       <Button disabled={busy || !settings.importDir.trim()} icon={<SearchOutlined />} onClick={scan}>Kiểm tra thư mục</Button>
       {report && <div className={`vs-dry-result ${fresh ? "" : "is-stale"}`}>
         <strong>{report.matched}/{report.needFile} câu có file · {problems} lỗi · {warnings} cảnh báo{report.align.used ? ` · đối chiếu bằng Whisper ${report.align.model}` : ""}</strong>

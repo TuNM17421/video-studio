@@ -168,7 +168,7 @@ export function requestMarkdown(id: string, r: VideoRequest) {
     `- Kịch bản: \`projects/${id}/kich-ban-goc.md\`${r.scriptName ? ` (tệp gốc: ${r.scriptName})` : ""}`,
     `- Feedback bản cũ: ${r.feedbackDir ? `\`${r.feedbackDir}\`` : "không có"}`,
     `- Video cũ: ${r.oldVideoDir ? `\`${r.oldVideoDir}\`` : "không có"}`,
-    `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng ElevenLabs", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
+    `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
     "",
     "## Ghi chú",
     "",
