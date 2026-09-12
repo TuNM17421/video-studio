@@ -2,7 +2,7 @@
 
 Repo dựng **video bài giảng** cho khoá *AI in Action 20K* (VinUni): design system React/SVG 1920×1080 · 30 fps,
 bộ công cụ build / QA / render MP4, và giọng đọc ElevenLabs. Từ kịch bản đến MP4 kèm transcript và chapters
-chạy được bằng web **Video Studio** (`studio/`) hoặc trực tiếp bằng **Claude Code (CLI)**. Design system
+chạy được bằng web **Video Studio** (`studio/`) với **Claude Code hoặc Codex**, hoặc trực tiếp bằng CLI. Design system
 đồng bộ được lên **Claude Design** (claude.ai/design).
 
 ## Có gì bên trong
@@ -14,7 +14,7 @@ chạy được bằng web **Video Studio** (`studio/`) hoặc trực tiếp b�
 | `projects/<id>/` | Kịch bản gốc (`kich-ban-goc.md`), ghi chú dựng (`PROMPTS.md`), QA và `render/`; đều giữ trên máy |
 | `tts-elevenlabs/` | Tạo giọng ElevenLabs → `out/<id>/voice.wav` + `voice.cues.json`; toàn bộ output giữ trên máy |
 | `tools/` | `build.mjs`, `verify.mjs`, `shoot.mjs` (chụp ảnh QA), `render.mjs` (MP4), `voice-timing.mjs`, `transcript.mjs` |
-| `studio/` | **Video Studio**: web local chọn style, tạo video và điều khiển agent Claude Code theo từng bước |
+| `studio/` | **Video Studio**: web local chọn style, tạo video và điều khiển Claude Code hoặc Codex theo từng bước |
 | `styles/` | Danh sách style (`lesson.json`, `lesson-lab.json`: màu, component tiêu biểu, luật) và ảnh preview component |
 | `.claude/skills/make-video/` | Skill `/make-video`: quy trình dựng video, dùng chung cho Video Studio và CLI |
 | `transcripts/DayNN/`, `chapters/DayNN/` | Sản phẩm đi kèm mỗi video, giữ trên máy |
@@ -41,14 +41,15 @@ git switch main           # dựng video chính thức
 
 ## Setup lần đầu
 
-Cần có: **Node ≥ 20**, **Python 3** (server xem trước), **git**, **Claude Code**
-(`npm install -g @anthropic-ai/claude-code`, đăng nhập bằng tài khoản claude.ai) và một tài khoản
+Cần có: **Node ≥ 20**, **Python 3** (server xem trước), **git**, ít nhất một trong hai CLI **Claude Code**
+hoặc **Codex** (đã đăng nhập trên máy), và một tài khoản
 **ElevenLabs** (API key + voice ID) nếu tự tạo giọng.
 
 ```console
 git clone <url repo> Claude-Design && cd Claude-Design
 npm install          # esbuild, react, ffmpeg (ffmpeg-static), playwright… và link design system vào node_modules
 npm run setup        # tải Chromium dùng để chụp frame và render (một lần)
+npm run setup:voice  # môi trường nhận diện giọng, chỉ cần khi dùng giọng tự thu / model local (một lần)
 
 cp tts-elevenlabs/.env.example tts-elevenlabs/.env
 #   điền ELEVENLABS_API_KEY và ELEVENLABS_VOICE_ID (các biến còn lại có sẵn giá trị mặc định)
@@ -58,6 +59,9 @@ npm run build && npm run verify     # phải kết thúc bằng "all checks pass
 npm run studio:install              # cài Video Studio (một lần)
 ```
 
+- `npm run setup:voice` tạo `voice/.venv` (dùng `uv` nếu có, không thì Python 3.10–3.12) và tải model
+  Whisper `small` (~460 MB) về `voice/cache/whisper`. Chỉ cần nếu bạn **nhập audio tự thu hoặc do model
+  local tạo**; người chỉ dùng ElevenLabs bỏ qua bước này. Xem `docs/decisions/voice-align.md`.
 - `tts-elevenlabs/.env` chỉ cần khi **tạo giọng bằng CLI**. Video Studio không dùng file này: key được
   nhập trên web và chỉ nằm trong RAM. Người chỉ dùng Video Studio thì bỏ qua bước `cp … .env`, và nếu máy
   đã có `.env` thì nên xoá đi (agent chạy trong repo có thể đọc được file trên đĩa). `.env` đã nằm trong
@@ -84,7 +88,20 @@ npm run serve        # http://127.0.0.1:8765
 npm run studio       # http://127.0.0.1:3100 — chỉ nghe trên máy này
 ```
 
-Mỗi video đi qua 5 bước. Agent (Claude Code chạy nền bằng tài khoản đang đăng nhập trên máy) làm các bước
+Studio mặc định dùng Claude để tương thích với video cũ. Có thể cấu hình trước khi chạy:
+
+```console
+cp studio/.env.example studio/.env
+# sửa STUDIO_AGENT_PROVIDER=claude hoặc codex
+# đặt STUDIO_AGENT_PROVIDER_LOCKED=1 nếu không muốn hiện lựa chọn agent khi tạo video
+npm run studio
+```
+
+`studio/.env` chỉ nên chứa các công tắc không bí mật như file mẫu; không đặt API key vào đó. Video mới được
+gắn với agent ngay khi tạo và luôn tiếp tục bằng agent đó, kể cả sau khi khởi động lại máy. Studio không có
+nút đổi agent cho video đang làm. Video Studio cũ chưa có trường provider được xem là video Claude.
+
+Mỗi video đi qua 5 bước. Agent đã gắn (Claude Code hoặc Codex chạy nền bằng tài khoản đang đăng nhập trên máy) làm các bước
 dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
 
 1. **Kế hoạch.** Chọn style (xem dải màu, component tiêu biểu, video mẫu), nhập mã video, ngày, kịch bản
@@ -100,8 +117,9 @@ dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
 
 - Trang **Các video** mở lại video đang làm dở (trạng thái lưu ở `projects/<id>/.studio/`, không lên git).
 - Trang **Thư viện** xem style, toàn bộ component (tài liệu `.prompt.md`) và các video mẫu.
-- Agent chạy ở chế độ không hỏi: chỉ được sửa file, chạy `tools/*`, `npm run build/verify` và TTS
-  `--dry-run`; bị chặn đọc `.env`, tạo giọng tốn phí, commit/push và `/design-sync`.
+- Agent chạy ở chế độ không hỏi. Claude dùng allowlist/denylist của Studio; Codex dùng sandbox
+  `workspace-write` và policy không xin quyền, đồng thời tuân theo `AGENTS.md`. Cả hai đều không nhận key
+  ElevenLabs đang giữ trong RAM; không được đọc `.env`, tạo giọng tốn phí, commit/push hay `/design-sync`.
 - Khi phát triển Video Studio: `STUDIO_TTS_MOCK=1 npm run studio` tạo giọng im lặng thay vì gọi ElevenLabs.
 
 ## Gen video bằng Claude CLI
@@ -119,12 +137,25 @@ từng bước khi được hỏi):
    một cue, lời giữ **nguyên văn**. Chốt lời trước khi tạo giọng.
 2. **Giọng đọc.** Chạy dry-run trước (chưa tốn tiền), sau đó mới gọi API, rồi gắn giọng vào video:
    ```console
-   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out tts-elevenlabs/out/<id> --dry-run
-   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out tts-elevenlabs/out/<id>
-   node tools/voice-timing.mjs tts-elevenlabs/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues
+   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id> --dry-run
+   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id>
+   node tools/voice-timing.mjs voice/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues
    ```
    ElevenLabs trả về mốc thời gian từng ký tự. `--write-cues` ghi độ dài thật của từng câu vào `cues.js`,
    và `voice.js` giữ mốc từng từ. Kết quả được cache theo từng câu: sửa một câu chỉ tốn ký tự cho câu đó.
+
+   **Hoặc dùng giọng tự thu / model local** — mỗi câu một tệp audio, không gọi API:
+   ```console
+   node tools/voice-export.mjs vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --out projects/<id>/voice-script
+   #   → doc-thu.md (bản đọc), doc-thu.txt, voice-batch.jsonl (chạy thẳng với omnivoice-infer-batch),
+   #     cau/01.txt… Thu hoặc gen ra 01.wav, 02.wav … theo đúng số câu, để chung một thư mục.
+   node tools/voice-import.mjs --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --from <thư mục audio> --scan
+   node tools/voice-import.mjs --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --from <thư mục audio>
+   node tools/voice-timing.mjs voice/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues
+   ```
+   `--scan` cho xem tệp nào ứng với câu nào rồi mới ghi gì. Whisper đối chiếu bản nghe được với lời đã
+   khoá: câu nào khớp quá thấp sẽ bị chặn, vì gần như chắc chắn là nhầm tệp. Xem
+   `docs/decisions/voice-align.md`, và `node tools/align-health.mjs` để biết cách align hiện tại còn đủ dùng không.
 3. **Dựng scene.** Mỗi cue một `sNN.jsx`, dựng đúng độ dài giọng thật; hoạt ảnh đặt theo
    `spokenAt(n, 'cụm từ')` = lúc cụm từ thật sự được đọc. Theo luật của style và design system (vùng nội
    dung, phụ đề ≤ 78 ký tự, font Montserrat, connector…). Kèm `STORYBOARD.md`.
@@ -132,13 +163,13 @@ từng bước khi được hỏi):
    `node tools/shoot.mjs` vào `projects/<id>/qa/` rồi xem lại.
 5. **Render MP4** (server xem trước phải đang chạy):
    ```console
-   node tools/render.mjs --scene <id> --audio tts-elevenlabs/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4
+   node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4
    ```
    Nếu độ dài giọng khác độ dài hình, script dừng và báo lỗi. Sau khi render, kiểm tra MP4: thời lượng,
    vài frame trích từ file, âm lượng.
 6. **Sản phẩm đi kèm, bắt buộc cho mỗi video hoàn chỉnh:**
    ```console
-   node tools/transcript.mjs tts-elevenlabs/out/<id>/voice.cues.json transcripts/DayNN/<id>.txt
+   node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/DayNN/<id>.txt
    ```
    - `transcripts/DayNN/<id>.txt`: dạng `MM:SS - MM:SS: lời đọc`, sinh tự động từ giọng đã thu.
    - `chapters/DayNN/<id>-chương.txt`: dạng `MM:SS: tên chương`, mỗi chương ứng với một phần của kịch bản

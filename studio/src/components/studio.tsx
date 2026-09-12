@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ExportOutlined } from "@ant-design/icons";
 import { Alert, Button, Empty, Steps, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
-import type { StageId, StyleDef, VideoDetail } from "@/lib/types";
+import { agentProviderLabel } from "@/lib/agent-providers";
+import type { AgentConfig, StageId, StyleDef, VideoDetail } from "@/lib/types";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
 import { CuesStep, RenderStep, ScenesStep, VoiceStep } from "./steps";
@@ -13,7 +14,7 @@ type Step = "plan" | "cues" | "voice" | "scenes" | "render";
 const STEPS: { id: Step; title: string; description: string }[] = [
   { id: "plan", title: "Kế hoạch", description: "Style và nội dung" },
   { id: "cues", title: "Lời & cue", description: "Chốt lời đọc" },
-  { id: "voice", title: "Giọng đọc", description: "ElevenLabs" },
+  { id: "voice", title: "Giọng đọc", description: "Nguồn và bản thu" },
   { id: "scenes", title: "Dựng cảnh", description: "Theo giọng thật" },
   { id: "render", title: "Render", description: "MP4 và bàn giao" },
 ];
@@ -33,6 +34,13 @@ function nextStep(d: VideoDetail): Step {
   return "render";
 }
 
+function applySetupToDraft(current: PlanDraft, list: StyleDef[], config: AgentConfig): PlanDraft {
+  const next = list.length && !list.some((style) => style.id === current.request.style)
+    ? emptyDraft(list[list.length - 1].id, config.defaultProvider)
+    : current;
+  return { ...next, agentProvider: config.defaultProvider };
+}
+
 /** One exact 1920×1080 frame (the scene kit's ?frame= capture mode), scaled down to the panel width. */
 function FramePreview({ src }: { src: string }) {
   const box = useRef<HTMLDivElement>(null);
@@ -49,34 +57,42 @@ function FramePreview({ src }: { src: string }) {
   </div>;
 }
 
-function Preview({ detail, styles, draftStyle, hasKey }: { detail: VideoDetail | null; styles: StyleDef[]; draftStyle: string; hasKey: boolean }) {
-  const style = styles.find((s) => s.id === (detail?.state.request.style || draftStyle));
-  const id = detail?.state.id;
+function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null; styles: StyleDef[]; draft: PlanDraft; hasKey: boolean }) {
+  const request = detail?.state.request ?? draft.request;
+  const style = styles.find((s) => s.id === request.style);
+  const id = detail?.state.id || draft.id;
   const scenes = detail?.artifacts.scenes;
   const cues = detail?.cues;
   const running = detail?.state && (Object.entries(detail.state.stages) as [StageId, string][]).find(([, v]) => v === "running");
   const review = detail?.state && (Object.entries(detail.state.stages) as [StageId, string][]).find(([, v]) => v === "review");
-  const agent = running ? `Đang chạy · ${running[0]}` : review ? `Chờ duyệt · ${review[0]}` : detail ? "Đang chờ" : "—";
+  const agentStatus = running ? `Đang chạy · ${running[0]}` : review ? `Chờ duyệt · ${review[0]}` : detail ? "Đang chờ" : "—";
+  const provider = detail?.state.agent.provider || draft.agentProvider;
   // a settled frame of the first narrated câu (the scene kit renders one exact frame for ?frame=)
   const first = cues?.cues.find((c) => !c.silent);
   const previewFrame = first ? Math.max(0, first.end - 20) : 0;
   const cover = style && [...(style.base?.showcase || []), ...style.showcase][style.base ? style.base.showcase.length : 0];
   return <aside className="preview-panel">
-    <div className="panel-heading"><h2>{id || "Video mới"}</h2><span className="quiet-label">16:9</span></div>
+    <div className="panel-heading">
+      <h2>Video preview</h2>
+      <span className="quiet-label">16:9</span>
+    </div>
     <div className="slide-visual vs-preview-frame">
       {scenes && id
         ? <FramePreview src={dsUrl(`ui_kits/lesson-video/index.html?scene=${encodeURIComponent(id)}&frame=${previewFrame}`)} />
         : cover ? <img src={fileUrl(`styles/previews/${cover.image}`)} alt="" /> : <Empty className="preview-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có bản xem trước" />}
     </div>
     {scenes && id && <div className="preview-caption"><Button type="link" href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank" icon={<ExportOutlined />} iconPlacement="end">Mở trình phát</Button></div>}
-    <div className="project-summary"><h3>{detail?.state.request.title || id || "Chưa đặt tên"}</h3></div>
+    <div className="project-summary">
+      <h3>{request.title || id || "Chưa đặt tên"}</h3>
+      <p>{request.day || "Chưa chọn ngày"} · {style?.name || "Chưa chọn style"}</p>
+    </div>
     <dl className="project-facts">
-      <div><dt>Style</dt><dd>{style?.name || "—"}</dd></div>
-      <div><dt>Ngày</dt><dd>{detail?.state.request.day || "—"}</dd></div>
+      <div><dt>Agent</dt><dd>{agentProviderLabel(provider)}</dd></div>
+      <div><dt>Trạng thái</dt><dd>{detail ? agentStatus : "Chưa tạo"}</dd></div>
       <div><dt>Số câu</dt><dd>{cues?.cues.length ?? "—"}</dd></div>
       <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>
-      <div><dt>Agent</dt><dd>{agent}</dd></div>
-      <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>
+      <div><dt>Nguồn giọng</dt><dd>{detail?.state.voice.source === "import" ? "Audio có sẵn" : "ElevenLabs"}</dd></div>
+      {detail?.state.voice.source !== "import" && <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>}
     </dl>
   </aside>;
 }
@@ -86,17 +102,51 @@ export default function Studio() {
   const [step, setStep] = useState<Step>("plan");
   const [styles, setStyles] = useState<StyleDef[]>([]);
   const [draft, setDraft] = useState<PlanDraft>(emptyDraft("lesson-lab"));
+  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true });
+  const [setupReady, setSetupReady] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(true);
+  const [setupError, setSetupError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoStep, setAutoStep] = useState(true);
   const { detail, logs, job, error: loadError, refresh } = useVideo(id);
   const { hasKey, setHasKey } = useKeyStatus();
 
+  const loadSetup = useCallback(async () => {
+    setSetupLoading(true);
+    setSetupError(null);
+    setSetupReady(false);
+    try {
+      const [list, config] = await Promise.all([
+        api<StyleDef[]>("/api/styles"),
+        api<AgentConfig>("/api/agent-config"),
+      ]);
+      setStyles(list);
+      setAgentConfig(config);
+      setDraft((current) => applySetupToDraft(current, list, config));
+      setSetupReady(true);
+    } catch (caught) {
+      setSetupError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setSetupLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const read = () => { const v = new URLSearchParams(window.location.search).get("id"); setId(v); setAutoStep(true); if (!v) setStep("plan"); };
     read();
     window.addEventListener("popstate", read);
-    api<StyleDef[]>("/api/styles").then((list) => { setStyles(list); if (list.length) setDraft((d) => (list.some((s) => s.id === d.request.style) ? d : emptyDraft(list[list.length - 1].id))); }).catch((e) => setError(e.message));
+    Promise.all([
+      api<StyleDef[]>("/api/styles"),
+      api<AgentConfig>("/api/agent-config"),
+    ]).then(([list, config]) => {
+      setStyles(list);
+      setAgentConfig(config);
+      setDraft((current) => applySetupToDraft(current, list, config));
+      setSetupReady(true);
+    }).catch((caught) => {
+      setSetupError(caught instanceof Error ? caught.message : String(caught));
+    }).finally(() => setSetupLoading(false));
     return () => window.removeEventListener("popstate", read);
   }, []);
   // The server state decides which production gate should open after loading a video.
@@ -116,8 +166,9 @@ export default function Studio() {
     }
   }
   async function create() {
+    if (!setupReady) return;
     await act(async () => {
-      await api(`/api/videos`, { method: "POST", json: { id: draft.id, request: draft.request, script: draft.script } });
+      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, request: draft.request, script: draft.script } });
       await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
       window.history.pushState(null, "", `/?id=${draft.id}`);
       setId(draft.id);
@@ -129,10 +180,9 @@ export default function Studio() {
   const running = job?.status === "running";
   const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop } : null;
   const current = STEPS.find((s) => s.id === step)!;
-  const shown = error || loadError;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
 
-  return <Shell page={id ? "videos" : "new"} crumb={id || "Video mới"} hasKey={hasKey}>
+  return <Shell page={id ? "videos" : "new"} hasKey={hasKey}>
     <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div><h1>{detail?.state.request.title || id || "Video mới"}</h1></div></div>
     <div className="vs-production-rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
@@ -157,18 +207,20 @@ export default function Studio() {
         }))}
       />
     </div>
-    {shown && <Alert className="feedback" type="error" showIcon closable title="Thao tác chưa hoàn tất" description={shown} onClose={() => setError(null)} />}
+    {setupError && <Alert className="feedback" type="error" showIcon title="Không tải được cấu hình Studio" description={setupError} action={<Button size="small" onClick={() => { void loadSetup(); }}>Thử lại</Button>} />}
+    {error && <Alert className="feedback" type="error" showIcon closable title="Thao tác chưa hoàn tất" description={error} onClose={() => setError(null)} />}
+    {loadError && <Alert className="feedback" type="error" showIcon title="Không tải được video" description={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}
     {detail && !detail.managed && <Alert className="feedback" type="info" showIcon title="Video được làm ngoài Video Studio" description="Bạn chỉ có thể xem tệp và kết quả của video này." />}
     <div className="editor-layout">
       <section className="editor-panel" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
-        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy} />)}
+        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} agentConfig={agentConfig} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}
         {step === "render" && stepProps && <RenderStep {...stepProps} />}
       </section>
-      <Preview detail={detail} styles={styles} draftStyle={draft.request.style} hasKey={hasKey} />
+      <Preview detail={detail} styles={styles} draft={draft} hasKey={hasKey} />
     </div>
     <footer className="workspace-footer" />
   </Shell>;

@@ -2,7 +2,7 @@ import { handle, sendFile } from "@/lib/server/http";
 import { HttpError, REPO, safeJoin } from "@/lib/server/paths";
 
 /** Read-only access to video outputs: MP4, QA stills, transcripts, chapters, notes, style previews. */
-const ROOTS = new Set(["projects", "transcripts", "chapters", "styles"]);
+const ROOTS = new Set(["projects", "transcripts", "chapters", "styles", "assets"]);
 
 export const GET = handle(async (req: Request, ctx: { params: Promise<{ path: string[] }> }) => {
   const { path } = await ctx.params;

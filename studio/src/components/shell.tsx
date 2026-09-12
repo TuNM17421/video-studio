@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { BookOutlined, KeyOutlined, PlusOutlined, UnorderedListOutlined, VideoCameraOutlined } from "@ant-design/icons";
-import { Badge, Breadcrumb, Layout, Menu } from "antd";
+import { BookOutlined, KeyOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Badge, Layout, Menu } from "antd";
 import Link from "next/link";
 
 type Page = "new" | "library" | "videos";
 
-export function Shell({ page, crumb, hasKey, actions, children }: { page: Page; crumb: string; hasKey?: boolean; actions?: ReactNode; children: ReactNode }) {
+export function Shell({ page, hasKey, children }: { page: Page; hasKey?: boolean; children: ReactNode }) {
   const navigation = [
     { key: "new", icon: <PlusOutlined />, label: <Link href="/">Video mới</Link> },
     { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos">Các video</Link> },
@@ -25,10 +25,6 @@ export function Shell({ page, crumb, hasKey, actions, children }: { page: Page; 
       </div>
     </Layout.Sider>
     <Layout className="workspace">
-      <Layout.Header className="topbar">
-        <Breadcrumb className="breadcrumb" items={[{ title: <span><VideoCameraOutlined /> Video Studio</span> }, { title: <strong>{crumb}</strong> }]} />
-        <div className="topbar-actions">{actions}</div>
-      </Layout.Header>
       <Layout.Content id="main-content" className="main-content">{children}</Layout.Content>
     </Layout>
   </Layout>;

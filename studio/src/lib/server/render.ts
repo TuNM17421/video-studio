@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { MUSIC_FILE, MUSIC_ID } from "../music";
 import { runAgent } from "./agent";
 import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
+import { HttpError, mp4Path, REPO, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
 /** Build → render MP4 (frames from this server's /ds) → transcript; then the agent writes chapters. */
@@ -11,6 +12,7 @@ export async function renderVideo(id: string, base: string) {
   const wav = path.join(voiceOut(id), "voice.wav");
   if (!fs.existsSync(wav)) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
   const day = state.request.day;
+  const wantsMusic = state.music === MUSIC_ID;
   startJob(id, "render");
   setStage(id, "render", "running");
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
@@ -31,8 +33,13 @@ export async function renderVideo(id: string, base: string) {
   };
 
   if (!(await step("Build design system", "npm", ["run", "build"]))) return fail("Build thất bại.");
+  // TODO: on Windows, 6-tab (default) capture hangs deterministically partway through — reproduced
+  // twice at the exact same frame, but a single tab clears the same range fine. Forcing 1 worker
+  // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
   const renderOk = await step("Render MP4", process.execPath, [
     "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
+    ...(wantsMusic ? ["--music", rel(path.join(REPO, "assets/music", MUSIC_FILE))] : []),
+    ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
     const m = line.match(/(\d+)\/(\d+) frames/);
     if (!m) return false;

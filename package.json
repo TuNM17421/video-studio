@@ -10,6 +10,7 @@
   "scripts": {
     "postinstall": "node tools/link-ds.mjs",
     "setup": "playwright install chromium",
+    "setup:voice": "node tools/setup-voice-align.mjs",
     "build": "node tools/build.mjs",
     "verify": "node tools/verify.mjs",
     "serve": "python3 -m http.server 8765 --bind 127.0.0.1 --directory vinuni-lesson-video-ds",

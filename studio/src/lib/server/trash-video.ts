@@ -39,6 +39,7 @@ export function collectVideoTrashTargets(id: string, roots: TrashRoots = DEFAULT
   return [
     ...existingTarget("project", path.join(roots.repo, "projects", id)),
     ...existingTarget("scenes", path.join(roots.designSystem, "ui_kits/lesson-video/videos", id)),
+    ...existingTarget("voice", path.join(roots.repo, "voice/out", id)),
     ...existingTarget("voice", path.join(roots.repo, "tts-elevenlabs/out", id)),
     ...dayFiles(path.join(roots.repo, "transcripts"), [`${id}.txt`], "transcript"),
     ...dayFiles(path.join(roots.repo, "chapters"), [`${id}-chương.txt`, `${id}-chapters.txt`], "chapters"),

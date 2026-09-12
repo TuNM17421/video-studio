@@ -61,9 +61,13 @@ order and ask the user before spending ElevenLabs credit (show the dry-run first
 
 ## Stage 2 · voice (not the agent in studio mode)
 ```console
-node tts-elevenlabs/tts.mjs generate --cues <video dir>/cues.js --pronounce projects/<id>/pronounce.json --out tts-elevenlabs/out/<id> [--pause 1.4]
-node tools/voice-timing.mjs tts-elevenlabs/out/<id>/voice.cues.json <video dir> --write-cues
+node tts-elevenlabs/tts.mjs generate --cues <video dir>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id> [--pause 1.4]
+node tools/voice-timing.mjs voice/out/<id>/voice.cues.json <video dir> --write-cues
 ```
+Giọng có thể không đến từ ElevenLabs: thành viên tự thu, hoặc dùng model local. Khi đó
+`node tools/voice-export.mjs <video dir> --out projects/<id>/voice-script` xuất bản đọc và
+`node tools/voice-import.mjs --cues <video dir>/cues.js --from <thư mục audio>` (chạy `--scan` trước) dựng
+master từ một thư mục `01.wav, 02.wav …`. Kết quả và các bước sau giống hệt đường ElevenLabs.
 `--write-cues` writes each câu's measured `frames` / `speech` into cues.js; voice.js carries per-word
 timestamps. Cached per câu: changing one câu's text re-bills only that câu.
 
@@ -85,8 +89,8 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
 
 ## Stage 4 · render (not the agent in studio mode)
 ```console
-node tools/render.mjs --scene <id> --audio tts-elevenlabs/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base>
-node tools/transcript.mjs tts-elevenlabs/out/<id>/voice.cues.json transcripts/<Day>/<id>.txt
+node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base>
+node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/<Day>/<id>.txt
 ```
 
 ## Stage 5 · deliver

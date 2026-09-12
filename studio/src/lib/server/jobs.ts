@@ -108,10 +108,13 @@ interface RunOptions {
   onLine?: (line: string, stream: "stdout" | "stderr") => void;
 }
 
+/** On Windows `npm` is a .cmd shim; Node can only run it through a shell, not by direct spawn. */
+const needsShell = (cmd: string) => process.platform === "win32" && cmd === "npm";
+
 /** Run a command in the repo, attached to the video's current job (so Dừng can kill it). */
 export function run(id: string, cmd: string, args: string[], opts: RunOptions = {}) {
   return new Promise<number>((resolve) => {
-    const child = spawn(cmd, args, { cwd: REPO, env: opts.env ?? process.env, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { cwd: REPO, env: opts.env ?? process.env, stdio: ["pipe", "pipe", "pipe"], shell: needsShell(cmd) });
     const job = registry.jobs.get(id);
     if (job) job.child = child;
     const pipe = (stream: NodeJS.ReadableStream, name: "stdout" | "stderr") => {

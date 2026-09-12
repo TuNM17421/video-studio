@@ -1,6 +1,17 @@
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "dry-run";
+export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan";
+export type AgentProvider = "claude" | "codex";
+
+export interface AgentConfig {
+  defaultProvider: AgentProvider;
+  selectionLocked: boolean;
+}
+
+export interface AgentBinding {
+  provider: AgentProvider;
+  sessionId: string | null;
+}
 
 export interface Scope {
   scenes: boolean;
@@ -21,11 +32,61 @@ export interface VideoRequest {
   scope: Scope;
 }
 
+/** Where a video's narration comes from: the ElevenLabs API, or audio recorded/generated elsewhere. */
+export type VoiceSource = "elevenlabs" | "import";
+
 export interface VoiceSettings {
+  source: VoiceSource;
   voiceId: string;
   model: string;
   language: string;
   pause: number;
+  /** Last folder of per-câu audio picked for an import. */
+  importDir: string;
+}
+
+/** One câu in an import report: which file it got, and everything that looked wrong about it. */
+export interface ImportRow {
+  n: number;
+  key: string;
+  file: string | null;
+  silent: boolean;
+  text: string;
+  expectedSeconds: number;
+  seconds?: number;
+  level: "ok" | "warn" | "error";
+  notes: string[];
+  matchRatio?: number;
+  heardText?: string;
+  heardWords?: number;
+  avgLogprob?: number | null;
+}
+
+export interface ImportReport {
+  id: string;
+  from: string;
+  cues: number;
+  needFile: number;
+  matched: number;
+  pause: number;
+  align: { used: boolean; model: string | null; note: string | null };
+  ok: boolean;
+  missing: number[];
+  extra: { file: string; reason: string }[];
+  clashes: { file: string; n: number; kept: string }[];
+  rows: ImportRow[];
+  /** Only on a completed import. */
+  out?: string;
+  durationInFrames?: number;
+  seconds?: number;
+}
+
+export interface VoiceScript {
+  dir: string;
+  cues: number;
+  spoken: number;
+  files: string[];
+  text: string;
 }
 
 export interface VideoState {
@@ -33,9 +94,11 @@ export interface VideoState {
   createdAt: string;
   updatedAt: string;
   request: VideoRequest;
-  sessionId: string | null;
+  agent: AgentBinding;
   stages: Record<StageId, StageStatus>;
   voice: VoiceSettings;
+  /** Background music track id ("none" or a MUSIC_TRACKS id from lib/music.ts); render-only, not part of TTS. */
+  music: string;
   lastError: string | null;
 }
 
@@ -87,6 +150,8 @@ export interface Artifacts {
   script: boolean;
   cues: boolean;
   voice: boolean;
+  voiceWav: string | null;
+  voiceScript: boolean;
   scenes: boolean;
   mp4: string | null;
   transcript: string | null;
@@ -103,6 +168,7 @@ export interface VideoDetail {
   job: JobInfo | null;
   logs: LogEntry[];
   dryRun: DryRun | null;
+  importReport: ImportReport | null;
 }
 
 export interface VideoSummary {

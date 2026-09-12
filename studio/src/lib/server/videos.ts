@@ -2,14 +2,33 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import { NO_MUSIC } from "../music";
 import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
+import { isAgentProvider } from "../agent-providers";
 import { isRunning } from "./jobs";
-import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut } from "./paths";
+import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
 
 const execFileP = promisify(execFile);
 const STAGES: StageId[] = ["cues", "voice", "scenes", "render", "deliver"];
 
-export const DEFAULT_VOICE = { voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4 };
+export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "" };
+
+type LegacyVideoState = Omit<VideoState, "agent"> & {
+  agent?: Partial<VideoState["agent"]>;
+  sessionId?: unknown;
+};
+
+/** Old Studio states predate provider binding. They belong to Claude and retain their Claude session. */
+export function normalizeVideoState(value: unknown): VideoState {
+  const stored = value as LegacyVideoState;
+  const { sessionId: legacySessionId, ...state } = stored;
+  const provider = isAgentProvider(stored.agent?.provider) ? stored.agent.provider : "claude";
+  const currentSession = stored.agent?.sessionId;
+  const sessionId = typeof currentSession === "string" || currentSession === null
+    ? currentSession
+    : typeof legacySessionId === "string" ? legacySessionId : null;
+  return { ...state, agent: { provider, sessionId }, voice: { ...DEFAULT_VOICE, ...stored.voice } } as VideoState;
+}
 
 function stateFile(id: string) {
   return path.join(stateDir(id), "state.json");
@@ -44,6 +63,7 @@ export function artifacts(id: string, day: string): Artifacts {
     return f ? path.join(dir, f) : null;
   };
   const voiceJs = path.join(videoDir(id), "voice.js");
+  const wav = path.join(voiceOut(id), "voice.wav");
   const mp4 = firstMp4();
   const ch = chapters();
   const prompts = path.join(projectDir(id), "PROMPTS.md");
@@ -51,6 +71,8 @@ export function artifacts(id: string, day: string): Artifacts {
     script: exists(path.join(projectDir(id), "kich-ban-goc.md")),
     cues: exists(path.join(videoDir(id), "cues.js")),
     voice: exists(path.join(voiceOut(id), "voice.cues.json")) && exists(voiceJs) && !/VOICE = null/.test(fs.readFileSync(voiceJs, "utf8")),
+    voiceWav: exists(wav) ? rel(wav) : null,
+    voiceScript: exists(path.join(voiceScriptDir(id), "doc-thu.md")),
     scenes: exists(path.join(videoDir(id), "video.jsx")),
     mp4: mp4 ? rel(mp4) : null,
     transcript: day && exists(transcriptPath(day, id)) ? rel(transcriptPath(day, id)) : null,
@@ -73,9 +95,10 @@ function inferredStages(a: Artifacts): Record<StageId, StageStatus> {
 export function readState(id: string): { state: VideoState; managed: boolean } {
   if (!exists(projectDir(id)) && !exists(videoDir(id))) throw new HttpError(404, `Không có video ${id}.`);
   if (exists(stateFile(id))) {
-    const state = JSON.parse(fs.readFileSync(stateFile(id), "utf8")) as VideoState;
+    const state = normalizeVideoState(JSON.parse(fs.readFileSync(stateFile(id), "utf8")));
     // a server restart kills running agents: never leave a stage stuck in "running"
     if (!isRunning(id)) for (const s of STAGES) if (state.stages[s] === "running") state.stages[s] = "error";
+    state.music ??= NO_MUSIC; // back-fill state.json written before the music field existed
     return { state, managed: true };
   }
   const day = findDay(id);
@@ -85,7 +108,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, sessionId: null, stages: inferredStages(artifacts(id, day)), voice: { ...DEFAULT_VOICE }, lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: { ...DEFAULT_VOICE }, music: NO_MUSIC, lastError: null },
     managed: false,
   };
 }
@@ -154,7 +177,7 @@ export function styleName(id: string) {
 }
 
 /** REQUEST.md: what the agent (and anyone running the video by hand) reads first. */
-export function requestMarkdown(id: string, r: VideoRequest) {
+export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
     "",
@@ -164,7 +187,8 @@ export function requestMarkdown(id: string, r: VideoRequest) {
     `- Kịch bản: \`projects/${id}/kich-ban-goc.md\`${r.scriptName ? ` (tệp gốc: ${r.scriptName})` : ""}`,
     `- Feedback bản cũ: ${r.feedbackDir ? `\`${r.feedbackDir}\`` : "không có"}`,
     `- Video cũ: ${r.oldVideoDir ? `\`${r.oldVideoDir}\`` : "không có"}`,
-    `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng ElevenLabs", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
+    ...(agentLabel ? [`- Agent: ${agentLabel} (gắn cố định khi tạo video)`] : []),
+    `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
     "",
     "## Ghi chú",
     "",

@@ -4,7 +4,11 @@
  * ffmpeg (libx264 + AAC) muxes the frames with the narration master.
  *
  *   node tools/render.mjs --scene n2-00-gioi-thieu-ngay-2 --out video.mp4 [--audio voice.wav]
- *        [--workers 4] [--from 0] [--to N] [--crf 18] [--base http://127.0.0.1:8765] [--keep-frames dir]
+ *        [--music assets/music/track.mp3] [--workers 4] [--from 0] [--to N] [--crf 18]
+ *        [--base http://127.0.0.1:8765] [--keep-frames dir]
+ *
+ * --music loops under --audio at low volume (amix, ducked) and is trimmed to the voice's length —
+ * any track length works, the video's duration always wins.
  *
  * Needs the design-system folder served over HTTP (fonts do not load from file://):
  *   python3 -m http.server 8765 --directory vinuni-lesson-video-ds
@@ -135,15 +139,23 @@ console.log(`✓ ${total} frames in ${((Date.now() - t0) / 1000).toFixed(0)} s`)
 // ── encode ────────────────────────────────────────────────────────────────────
 const out = path.resolve(args.out);
 fs.mkdirSync(path.dirname(out), { recursive: true });
+const hasAudio = Boolean(args.audio);
+const hasMusic = Boolean(args.music);
 const ff = [
   '-hide_banner', '-loglevel', 'error', '-y',
   '-framerate', String(FPS), '-i', path.join(framesDir, 'f%06d.png'),
-  ...(args.audio ? ['-i', path.resolve(args.audio)] : []),
+  ...(hasAudio ? ['-i', path.resolve(args.audio)] : []),
+  // looped indefinitely — amix's duration=first (below) trims it to the voice track, whatever its own length is
+  ...(hasMusic ? ['-stream_loop', '-1', '-i', path.resolve(args.music)] : []),
   '-map', '0:v',
-  ...(args.audio ? ['-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000'] : []),
+  ...(hasAudio && hasMusic
+    ? ['-filter_complex', '[2:a]volume=0.15[bg];[1:a][bg]amix=inputs=2:duration=first:dropout_transition=0[aout]', '-map', '[aout]']
+    : hasAudio || hasMusic ? ['-map', '1:a']
+    : []),
+  ...(hasAudio || hasMusic ? ['-c:a', 'aac', '-b:a', '192k', '-ar', '48000'] : []),
   '-c:v', 'libx264', '-preset', 'medium', '-crf', String(args.crf || 18), '-pix_fmt', 'yuv420p', '-r', String(FPS),
   '-movflags', '+faststart',
-  ...(args.audio ? ['-shortest'] : []),
+  ...(hasAudio || hasMusic ? ['-shortest'] : []),
   out,
 ];
 const enc = spawnSync(FFMPEG, ff, { env: ffEnv, stdio: 'inherit' });

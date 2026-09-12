@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type { StageId } from "../types";
+import type { AgentProvider, StageId } from "../types";
+import { agentProviderLabel } from "../agent-providers";
+import { claudeExecArgs, codexExecArgs } from "./agent-cli";
 import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
 import { readState, setStage, styleName, updateState } from "./videos";
 
@@ -23,23 +25,51 @@ interface AgentStreamMessage {
   result?: string;
 }
 
+interface CodexStreamItem {
+  type?: string;
+  text?: string;
+  command?: string;
+  status?: string;
+  exit_code?: number | null;
+  aggregated_output?: string;
+  server?: string;
+  tool?: string;
+  query?: string;
+  changes?: { path?: string; kind?: string }[];
+}
+
+interface CodexStreamMessage {
+  type?: string;
+  thread_id?: string;
+  item?: CodexStreamItem;
+  message?: string;
+  error?: string | { message?: string };
+}
+
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
 
 /**
- * Headless Claude Code (`claude -p`, the user's own login) in the repo. The agent may edit files and run
- * the repo's own tools; it cannot run the paid TTS, read .env, push, or touch Claude Design. Anything not
- * listed is refused without asking (dontAsk), so a run never hangs on a permission prompt.
+ * Claude uses an explicit command/tool allowlist in addition to the repository instructions.
+ *
+ * On Windows the CLI's shell tool is PowerShell, not Bash — mirror every shell pattern to both so an
+ * allowed command isn't silently denied just because it ran through the other shell tool.
  */
+const shellPatterns = (cmds: string[]) => cmds.flatMap((c) => [`Bash(${c})`, `PowerShell(${c})`]);
+
 const ALLOWED = [
   "Read", "Edit", "Write", "Glob", "Grep", "TodoWrite", "Task", "Agent",
-  "Bash(cd *)", "Bash(node tools/*)",
-  "Bash(npm run build)", "Bash(npm run verify)", "Bash(npm run build && npm run verify)",
-  "Bash(node tts-elevenlabs/tts.mjs generate * --dry-run)",
-  "Bash(ls *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(wc *)", "Bash(head *)", "Bash(sort *)",
-  "Bash(ffprobe *)", "Bash(ffmpeg *)", "Bash(node_modules/ffmpeg-static/ffmpeg *)",
+  ...shellPatterns([
+    "cd *", "node tools/*",
+    "npm run build", "npm run verify", "npm run build && npm run verify",
+    "node tts-elevenlabs/tts.mjs generate * --dry-run",
+    "node tts-elevenlabs/tts.mjs --help*",
+    "ls *", "mkdir *", "cp *", "mv *", "wc *", "head *", "sort *",
+    "ffprobe *", "ffmpeg *", "node_modules/ffmpeg-static/ffmpeg *",
+  ]),
 ];
 const DENIED = [
-  "Read(**/.env)", "Read(**/.env.*)", "Bash(*.env*)", "Bash(git push*)", "Bash(git commit*)",
+  "Read(**/.env)", "Read(**/.env.*)",
+  ...shellPatterns(["*.env*", "git push*", "git commit*"]),
   "DesignSync", "RemoteTrigger", "CronCreate", "SendMessage", "WebFetch", "WebSearch",
 ];
 
@@ -77,7 +107,7 @@ function short(value: unknown, max = 160) {
 }
 
 function describeTool(name: string, input: Record<string, unknown>) {
-  if (name === "Bash") return `$ ${short(input.command, 200)}`;
+  if (name === "Bash" || name === "PowerShell") return `$ ${short(input.command, 200)}`;
   if (name === "Read" || name === "Write" || name === "Edit") return `${name} ${short(input.file_path)}`;
   if (name === "Glob" || name === "Grep") return `${name} ${short(input.pattern)}`;
   if (name === "Task" || name === "Agent") return `Agent phụ: ${short(input.description || input.prompt, 120)}`;
@@ -85,46 +115,47 @@ function describeTool(name: string, input: Record<string, unknown>) {
   return `${name}`;
 }
 
-/** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
-export async function runAgent(id: string, stage: AgentStage, base: string, message?: string) {
-  const { state } = readState(id);
-  const resume = Boolean(state.sessionId);
-  const sessionId = state.sessionId ?? randomUUID();
-  const prompt = message ? feedbackPrompt(stage, message) : stagePrompt(id, stage, base);
-  startJob(id, stage);
-  setStage(id, stage, "running");
-  setProgress(id, null, message ? "Agent đang sửa theo góp ý…" : "Agent đang làm việc…");
-  log(id, "system", message ? `Góp ý gửi agent (${stage}): ${short(message, 300)}` : `Bắt đầu agent · ${stage}`);
+function errorText(value: unknown) {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "message" in value) return String(value.message || "");
+  return short(value);
+}
 
-  const args = [
-    "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
-    ...(resume ? ["--resume", sessionId] : ["--session-id", sessionId]),
-    "--allowedTools", ...ALLOWED,
-    "--disallowedTools", ...DENIED,
-  ];
-  // The agent never sees an ElevenLabs key, even one exported in the server's environment.
+function saveSession(id: string, provider: AgentProvider, sessionId: string) {
+  updateState(id, (state) => {
+    // Provider is immutable after creation; an event can only update its own provider's session.
+    if (state.agent.provider === provider) state.agent.sessionId = sessionId;
+  });
+}
+
+function sanitizedAgentEnv() {
   const env = { ...process.env };
-  for (const k of Object.keys(env)) if (k.startsWith("ELEVENLABS_")) delete env[k];
+  // The Studio's paid TTS credential must never enter either agent process.
+  for (const key of Object.keys(env)) if (key.startsWith("ELEVENLABS_")) delete env[key];
+  return env;
+}
 
+async function runClaude(id: string, prompt: string, sessionId: string | null) {
+  const resume = Boolean(sessionId);
+  const nextSessionId = sessionId ?? randomUUID();
   let ok = false;
   let tools = 0;
-  const code = await run(id, process.env.CLAUDE_BIN || "claude", args, {
-    env,
+  const code = await run(id, process.env.CLAUDE_BIN || "claude", claudeExecArgs(nextSessionId, resume, ALLOWED, DENIED), {
+    env: sanitizedAgentEnv(),
     input: prompt,
     onLine(line, stream) {
       if (stream === "stderr") return log(id, "error", short(line, 400));
       let msg: AgentStreamMessage;
       try { msg = JSON.parse(line); } catch { return; }
-      if (msg.type === "system" && msg.subtype === "init" && !resume && msg.session_id) {
-        const nextSessionId = msg.session_id;
-        updateState(id, (s) => { s.sessionId = nextSessionId; });
+      if (msg.type === "system" && msg.subtype === "init" && msg.session_id) {
+        saveSession(id, "claude", msg.session_id);
       } else if (msg.type === "assistant") {
         for (const block of msg.message?.content || []) {
           if (block.type === "text" && block.text?.trim()) log(id, "agent", block.text.trim());
           if (block.type === "tool_use" && block.name) {
             tools++;
             log(id, "tool", describeTool(block.name, block.input || {}));
-            setProgress(id, null, `Agent đang làm việc · ${tools} thao tác`);
+            setProgress(id, null, `Claude Code đang làm việc · ${tools} thao tác`);
           }
         }
       } else if (msg.type === "user") {
@@ -133,11 +164,87 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
         }
       } else if (msg.type === "result") {
         ok = msg.subtype === "success" && !msg.is_error;
-        const cost = typeof msg.total_cost_usd === "number" ? ` · ${msg.num_turns ?? "?"} lượt` : "";
-        log(id, ok ? "result" : "error", `${ok ? "Agent đã dừng" : "Agent báo lỗi"}${cost}${msg.result ? `\n${msg.result}` : ""}`);
+        const turns = typeof msg.total_cost_usd === "number" ? ` · ${msg.num_turns ?? "?"} lượt` : "";
+        log(id, ok ? "result" : "error", `${ok ? "Claude Code đã dừng" : "Claude Code báo lỗi"}${turns}${msg.result ? `\n${msg.result}` : ""}`);
       }
     },
   });
+  return { ok, code };
+}
+
+function describeCodexItem(item: CodexStreamItem) {
+  if (item.type === "command_execution") return `$ ${short(item.command, 200)}`;
+  if (item.type === "file_change") {
+    const files = item.changes?.map((change) => change.path).filter(Boolean).join(", ");
+    return files ? `Cập nhật file: ${short(files, 180)}` : "Cập nhật file";
+  }
+  if (item.type === "mcp_tool_call") return `MCP ${[item.server, item.tool].filter(Boolean).join(" · ") || "tool"}`;
+  if (item.type === "web_search") return `Tìm web: ${short(item.query, 160)}`;
+  return `Codex: ${item.type || "thao tác"}`;
+}
+
+async function runCodex(id: string, prompt: string, sessionId: string | null) {
+  let ok = false;
+  let terminalEvent = false;
+  let tools = 0;
+  let finalText = "";
+  const noteTool = (item: CodexStreamItem) => {
+    tools++;
+    log(id, "tool", describeCodexItem(item));
+    setProgress(id, null, `Codex đang làm việc · ${tools} thao tác`);
+  };
+  const code = await run(id, process.env.CODEX_BIN || "codex", codexExecArgs(sessionId), {
+    env: sanitizedAgentEnv(),
+    input: prompt,
+    onLine(line, stream) {
+      // In JSON mode stdout is the protocol; stderr can contain ordinary CLI diagnostics.
+      if (stream === "stderr") return log(id, "system", short(line, 400));
+      let msg: CodexStreamMessage;
+      try { msg = JSON.parse(line); } catch { return; }
+      if (msg.type === "thread.started" && msg.thread_id) {
+        saveSession(id, "codex", msg.thread_id);
+      } else if (msg.type === "item.started" && ["command_execution", "mcp_tool_call", "web_search"].includes(msg.item?.type || "")) {
+        noteTool(msg.item || {});
+      } else if (msg.type === "item.completed") {
+        const item = msg.item || {};
+        if (item.type === "agent_message" && item.text?.trim()) {
+          finalText = item.text.trim();
+          log(id, "agent", finalText);
+        } else if (item.type === "file_change") {
+          noteTool(item);
+        } else if (item.type === "command_execution" && (item.status === "failed" || (typeof item.exit_code === "number" && item.exit_code !== 0))) {
+          log(id, "error", short(item.aggregated_output || `${item.command || "Lệnh"} kết thúc với mã ${item.exit_code}.`, 400));
+        }
+      } else if (msg.type === "turn.completed") {
+        ok = true;
+        terminalEvent = true;
+        log(id, "result", `Codex đã dừng${finalText ? `\n${finalText}` : "."}`);
+      } else if (msg.type === "turn.failed") {
+        terminalEvent = true;
+        log(id, "error", `Codex báo lỗi: ${errorText(msg.error || msg.message) || "không có chi tiết."}`);
+      } else if (msg.type === "error") {
+        log(id, "error", `Codex: ${errorText(msg.error || msg.message) || "lỗi không xác định."}`);
+      }
+    },
+  });
+  if (!ok && !terminalEvent && !wasStopped(id)) log(id, "error", `Codex kết thúc với mã ${code} nhưng không có sự kiện turn.completed.`);
+  return { ok, code };
+}
+
+/** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
+export async function runAgent(id: string, stage: AgentStage, base: string, message?: string) {
+  const { state } = readState(id);
+  const provider = state.agent.provider;
+  const providerLabel = agentProviderLabel(provider);
+  const prompt = message ? feedbackPrompt(stage, message) : stagePrompt(id, stage, base);
+  startJob(id, stage);
+  setStage(id, stage, "running");
+  setProgress(id, null, message ? `${providerLabel} đang sửa theo góp ý…` : `${providerLabel} đang làm việc…`);
+  log(id, "system", message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
+
+  const result = provider === "codex"
+    ? await runCodex(id, prompt, state.agent.sessionId)
+    : await runClaude(id, prompt, state.agent.sessionId);
 
   if (wasStopped(id)) {
     setStage(id, stage, "error", "Đã dừng agent.");
@@ -145,8 +252,8 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
     finishJob(id, "stopped");
     return false;
   }
-  const success = ok && code === 0;
-  setStage(id, stage, success ? (stage === "deliver" ? "done" : "review") : "error", success ? null : `Agent kết thúc với mã ${code}.`);
+  const success = result.ok && result.code === 0;
+  setStage(id, stage, success ? (stage === "deliver" ? "done" : "review") : "error", success ? null : `${providerLabel} kết thúc với mã ${result.code}.`);
   finishJob(id, success ? "done" : "error");
   return success;
 }
