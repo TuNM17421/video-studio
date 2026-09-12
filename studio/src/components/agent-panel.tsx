@@ -115,7 +115,7 @@ export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boole
     try { await onSend(text); setText(""); } finally { setSending(false); }
   }
   return <div className="vs-feedback">
-    <label className="field">Góp ý cho agent
+    <label className="field vs-counted-textarea">Góp ý cho agent
       <Input.TextArea rows={3} value={text} disabled={disabled || sending} maxLength={4000} showCount placeholder={placeholder} onChange={(e) => setText(e.target.value)} />
     </label>
     <Button loading={sending} disabled={disabled || sending || !text.trim()} icon={<SendOutlined />} onClick={send}>Gửi góp ý</Button>

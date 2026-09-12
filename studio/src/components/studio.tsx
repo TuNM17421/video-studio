@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExportOutlined } from "@ant-design/icons";
+import { CheckCircleFilled, ExportOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
 import { Alert, Button, Empty, Steps, Tag } from "antd";
+import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import type { AgentConfig, StageId, StyleDef, VideoDetail } from "@/lib/types";
@@ -23,6 +24,30 @@ function complete(step: Step, d: VideoDetail | null) {
   if (!d) return false;
   const s = d.state.stages;
   return step === "plan" ? true : step === "cues" ? s.cues === "done" : step === "voice" ? s.voice === "done" : step === "scenes" ? s.scenes === "done" : s.render === "done" && s.deliver === "done";
+}
+
+function WorkflowNavigation({ step, detail, onChange }: { step: Step; detail: VideoDetail | null; onChange: (step: Step) => void }) {
+  if (!detail) return null;
+  const index = STEPS.findIndex((item) => item.id === step);
+  const current = STEPS[index];
+  const previous = STEPS[index - 1];
+  const next = STEPS[index + 1];
+  const ready = complete(step, detail);
+  const guidance = next
+    ? ready ? `Đã xong ${current.title}. Bạn có thể tiếp tục.` : `Hoàn tất ${current.title} để mở bước tiếp theo.`
+    : ready ? "Luồng sản xuất đã hoàn tất." : "Bước cuối · hoàn tất render và bàn giao.";
+
+  return <nav className="vs-gate-navigation" aria-label="Điều hướng giữa các bước sản xuất">
+    {previous
+      ? <Button className="vs-gate-navigation-back" icon={<LeftOutlined />} onClick={() => onChange(previous.id)}>Quay lại: {previous.title}</Button>
+      : <span aria-hidden="true" />}
+    <span className={`vs-gate-navigation-status ${ready ? "is-ready" : "is-locked"}`} aria-live="polite">
+      {ready ? <CheckCircleFilled /> : <LockOutlined />}{guidance}
+    </span>
+    {next
+      ? <Button className="vs-gate-navigation-next" type="primary" disabled={!ready} icon={<RightOutlined />} iconPlacement="end" onClick={() => onChange(next.id)}>Tiếp: {next.title}</Button>
+      : <span aria-hidden="true" />}
+  </nav>;
 }
 
 /** First step that still needs work. */
@@ -98,7 +123,7 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
 }
 
 export default function Studio() {
-  const [id, setId] = useState<string | null>(null);
+  const id = useSearchParams().get("id");
   const [step, setStep] = useState<Step>("plan");
   const [styles, setStyles] = useState<StyleDef[]>([]);
   const [draft, setDraft] = useState<PlanDraft>(emptyDraft("lesson-lab"));
@@ -111,6 +136,12 @@ export default function Studio() {
   const [autoStep, setAutoStep] = useState(true);
   const { detail, logs, job, error: loadError, refresh } = useVideo(id);
   const { hasKey, setHasKey } = useKeyStatus();
+  const editorPanel = useRef<HTMLElement>(null);
+
+  const goToStep = useCallback((target: Step) => {
+    setStep(target);
+    requestAnimationFrame(() => editorPanel.current?.scrollIntoView({ block: "start" }));
+  }, []);
 
   const loadSetup = useCallback(async () => {
     setSetupLoading(true);
@@ -133,9 +164,6 @@ export default function Studio() {
   }, []);
 
   useEffect(() => {
-    const read = () => { const v = new URLSearchParams(window.location.search).get("id"); setId(v); setAutoStep(true); if (!v) setStep("plan"); };
-    read();
-    window.addEventListener("popstate", read);
     Promise.all([
       api<StyleDef[]>("/api/styles"),
       api<AgentConfig>("/api/agent-config"),
@@ -147,8 +175,11 @@ export default function Studio() {
     }).catch((caught) => {
       setSetupError(caught instanceof Error ? caught.message : String(caught));
     }).finally(() => setSetupLoading(false));
-    return () => window.removeEventListener("popstate", read);
   }, []);
+  // Query-only navigation keeps this Client Component mounted. Reset the gate
+  // selection whenever Next updates the active video in the URL.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setAutoStep(true); if (!id) setStep("plan"); }, [id]);
   // The server state decides which production gate should open after loading a video.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (detail && autoStep) { setStep(nextStep(detail)); setAutoStep(false); } }, [detail, autoStep]);
@@ -171,7 +202,6 @@ export default function Studio() {
       await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, request: draft.request, script: draft.script } });
       await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
       window.history.pushState(null, "", `/?id=${draft.id}`);
-      setId(draft.id);
       setAutoStep(false);
       setStep("cues");
     });
@@ -198,7 +228,7 @@ export default function Studio() {
         }}
         current={STEPS.findIndex((item) => item.id === step)}
         responsive={false}
-        onChange={(index) => { const target = STEPS[index]; if (target.id === "plan" || detail) setStep(target.id); }}
+        onChange={(index) => { const target = STEPS[index]; if (target.id === "plan" || detail) goToStep(target.id); }}
         items={STEPS.map((item) => ({
           title: item.title,
           content: item.description,
@@ -212,13 +242,14 @@ export default function Studio() {
     {loadError && <Alert className="feedback" type="error" showIcon title="Không tải được video" description={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}
     {detail && !detail.managed && <Alert className="feedback" type="info" showIcon title="Video được làm ngoài Video Studio" description="Bạn chỉ có thể xem tệp và kết quả của video này." />}
     <div className="editor-layout">
-      <section className="editor-panel" aria-label={current.title}>
+      <section ref={editorPanel} className="editor-panel" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
         {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} agentConfig={agentConfig} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}
         {step === "render" && stepProps && <RenderStep {...stepProps} />}
+        <WorkflowNavigation step={step} detail={detail} onChange={goToStep} />
       </section>
       <Preview detail={detail} styles={styles} draft={draft} hasKey={hasKey} />
     </div>

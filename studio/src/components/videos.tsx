@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRightOutlined, DeleteOutlined, LoadingOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Alert, Button, Empty, Input, Select, Table } from "antd";
 import type { TableProps } from "antd";
+import { useRouter } from "next/navigation";
 import { api, useKeyStatus } from "@/lib/client";
 import type { VideoSummary } from "@/lib/types";
 import { completedStages, matchesVideo, nextStageLabel, overallStageStatus, VIDEO_STAGES, type VideoFilter } from "@/lib/video-status";
@@ -53,6 +54,7 @@ function VideoIdentity({ video }: { video: VideoSummary }) {
 }
 
 export default function Videos() {
+  const router = useRouter();
   const [videos, setVideos] = useState<VideoSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export default function Videos() {
     { title: "Tiến độ 5 cổng", key: "progress", width: "28%", render: (_, video) => <VideoProgress video={video} /> },
     { title: "Cổng hiện tại", key: "status", width: "17%", render: (_, video) => <div className={styles.videoState}><StageBadge status={overallStageStatus(video.stages)} /><span>{nextStageLabel(video.stages)}</span></div> },
     { title: <span className="sr-only">Thao tác</span>, key: "action", width: "15%", align: "right", render: (_, video) => <div className={styles.desktopActions}>
-      <Button type="link" href={`/?id=${encodeURIComponent(video.id)}`} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở</Button>
+      <Button type="link" onClick={() => router.push(`/?id=${encodeURIComponent(video.id)}`)} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở</Button>
       <Button type="text" danger icon={<DeleteOutlined />} aria-label={`Xóa video ${video.id}`} onClick={() => { setDeleteError(null); setDeleteTarget(video); }}>Xóa</Button>
     </div> },
   ];
@@ -145,7 +147,7 @@ export default function Videos() {
                   </dl>
                   <VideoProgress video={video} />
                   <div className={styles.mobileActions}>
-                    <Button type="primary" href={`/?id=${encodeURIComponent(video.id)}`} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở video</Button>
+                    <Button type="primary" onClick={() => router.push(`/?id=${encodeURIComponent(video.id)}`)} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở video</Button>
                     <Button danger icon={<DeleteOutlined />} aria-label={`Xóa video ${video.id}`} onClick={() => { setDeleteError(null); setDeleteTarget(video); }}>Xóa</Button>
                   </div>
                 </article>
