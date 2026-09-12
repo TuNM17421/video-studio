@@ -1,7 +1,19 @@
-/* Montserrat is loaded via next/font in layout.tsx, not an @import. */
+/* Product fonts are loaded via next/font in layout.tsx, not an @import. */
 
-/* VinUni-inspired starter tokens — not an official VinUni brand guide. */
+/* Studio foundations. Brand anchors match the live VinUni website; the wider
+   scale also carries the approved lesson-video visual language. */
 :root {
+  --vu-brand-primary: #134d8b;
+  --vu-brand-primary-hover: #0e3a69;
+  --vu-brand-primary-active: #0d345e;
+  --vu-brand-secondary: #c72127;
+  --vu-brand-secondary-hover: #a61c21;
+  --vu-brand-secondary-active: #9b1a1e;
+  --vu-brand-info-surface: #f2f6f9;
+  --vu-lesson-ink: #0b2a4d;
+  --vu-lesson-surface: #f2f7fc;
+  --vu-lesson-rail: #e0edf8;
+  --vu-lesson-data: #1d6199;
   --vu-blue-50: #f2f7fc;
   --vu-blue-100: #e0edf8;
   --vu-blue-200: #bed9ee;
@@ -33,7 +45,9 @@
   --vu-amber-50: #fff8e8;
   --vu-amber-700: #874e00;
 
+  --vu-font-body: var(--font-be-vietnam-pro), Arial, sans-serif;
   --vu-font-brand: var(--font-montserrat), Montserrat, Arial, sans-serif;
+  --vu-font-utility: var(--font-ibm-plex-mono), "SFMono-Regular", Consolas, monospace;
   --vu-font-regular: 400;
   --vu-font-medium: 500;
   --vu-font-semibold: 600;
@@ -90,27 +104,27 @@
   --vu-shadow-md: 0 10px 24px -8px rgba(11, 42, 77, 0.12);
   --vu-shadow-lg: 0 18px 40px -12px rgba(11, 42, 77, 0.16);
   --vu-shadow-focus: 0 0 0 4px rgba(19, 77, 139, 0.3);
-  --vu-duration-fast: 150ms;
-  --vu-duration-normal: 200ms;
-  --vu-duration-slow: 300ms;
+  --vu-duration-fast: 120ms;
+  --vu-duration-normal: 180ms;
+  --vu-duration-slow: 240ms;
   --vu-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /* Semantic aliases — use these in product UI. */
   --vu-text-primary: var(--vu-neutral-800);
-  --vu-text-secondary: var(--vu-neutral-600);
-  --vu-text-muted: var(--vu-neutral-500);
+  --vu-text-secondary: var(--vu-neutral-700);
+  --vu-text-muted: var(--vu-neutral-600);
   --vu-text-inverse: var(--vu-neutral-0);
-  --vu-text-link: var(--vu-blue-700);
-  --vu-text-danger: var(--vu-red-700);
+  --vu-text-link: var(--vu-brand-primary);
+  --vu-text-danger: var(--vu-brand-secondary);
   --vu-surface-canvas: var(--vu-neutral-0);
   --vu-surface-subtle: var(--vu-neutral-100);
   --vu-surface-card: var(--vu-neutral-0);
-  --vu-surface-brand: var(--vu-blue-700);
-  --vu-surface-brand-hover: var(--vu-blue-800);
+  --vu-surface-brand: var(--vu-brand-primary);
+  --vu-surface-brand-hover: var(--vu-brand-primary-hover);
   --vu-border-subtle: var(--vu-neutral-200);
   --vu-border-default: var(--vu-neutral-300);
   --vu-border-strong: var(--vu-neutral-500);
-  --vu-border-focus: var(--vu-blue-700);
+  --vu-border-focus: var(--vu-brand-primary);
 
   /* Component aliases. */
   --vu-card-background: var(--vu-surface-card);
@@ -134,6 +148,18 @@
   --vu-z-overlay: 300;
   --vu-z-modal: 400;
   --vu-z-toast: 500;
+
+  /* Studio layout density and workflow hierarchy. */
+  --vu-shell-sidebar-width: 224px;
+  --vu-shell-sidebar-tablet-width: 196px;
+  --vu-workflow-header-height: 28px;
+  --vu-workflow-step-height: 68px;
+  --vu-workflow-step-icon: 36px;
+  --vu-style-card-min-width: 280px;
+  --vu-preview-panel-width: 296px;
+  --vu-emphasis-active: 1;
+  --vu-emphasis-complete: 0.7;
+  --vu-emphasis-future: 0.35;
 }
 
 @media (max-width: 767px) {
@@ -159,11 +185,11 @@
 .vu-type-h2 { font: var(--vu-font-bold) var(--vu-text-4xl) / var(--vu-leading-normal) var(--vu-font-brand); }
 .vu-type-h3 { font: var(--vu-font-medium) var(--vu-text-2xl) / var(--vu-leading-normal) var(--vu-font-brand); }
 .vu-type-h4 { font: var(--vu-font-bold) var(--vu-text-xl) / var(--vu-leading-normal) var(--vu-font-brand); }
-.vu-type-body-lg { font: var(--vu-font-regular) var(--vu-text-lg) / var(--vu-leading-relaxed) var(--vu-font-brand); }
-.vu-type-body { font: var(--vu-font-regular) var(--vu-text-md) / var(--vu-leading-normal) var(--vu-font-brand); }
-.vu-type-body-sm { font: var(--vu-font-medium) var(--vu-text-sm) / var(--vu-leading-normal) var(--vu-font-brand); }
-.vu-type-label { font: var(--vu-font-bold) var(--vu-text-sm) / var(--vu-leading-snug) var(--vu-font-brand); letter-spacing: var(--vu-tracking-wide); }
-.vu-type-overline { font: var(--vu-font-bold) var(--vu-text-xs) / var(--vu-leading-normal) var(--vu-font-brand); letter-spacing: var(--vu-tracking-caps); text-transform: uppercase; }
+.vu-type-body-lg { font: var(--vu-font-regular) var(--vu-text-lg) / var(--vu-leading-relaxed) var(--vu-font-body); }
+.vu-type-body { font: var(--vu-font-regular) var(--vu-text-md) / var(--vu-leading-normal) var(--vu-font-body); }
+.vu-type-body-sm { font: var(--vu-font-medium) var(--vu-text-sm) / var(--vu-leading-normal) var(--vu-font-body); }
+.vu-type-label { font: var(--vu-font-bold) var(--vu-text-sm) / var(--vu-leading-snug) var(--vu-font-body); letter-spacing: var(--vu-tracking-wide); }
+.vu-type-overline { font: var(--vu-font-bold) var(--vu-text-xs) / var(--vu-leading-normal) var(--vu-font-utility); letter-spacing: var(--vu-tracking-caps); text-transform: uppercase; }
 
 .vu-card {
   background: var(--vu-card-background);
@@ -319,7 +345,7 @@
 .vu-tab { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--vu-text-secondary); cursor: pointer; font: var(--vu-font-bold) var(--vu-text-sm) / 1 var(--vu-font-brand); min-height: var(--vu-control-lg); padding: 0 var(--vu-space-1); white-space: nowrap; }
 .vu-tab:hover { color: var(--vu-text-primary); }.vu-tab[aria-selected="true"] { border-color: var(--vu-blue-700); color: var(--vu-blue-700); }.vu-tab:focus-visible { box-shadow: var(--vu-shadow-focus); outline: 0; }
 .vu-breadcrumb { color: var(--vu-text-muted); display: flex; flex-wrap: wrap; font-size: var(--vu-text-sm); gap: var(--vu-space-2); list-style: none; margin: 0; padding: 0; }.vu-breadcrumb a { color: var(--vu-text-link); }.vu-breadcrumb [aria-current="page"] { color: var(--vu-text-primary); }
-.vu-pagination { display: flex; gap: var(--vu-space-1); list-style: none; margin: 0; padding: 0; }.vu-pagination button { background: var(--vu-surface-canvas); border: 1px solid var(--vu-border-default); border-radius: var(--vu-radius-sm); color: var(--vu-text-primary); cursor: pointer; height: var(--vu-control-md); min-width: var(--vu-control-md); }.vu-pagination button[aria-current="page"] { background: var(--vu-blue-700); border-color: var(--vu-blue-700); color: #fff; }
+.vu-pagination { display: flex; gap: var(--vu-space-1); list-style: none; margin: 0; padding: 0; }.vu-pagination button { background: var(--vu-surface-canvas); border: 1px solid var(--vu-border-default); border-radius: var(--vu-radius-sm); color: var(--vu-text-primary); cursor: pointer; height: var(--vu-control-md); min-width: var(--vu-control-md); }.vu-pagination button[aria-current="page"] { background: var(--vu-surface-brand); border-color: var(--vu-surface-brand); color: var(--vu-text-inverse); }
 
 .vu-overlay { background: var(--vu-overlay-scrim); inset: 0; position: fixed; z-index: var(--vu-z-overlay); }
 .vu-dialog-host, .vu-drawer-host { align-items: center; display: flex; inset: 0; justify-content: center; padding: var(--vu-space-4); position: fixed; z-index: var(--vu-z-modal); }
@@ -331,7 +357,7 @@
 .vu-modal, .vu-dialog { border: 0; border-radius: var(--vu-radius-lg); box-shadow: var(--vu-shadow-lg); max-width: 640px; padding: var(--vu-space-6); }
 .vu-dialog--sm { max-width: 420px; }.vu-dialog--lg { max-width: 720px; }.vu-dialog--alert { border-top: 4px solid var(--vu-red-700); }
 .vu-dialog__header { align-items: start; display: flex; gap: var(--vu-space-4); justify-content: space-between; }.vu-dialog__title { font: var(--vu-font-medium) var(--vu-text-2xl) / var(--vu-leading-snug) var(--vu-font-brand); margin: 0; }.vu-dialog__body { color: var(--vu-text-secondary); font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); margin-top: var(--vu-space-3); }.vu-dialog__footer { display: flex; flex-wrap: wrap; gap: var(--vu-space-3); justify-content: flex-end; margin-top: var(--vu-space-6); }
-.vu-drawer { box-shadow: var(--vu-shadow-lg); max-width: 360px; min-height: 240px; padding: var(--vu-space-6); }.vu-popover { border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-md); box-shadow: var(--vu-shadow-md); padding: var(--vu-space-3); }.vu-tooltip { background: var(--vu-neutral-900); border-radius: var(--vu-radius-sm); color: #fff; font-size: var(--vu-text-xs); padding: var(--vu-space-2); }.vu-toast, .vu-snackbar { align-items: center; background: var(--vu-neutral-900); border-radius: var(--vu-radius-md); box-shadow: var(--vu-shadow-lg); color: #fff; display: flex; gap: var(--vu-space-3); justify-content: space-between; padding: var(--vu-space-4); }.vu-toast--success { background: var(--vu-green-700); }.vu-toast--warning { background: var(--vu-amber-700); }.vu-toast--danger { background: var(--vu-red-700); }.vu-toast__action, .vu-snackbar__action { color: inherit; font: var(--vu-font-bold) var(--vu-text-sm) / 1 var(--vu-font-brand); text-underline-offset: 3px; }.vu-snackbar { max-width: 520px; }
+.vu-drawer { box-shadow: var(--vu-shadow-lg); max-width: 360px; min-height: 240px; padding: var(--vu-space-6); }.vu-popover { border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-md); box-shadow: var(--vu-shadow-md); padding: var(--vu-space-3); }.vu-tooltip { background: var(--vu-neutral-900); border-radius: var(--vu-radius-sm); color: var(--vu-text-inverse); font-size: var(--vu-text-xs); padding: var(--vu-space-2); }.vu-toast, .vu-snackbar { align-items: center; background: var(--vu-neutral-900); border-radius: var(--vu-radius-md); box-shadow: var(--vu-shadow-lg); color: var(--vu-text-inverse); display: flex; gap: var(--vu-space-3); justify-content: space-between; padding: var(--vu-space-4); }.vu-toast--success { background: var(--vu-green-700); }.vu-toast--warning { background: var(--vu-amber-700); }.vu-toast--danger { background: var(--vu-red-700); }.vu-toast__action, .vu-snackbar__action { color: inherit; font: var(--vu-font-bold) var(--vu-text-sm) / 1 var(--vu-font-body); text-underline-offset: 3px; }.vu-snackbar { max-width: 520px; }
 
 .vu-skeleton { animation: vu-pulse 1.5s ease-in-out infinite; background: linear-gradient(90deg, var(--vu-neutral-200), var(--vu-neutral-100), var(--vu-neutral-200)); background-size: 200% 100%; border-radius: var(--vu-radius-sm); min-height: 16px; }.vu-skeleton--title { min-height: 28px; width: 65%; }.vu-skeleton--avatar { border-radius: 50%; height: 40px; min-height: 40px; width: 40px; }
 .vu-accordion { border-top: 1px solid var(--vu-border-subtle); }.vu-accordion details { border-bottom: 1px solid var(--vu-border-subtle); }.vu-accordion summary { cursor: pointer; font-weight: var(--vu-font-bold); padding: var(--vu-space-4) 0; }.vu-accordion__content { color: var(--vu-text-secondary); line-height: var(--vu-leading-normal); padding: 0 0 var(--vu-space-4); }

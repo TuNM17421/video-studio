@@ -1,6 +1,17 @@
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan";
+export type AgentProvider = "claude" | "codex";
+
+export interface AgentConfig {
+  defaultProvider: AgentProvider;
+  selectionLocked: boolean;
+}
+
+export interface AgentBinding {
+  provider: AgentProvider;
+  sessionId: string | null;
+}
 
 export interface Scope {
   scenes: boolean;
@@ -83,7 +94,7 @@ export interface VideoState {
   createdAt: string;
   updatedAt: string;
   request: VideoRequest;
-  sessionId: string | null;
+  agent: AgentBinding;
   stages: Record<StageId, StageStatus>;
   voice: VoiceSettings;
   lastError: string | null;

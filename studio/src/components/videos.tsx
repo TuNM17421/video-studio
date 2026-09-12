@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRightOutlined, DeleteOutlined, LoadingOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, DeleteOutlined, LoadingOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Alert, Button, Empty, Input, Select, Table } from "antd";
 import type { TableProps } from "antd";
 import { api, useKeyStatus } from "@/lib/client";
@@ -10,17 +10,45 @@ import { completedStages, matchesVideo, nextStageLabel, overallStageStatus, VIDE
 import { Shell } from "./shell";
 import { StageBadge } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
+import styles from "./videos.module.css";
 
 interface TrashResult {
   id: string;
   trashed: { kind: string; path: string }[];
 }
 
+function currentStageIndex(video: VideoSummary) {
+  const active = VIDEO_STAGES.findIndex(({ id }) => ["running", "review", "error"].includes(video.stages[id]));
+  if (active >= 0) return active;
+  const next = VIDEO_STAGES.findIndex(({ id }) => video.stages[id] !== "done");
+  return next >= 0 ? next : VIDEO_STAGES.length - 1;
+}
+
+function updatedLabel(updatedAt: string | null) {
+  if (!updatedAt) return "Chưa ghi nhận";
+  const value = new Date(updatedAt);
+  if (Number.isNaN(value.getTime())) return updatedAt;
+  return value.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 function VideoProgress({ video }: { video: VideoSummary }) {
   const done = completedStages(video.stages);
-  return <div className="vs-video-progress" aria-label={`${done} trên 5 cổng đã hoàn tất. Mốc hiện tại: ${nextStageLabel(video.stages)}`}>
-    <div className="vs-progress-line" aria-hidden="true">{VIDEO_STAGES.map(({ id }) => <span key={id} className={`is-${video.stages[id]}`} />)}</div>
-    <div className="vs-progress-labels" aria-hidden="true">{VIDEO_STAGES.map(({ id, short }) => <span key={id}>{short}</span>)}</div>
+  const current = currentStageIndex(video);
+  return <div className={styles.progress} aria-label={`${done} trên 5 cổng đã hoàn tất. Cổng hiện tại: ${nextStageLabel(video.stages)}.`}>
+    <div className={styles.progressRail} aria-hidden="true">
+      {VIDEO_STAGES.map(({ id }, index) => <span key={id} data-status={video.stages[id]} data-current={index === current || undefined} />)}
+    </div>
+    <div className={styles.progressLabels} aria-hidden="true">
+      {VIDEO_STAGES.map(({ id, short }, index) => <span key={id} data-current={index === current || undefined}>{short}</span>)}
+    </div>
+  </div>;
+}
+
+function VideoIdentity({ video }: { video: VideoSummary }) {
+  return <div className={styles.videoIdentity}>
+    <strong>{video.id}</strong>
+    {video.title !== video.id && <span>{video.title}</span>}
+    {!video.managed && <small>Quản lý ngoài Video Studio</small>}
   </div>;
 }
 
@@ -34,15 +62,27 @@ export default function Videos() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<VideoFilter>("all");
   const { hasKey } = useKeyStatus();
-  useEffect(() => { api<VideoSummary[]>("/api/videos").then(setVideos).catch((e) => setError(e.message)); }, []);
+
+  useEffect(() => {
+    api<VideoSummary[]>("/api/videos").then(setVideos).catch((caught) => {
+      setError(caught instanceof Error ? caught.message : "Không thể tải danh sách video.");
+    });
+  }, []);
+
+  async function loadVideos() {
+    setVideos(null);
+    setError(null);
+    try {
+      setVideos(await api<VideoSummary[]>("/api/videos"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Không thể tải danh sách video.");
+    }
+  }
+
   const filtered = useMemo(() => videos?.filter((video) => matchesVideo(video, query, filter)) || [], [videos, query, filter]);
   const loading = videos === null && !error;
-  const countLabel = videos ? `${filtered.length} / ${videos.length} VIDEO` : error ? "KHÔNG THỂ TẢI" : "ĐANG TẢI VIDEO…";
-  const emptyText = videos === null || error
-    ? null
-    : videos.length
-      ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có video phù hợp. Đổi từ khóa hoặc bộ lọc trạng thái." />
-      : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có video. Tạo video đầu tiên để bắt đầu luồng sản xuất." />;
+  const countLabel = videos ? `${filtered.length} / ${videos.length} video` : error ? "Không thể tải" : "Đang tải…";
+  const hasFilters = Boolean(query.trim()) || filter !== "all";
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -60,30 +100,76 @@ export default function Videos() {
     }
   }
 
+  function resetFilters() {
+    setQuery("");
+    setFilter("all");
+  }
+
   const columns: TableProps<VideoSummary>["columns"] = [
-    { title: "Video", key: "video", render: (_, video) => <div className="vs-video-cell"><strong>{video.id}</strong>{video.title !== video.id && <small>{video.title}</small>}{!video.managed && <small>làm ngoài Video Studio</small>}</div> },
-    { title: "Ngày", dataIndex: "day", key: "day", render: (day: string) => day || "—" },
-    { title: "Tiến độ 5 cổng", key: "progress", render: (_, video) => <VideoProgress video={video} /> },
-    { title: "Trạng thái", key: "status", render: (_, video) => <div className="vs-video-state"><StageBadge status={overallStageStatus(video.stages)} /><small className="vs-next-stage">{nextStageLabel(video.stages)}</small></div> },
-    { title: <span className="sr-only">Thao tác</span>, key: "action", align: "right", render: (_, video) => <div className="vs-video-actions">
-      <Button type="link" href={`/?id=${video.id}`} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở</Button>
-      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => { setDeleteError(null); setDeleteTarget(video); }}>Xóa</Button>
+    { title: "Video", key: "video", width: "24%", render: (_, video) => <VideoIdentity video={video} /> },
+    { title: "Lịch", key: "schedule", width: "16%", render: (_, video) => <div className={styles.schedule}><strong>{video.day || "—"}</strong><span>Cập nhật {updatedLabel(video.updatedAt)}</span></div> },
+    { title: "Tiến độ 5 cổng", key: "progress", width: "28%", render: (_, video) => <VideoProgress video={video} /> },
+    { title: "Cổng hiện tại", key: "status", width: "17%", render: (_, video) => <div className={styles.videoState}><StageBadge status={overallStageStatus(video.stages)} /><span>{nextStageLabel(video.stages)}</span></div> },
+    { title: <span className="sr-only">Thao tác</span>, key: "action", width: "15%", align: "right", render: (_, video) => <div className={styles.desktopActions}>
+      <Button type="link" href={`/?id=${encodeURIComponent(video.id)}`} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở</Button>
+      <Button type="text" danger icon={<DeleteOutlined />} aria-label={`Xóa video ${video.id}`} onClick={() => { setDeleteError(null); setDeleteTarget(video); }}>Xóa</Button>
     </div> },
   ];
+
+  const results = error
+    ? <div className={styles.statePanel} role="status">
+        <strong>Danh sách video chưa sẵn sàng</strong>
+        <span>Kiểm tra server Studio rồi thử tải lại.</span>
+        <Button icon={<ReloadOutlined />} onClick={() => { void loadVideos(); }}>Thử tải lại</Button>
+      </div>
+    : loading
+      ? <div className={styles.statePanel} role="status" aria-live="polite"><LoadingOutlined spin /><strong>Đang đọc hồ sơ sản xuất…</strong></div>
+      : filtered.length === 0
+        ? <div className={styles.emptyState}>
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={videos?.length ? "Không có video phù hợp với bộ lọc hiện tại." : "Chưa có video. Tạo video đầu tiên để bắt đầu luồng sản xuất."} />
+            {hasFilters && <Button onClick={resetFilters}>Xóa bộ lọc</Button>}
+          </div>
+        : <>
+            <Table className={styles.desktopTable} rowKey="id" columns={columns} dataSource={filtered} pagination={false} tableLayout="fixed" />
+            <ul className={styles.mobileList} aria-label="Danh sách video">
+              {filtered.map((video) => <li key={video.id}>
+                <article className={styles.videoCard}>
+                  <div className={styles.cardHeading}>
+                    <VideoIdentity video={video} />
+                    <StageBadge status={overallStageStatus(video.stages)} />
+                  </div>
+                  <dl className={styles.cardFacts}>
+                    <div><dt>Ngày</dt><dd>{video.day || "—"}</dd></div>
+                    <div><dt>Cập nhật</dt><dd>{updatedLabel(video.updatedAt)}</dd></div>
+                    <div><dt>Cổng hiện tại</dt><dd>{nextStageLabel(video.stages)}</dd></div>
+                  </dl>
+                  <VideoProgress video={video} />
+                  <div className={styles.mobileActions}>
+                    <Button type="primary" href={`/?id=${encodeURIComponent(video.id)}`} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở video</Button>
+                    <Button danger icon={<DeleteOutlined />} aria-label={`Xóa video ${video.id}`} onClick={() => { setDeleteError(null); setDeleteTarget(video); }}>Xóa</Button>
+                  </div>
+                </article>
+              </li>)}
+            </ul>
+          </>;
+
   return <Shell page="videos" crumb="Các video" hasKey={hasKey}>
-    <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> projects/</div><h1>Các video</h1></div></div>
+    <div className={`page-heading ${styles.pageHeading}`}>
+      <div><div className="eyebrow"><span className="tiny-mark" /> projects/</div><h1>Các video</h1></div>
+      <p>Đọc tiến độ, nhận diện cổng đang chờ và trở lại đúng bàn dựng.</p>
+    </div>
     {error && <Alert className="feedback" type="error" showIcon title="Không tải được danh sách video" description={error} />}
     {notice && <Alert className="feedback" type="success" showIcon closable title="Đã đưa video vào Thùng rác" description={notice} onClose={() => setNotice(null)} />}
-    <section className="editor-panel vs-video-index" aria-busy={loading}>
-      <div className="vs-index-toolbar">
-        <div><span className="eyebrow">LUỒNG SẢN XUẤT</span><h2>Theo dõi từng cổng duyệt</h2></div>
-        <div className="vs-index-controls">
-          <Input.Search className="vs-search" allowClear value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, tên hoặc ngày…" aria-label="Tìm video" />
-          <Select aria-label="Lọc trạng thái" value={filter} onChange={(value) => setFilter(value)} options={[{ value: "all", label: "Tất cả trạng thái" }, { value: "active", label: "Đang xử lý" }, { value: "attention", label: "Cần chú ý" }, { value: "done", label: "Đã hoàn tất" }]} />
-          <span className="quiet-label" aria-live="polite">{countLabel}</span>
+    <section className={`editor-panel ${styles.indexPanel}`} aria-busy={loading} aria-labelledby="video-index-title">
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarTitle}><span className="eyebrow">LUỒNG SẢN XUẤT</span><h2 id="video-index-title">Theo dõi từng cổng duyệt</h2></div>
+        <div className={styles.controls}>
+          <Input.Search className={styles.search} allowClear value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, tên hoặc ngày…" aria-label="Tìm video" aria-controls="video-index-results" />
+          <Select className={styles.filter} aria-label="Lọc trạng thái" value={filter} onChange={(value) => setFilter(value)} options={[{ value: "all", label: "Tất cả trạng thái" }, { value: "active", label: "Đang xử lý" }, { value: "attention", label: "Cần chú ý" }, { value: "done", label: "Đã hoàn tất" }]} />
+          <span className={styles.count} aria-live="polite">{countLabel}</span>
         </div>
       </div>
-      <Table className="vs-table vs-production-table" rowKey="id" columns={columns} dataSource={filtered} pagination={false} loading={loading} locale={{ emptyText }} />
+      <div id="video-index-results" className={styles.results}>{results}</div>
     </section>
     {deleteTarget && <ConfirmDialog
       title={`Đưa “${deleteTarget.id}” vào Thùng rác?`}
