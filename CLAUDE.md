@@ -91,4 +91,16 @@ commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "k
 - `node tools/voice-sample.mjs --text "…" "Tên=<voice id>" …` đọc thử một đoạn bằng nhiều giọng ElevenLabs,
   mỗi giọng một WAV trong `voice/samples/` — để chọn người dẫn hoặc lấy mẫu ~10 giây cho model local.
   Luôn `--dry-run` trước vì mỗi yêu cầu đều bị tính ký tự.
+- **Sinh ảnh preview cho một component** (`styles/previews/<nhóm>__<Component>.png`, thứ Thư viện của Studio
+  hiển thị): repo không có công cụ riêng, làm thủ công bằng `tools/shoot.mjs`. Viết một file HTML tạm **bên
+  trong** `vinuni-lesson-video-ds/` (để nạp được `dist/vk.js` và `styles.css`) — đặt ở `ui_kits/lesson-video/demos/`,
+  **đừng** đặt trong `components/<nhóm>/` vì verify chỉ cho đúng một file .html mỗi thư mục component.
+  Dựng component bằng `VK.mountCard`, chạy `npm run build` trước nếu component vừa thêm, phục vụ thư mục DS
+  (`npm run serve`, cổng 8765) rồi:
+  `node tools/shoot.mjs "http://127.0.0.1:8765/ui_kits/lesson-video/demos/<file>.html" styles/previews/<nhóm>__<Component>.png 367 210`
+  Cỡ chuẩn là rộng **367 px** (cao tuỳ component, 210–250). Hai cái bẫy đã vấp:
+  shoot.mjs **cắt** trang theo viewport chứ không thu nhỏ, nên phải tự thu bằng
+  `transform: scale(...)` với `transform-origin: top left` trên một div bọc có kích thước thật;
+  và component tràn mép thì bị xén âm thầm — chụp xong **phải mở ảnh ra nhìn**, đừng tin exit code.
+  Xoá file HTML tạm sau khi chụp.
 - Reply to the user in Vietnamese.
