@@ -21,7 +21,7 @@
   --red-light: var(--vu-red-50);
   --radius: var(--vu-radius-md);
   --radius-sm: var(--vu-radius-sm);
-  font-family: var(--vu-font-brand);
+  font-family: var(--vu-font-body);
   color: var(--text);
   background: var(--background);
   font-synthesis: none;
@@ -135,14 +135,14 @@ dialog::backdrop {
   display: flex;
 }
 .sidebar {
-  width: 224px;
-  flex: 0 0 224px;
+  width: var(--vu-shell-sidebar-width);
+  flex: 0 0 var(--vu-shell-sidebar-width);
   background: var(--surface);
   border-right: 1px solid var(--line);
   height: 100dvh;
   position: sticky;
   top: 0;
-  padding: 32px 16px 20px;
+  padding: 32px 14px 20px;
   display: flex;
   flex-direction: column;
 }
@@ -193,7 +193,7 @@ dialog::backdrop {
   color: var(--vu-neutral-700);
   letter-spacing: var(--vu-tracking-caps);
   text-transform: uppercase;
-  margin: 44px 12px 12px;
+  margin: 40px 10px 12px;
 }
 .sidebar nav {
   display: grid;
@@ -267,7 +267,7 @@ dialog::backdrop {
 }
 .sidebar-footer {
   border-top: 1px solid var(--line);
-  margin: 17px 10px 0;
+  margin: 17px 8px 0;
   padding-top: 19px;
   display: flex;
   flex-direction: column;
@@ -662,7 +662,7 @@ dialog::backdrop {
   border: 1px solid var(--vu-blue-100);
   border-radius: 7px;
   background: white;
-  box-shadow: 0 3px 8px #263a5810;
+  box-shadow: var(--vu-shadow-sm);
 }
 .sheet-back {
   top: 0;
@@ -731,7 +731,7 @@ dialog::backdrop {
   background: var(--blue);
   color: white;
   border: 3px solid white;
-  box-shadow: 0 2px 4px #007aff17;
+  box-shadow: var(--vu-shadow-xs);
 }
 .upload-zone h3 {
   font-size: 18px;
@@ -844,13 +844,15 @@ dialog::backdrop {
   overflow: hidden;
 }
 .preview-panel .panel-heading {
-  padding: 23px 21px 20px;
-  align-items: center;
+  padding: 17px 18px 14px;
+  align-items: flex-start;
 }
 .preview-panel .panel-heading h2 {
-  font-size: 12px;
+  font-family: var(--vu-font-utility);
+  font-size: 11px;
   letter-spacing: 0;
-  font-weight: 600;
+  font-weight: var(--vu-font-semibold);
+  text-transform: uppercase;
 }
 .quiet-label {
   font-size: 9px;
@@ -859,7 +861,7 @@ dialog::backdrop {
   font-weight: 500;
 }
 .preview-panel > .slide-visual {
-  margin: 0 20px;
+  margin: 0 18px;
 }
 .slide-visual {
   aspect-ratio: 16/9;
@@ -914,42 +916,58 @@ dialog::backdrop {
   color: var(--vu-neutral-400);
 }
 .project-summary {
-  padding: 22px 21px 20px;
+  padding: 16px 18px 14px;
 }
 .project-summary h3 {
-  font-size: 13px;
-  font-weight: 590;
-  letter-spacing: -0.1px;
-  line-height: 1.5;
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-bold);
+  letter-spacing: var(--vu-tracking-tight);
+  line-height: var(--vu-leading-snug);
   overflow-wrap: anywhere;
 }
 .project-summary p {
-  font-size: 10px;
-  line-height: 1.8;
-  color: var(--vu-neutral-400);
-  margin-top: 8px;
+  margin-top: 5px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
   overflow-wrap: anywhere;
 }
 .project-facts {
   border-top: 1px solid var(--line);
-  padding: 17px 21px;
+  padding: 14px 18px 18px;
   margin: 0;
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 12px;
 }
 .project-facts > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 10px;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  font-size: var(--vu-text-xs);
+}
+.project-facts > div:last-child {
+  grid-column: 1 / -1;
+  padding-top: 12px;
+  border-top: 1px solid var(--vu-border-subtle);
 }
 .project-facts dt {
-  color: var(--vu-neutral-400);
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: 9px;
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-wide);
+  text-transform: uppercase;
 }
 .project-facts dd {
   margin: 0;
-  color: var(--vu-neutral-600);
-  font-weight: 470;
+  color: var(--vu-blue-900);
+  font-weight: var(--vu-font-semibold);
+  line-height: var(--vu-leading-normal);
+  overflow-wrap: anywhere;
 }
 .preview-note {
   display: flex;
@@ -1451,7 +1469,7 @@ dialog::backdrop {
   margin-bottom: 20px;
   box-shadow:
     inset 0 2px 10px var(--vu-neutral-0),
-    0 5px 12px #39588005;
+    var(--vu-shadow-xs);
 }
 .voice-intro .eyebrow {
   font-size: 8px;
@@ -1659,13 +1677,13 @@ dialog::backdrop {
   bottom: 13px;
   padding: 6px 8px;
   border-radius: 5px;
-  background: #ffffffdf;
+  background: rgb(255 255 255 / 87%);
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 9px;
   color: var(--vu-neutral-500);
-  box-shadow: 0 1px 5px #24365208;
+  box-shadow: var(--vu-shadow-xs);
 }
 .video-player {
   display: block;
@@ -1765,7 +1783,7 @@ dialog::backdrop {
   max-width: 560px;
   width: calc(100% - 32px);
   max-height: 90dvh;
-  box-shadow: 0 24px 90px #192d5140;
+  box-shadow: var(--vu-shadow-lg);
   background: white;
   color: var(--text);
   overflow: hidden;

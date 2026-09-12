@@ -1,0 +1,24 @@
+import { describe, expect, it } from "vitest";
+import { readAgentConfig, resolveAgentProvider } from "./agent-config";
+
+describe("Studio agent configuration", () => {
+  it("keeps Claude as the backward-compatible default", () => {
+    expect(readAgentConfig({})).toEqual({ defaultProvider: "claude", selectionLocked: false });
+  });
+
+  it("reads a locked Codex default from non-secret environment switches", () => {
+    expect(readAgentConfig({ STUDIO_AGENT_PROVIDER: "codex", STUDIO_AGENT_PROVIDER_LOCKED: "1" }))
+      .toEqual({ defaultProvider: "codex", selectionLocked: true });
+  });
+
+  it("rejects invalid values instead of silently running a different agent", () => {
+    expect(() => readAgentConfig({ STUDIO_AGENT_PROVIDER: "other" })).toThrow(/claude hoặc codex/);
+    expect(() => readAgentConfig({ STUDIO_AGENT_PROVIDER_LOCKED: "sometimes" })).toThrow(/true\/false/);
+  });
+
+  it("enforces the lock on the server-side selection", () => {
+    const locked = { defaultProvider: "claude" as const, selectionLocked: true };
+    expect(resolveAgentProvider(undefined, locked)).toBe("claude");
+    expect(() => resolveAgentProvider("codex", locked)).toThrow(/khóa agent/);
+  });
+});

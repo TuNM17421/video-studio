@@ -70,21 +70,24 @@
 /* ── style picker + showcase ────────────────────────────────────────────── */
 .vs-style-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--vu-style-card-min-width), 1fr));
   gap: 12px;
 }
 .vs-style-option {
-  padding: 10px;
+  padding: 12px 12px 14px;
 }
 .vs-style-option strong {
-  font-size: var(--vu-text-sm);
+  font-size: var(--vu-text-md);
   font-weight: var(--vu-font-bold);
+  line-height: var(--vu-leading-snug);
   color: var(--vu-blue-900);
   margin: 12px 2px 4px;
 }
 .vs-style-option small {
-  font-size: 11px;
-  color: var(--muted);
+  margin: 0 2px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-relaxed);
 }
 .vs-style-strip {
   display: flex;
@@ -261,6 +264,56 @@ button.vs-tile:hover {
 .vs-form-requirements > .vs-required {
   margin-left: 0;
 }
+.vs-agent-binding {
+  margin-top: 20px;
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--vu-blue-100);
+  border-left: 3px solid var(--vu-blue-700);
+  border-radius: 7px;
+  background: var(--vu-blue-50);
+}
+.vs-agent-binding-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--vu-blue-700);
+}
+.vs-agent-binding-copy > svg {
+  flex: 0 0 auto;
+  font-size: 17px;
+}
+.vs-agent-binding-copy > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vs-agent-binding-copy strong {
+  color: var(--vu-blue-900);
+  font-size: 12px;
+}
+.vs-agent-binding-copy small {
+  color: var(--vu-neutral-600);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.vs-agent-select {
+  width: 156px;
+  flex: 0 0 156px;
+}
+.vs-agent-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  color: var(--vu-blue-800);
+  font-size: 11px;
+  font-weight: var(--vu-font-bold);
+}
 .vs-section-title,
 .vs-field-label {
   display: inline-flex;
@@ -367,7 +420,10 @@ button.vs-tile:hover {
   cursor: pointer;
   font: inherit;
   text-align: left;
-  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background var(--vu-duration-fast) var(--vu-ease-standard),
+    box-shadow var(--vu-duration-fast) var(--vu-ease-standard);
 }
 .vs-source-picker:hover:not(:disabled) {
   border-color: var(--vu-blue-700);
@@ -376,7 +432,7 @@ button.vs-tile:hover {
 .vs-source-picker:focus-visible {
   border-color: var(--vu-blue-700);
   outline: none;
-  box-shadow: 0 0 0 3px rgb(27 83 145 / 16%);
+  box-shadow: var(--vu-shadow-focus);
 }
 .vs-source-picker:disabled {
   cursor: not-allowed;
@@ -509,7 +565,43 @@ button.vs-tile:hover {
   border-radius: 6px;
   padding: 12px;
   margin: 12px 0;
-  font-family: var(--vu-font-brand);
+  font-family: var(--vu-font-utility);
+}
+
+.vs-inline-state {
+  min-height: 116px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px dashed var(--vu-border-default);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-secondary);
+  font-size: var(--vu-text-xs);
+}
+
+.vs-inline-state.is-error {
+  border-color: var(--vu-brand-secondary);
+  background: var(--vu-red-50);
+  color: var(--vu-text-danger);
+}
+
+.vs-optional-sources {
+  margin-bottom: 17px;
+}
+
+.vs-optional-sources .ant-collapse-content-box > .field:last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 680px) {
+  .vs-agent-binding {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .vs-agent-select {
+    width: 100%;
+  }
 }
 /* ── agent run ──────────────────────────────────────────────────────────── */
 .vs-badge {
@@ -576,7 +668,7 @@ button.vs-tile:hover {
   gap: 4px;
 }
 .vs-md code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--vs-font-utility);
   font-size: 11px;
   background: var(--vu-blue-50);
   border-radius: 3px;
@@ -1002,16 +1094,27 @@ button.vs-tile:hover {
 }
 .vs-deliverables li {
   display: grid;
-  grid-template-columns: 18px 110px 1fr;
+  grid-template-columns: 18px 110px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   font-size: 12px;
 }
-.vs-deliverables .text-button {
+.vs-deliverables .text-button,
+.vs-deliverables .ant-btn-link {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding-inline: 0;
   justify-content: flex-start;
   font-size: 11px;
   overflow-wrap: anywhere;
   text-align: left;
+  white-space: normal;
+}
+.vs-deliverables .ant-btn-link > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .vs-deliverables small {
   font-size: 10px;
@@ -1175,7 +1278,7 @@ button.vs-tile:hover {
   border-radius: 6px;
   padding: 14px;
   margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--vs-font-utility);
 }
 .vs-videos-tab {
   display: grid;
@@ -1227,9 +1330,9 @@ button.vs-tile:hover {
 
 /* ── production-focused desktop refresh ───────────────────────────────── */
 :root {
-  --vs-font-body: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --vs-font-display: var(--font-montserrat), Montserrat, Arial, sans-serif;
-  --vs-font-utility: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --vs-font-body: var(--vu-font-body);
+  --vs-font-display: var(--vu-font-brand);
+  --vs-font-utility: var(--vu-font-utility);
 }
 .studio-shell {
   font-family: var(--vs-font-body);
@@ -1249,20 +1352,20 @@ button.vs-tile:hover {
 
 .vs-production-rail {
   overflow: hidden;
-  margin-bottom: 27px;
+  margin-bottom: 22px;
   background: var(--surface);
   border: 1px solid var(--vu-blue-100);
   border-radius: var(--radius);
-  box-shadow: 0 10px 28px -24px rgb(11 42 77 / 55%);
+  box-shadow: var(--vu-shadow-xs);
 }
 .vs-production-rail-head {
-  min-height: 31px;
-  padding: 0 24px;
+  min-height: var(--vu-workflow-header-height);
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  background: var(--vu-blue-900);
+  background: var(--vu-lesson-ink);
   color: white;
   font-family: var(--vs-font-display);
   font-size: 10px;
@@ -1454,10 +1557,10 @@ button.vs-tile:hover {
 }
 
 .vs-drawer-scrim {
-  animation: vs-scrim-in 160ms var(--vu-ease-standard) both;
+  animation: vs-scrim-in var(--vu-duration-normal) var(--vu-ease-standard) both;
 }
 .vs-drawer {
-  animation: vs-drawer-in 220ms var(--vu-ease-standard) both;
+  animation: vs-drawer-in var(--vu-duration-slow) var(--vu-ease-standard) both;
 }
 @keyframes vs-scrim-in {
   from { background: rgb(28 36 49 / 0%); }
@@ -1471,8 +1574,8 @@ button.vs-tile:hover {
     max-width: 1500px;
   }
   .editor-layout {
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 28px;
+    grid-template-columns: minmax(0, 1fr) var(--vu-preview-panel-width);
+    gap: 24px;
   }
   .preview-panel {
     position: sticky;
@@ -1563,8 +1666,8 @@ button.vs-tile:hover {
   background: var(--background);
 }
 .sidebar.ant-layout-sider {
-  min-width: 224px !important;
-  max-width: 224px !important;
+  min-width: var(--vu-shell-sidebar-width) !important;
+  max-width: var(--vu-shell-sidebar-width) !important;
   background: var(--surface) !important;
 }
 @media (min-width: 681px) {
@@ -1611,7 +1714,7 @@ button.vs-tile:hover {
   width: 100%;
   height: 46px;
   margin: 2px 0;
-  padding-inline: 14px !important;
+  padding-inline: 12px !important;
   border-left: 3px solid transparent;
   border-radius: 4px;
 }
@@ -1637,10 +1740,13 @@ button.vs-tile:hover {
   opacity: 1;
 }
 .ant-btn-primary:not(:disabled) {
-  background: var(--vu-blue-700);
+  background: var(--vu-brand-primary);
 }
 .ant-btn-primary:not(:disabled):hover {
-  background: var(--vu-blue-800) !important;
+  background: var(--vu-brand-primary-hover) !important;
+}
+.ant-btn-primary:not(:disabled):active {
+  background: var(--vu-brand-primary-active) !important;
 }
 .ant-btn-link {
   height: auto;
@@ -1674,6 +1780,9 @@ button.vs-tile:hover {
 .field .ant-input-number {
   width: 100%;
 }
+/* Ant Select owns its absolute search input. Keep legacy native-field rules
+   from stretching that internal layer over the selected value. */
+.field .ant-select .ant-select-input,
 .field .ant-input-affix-wrapper input,
 .field .ant-input-number input,
 .vs-search input {
@@ -1746,7 +1855,7 @@ button.vs-tile:hover {
 .vs-style-picker.ant-radio-group {
   width: 100%;
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--vu-style-card-min-width), 1fr));
   gap: 12px;
 }
 .vs-style-option.ant-radio-wrapper {
@@ -1754,6 +1863,15 @@ button.vs-tile:hover {
   min-width: 0;
   margin: 0;
   display: block;
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background-color var(--vu-duration-fast) var(--vu-ease-standard),
+    box-shadow var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-style-option.ant-radio-wrapper.is-selected {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-lesson-surface);
+  box-shadow: 0 0 0 1px var(--vu-blue-200), var(--vu-shadow-xs);
 }
 .vs-style-option.ant-radio-wrapper > .ant-radio {
   position: absolute;
@@ -1859,18 +1977,28 @@ button.vs-tile:hover {
   min-width: 0;
 }
 .vs-workflow.ant-steps .vs-workflow-item-wrapper {
+  height: var(--vu-workflow-step-height);
+  min-height: var(--vu-workflow-step-height);
   min-width: 0;
-  padding: 12px 12px 14px;
+  padding: 8px 10px;
+  align-items: center;
 }
 .vs-workflow.ant-steps .vs-workflow-item-section {
   min-width: 0;
+}
+.vs-workflow.ant-steps .vs-workflow-item-icon {
+  width: var(--vu-workflow-step-icon);
+  min-width: var(--vu-workflow-step-icon);
+  height: var(--vu-workflow-step-icon);
+  margin-inline-end: 10px;
+  font-size: 11px;
 }
 .vs-workflow.ant-steps .vs-workflow-item-title {
   overflow: hidden;
   color: var(--vu-blue-900);
   font-family: var(--vs-font-display);
-  font-size: 13px;
-  font-weight: var(--vu-font-bold);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1878,13 +2006,35 @@ button.vs-tile:hover {
   min-width: 0;
   overflow: hidden;
   color: var(--subtle);
-  font-size: 11px;
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-snug);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.vs-workflow.ant-steps .ant-steps-item-rail {
+  height: 1px;
+  background: var(--vu-blue-100);
+}
+.vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-icon,
+.vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-content,
+.vs-workflow.ant-steps .ant-steps-item-wait .ant-steps-item-rail {
+  opacity: var(--vu-emphasis-future);
+}
+.vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-title {
+  color: var(--vu-text-muted);
+  font-weight: var(--vu-font-medium);
+}
+.vs-workflow.ant-steps .ant-steps-item-finish:not(.ant-steps-item-active) .vs-workflow-item-wrapper {
+  opacity: var(--vu-emphasis-complete);
+}
+.vs-workflow.ant-steps .ant-steps-item-active .vs-workflow-item-wrapper,
+.vs-workflow.ant-steps .ant-steps-item-process .vs-workflow-item-wrapper {
+  opacity: var(--vu-emphasis-active);
 }
 .vs-workflow.ant-steps .ant-steps-item-process .vs-workflow-item-icon {
   background: var(--vu-blue-700);
   border-color: var(--vu-blue-700);
+  box-shadow: 0 0 0 3px var(--vu-blue-100);
 }
 .vs-workflow.ant-steps .ant-steps-item-finish .vs-workflow-item-icon {
   background: var(--vu-green-50);
@@ -2091,10 +2241,13 @@ button.vs-tile:hover {
   border-radius: 8px;
 }
 .vs-confirm-dialog .ant-btn-primary.ant-btn-dangerous:not(:disabled) {
-  background: var(--vu-red-700);
+  background: var(--vu-brand-secondary);
 }
 .vs-confirm-dialog .ant-btn-primary.ant-btn-dangerous:not(:disabled):hover {
-  background: var(--vu-red-800) !important;
+  background: var(--vu-brand-secondary-hover) !important;
+}
+.vs-confirm-dialog .ant-btn-primary.ant-btn-dangerous:not(:disabled):active {
+  background: var(--vu-brand-secondary-active) !important;
 }
 .vs-confirm-title {
   display: flex;
@@ -2126,4 +2279,300 @@ button.vs-tile:hover {
 }
 .vs-delete-summary .ant-alert {
   margin-top: 12px;
+}
+
+/* ── shared responsive contract ──────────────────────────────────────────
+   These rules intentionally live after the Ant bridge. Ant Sider writes a
+   fixed flex-basis, so the mobile shell must override it at the same layer. */
+@media (min-width: 681px) and (max-width: 1100px) {
+  .sidebar.ant-layout-sider {
+    min-width: var(--vu-shell-sidebar-tablet-width) !important;
+    max-width: var(--vu-shell-sidebar-tablet-width) !important;
+    flex-basis: var(--vu-shell-sidebar-tablet-width) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .studio-shell.ant-layout {
+    width: 100%;
+    min-width: 0;
+    flex-direction: column !important;
+  }
+
+  .sidebar.ant-layout-sider {
+    position: relative;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto;
+    flex: 0 0 auto !important;
+    padding: 14px 16px 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--vu-border-subtle);
+  }
+
+  .sidebar .ant-layout-sider-children {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .sidebar .vs-brand {
+    margin: 0;
+    gap: 8px;
+    font-size: 20px;
+  }
+
+  .sidebar .brand-mark {
+    width: 24px;
+    height: 24px;
+    transform: none;
+  }
+
+  .sidebar .workspace-label,
+  .sidebar .sidebar-bottom {
+    display: none;
+  }
+
+  .vs-sidebar-menu.ant-menu {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .vs-sidebar-menu.ant-menu::before,
+  .vs-sidebar-menu.ant-menu::after {
+    display: none;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-item {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    margin: 0;
+    padding-inline: 8px !important;
+    justify-content: center;
+    gap: 7px;
+    border-top: 3px solid transparent;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-item-selected {
+    border-top-color: var(--vu-brand-secondary);
+    border-left-color: transparent;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-item-icon {
+    font-size: 15px;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-title-content {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workspace.ant-layout {
+    width: 100% !important;
+    min-width: 0;
+    flex: 0 0 auto !important;
+  }
+
+  .topbar.ant-layout-header {
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 16px;
+  }
+
+  .breadcrumb.ant-breadcrumb {
+    min-width: 0;
+    font-size: 10px;
+  }
+
+  .breadcrumb.ant-breadcrumb ol {
+    min-width: 0;
+  }
+
+  .breadcrumb.ant-breadcrumb li:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .main-content {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 24px 16px 0;
+  }
+
+  .page-heading {
+    margin-bottom: 22px;
+  }
+
+  .page-heading h1 {
+    font-size: 28px;
+  }
+
+  .vs-production-rail {
+    margin-bottom: 20px;
+  }
+
+  .vs-production-rail-head {
+    min-height: 32px;
+    padding: 0 14px;
+    font-size: 9px;
+  }
+
+  .vs-production-rail-head strong {
+    max-width: 55%;
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vs-workflow.ant-steps .vs-workflow-item-wrapper {
+    height: auto;
+    min-height: 76px;
+    padding: 8px 3px 7px;
+    align-items: center;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .vs-workflow.ant-steps .vs-workflow-item-section,
+  .vs-workflow.ant-steps .ant-steps-item-header {
+    width: 100%;
+    flex: none;
+  }
+
+  .vs-workflow.ant-steps .vs-workflow-item-title {
+    width: 100%;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .vs-workflow.ant-steps .vs-workflow-item-content {
+    display: none;
+  }
+
+  .vs-workflow.ant-steps .vs-workflow-item-icon {
+    margin-inline-end: 0;
+  }
+
+  .editor-layout {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-panel {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .vs-style-picker.ant-radio-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vs-plan-form .ant-form-item-row {
+    display: block;
+    min-width: 0;
+  }
+
+  .vs-plan-form .ant-form-item-label,
+  .vs-plan-form .ant-form-item-control {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+
+  .vs-collapse-label {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .vs-collapse-label small {
+    line-height: 1.5;
+  }
+
+  .vs-agent-binding {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vs-agent-select {
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .vs-source-picker {
+    min-height: 112px;
+    padding: 14px;
+    grid-template-columns: 32px minmax(0, 1fr) 24px;
+    gap: 10px;
+  }
+
+  .vs-source-picker-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .vs-scope-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .panel-footer .ant-btn-primary {
+    width: 100%;
+  }
+
+  .workspace-footer {
+    margin-top: 32px;
+  }
+}
+
+@media (max-width: 390px) {
+  .main-content {
+    padding-inline: 14px;
+  }
+
+  .vs-production-rail-head,
+  .topbar.ant-layout-header {
+    padding-inline: 14px;
+  }
+
+  .vs-workflow.ant-steps .vs-workflow-item-title {
+    font-size: 10px;
+  }
+}
+
+/* Ant keeps component semantics; Studio owns the visible keyboard contract. */
+.ant-btn:focus-visible,
+.ant-input:focus-visible,
+.ant-input-affix-wrapper:focus-within,
+.ant-select-focused .ant-select-selector,
+.ant-tabs-tab-btn:focus-visible,
+.ant-menu-item:focus-visible {
+  outline: 3px solid var(--vu-border-focus) !important;
+  outline-offset: 2px;
 }

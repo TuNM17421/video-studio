@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { CheckCircleFilled, CopyOutlined, DeleteOutlined, DownOutlined, EditOutlined, FileOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, PlayCircleFilled, WarningFilled } from "@ant-design/icons";
+import { CheckCircleFilled, CopyOutlined, DeleteOutlined, DownOutlined, EditOutlined, FileOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, LockOutlined, PlayCircleFilled, RobotOutlined, WarningFilled } from "@ant-design/icons";
 import { Button, Checkbox, Collapse, Descriptions, Dropdown, Form, Input, Select, Upload } from "antd";
 import type { InputRef, MenuProps, UploadProps } from "antd";
 import { api } from "@/lib/client";
-import type { Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
+import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
+import type { AgentConfig, AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { StylePicker, StyleShowcase } from "./style-showcase";
 
 const DAYS = Array.from({ length: 30 }, (_, i) => `Day${String(i + 1).padStart(2, "0")}`);
@@ -27,12 +28,14 @@ function videoIdError(value: string) {
 
 export interface PlanDraft {
   id: string;
+  agentProvider: AgentProvider;
   request: VideoRequest;
   script: { name: string; content: string } | null;
 }
 
-export const emptyDraft = (style: string): PlanDraft => ({
+export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude"): PlanDraft => ({
   id: "",
+  agentProvider,
   request: { style, day: "Day02", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
@@ -213,7 +216,7 @@ function SourcePickerField({ label, purpose, value, onChange, disabled }: { labe
   </Form.Item>;
 }
 
-export function PlanForm({ styles, draft, setDraft, onCreate, busy }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean }) {
+export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy, loading, unavailable }: { styles: StyleDef[]; agentConfig: AgentConfig; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean }) {
   const style = styles.find((s) => s.id === draft.request.style);
   const formRef = useRef<HTMLDivElement>(null);
   const idInput = useRef<InputRef>(null);
@@ -300,7 +303,17 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy }: { styles: 
 
   const hasVisibleError = !!shownIdError || !!shownScriptError;
   const complete = VIDEO_ID_RE.test(draft.id) && !!draft.script && !duplicateError;
-  const footerHint = validating ? "Đang kiểm tra mã video…" : hasVisibleError ? "Sửa các trường được đánh dấu ở trên." : complete ? "Sẽ tạo project và chạy agent Lời & cue." : "Điền các trường có dấu * rồi bấm tạo.";
+  const footerHint = loading
+    ? "Đang tải style và cấu hình agent…"
+    : unavailable
+      ? "Cấu hình chưa sẵn sàng. Dùng nút Thử lại ở thông báo phía trên."
+      : validating
+        ? "Đang kiểm tra mã video…"
+        : hasVisibleError
+          ? "Sửa các trường được đánh dấu ở trên."
+          : complete
+            ? "Sẽ tạo project và chạy agent Lời & cue."
+            : "Điền các trường có dấu * rồi bấm tạo.";
   const uploadProps: UploadProps = {
     accept: ".md,.txt,text/markdown,text/plain",
     disabled: busy,
@@ -311,13 +324,33 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy }: { styles: 
       return Upload.LIST_IGNORE;
     },
   };
-  return <div ref={formRef}><Form className="vs-plan-form" layout="vertical" requiredMark={false} onFinish={() => { void submit(); }}>
+  return <div ref={formRef}><Form className="vs-plan-form" layout="vertical" requiredMark={false} aria-busy={loading} onFinish={() => { void submit(); }}>
     <div className="vs-section">
       <p className="vs-form-requirements"><span className="vs-required" aria-hidden="true">*</span><span>Trường có dấu sao là bắt buộc.</span></p>
       <Form.Item className="vs-style-form-item" label={<span id={styleLabelId} className="vs-section-title">Style<RequiredMark /></span>}>
-        <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s })} disabled={busy} labelledBy={styleLabelId} />
+        {loading
+          ? <div className="vs-inline-state" role="status"><LoadingOutlined spin /><span>Đang tải style và cấu hình agent…</span></div>
+          : unavailable
+            ? <div className="vs-inline-state is-error" role="status"><WarningFilled /><span>Chưa thể tải cấu hình Studio.</span></div>
+            : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
       {style && <StyleShowcase style={style} collapsible />}
+      <div className="vs-agent-binding">
+        <div className="vs-agent-binding-copy">
+          <RobotOutlined />
+          <span><strong>Agent dựng video</strong><small>{agentConfig.selectionLocked ? "Được ấn định bởi cấu hình máy và không thể đổi trong Studio." : "Chọn một lần. Video sẽ tiếp tục dùng agent này khi mở lại."}</small></span>
+        </div>
+        {agentConfig.selectionLocked
+          ? <span className="vs-agent-locked"><LockOutlined />{agentProviderLabel(agentConfig.defaultProvider)}</span>
+          : <Select
+              className="vs-agent-select"
+              aria-label="Agent dựng video"
+              value={draft.agentProvider}
+              disabled={busy}
+              onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
+              options={AGENT_PROVIDER_OPTIONS.map(({ value, label }) => ({ value, label }))}
+            />}
+      </div>
     </div>
     <div className="vs-section">
       <h3 className="vs-section-title">Nội dung video</h3>
@@ -342,13 +375,19 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy }: { styles: 
               <Button disabled={busy} data-validation-invalid={!!shownScriptError || undefined} aria-describedby={shownScriptError ? scriptErrorId : undefined} onBlur={() => setTouched((current) => ({ ...current, script: true }))}>Chọn tệp</Button>
             </Upload.Dragger>}
       </Form.Item>
-      <div className="field-grid">
-        <SourcePickerField label="Feedback bản cũ" purpose="feedback" value={draft.request.feedbackDir} disabled={busy} onChange={(v) => set({ feedbackDir: v })} />
-        <SourcePickerField label="Video cũ" purpose="video" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
-      </div>
-      <Form.Item className="field" label={<span className="vs-field-label">Ghi chú</span>}>
-        <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount onChange={(e) => set({ notes: e.target.value })} />
-      </Form.Item>
+      <Collapse className="vs-optional-sources" items={[{
+        key: "sources",
+        label: <span className="vs-collapse-label"><strong><FolderOpenOutlined /> Nguồn tham chiếu</strong><small>Feedback, video cũ và ghi chú · tuỳ chọn</small></span>,
+        children: <>
+          <div className="field-grid">
+            <SourcePickerField label="Feedback bản cũ" purpose="feedback" value={draft.request.feedbackDir} disabled={busy} onChange={(v) => set({ feedbackDir: v })} />
+            <SourcePickerField label="Video cũ" purpose="video" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
+          </div>
+          <Form.Item className="field" label={<span className="vs-field-label">Ghi chú</span>}>
+            <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount onChange={(e) => set({ notes: e.target.value })} />
+          </Form.Item>
+        </>,
+      }]} />
       <Form.Item className="vs-scope" label="Phạm vi">
         <div className="vs-scope-options">
           <Checkbox checked disabled>Dựng cảnh + QA</Checkbox>
@@ -363,7 +402,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy }: { styles: 
     </div>
     <div className="panel-footer">
       <span className="field-hint" aria-live="polite">{footerHint}</span>
-      <Button type="primary" htmlType="submit" loading={busy || validating} disabled={busy || validating} icon={!busy && !validating ? <PlayCircleFilled /> : undefined}>{busy ? "Đang tạo video…" : validating ? "Đang kiểm tra…" : "Tạo video và chạy agent"}</Button>
+      <Button type="primary" htmlType="submit" loading={loading || (busy && !unavailable) || validating} disabled={busy || validating} icon={!busy && !validating ? <PlayCircleFilled /> : undefined}>{loading ? "Đang tải cấu hình…" : unavailable ? "Chưa thể tạo video" : busy ? "Đang tạo video…" : validating ? "Đang kiểm tra…" : "Tạo video và chạy agent"}</Button>
     </div>
   </Form></div>;
 }
@@ -374,6 +413,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
   const style = styles.find((s) => s.id === r.style);
   return <div className="vs-section">
     <Descriptions className="vs-facts" bordered column={1} size="small" items={[
+      { key: "agent", label: "Agent", children: agentProviderLabel(state.agent.provider) },
       { key: "style", label: "Style", children: style?.name || r.style },
       { key: "day", label: "Ngày", children: r.day || "—" },
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
