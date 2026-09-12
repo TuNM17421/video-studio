@@ -49,6 +49,7 @@ Cần có: **Node ≥ 20**, **Python 3** (server xem trước), **git**, **Claud
 git clone <url repo> Claude-Design && cd Claude-Design
 npm install          # esbuild, react, ffmpeg (ffmpeg-static), playwright… và link design system vào node_modules
 npm run setup        # tải Chromium dùng để chụp frame và render (một lần)
+npm run setup:voice  # môi trường nhận diện giọng, chỉ cần khi dùng giọng tự thu / model local (một lần)
 
 cp tts-elevenlabs/.env.example tts-elevenlabs/.env
 #   điền ELEVENLABS_API_KEY và ELEVENLABS_VOICE_ID (các biến còn lại có sẵn giá trị mặc định)
@@ -58,6 +59,9 @@ npm run build && npm run verify     # phải kết thúc bằng "all checks pass
 npm run studio:install              # cài Video Studio (một lần)
 ```
 
+- `npm run setup:voice` tạo `voice/.venv` (dùng `uv` nếu có, không thì Python 3.10–3.12) và tải model
+  Whisper `small` (~460 MB) về `voice/cache/whisper`. Chỉ cần nếu bạn **nhập audio tự thu hoặc do model
+  local tạo**; người chỉ dùng ElevenLabs bỏ qua bước này. Xem `docs/decisions/voice-align.md`.
 - `tts-elevenlabs/.env` chỉ cần khi **tạo giọng bằng CLI**. Video Studio không dùng file này: key được
   nhập trên web và chỉ nằm trong RAM. Người chỉ dùng Video Studio thì bỏ qua bước `cp … .env`, và nếu máy
   đã có `.env` thì nên xoá đi (agent chạy trong repo có thể đọc được file trên đĩa). `.env` đã nằm trong
@@ -119,12 +123,25 @@ từng bước khi được hỏi):
    một cue, lời giữ **nguyên văn**. Chốt lời trước khi tạo giọng.
 2. **Giọng đọc.** Chạy dry-run trước (chưa tốn tiền), sau đó mới gọi API, rồi gắn giọng vào video:
    ```console
-   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out tts-elevenlabs/out/<id> --dry-run
-   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out tts-elevenlabs/out/<id>
-   node tools/voice-timing.mjs tts-elevenlabs/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues
+   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id> --dry-run
+   node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id>
+   node tools/voice-timing.mjs voice/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues
    ```
    ElevenLabs trả về mốc thời gian từng ký tự. `--write-cues` ghi độ dài thật của từng câu vào `cues.js`,
    và `voice.js` giữ mốc từng từ. Kết quả được cache theo từng câu: sửa một câu chỉ tốn ký tự cho câu đó.
+
+   **Hoặc dùng giọng tự thu / model local** — mỗi câu một tệp audio, không gọi API:
+   ```console
+   node tools/voice-export.mjs vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --out projects/<id>/voice-script
+   #   → doc-thu.md (bản đọc), doc-thu.txt, voice-batch.jsonl (chạy thẳng với omnivoice-infer-batch),
+   #     cau/01.txt… Thu hoặc gen ra 01.wav, 02.wav … theo đúng số câu, để chung một thư mục.
+   node tools/voice-import.mjs --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --from <thư mục audio> --scan
+   node tools/voice-import.mjs --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --from <thư mục audio>
+   node tools/voice-timing.mjs voice/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues
+   ```
+   `--scan` cho xem tệp nào ứng với câu nào rồi mới ghi gì. Whisper đối chiếu bản nghe được với lời đã
+   khoá: câu nào khớp quá thấp sẽ bị chặn, vì gần như chắc chắn là nhầm tệp. Xem
+   `docs/decisions/voice-align.md`, và `node tools/align-health.mjs` để biết cách align hiện tại còn đủ dùng không.
 3. **Dựng scene.** Mỗi cue một `sNN.jsx`, dựng đúng độ dài giọng thật; hoạt ảnh đặt theo
    `spokenAt(n, 'cụm từ')` = lúc cụm từ thật sự được đọc. Theo luật của style và design system (vùng nội
    dung, phụ đề ≤ 78 ký tự, font Montserrat, connector…). Kèm `STORYBOARD.md`.
@@ -132,13 +149,13 @@ từng bước khi được hỏi):
    `node tools/shoot.mjs` vào `projects/<id>/qa/` rồi xem lại.
 5. **Render MP4** (server xem trước phải đang chạy):
    ```console
-   node tools/render.mjs --scene <id> --audio tts-elevenlabs/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4
+   node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4
    ```
    Nếu độ dài giọng khác độ dài hình, script dừng và báo lỗi. Sau khi render, kiểm tra MP4: thời lượng,
    vài frame trích từ file, âm lượng.
 6. **Sản phẩm đi kèm, bắt buộc cho mỗi video hoàn chỉnh:**
    ```console
-   node tools/transcript.mjs tts-elevenlabs/out/<id>/voice.cues.json transcripts/DayNN/<id>.txt
+   node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/DayNN/<id>.txt
    ```
    - `transcripts/DayNN/<id>.txt`: dạng `MM:SS - MM:SS: lời đọc`, sinh tự động từ giọng đã thu.
    - `chapters/DayNN/<id>-chương.txt`: dạng `MM:SS: tên chương`, mỗi chương ứng với một phần của kịch bản
