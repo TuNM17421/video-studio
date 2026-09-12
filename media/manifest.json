@@ -12,6 +12,30 @@
       "bytes": 6795159,
       "sha256": "dc5c5ff81afdd641cb96a75cf75dd3f2512097241726af88ce7bd666741ce9f1",
       "updated": "2026-09-12"
+    },
+    "voices/cam-hong.wav": {
+      "type": "audio/wav",
+      "bytes": 635342,
+      "sha256": "fbb545fe7faedf0171dfc94db59d5fdc3e81f165fe07289661ac1172e80e1a26",
+      "updated": "2026-09-12"
+    },
+    "voices/do-trinh.wav": {
+      "type": "audio/wav",
+      "bytes": 537260,
+      "sha256": "3bdda7be2a20aa5b85b111dd6115509eb31ce574554e7b632ae8c663c1dfa6fe",
+      "updated": "2026-09-12"
+    },
+    "voices/nhat-phong.wav": {
+      "type": "audio/wav",
+      "bytes": 653174,
+      "sha256": "c5e63927f3fbf7c64cc771583c24b622dbb1ce789332a1f833f6f677fb3b1114",
+      "updated": "2026-09-12"
+    },
+    "voices/vien.wav": {
+      "type": "audio/wav",
+      "bytes": 619738,
+      "sha256": "2766e860c6a93d2ae6367ff1ceeefd102c4c3a4752cd9b0440b711d07a57cbe3",
+      "updated": "2026-09-12"
     }
   }
 }
