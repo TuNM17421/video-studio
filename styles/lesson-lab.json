@@ -91,11 +91,6 @@
       "component": "DataTable",
       "group": "table",
       "image": "table__DataTable.png"
-    },
-    {
-      "component": "DialogueCard",
-      "group": "figures",
-      "image": "figures__DialogueCard.png"
     }
   ],
   "sampleVideo": null,
