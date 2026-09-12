@@ -212,7 +212,7 @@ export default function Library() {
     videos: lib ? lib.videos.length : libraryError ? 0 : null,
   };
 
-  return <Shell page="library" hasKey={hasKey}>
+  return <Shell page="library" crumb="Thư viện" hasKey={hasKey}>
     <div className={styles.root}>
       <header className={styles.hero}>
         <div className={styles.heroCopy}>

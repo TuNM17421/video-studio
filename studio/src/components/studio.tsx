@@ -212,7 +212,7 @@ export default function Studio() {
   const current = STEPS.find((s) => s.id === step)!;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
 
-  return <Shell page={id ? "videos" : "new"} hasKey={hasKey}>
+  return <Shell page={id ? "videos" : "new"} crumb={id || "Video mới"} hasKey={hasKey}>
     <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div><h1>{detail?.state.request.title || id || "Video mới"}</h1></div></div>
     <div className="vs-production-rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>

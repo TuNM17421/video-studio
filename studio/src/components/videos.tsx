@@ -155,7 +155,7 @@ export default function Videos() {
             </ul>
           </>;
 
-  return <Shell page="videos" hasKey={hasKey}>
+  return <Shell page="videos" crumb="Các video" hasKey={hasKey}>
     <div className={`page-heading ${styles.pageHeading}`}>
       <div><div className="eyebrow"><span className="tiny-mark" /> projects/</div><h1>Các video</h1></div>
       <p>Đọc tiến độ, nhận diện cổng đang chờ và trở lại đúng bàn dựng.</p>
