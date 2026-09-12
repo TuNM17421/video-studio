@@ -5,12 +5,12 @@ import { promisify } from "node:util";
 import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isAgentProvider } from "../agent-providers";
 import { isRunning } from "./jobs";
-import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut } from "./paths";
+import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
 
 const execFileP = promisify(execFile);
 const STAGES: StageId[] = ["cues", "voice", "scenes", "render", "deliver"];
 
-export const DEFAULT_VOICE = { voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4 };
+export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "" };
 
 type LegacyVideoState = Omit<VideoState, "agent"> & {
   agent?: Partial<VideoState["agent"]>;
@@ -26,7 +26,7 @@ export function normalizeVideoState(value: unknown): VideoState {
   const sessionId = typeof currentSession === "string" || currentSession === null
     ? currentSession
     : typeof legacySessionId === "string" ? legacySessionId : null;
-  return { ...state, agent: { provider, sessionId } } as VideoState;
+  return { ...state, agent: { provider, sessionId }, voice: { ...DEFAULT_VOICE, ...stored.voice } } as VideoState;
 }
 
 function stateFile(id: string) {
@@ -62,6 +62,7 @@ export function artifacts(id: string, day: string): Artifacts {
     return f ? path.join(dir, f) : null;
   };
   const voiceJs = path.join(videoDir(id), "voice.js");
+  const wav = path.join(voiceOut(id), "voice.wav");
   const mp4 = firstMp4();
   const ch = chapters();
   const prompts = path.join(projectDir(id), "PROMPTS.md");
@@ -69,6 +70,8 @@ export function artifacts(id: string, day: string): Artifacts {
     script: exists(path.join(projectDir(id), "kich-ban-goc.md")),
     cues: exists(path.join(videoDir(id), "cues.js")),
     voice: exists(path.join(voiceOut(id), "voice.cues.json")) && exists(voiceJs) && !/VOICE = null/.test(fs.readFileSync(voiceJs, "utf8")),
+    voiceWav: exists(wav) ? rel(wav) : null,
+    voiceScript: exists(path.join(voiceScriptDir(id), "doc-thu.md")),
     scenes: exists(path.join(videoDir(id), "video.jsx")),
     mp4: mp4 ? rel(mp4) : null,
     transcript: day && exists(transcriptPath(day, id)) ? rel(transcriptPath(day, id)) : null,
@@ -183,7 +186,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Feedback bản cũ: ${r.feedbackDir ? `\`${r.feedbackDir}\`` : "không có"}`,
     `- Video cũ: ${r.oldVideoDir ? `\`${r.oldVideoDir}\`` : "không có"}`,
     ...(agentLabel ? [`- Agent: ${agentLabel} (gắn cố định khi tạo video)`] : []),
-    `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng ElevenLabs", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
+    `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
     "",
     "## Ghi chú",
     "",

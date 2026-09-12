@@ -810,6 +810,223 @@ button.vs-tile:hover {
   margin: 0 0 18px;
 }
 
+/* Where the narration comes from: the API, or audio the member recorded / generated locally. */
+.vs-source {
+  margin-bottom: 18px;
+}
+/* Folder, pause and the check button: everything that shapes a scan, right above its result. */
+.vs-import-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+/* The Ant bridge gives every .field a bottom margin; here the field sits in a row, not a stack, and
+   that margin would drop it below the button it is aligned with. */
+.vs-import-run .ant-form-item.field {
+  margin: 0;
+  width: 162px;
+  flex: 0 0 auto;
+}
+/* The summary is two lines tall and the button one, so they centre on each other rather than
+   hanging off the row's baseline with the pause field. */
+.vs-import-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* Drops onto its own line rather than being squeezed into a column of single words. */
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.vs-import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  gap: 0 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.vs-import-summary strong {
+  font-weight: var(--vu-font-semibold);
+  color: var(--text);
+}
+.vs-import-summary.is-ok strong {
+  color: var(--green);
+}
+.vs-import-summary.is-warn strong {
+  color: var(--amber);
+}
+.vs-import-summary.is-error strong {
+  color: var(--vu-red-800);
+}
+.vs-import-summary.is-stale {
+  color: var(--subtle);
+}
+.vs-import-summary.is-stale strong {
+  color: var(--subtle);
+  text-decoration: line-through;
+}
+.vs-import-summary small {
+  flex-basis: 100%;
+  font-size: 10px;
+  color: var(--subtle);
+}
+.vs-import-summary.is-stale small:last-child {
+  color: var(--amber);
+}
+
+/* Câu → tệp, with the measured length and how much of the câu was actually heard in it. */
+.vs-map {
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.vs-map-row {
+  display: grid;
+  grid-template-columns: 34px 132px minmax(0, 1fr) 54px 46px;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.vs-map-row.has-play {
+  grid-template-columns: 34px 132px minmax(0, 1fr) 54px 46px 30px;
+}
+.vs-map-row:last-child {
+  border-bottom: 0;
+}
+.vs-map-row.is-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--vu-blue-50);
+  border-bottom: 1px solid var(--vu-blue-100);
+  font-size: 10px;
+  font-weight: var(--vu-font-bold);
+  letter-spacing: 0.02em;
+  color: var(--vu-blue-800);
+  text-transform: uppercase;
+}
+.vs-map-row.is-head > span:nth-child(4),
+.vs-map-row.is-head > span:nth-child(5) {
+  text-align: right;
+}
+.vs-map-row.is-warn {
+  background: var(--amber-light);
+}
+.vs-map-row.is-error {
+  background: var(--red-light);
+}
+.vs-map-key {
+  font-weight: var(--vu-font-bold);
+  color: var(--vu-blue-800);
+}
+.vs-map-file,
+.vs-map-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-map-file {
+  color: var(--muted);
+}
+.vs-map-file.is-none {
+  color: var(--subtle);
+  font-style: italic;
+}
+.vs-map-text {
+  color: var(--text);
+}
+.vs-map-len,
+.vs-map-match {
+  text-align: right;
+  color: var(--subtle);
+  white-space: nowrap;
+}
+/* A câu matched this poorly is mostly interpolated timing — worth a second look before importing. */
+.vs-map-match.is-weak {
+  color: var(--amber);
+  font-weight: var(--vu-font-bold);
+}
+.vs-map-row.is-error .vs-map-match.is-weak {
+  color: var(--vu-red-800);
+}
+.vs-map-play {
+  justify-self: end;
+}
+/* The button must not make its row taller than a row without one. */
+.vs-map-play .ant-btn {
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  line-height: 1;
+}
+.vs-map-notes {
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: var(--subtle);
+}
+.vs-map-row.is-warn .vs-map-notes {
+  color: var(--amber);
+}
+.vs-map-row.is-error .vs-map-notes {
+  color: var(--vu-red-800);
+}
+.vs-map-aside {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font-size: 11px;
+  color: var(--amber);
+}
+.vs-force {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+/* The reading script exported from the approved cues. */
+.vs-script {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 18px 0;
+}
+.vs-script-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.vs-script-head h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.vs-script-head p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--subtle);
+}
+.vs-script-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.vs-script .vs-deliverables {
+  margin-top: 12px;
+}
+.vs-script-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--subtle);
+}
+
 /* ── scenes + render ────────────────────────────────────────────────────── */
 .vs-qa-section {
   margin: 0 0 18px;
@@ -1646,6 +1863,26 @@ button.vs-tile:hover {
   .vs-grid-4,
   .field-grid {
     grid-template-columns: 1fr;
+  }
+  .vs-import-run {
+    flex-wrap: wrap;
+  }
+  /* The import table drops its length and match columns rather than squeezing the narration. */
+  .vs-map-row,
+  .vs-map-row.has-play {
+    grid-template-columns: 34px minmax(0, 1fr) 46px;
+  }
+  .vs-map-file,
+  .vs-map-len,
+  .vs-map-play {
+    display: none;
+  }
+  .vs-map-row.is-head > span:nth-child(2),
+  .vs-map-row.is-head > span:nth-child(4) {
+    display: none;
+  }
+  .vs-map-notes {
+    grid-column: 1 / -1;
   }
   .vs-section,
   .vs-step-body {

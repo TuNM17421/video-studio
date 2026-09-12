@@ -8,10 +8,10 @@ const execFileP = promisify(execFile);
 const ZENITY = "/usr/bin/zenity";
 
 export type FilePickerKind = "file" | "directory";
-export type FilePickerPurpose = "feedback" | "video";
+export type FilePickerPurpose = "feedback" | "video" | "voice";
 
 export function filePickerArgs(kind: FilePickerKind, purpose: FilePickerPurpose) {
-  const title = purpose === "video" ? "Chọn video cũ" : "Chọn feedback bản cũ";
+  const title = purpose === "video" ? "Chọn video cũ" : purpose === "voice" ? "Chọn thư mục audio giọng đọc" : "Chọn feedback bản cũ";
   const args = [
     "--file-selection",
     `--title=${title}`,

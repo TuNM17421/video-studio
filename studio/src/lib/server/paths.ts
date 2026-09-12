@@ -11,7 +11,21 @@ export const DAY_RE = /^Day\d{2}$/;
 export const videoDir = (id: string) => path.join(DS, "ui_kits/lesson-video/videos", id);
 export const projectDir = (id: string) => path.join(REPO, "projects", id);
 export const stateDir = (id: string) => path.join(projectDir(id), ".studio");
-export const voiceOut = (id: string) => path.join(REPO, "tts-elevenlabs/out", id);
+/**
+ * Where a video's narration master lives. New videos land in voice/out — the voice no longer has to come
+ * from ElevenLabs — while videos recorded before the move keep reading their old folder.
+ */
+const VOICE_OUT = (id: string) => path.join(REPO, "voice/out", id);
+const VOICE_OUT_LEGACY = (id: string) => path.join(REPO, "tts-elevenlabs/out", id);
+export const voiceOut = (id: string) => {
+  const current = VOICE_OUT(id);
+  if (fs.existsSync(path.join(current, "voice.cues.json"))) return current;
+  const legacy = VOICE_OUT_LEGACY(id);
+  return fs.existsSync(path.join(legacy, "voice.cues.json")) ? legacy : current;
+};
+/** Every folder a video's voice could occupy — for cleanup, which must not miss the legacy one. */
+export const voiceOutAll = (id: string) => [VOICE_OUT(id), VOICE_OUT_LEGACY(id)];
+export const voiceScriptDir = (id: string) => path.join(projectDir(id), "voice-script");
 export const mp4Path = (id: string) => path.join(projectDir(id), "render", `${id}.mp4`);
 export const transcriptPath = (day: string, id: string) => path.join(REPO, "transcripts", day, `${id}.txt`);
 export const chaptersPath = (day: string, id: string) => path.join(REPO, "chapters", day, `${id}-chương.txt`);

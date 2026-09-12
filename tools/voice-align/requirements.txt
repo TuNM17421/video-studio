@@ -1,0 +1,3 @@
+# Word timestamps for imported narration (tools/voice-align/align.py).
+# faster-whisper carries CTranslate2 + the tokenizer; no torch, so the venv stays small and CPU-only works.
+faster-whisper>=1.1,<2
