@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRightOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
 import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
@@ -381,11 +381,32 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
         {!fresh && <small>Cài đặt đã đổi, bấm Kiểm tra lại.</small>}
       </div>}
     </div>
+    <Cast dry={dry} />
+    <div className="vs-dry">
+    </div>
     {detail.artifacts.voiceWav && <div className="audio-result vs-audio"><div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : ""}</span></div><audio controls src={fileUrl(detail.artifacts.voiceWav)} preload="none" /></div>}
     <Button type="primary" block disabled={locked || busy} icon={locked ? <LockOutlined /> : <SoundOutlined />} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "generate" }))}>
       {dry && fresh && dry.billable === 0 ? "Ghép giọng từ cache" : `Tạo giọng${dry && fresh ? ` · ${dry.toGenerate} câu, ${dry.billable.toLocaleString("vi-VN")} ký tự` : ""}`}
     </Button>
   </>;
+}
+
+/**
+ * Who actually reads this video. The cast is not a setting — it comes from the script: every câu names its
+ * speaker, and the dry-run (free) is the first place the real line-up can be seen and counted.
+ */
+function Cast({ dry }: { dry: DryRun | null }) {
+  if (!dry) return null;
+  const roles = new Map<string, number>();
+  for (const c of dry.cues) if (c.speaker) roles.set(c.speaker, (roles.get(c.speaker) || 0) + 1);
+  if (!roles.size) return null;
+  return <div className="vs-cast">
+    <strong><TeamOutlined />Dàn vai · {roles.size} nhân vật</strong>
+    <ul>
+      {[...roles].map(([name, count]) => <li key={name}><span>{name}</span><small>{count} câu</small></li>)}
+    </ul>
+    <small>Lấy từ `speaker` của từng câu trong cues.js. Đổi vai thì sửa kịch bản, không sửa ở đây.</small>
+  </div>;
 }
 
 export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKey }: StepProps & { hasKey: boolean; setHasKey: (v: boolean) => void }) {

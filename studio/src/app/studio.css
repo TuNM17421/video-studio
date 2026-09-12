@@ -2136,6 +2136,84 @@ button.vs-tile:hover {
   min-width: 0;
   padding-inline: 0;
 }
+/* ── năng lực chọn thêm + dàn vai ───────────────────────────────────────── */
+.vs-modules {
+  display: grid;
+  gap: 8px;
+}
+.vs-module {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: var(--vu-neutral-0);
+  cursor: pointer;
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background-color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-module.is-on {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-lesson-surface);
+}
+.vs-module-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.vs-module-copy strong {
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-bold);
+  color: var(--vu-blue-900);
+}
+.vs-module-copy small {
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-muted);
+}
+.vs-cast {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 9px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: var(--vu-lesson-surface);
+}
+.vs-cast > strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--vu-text-sm);
+  color: var(--vu-blue-900);
+}
+.vs-cast ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-cast li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: 999px;
+  padding: 3px 12px;
+  background: var(--vu-neutral-0);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-bold);
+  color: var(--vu-blue-900);
+}
+.vs-cast li small,
+.vs-cast > small {
+  font-weight: 500;
+  color: var(--vu-text-muted);
+}
 /* ── voice picker ───────────────────────────────────────────────────────── */
 .vs-voice-picker {
   display: grid;

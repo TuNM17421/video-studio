@@ -196,6 +196,9 @@ function wordTimings(c, offsetSeconds) {
 
 async function generate() {
   if (!args.cues) fail('--cues <path/to/cues.js> is required');
+  // --json puts a single machine-readable object on stdout for Video Studio to parse; every human-facing
+  // line must stay out of it, so it goes to stderr instead of corrupting the payload.
+  const note = (...a) => (args.json ? console.error(...a) : console.log(...a));
   const cuesFile = path.resolve(args.cues);
   const cues = await loadCues(cuesFile);
   const name = path.basename(path.dirname(cuesFile));
@@ -206,7 +209,7 @@ async function generate() {
   const only = args.only ? new Set(String(args.only).split(',').map(Number)) : null;
   const mock = Boolean(args.mock);
   if (!args['dry-run'] && !mock) need('key', 'voice');
-  if (cfg.voice) console.log(`voice ${cfg.voiceName || cfg.voice} (${cfg.voice}) ← ${cfg.voiceFrom}`);
+  if (cfg.voice) note(`voice ${cfg.voiceName || cfg.voice} (${cfg.voice}) ← ${cfg.voiceFrom}`);
 
   // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400).
   const v3 = /^eleven_v3/.test(cfg.model);
@@ -230,7 +233,7 @@ async function generate() {
     } catch (e) {
       fail(`câu ${c.n}: ${e.message}`);
     }
-    if (paced.clamped) console.log(`! câu ${c.n}: tốc độ ${paced.wanted} ngoài khoảng API nhận, dùng ${paced.speed}`);
+    if (paced.clamped) note(`! câu ${c.n}: tốc độ ${paced.wanted} ngoài khoảng API nhận, dùng ${paced.speed}`);
     return { voice, speed: paced.speed };
   });
   const dialogue = cues.some((c) => c.speaker);
@@ -260,7 +263,7 @@ async function generate() {
   if (dialogue) {
     const roles = new Map();
     for (const c of items) roles.set(c.speakerName, (roles.get(c.speakerName) || 0) + 1);
-    console.log(`hội thoại · ${roles.size} nhân vật: ${[...roles].map(([n, k]) => `${n} (${k} câu)`).join(' · ')}`);
+    note(`hội thoại · ${roles.size} nhân vật: ${[...roles].map(([n, k]) => `${n} (${k} câu)`).join(' · ')}`);
   }
 
   const chars = items.reduce((s, c) => s + [...c.ttsText].length, 0);

@@ -23,6 +23,8 @@ export interface Scope {
 
 export interface VideoRequest {
   style: string;
+  /** Năng lực chọn thêm (lib/modules.ts) — ví dụ "dialogue". Rỗng = video một giọng như thường. */
+  modules: string[];
   day: string;
   title: string;
   scriptName: string;
@@ -141,7 +143,7 @@ export interface DryRun {
   chars: number;
   billable: number;
   toGenerate: number;
-  cues: { n: number; chars: number; cached: boolean; silent: boolean; text: string }[];
+  cues: { n: number; chars: number; cached: boolean; silent: boolean; text: string; speaker: string | null; speed: number }[];
 }
 
 export interface Artifacts {
