@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Library, LibraryGroup, StyleDef, VoiceCatalog, VoiceDef } from "../types";
+import type { CharacterDef, Library, LibraryGroup, StyleDef, VoiceCatalog, VoiceDef } from "../types";
 import { mediaAsset, styleSample } from "./media";
 import { DS, exists, REPO, STYLES } from "./paths";
 
@@ -30,10 +30,11 @@ type VoiceFile = Omit<VoiceDef, "sample" | "isDefault"> & { sample?: string | nu
 const CATALOG = path.join(REPO, "voices.json");
 
 export function listVoices(): VoiceCatalog {
-  if (!exists(CATALOG)) return { sampleText: "", voices: [] };
-  const raw = JSON.parse(fs.readFileSync(CATALOG, "utf8")) as { sampleText?: string; voices?: VoiceFile[] };
+  if (!exists(CATALOG)) return { sampleText: "", voices: [], characters: [] };
+  const raw = JSON.parse(fs.readFileSync(CATALOG, "utf8")) as { sampleText?: string; voices?: VoiceFile[]; characters?: CharacterDef[] };
   return {
     sampleText: raw.sampleText || "",
+    characters: raw.characters || [],
     voices: (raw.voices || []).map((v) => ({
       ...v,
       sample: v.sample ? mediaAsset(v.sample) : null,

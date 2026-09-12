@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { readVoices } from './lib/voices.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const { voices, deliveries, speedRange, sampleText } = readVoices();
+const { voices, characters, deliveries, speedRange, sampleText } = readVoices();
 
 const manifest = (() => {
   try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'media/manifest.json'), 'utf8')); } catch { return { base: '', assets: {} }; }
@@ -26,7 +26,18 @@ if (!voices.length) {
   process.exit(0);
 }
 
-console.log(`\nGIỌNG DÙNG ĐƯỢC — ${voices.length} giọng trong voices.json\n`);
+if (characters.length) {
+  console.log(`\nNHÂN VẬT — ${characters.length} vai, đây là tên kịch bản phải dùng ở \`speaker\`\n`);
+  for (const c of characters) {
+    const voice = voices.find((v) => v.id === c.voice || v.name === c.voice);
+    console.log(`  ${c.name}  (id: ${c.id})`);
+    console.log(`    giọng   ${voice ? voice.name : `?? ${c.voice}`}`);
+    console.log(`    ${[c.side === 'right' ? 'đứng phải' : 'đứng trái', `màu ${c.tone || 'accent'}`].join(' · ')}`);
+    console.log(`    mặt    ${sampleUrl(c.avatar)}\n`);
+  }
+}
+
+console.log(`GIỌNG — ${voices.length} giọng trong voices.json (nhân vật mượn từ đây; video một người dẫn dùng thẳng)\n`);
 for (const v of voices) {
   console.log(`  ${v.name}${v.default ? '  (mặc định)' : ''}`);
   console.log(`    id      ${v.id}`);
@@ -41,5 +52,5 @@ for (const [key, d] of Object.entries(deliveries)) {
 }
 
 console.log(`\nMẫu nghe thử đều đọc cùng một đoạn:\n  “${sampleText}”\n`);
-console.log('Kịch bản hội thoại chỉ được đặt tên nhân vật trùng các giọng trên.');
+console.log('Kịch bản hội thoại chỉ được đặt tên nhân vật trùng các tên trên.');
 console.log('Xem cách viết: templates/kich-ban-hoi-thoai.md\n');

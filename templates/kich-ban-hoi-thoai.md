@@ -9,12 +9,13 @@ trước khi tốn một ký tự credit nào.
 
 ---
 
-## Luật cứng: chỉ dùng giọng đã có trong hệ thống
+## Luật cứng: chỉ dùng nhân vật đã có trong hệ thống
 
-Nhân vật **phải** là một giọng đang có trong `voices.json`. Đặt một cái tên chưa ai thu — `Lucas`,
-`Mai Anh`, `Minh` — thì cả video dừng lại với thông báo chỉ rõ câu nào sai.
+Nhân vật **phải** là một cái tên đang có trong `voices.json` — một nhân vật (có mặt, có phía, có màu,
+mượn sẵn một giọng) hoặc một giọng trần cho video chỉ có người dẫn. Đặt một cái tên chưa khai — `Lucas`,
+`Minh` — thì cả video dừng lại với thông báo chỉ rõ câu nào sai.
 
-Xem danh sách giọng hiện có bất cứ lúc nào:
+Xem danh sách nhân vật và giọng hiện có bất cứ lúc nào:
 
 ```
 npm run voices
@@ -31,19 +32,20 @@ Mỗi mục là **một câu được đọc = một cảnh**. Viết đúng b�
 
 ```markdown
 ### Câu 1
-- **Ai:** Nhật Phong
+- **Ai:** Tới
 - **Kiểu:** kể
 - **Lời:** Gần như mọi dự án trí tuệ nhân tạo ở các công ty đều bắt đầu bằng một câu như vậy.
 - **Trên màn hình:** Câu trích lớn, dưới có giải nghĩa chatbot
 
 ### Câu 2
-- **Ai:** Viên
+- **Ai:** Tú
 - **Kiểu:** hỏi
 - **Lời:** Nhưng em làm nhân sự, bài này có phải cho em không ạ?
 - **Trên màn hình:** Thẻ hội thoại bên phải
 ```
 
-**Ai** — đúng tên trong `voices.json`, không phải tên nhân vật tự nghĩ ra.
+**Ai** — đúng tên nhân vật trong `voices.json`, không phải tên tự nghĩ ra. Nhân vật tự mang sẵn khuôn mặt,
+phía đứng và màu của mình, nên kịch bản không cần khai mấy thứ đó.
 **Kiểu** — một trong năm kiểu ở bảng dưới; bỏ trống thì hiểu là *giảng*.
 **Lời** — lời đọc nguyên văn. Đây là phần sẽ bị khoá: `cues.js` chép đúng từng chữ, máy đọc đúng
 từng chữ, và thẻ hội thoại trên màn hình cũng lấy đúng câu này rồi rải chữ theo mốc tiếng nói thật.

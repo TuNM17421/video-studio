@@ -220,21 +220,23 @@ async function generate() {
    * Note `c.voice` is not this — it has always been an eleven_v3 audio tag such as `[curious]`.
    */
   const cast = cues.map((c) => {
-    if (!c.speaker) return { voice: { id: cfg.voice, name: cfg.voiceName || cfg.voice, speed: 1 }, speed: cfg.settings.speed };
-    let voice;
+    if (!c.speaker) {
+      return { name: cfg.voiceName || cfg.voice, voice: { id: cfg.voice }, speed: cfg.settings.speed, avatar: null, side: 'left', tone: 'accent' };
+    }
+    let who;
     try {
-      voice = castSpeaker(c.speaker);
+      who = castSpeaker(c.speaker);
     } catch (e) {
       fail(`câu ${c.n}: ${e.message}`);
     }
     let paced;
     try {
-      paced = speedFor(voice, c.delivery);
+      paced = speedFor(who, c.delivery);
     } catch (e) {
       fail(`câu ${c.n}: ${e.message}`);
     }
     if (paced.clamped) note(`! câu ${c.n}: tốc độ ${paced.wanted} ngoài khoảng API nhận, dùng ${paced.speed}`);
-    return { voice, speed: paced.speed };
+    return { ...who, speed: paced.speed };
   });
   const dialogue = cues.some((c) => c.speaker);
 
@@ -257,19 +259,21 @@ async function generate() {
       next_text: v3 ? undefined : spoken(i + 1, i),
     };
     const hash = c.silent ? `silent-${c.silent}-${sampleRate}` : sha256(JSON.stringify({ voice: cast[i].voice.id, format: cfg.format, mock, ...body }));
-    return { ...c, voiceId: cast[i].voice.id, speakerName: cast[i].voice.name, speed: cast[i].speed, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`), align: path.join(cacheDir, `${hash}.align.json`) };
+    return { ...c, voiceId: cast[i].voice.id, speakerName: cast[i].name, avatar: cast[i].avatar, side: cast[i].side, tone: cast[i].tone, speed: cast[i].speed, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`), align: path.join(cacheDir, `${hash}.align.json`) };
   });
 
   if (dialogue) {
     const roles = new Map();
     for (const c of items) roles.set(c.speakerName, (roles.get(c.speakerName) || 0) + 1);
     note(`hội thoại · ${roles.size} nhân vật: ${[...roles].map(([n, k]) => `${n} (${k} câu)`).join(' · ')}`);
+    const noFace = [...new Set(items.filter((c) => c.speaker && !c.avatar).map((c) => c.speakerName))];
+    if (noFace.length) note(`! chưa có avatar trên kho media: ${noFace.join(' · ')} — thẻ hội thoại sẽ chỉ hiện tên`);
   }
 
   const chars = items.reduce((s, c) => s + [...c.ttsText].length, 0);
   if (args['dry-run'] && args.json) {
     // Machine-readable summary (the studio web shows it before asking to spend credit).
-    const rows = items.map((c) => ({ n: c.n, chars: [...c.ttsText].length, cached: fs.existsSync(c.cache), silent: Boolean(c.silent), text: c.ttsText, speaker: c.speaker ? c.speakerName : null, speed: c.speed }));
+    const rows = items.map((c) => ({ n: c.n, chars: [...c.ttsText].length, cached: fs.existsSync(c.cache), silent: Boolean(c.silent), text: c.ttsText, speaker: c.speaker ? c.speakerName : null, avatar: c.avatar || null, speed: c.speed }));
     const billable = rows.filter((r) => !r.cached).reduce((sum, r) => sum + r.chars, 0);
     console.log(JSON.stringify({ model: cfg.model, format: cfg.format, voice: cfg.voice || null, cues: rows, chars, billable, toGenerate: rows.filter((r) => !r.cached && !r.silent).length }));
     return;
@@ -325,7 +329,7 @@ async function generate() {
       pauseAfter: c.pauseAfter,
       authoredFrames: c.authoredFrames,
       // Scenes read `speaker` back from voice.cues.json to place the right dialogue card.
-      extra: { cache: path.basename(c.cache), ...(c.speaker ? { speaker: c.speakerName, voiceId: c.voiceId, delivery: c.delivery || null, speed: c.speed } : {}) },
+      extra: { cache: path.basename(c.cache), ...(c.speaker ? { speaker: c.speakerName, voiceId: c.voiceId, delivery: c.delivery || null, speed: c.speed, avatar: c.avatar, side: c.side, tone: c.tone } : {}) },
       align: c.align,
     })),
     sampleRate,

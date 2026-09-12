@@ -143,7 +143,7 @@ export interface DryRun {
   chars: number;
   billable: number;
   toGenerate: number;
-  cues: { n: number; chars: number; cached: boolean; silent: boolean; text: string; speaker: string | null; speed: number }[];
+  cues: { n: number; chars: number; cached: boolean; silent: boolean; text: string; speaker: string | null; avatar: string | null; speed: number }[];
 }
 
 export interface Artifacts {
@@ -219,7 +219,21 @@ export interface VoiceDef {
   isDefault: boolean;
 }
 
+/** A role on screen: its own face, side and hue, speaking with a voice from the catalog. */
+export interface CharacterDef {
+  id: string;
+  name: string;
+  /** Voice id it borrows. */
+  voice: string;
+  /** Media key of the face. */
+  avatar?: string;
+  side?: "left" | "right";
+  tone?: string;
+  summary?: string;
+}
+
 export interface VoiceCatalog {
+  characters: CharacterDef[];
   /** The line every sample reads, so the picker can say what you are about to hear. */
   sampleText: string;
   voices: VoiceDef[];

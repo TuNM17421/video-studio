@@ -53,6 +53,7 @@ export function DialogueCard({
   w = 640,
   side = 'left',
   speaker,
+  avatar,
   words = [],
   frame = Infinity,
   tone = 'accent',
@@ -67,13 +68,38 @@ export function DialogueCard({
   const rows = wrapWords(words, w - padX * 2, size);
   const h = padY * 2 + rows.length * lineHeight;
   const nameSize = 19;
+  // The face sits outside the card, on the speaker's own side, so the card keeps its full width for text.
+  const faceR = 46;
+  const faceGap = 20;
+  const faceX = side === 'left' ? x - faceGap - faceR : x + w + faceGap + faceR;
+  const faceY = y + h - faceR;
   // The tail sits under the card on the speaker's own side, so who is talking reads at a glance.
   const tailX = side === 'left' ? x + 46 : x + w - 46;
   const tipX = side === 'left' ? x + 20 : x + w - 20;
   const r = 20;
 
+  const clipId = `dlg-face-${side}-${Math.round(x)}-${Math.round(y)}`;
   return (
     <g opacity={opacity < 1 ? opacity : undefined}>
+      {avatar ? (
+        <g>
+          <defs>
+            <clipPath id={clipId}>
+              <circle cx={faceX} cy={faceY} r={faceR} />
+            </clipPath>
+          </defs>
+          <image
+            href={avatar}
+            x={faceX - faceR}
+            y={faceY - faceR}
+            width={faceR * 2}
+            height={faceR * 2}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${clipId})`}
+          />
+          <circle cx={faceX} cy={faceY} r={faceR} fill="none" stroke={c} strokeWidth={4} />
+        </g>
+      ) : null}
       <SvgText
         x={side === 'left' ? x + padX : x + w - padX}
         y={y - 12}

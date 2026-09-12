@@ -11,6 +11,9 @@ The text on the card **is** the narration. Pass `words` from `spokenWords(n)` an
 frame it is actually said, so screen and voice can never drift. There is deliberately no prop for a
 shortened caption — a hand-written summary is exactly what used to run out of sync with the audio.
 
+Pass `avatar` (the URL `voice.cues.json` carries for that character) and a round face sits outside the card
+on the speaker's own side; without it the card is name-only and nothing else changes.
+
 Anatomy: character name above the card (19 / 700, in the character's hue) · bgAlt card, 3 px stroke,
 radius 20 · tail under the card on the speaker's own side · line 26 / 600 in `C.text`, rows 38 px, wrapped
 to the card width. Each word fades in over 7 frames where it lands — nothing slides, so the filled part of
@@ -19,8 +22,10 @@ the line stays readable.
 ```jsx
 const { spokenWords } = createSpeech(RAW, VOICE);
 
-<DialogueCard x={180} y={430} w={700} side="left"  speaker="Nhật Phong" tone="accent" words={spokenWords(1)} frame={frame} />
-<DialogueCard x={1040} y={620} w={700} side="right" speaker="Viên"      tone="red"    words={spokenWords(3)} frame={frame} />
+const who = (n) => VOICE.cues.find((c) => c.n === n) || {};
+
+<DialogueCard x={300} y={430} w={700} side="left"  speaker="Tới" tone="accent" avatar={who(1).avatar} words={spokenWords(1)} frame={frame} />
+<DialogueCard x={920} y={640} w={700} side="right" speaker="Tú"  tone="red"    avatar={who(3).avatar} words={spokenWords(3)} frame={frame} />
 ```
 
 Rules: one hue per character for the whole video, and keep it — the hue is how a viewer tracks who is
