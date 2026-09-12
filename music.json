@@ -1,0 +1,54 @@
+{
+  "background": [
+    {
+      "id": "bg-01",
+      "name": "BG 01",
+      "media": "audio/nen/BG_01.mp3",
+      "seconds": 120,
+      "summary": "MP3 256 kb/s · 44,1 kHz stereo",
+      "lufs": -28.7
+    },
+    {
+      "id": "bg-02",
+      "name": "BG 02",
+      "media": "audio/nen/BG_02.mp3",
+      "seconds": 172,
+      "summary": "MP3 256 kb/s · 44,1 kHz stereo",
+      "lufs": -19.3
+    },
+    {
+      "id": "bg-03",
+      "name": "BG 03",
+      "media": "audio/nen/BG_03.mp3",
+      "seconds": 240,
+      "summary": "MP3 256 kb/s · 44,1 kHz stereo",
+      "lufs": -17.4
+    },
+    {
+      "id": "bg-goc",
+      "name": "bg (bản gốc)",
+      "media": "audio/nen/bg.wav",
+      "seconds": 392,
+      "summary": "WAV PCM 44,1 kHz stereo — bản tham chiếu, nặng 66 MB",
+      "lufs": -15.4
+    }
+  ],
+  "quiz": [
+    {
+      "id": "quiz-timer",
+      "name": "Thinking timer",
+      "media": "audio/quiz/nhac-quiz-1-thinking-timer.mp3",
+      "seconds": 79,
+      "summary": "MP3 stereo — nhạc đếm giờ suy nghĩ",
+      "lufs": -13.8
+    },
+    {
+      "id": "quiz-loop-18s",
+      "name": "Loop ngắn 18 giây",
+      "media": "audio/quiz/nhac-quiz-3-loop-ngan-18s.mp3",
+      "seconds": 18,
+      "summary": "MP3 48 kHz mono — vòng lặp ngắn, hợp câu hỏi nhanh",
+      "lufs": -21.7
+    }
+  ]
+}

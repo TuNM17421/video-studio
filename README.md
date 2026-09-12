@@ -59,6 +59,9 @@ npm run build && npm run verify     # phải kết thúc bằng "all checks pass
 npm run studio:install              # cài Video Studio (một lần)
 ```
 
+- **Nhạc nền** không nằm trong repo (audio không đẩy lên git): tải bản nhạc từ storage của nhóm về
+  `assets/music/bg.mp3`. Thiếu file thì ô "Nhạc nền" ở bước Render bị khoá và video vẫn render bình
+  thường, chỉ không có nhạc.
 - `npm run setup:voice` tạo `voice/.venv` (dùng `uv` nếu có, không thì Python 3.10–3.12) và tải model
   Whisper `small` (~460 MB) về `voice/cache/whisper`. Chỉ cần nếu bạn **nhập audio tự thu hoặc do model
   local tạo**; người chỉ dùng ElevenLabs bỏ qua bước này. Xem `docs/decisions/voice-align.md`.

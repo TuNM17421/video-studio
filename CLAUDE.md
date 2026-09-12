@@ -62,6 +62,21 @@ server itself runs TTS (key in RAM only), the audio import, voice-timing, render
 `/ds` (render/QA base). `STUDIO_TTS_MOCK=1` = silent mock voice for development. New styles = new
 `styles/*.json`, no code change.
 
+### Giao diện Studio đi theo design system, không tự chế
+Mọi thay đổi UI/UX trong `studio/` phải theo **`studio/src/lib/design-tokens.ts`** — nguồn chuẩn duy nhất
+cho màu, bộ chữ, token bố cục, mức nhấn của luồng sản xuất và motion. Xem trực quan tại
+**`/design-system`** (`npm run studio` rồi mở http://127.0.0.1:3100/design-system).
+- Màu: dùng token (`brand.primary`, `neutral.600`, `status.warning`…) hoặc biến CSS tương ứng trong
+  `vinuni-tokens.css`. **Không** viết mã hex mới vào component hay `.css`; màu thương hiệu khớp
+  stylesheet của vinuni.edu.vn nên đổi tuỳ tiện là lệch nhận diện.
+- Chữ: Montserrat (tiêu đề/thương hiệu) · Be Vietnam Pro (nội dung, biểu mẫu, bảng) · IBM Plex Mono
+  (mã video, timecode, số frame, nhật ký agent).
+- Kích thước khung (sidebar, hàng bước, panel xem trước…) lấy từ `STUDIO_LAYOUT` thay vì số tự đặt.
+- Cần một giá trị chưa có? Thêm token vào `design-tokens.ts` trước, rồi mới dùng — đừng đặt riêng trong
+  một file CSS.
+Lưu ý: đây là design system **của giao diện Studio**, khác với design system của video bài giảng
+(`vinuni-lesson-video-ds/lib/tokens.js`, 9 màu, dùng khi dựng cảnh). Đừng lẫn hai bên.
+
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
 Mỗi cue khai `speaker` (tên/id một **nhân vật** — hoặc một giọng, cho video một người dẫn) và `delivery` (kiểu đọc trong
@@ -74,6 +89,19 @@ còn lại vẫn trúng cache, chỉ câu ấy bị tính phí. Mẫu viết k�
 Nhân vật là lớp riêng trong `voices.json → characters`: tên, avatar (key trên kho media), phía, màu, và
 giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn giọng đặt theo người thu (Nhật Phong,
 Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng.
+
+## Nhạc nền và nhạc quiz
+`music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),
+`seconds` và `lufs` — độ to đo được. Các bản master chênh nhau tới 15 dB nên **không** dùng gain cố định:
+`tools/lib/music.mjs` suy gain từ `lufs` về mức −32 LUFS (nhạc nền) / −28 LUFS (nhạc quiz), và tải file về
+`assets/music/` lần đầu dùng. Thêm bản mới = đẩy file lên R2, thêm key vào `media/manifest.json`, thêm mục
+vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
+- **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`.
+- **Nhạc quiz** chọn ở bước Kế hoạch, vì agent phải biết lúc viết `cues.js` để đánh dấu `quiz: true` cho
+  đúng những câu thuộc phần hỏi (câu hỏi + khoảng dừng suy nghĩ, **không** gồm phần chữa bài). Các câu liền
+  nhau gom thành một đoạn; `render.mjs --quiz-track <id>` tự đọc `cues.js` để lấy mốc thời gian. Trong đoạn
+  quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu.
+- `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
 ## Media nặng (`media/`, Cloudflare R2)
 Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`

@@ -48,17 +48,28 @@ interface CodexStreamMessage {
 
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
 
-/** Claude uses an explicit command/tool allowlist in addition to the repository instructions. */
+/**
+ * Claude uses an explicit command/tool allowlist in addition to the repository instructions.
+ *
+ * On Windows the CLI's shell tool is PowerShell, not Bash — mirror every shell pattern to both so an
+ * allowed command isn't silently denied just because it ran through the other shell tool.
+ */
+const shellPatterns = (cmds: string[]) => cmds.flatMap((c) => [`Bash(${c})`, `PowerShell(${c})`]);
+
 const ALLOWED = [
   "Read", "Edit", "Write", "Glob", "Grep", "TodoWrite", "Task", "Agent",
-  "Bash(cd *)", "Bash(node tools/*)",
-  "Bash(npm run build)", "Bash(npm run verify)", "Bash(npm run build && npm run verify)",
-  "Bash(node tts-elevenlabs/tts.mjs generate * --dry-run)",
-  "Bash(ls *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)", "Bash(wc *)", "Bash(head *)", "Bash(sort *)",
-  "Bash(ffprobe *)", "Bash(ffmpeg *)", "Bash(node_modules/ffmpeg-static/ffmpeg *)",
+  ...shellPatterns([
+    "cd *", "node tools/*",
+    "npm run build", "npm run verify", "npm run build && npm run verify",
+    "node tts-elevenlabs/tts.mjs generate * --dry-run",
+    "node tts-elevenlabs/tts.mjs --help*",
+    "ls *", "mkdir *", "cp *", "mv *", "wc *", "head *", "sort *",
+    "ffprobe *", "ffmpeg *", "node_modules/ffmpeg-static/ffmpeg *",
+  ]),
 ];
 const DENIED = [
-  "Read(**/.env)", "Read(**/.env.*)", "Bash(*.env*)", "Bash(git push*)", "Bash(git commit*)",
+  "Read(**/.env)", "Read(**/.env.*)",
+  ...shellPatterns(["*.env*", "git push*", "git commit*"]),
   "DesignSync", "RemoteTrigger", "CronCreate", "SendMessage", "WebFetch", "WebSearch",
 ];
 
@@ -96,7 +107,7 @@ function short(value: unknown, max = 160) {
 }
 
 function describeTool(name: string, input: Record<string, unknown>) {
-  if (name === "Bash") return `$ ${short(input.command, 200)}`;
+  if (name === "Bash" || name === "PowerShell") return `$ ${short(input.command, 200)}`;
   if (name === "Read" || name === "Write" || name === "Edit") return `${name} ${short(input.file_path)}`;
   if (name === "Glob" || name === "Grep") return `${name} ${short(input.pattern)}`;
   if (name === "Task" || name === "Agent") return `Agent phụ: ${short(input.description || input.prompt, 120)}`;

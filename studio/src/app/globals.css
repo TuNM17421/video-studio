@@ -285,35 +285,6 @@ dialog::backdrop {
   min-width: 0;
   flex: 1;
 }
-.topbar {
-  height: 78px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 42px;
-  gap: 20px;
-}
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 12px;
-  color: var(--vu-neutral-400);
-}
-.breadcrumb span {
-  color: var(--vu-neutral-300);
-}
-.breadcrumb strong {
-  font-weight: 500;
-  color: var(--vu-neutral-700);
-}
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
 .session-status {
   font-size: 11px;
   white-space: nowrap;
@@ -331,7 +302,8 @@ dialog::backdrop {
 .main-content {
   width: 100%;
   max-width: 1350px;
-  padding: 43px 42px 0;
+  /* the top bar used to sit above this; without it the page can start much closer to the edge */
+  padding: 22px 42px 0;
   margin: 0 auto;
 }
 .page-heading {
@@ -339,7 +311,7 @@ dialog::backdrop {
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 .eyebrow {
   display: flex;
@@ -364,7 +336,7 @@ dialog::backdrop {
   font-weight: var(--vu-font-bold);
   letter-spacing: var(--vu-tracking-tight);
   color: var(--vu-blue-900);
-  margin-top: 14px;
+  margin-top: 8px;
 }
 .page-heading p {
   color: var(--muted);
@@ -1058,10 +1030,27 @@ dialog::backdrop {
   margin-bottom: 20px;
   font-size: 12px;
 }
-.job-progress > span {
+/* Ant renders its spinner as a <span class="anticon"> too — without excluding it, the icon takes
+   flex: 1, stretches across a whole wrapped row, and its arc floats off on its own. */
+.job-progress > span:not(.anticon) {
   flex: 1;
 }
+.job-progress > .anticon {
+  flex: 0 0 auto;
+}
 .job-progress > strong {
+  font-size: 11px;
+}
+/* A render runs for a quarter of an hour: saying how long it has been and how long is left keeps the
+   wait legible instead of leaving a bar creeping. */
+.job-progress > .job-timing {
+  flex: 0 0 auto;
+  color: var(--vu-blue-700);
+  font-family: var(--vu-font-utility);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.job-progress .job-timing strong {
   font-size: 11px;
 }
 .progress-track {
@@ -1898,10 +1887,10 @@ dialog::backdrop {
 }
 @media (min-width: 1550px) {
   .main-content {
-    padding-top: 55px;
+    padding-top: 26px;
   }
   .page-heading {
-    margin-bottom: 38px;
+    margin-bottom: 28px;
   }
   .workflow {
     margin-bottom: 31px;
@@ -1941,11 +1930,8 @@ dialog::backdrop {
   .brand {
     font-size: 30px;
   }
-  .topbar {
-    padding: 0 28px;
-  }
   .main-content {
-    padding: 34px 28px 0;
+    padding: 18px 28px 0;
   }
   .editor-layout {
     grid-template-columns: minmax(0, 1fr) 238px;
@@ -2052,11 +2038,7 @@ dialog::backdrop {
     width: 18px;
   }
   .main-content {
-    padding: 30px 23px 0;
-  }
-  .topbar {
-    padding: 0 23px;
-    height: 67px;
+    padding: 16px 23px 0;
   }
   .editor-layout {
     grid-template-columns: minmax(0, 1fr) 215px;
@@ -2359,33 +2341,6 @@ dialog::backdrop {
   .sidebar nav .sidebar-item {
     border: 1px solid var(--line);
   }
-  .topbar {
-    height: 61px;
-    padding: 0 22px;
-    background: var(--vu-neutral-50);
-  }
-  .breadcrumb {
-    font-size: 10px;
-    gap: 9px;
-  }
-  .breadcrumb > strong {
-    max-width: 130px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  .topbar-actions {
-    gap: 8px;
-  }
-  .topbar .button.compact {
-    font-size: 10px;
-    min-height: 35px;
-    gap: 6px;
-    padding: 7px 9px;
-  }
-  .topbar .button svg {
-    width: 15px;
-  }
   .mobile-settings {
     display: inline-flex;
     width: 32px;
@@ -2393,7 +2348,7 @@ dialog::backdrop {
     min-height: 35px;
   }
   .main-content {
-    padding: 30px 22px 0;
+    padding: 14px 22px 0;
   }
   .page-heading {
     margin-bottom: 26px;
@@ -2771,9 +2726,6 @@ dialog::backdrop {
   .job-progress > svg {
     width: 17px;
   }
-  .topbar .breadcrumb > strong {
-    max-width: 110px;
-  }
 }
 @media (max-width: 390px) {
   .main-content {
@@ -2783,21 +2735,6 @@ dialog::backdrop {
   .sidebar {
     padding-left: 17px;
     padding-right: 17px;
-  }
-  .topbar {
-    padding: 0 15px;
-  }
-  .breadcrumb {
-    font-size: 9px;
-    gap: 7px;
-  }
-  .topbar .button.compact {
-    font-size: 9px;
-    padding-left: 7px;
-    padding-right: 7px;
-  }
-  .topbar .button.compact svg {
-    display: none;
   }
   .page-heading h1 {
     font-size: 27px;
@@ -3740,18 +3677,6 @@ dialog::backdrop {
   }
   .planning-summary dd {
     margin-top: 2px;
-  }
-  .topbar {
-    gap: 8px;
-  }
-  .topbar .breadcrumb {
-    min-width: 0;
-  }
-  .topbar .breadcrumb > strong {
-    max-width: 80px;
-  }
-  .topbar-actions {
-    flex-shrink: 0;
   }
 }
 .stage-planning-summary {

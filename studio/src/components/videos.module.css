@@ -152,8 +152,9 @@
   font-size: var(--vu-text-xs);
 }
 
+/* `> span` also caught the status badge, which is a span too, and shrank it to 10px */
 .schedule span,
-.videoState > span {
+.videoState > span:not(:global(.ant-tag)) {
   color: var(--vu-text-muted);
   font-size: var(--vu-text-2xs);
   line-height: var(--vu-leading-snug);

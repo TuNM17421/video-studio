@@ -13,6 +13,38 @@ export function setKey(key: string) {
 }
 export const clearKey = () => { registry.elevenKey = null; };
 
+/**
+ * The voice id already configured for the CLI, offered as the default for a new video. Only
+ * ELEVENLABS_VOICE_ID is read — the key in the same file stays in RAM only, entered through the UI.
+ */
+export function envVoiceId() {
+  try {
+    const env = fs.readFileSync(path.join(REPO, "tts-elevenlabs/.env"), "utf8");
+    const match = env.match(/^\s*ELEVENLABS_VOICE_ID\s*=\s*(.+)$/m);
+    const id = match?.[1].trim().replace(/^["']|["']$/g, "") ?? "";
+    return /^[A-Za-z0-9]{8,40}$/.test(id) ? id : "";
+  } catch {
+    return "";
+  }
+}
+
+/** The account's voices, for the picker. Needs the session key; never cached, so a new voice shows up. */
+export async function listVoices() {
+  const key = registry.elevenKey;
+  if (!key) throw new HttpError(400, "Nhập API key ElevenLabs trước.");
+  const res = await fetch("https://api.elevenlabs.io/v2/voices?page_size=100", { headers: { "xi-api-key": key } });
+  // A key scoped to text-to-speech only still synthesizes fine but cannot list voices, so say which
+  // of the two it is instead of a bare status code — the voice id can still be typed in by hand.
+  if (res.status === 401) throw new HttpError(502, "Key này không có quyền đọc danh sách giọng (voices read). Vẫn tạo giọng được — nhập thẳng Voice ID.");
+  if (!res.ok) throw new HttpError(502, `ElevenLabs trả lỗi ${res.status} khi lấy danh sách giọng.`);
+  const json = (await res.json()) as { voices?: { voice_id: string; name: string; labels?: Record<string, string> }[] };
+  return (json.voices ?? []).map((v) => ({
+    id: v.voice_id,
+    name: v.name,
+    detail: [v.labels?.accent, v.labels?.gender, v.labels?.use_case].filter(Boolean).join(" · "),
+  }));
+}
+
 /** Env for tts.mjs: every setting explicit, so tts-elevenlabs/.env (if any) never supplies the key. */
 function ttsEnv(v: VoiceSettings, key: string) {
   return {

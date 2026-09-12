@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import Library from "@/components/library";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Thư viện" };
-
+/** The library has no landing page of its own: its sections are sidebar entries. */
 export default function Page() {
-  return <Library />;
+  redirect("/library/styles");
 }

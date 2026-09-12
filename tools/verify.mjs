@@ -38,7 +38,7 @@ const cardRe = /^<!-- @dsCard group="([^"]+)" viewport="(\d+)x(\d+)" name="([^"]
 const cards = [];
 for (const f of files.filter((x) => x.endsWith('.html'))) {
   const text = fs.readFileSync(f, 'utf8');
-  const first = text.split('\n')[0];
+  const first = text.split('\n')[0].trimEnd(); // CRLF checkouts leave \r, which the $-anchored regex rejects
   if (!text.includes('@dsCard')) continue;
   const m = first.match(cardRe);
   if (!m) {

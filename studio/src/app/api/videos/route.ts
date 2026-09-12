@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import type { AgentProvider, VideoRequest, VideoState } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
+import { NO_MUSIC, SILENT } from "@/lib/music";
+import { isTrackId } from "@/lib/server/music";
 import { readAgentConfig, resolveAgentProvider } from "@/lib/server/agent-config";
 import { handle } from "@/lib/server/http";
 import { assertId, DAY_RE, exists, HttpError, projectDir, STYLES, videoDir } from "@/lib/server/paths";
@@ -12,7 +14,7 @@ export const GET = handle(() => Response.json(listVideos()));
 
 /** Create a video: projects/<id>/{kich-ban-goc.md, REQUEST.md} + the studio state. Nothing runs yet. */
 export const POST = handle(async (req: Request) => {
-  const body = (await req.json()) as { id: string; request: VideoRequest; script: { name: string; content: string }; agentProvider?: unknown; voiceId?: string };
+  const body = (await req.json()) as { id: string; request: VideoRequest; script: { name: string; content: string }; agentProvider?: unknown; voiceId?: string; quizMusic?: unknown };
   const id = String(body.id || "").trim();
   assertId(id);
   const r = body.request;
@@ -43,12 +45,16 @@ export const POST = handle(async (req: Request) => {
   fs.mkdirSync(path.join(projectDir(id), "render"), { recursive: true });
   fs.writeFileSync(path.join(projectDir(id), "render", ".gitkeep"), "");
   fs.writeFileSync(path.join(projectDir(id), "kich-ban-goc.md"), content.endsWith("\n") ? content : `${content}\n`);
-  fs.writeFileSync(path.join(projectDir(id), "REQUEST.md"), requestMarkdown(id, request, agentProviderLabel(provider)));
+  const quizMusic = isTrackId(body.quizMusic, "quiz") ? body.quizMusic : NO_MUSIC;
+  fs.writeFileSync(path.join(projectDir(id), "REQUEST.md"), requestMarkdown(id, request, agentProviderLabel(provider), quizMusic));
   const now = new Date().toISOString();
   const state: VideoState = {
     id, createdAt: now, updatedAt: now, request, agent: { provider, sessionId: null },
     stages: { cues: "idle", voice: "idle", scenes: "idle", render: "idle", deliver: "idle" },
     voice: { ...newVoice(), ...(body.voiceId ? { voiceId: String(body.voiceId) } : {}) },
+    // The quiz bed is chosen here, not at render: the agent has to know while it writes cues.js which
+    // câu the question covers, so it can mark them `quiz: true`.
+    music: { ...SILENT, quiz: quizMusic },
     lastError: null,
   };
   writeState(state);

@@ -4,6 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isAgentProvider } from "../agent-providers";
+import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
 import { cleanModules, moduleById } from "../modules";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { isRunning } from "./jobs";
@@ -16,10 +17,18 @@ export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model
 /** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
 export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
-type LegacyVideoState = Omit<VideoState, "agent"> & {
+type LegacyVideoState = Omit<VideoState, "agent" | "music"> & {
   agent?: Partial<VideoState["agent"]>;
   sessionId?: unknown;
+  /** Before quiz music there was one track, stored as a bare id — and "bg" was the only one. */
+  music?: string | Partial<MusicChoice>;
 };
+
+/** The single pre-catalog track became bg-goc, the reference bed the catalog was built around. */
+function normalizeMusic(stored: LegacyVideoState["music"]): MusicChoice {
+  if (typeof stored === "string") return { ...SILENT, background: stored === "bg" ? "bg-goc" : NO_MUSIC };
+  return { background: stored?.background ?? NO_MUSIC, quiz: stored?.quiz ?? NO_MUSIC };
+}
 
 /** Old Studio states predate provider binding. They belong to Claude and retain their Claude session. */
 export function normalizeVideoState(value: unknown): VideoState {
@@ -35,6 +44,7 @@ export function normalizeVideoState(value: unknown): VideoState {
     agent: { provider, sessionId },
     request: { ...state.request, modules: cleanModules(state.request?.modules) },
     voice: { ...DEFAULT_VOICE, ...stored.voice },
+    music: normalizeMusic(stored.music),
   } as VideoState;
 }
 
@@ -115,7 +125,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, lastError: null },
     managed: false,
   };
 }
@@ -208,7 +218,25 @@ function moduleSections(modules: string[]) {
   return lines;
 }
 
-export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
+/** What the agent must do about quiz music — it is the only stage that can mark the câu it plays over. */
+function quizMusicSection(quiz: string) {
+  if (quiz === NO_MUSIC) return [];
+  return [
+    "## Nhạc quiz",
+    "",
+    `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng những câu thuộc phần hỏi**:`,
+    "câu đọc câu hỏi và câu dừng cho người xem suy nghĩ (thường là cue `silent`). **Không** đánh dấu phần chữa bài —",
+    "nhạc phải tắt ngay khi bắt đầu giải thích.",
+    "",
+    "Các câu liền nhau cùng có `quiz: true` được gom thành một đoạn. Đặt trường này ở cuối phần khai của câu,",
+    "**đừng** đặt ngay sau `n:` — `voice-timing.mjs --write-cues` ghi `frames`/`speech` vào đúng chỗ đó và sẽ xoá mất nó.",
+    "",
+    "Trong đoạn quiz, nhạc nền tự động tắt hẳn và nhạc quiz vào (có fade 0,5 giây hai đầu) — không phải làm gì thêm.",
+    "",
+  ];
+}
+
+export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string, quizMusic: string = NO_MUSIC) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
     "",
@@ -223,6 +251,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
     ...moduleSections(r.modules),
+    ...quizMusicSection(quizMusic),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

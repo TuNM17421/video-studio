@@ -9,7 +9,8 @@ type Listener = (event: StudioEvent) => void;
 export type StudioEvent = { type: "log"; entry: LogEntry } | { type: "job"; job: JobInfo | null } | { type: "state" };
 
 interface Registry {
-  jobs: Map<string, JobInfo & { child?: ChildProcess; stopped?: boolean }>;
+  /** `anchor` is the job's first percent reading — where the countdown measures from. */
+  jobs: Map<string, JobInfo & { child?: ChildProcess; stopped?: boolean; anchor?: { at: number; percent: number } }>;
   logs: Map<string, LogEntry[]>;
   listeners: Map<string, Set<Listener>>;
   /** ElevenLabs API key: memory only, never written to disk or passed to the agent. */
@@ -78,10 +79,22 @@ export function startJob(id: string, kind: JobKind) {
   return job;
 }
 
+/**
+ * A render runs for a quarter of an hour, so the wait needs a number on it. The estimate measures from
+ * the job's **first** percent rather than from its start: a render spends its opening half-minute
+ * building the design system and moves no percent, and extrapolating across that reported roughly twice
+ * the real wait. Stages with no total (an agent reports tool calls, not progress) get no estimate —
+ * the UI shows how long they have been running and nothing more.
+ */
 export function setProgress(id: string, percent: number | null, message: string) {
   const job = registry.jobs.get(id);
   if (!job) return;
-  job.progress = { percent, message };
+  if (percent !== null && !job.anchor) job.anchor = { at: Date.now(), percent };
+  const from = job.anchor;
+  const etaMs = from && percent !== null && percent > from.percent
+    ? Math.round(((100 - percent) / (percent - from.percent)) * (Date.now() - from.at))
+    : null;
+  job.progress = { percent, message, etaMs };
   emit(id, { type: "job", job: currentJob(id) });
 }
 
@@ -108,10 +121,13 @@ interface RunOptions {
   onLine?: (line: string, stream: "stdout" | "stderr") => void;
 }
 
+/** On Windows `npm` is a .cmd shim; Node can only run it through a shell, not by direct spawn. */
+const needsShell = (cmd: string) => process.platform === "win32" && cmd === "npm";
+
 /** Run a command in the repo, attached to the video's current job (so Dừng can kill it). */
 export function run(id: string, cmd: string, args: string[], opts: RunOptions = {}) {
   return new Promise<number>((resolve) => {
-    const child = spawn(cmd, args, { cwd: REPO, env: opts.env ?? process.env, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { cwd: REPO, env: opts.env ?? process.env, stdio: ["pipe", "pipe", "pipe"], shell: needsShell(cmd) });
     const job = registry.jobs.get(id);
     if (job) job.child = child;
     const pipe = (stream: NodeJS.ReadableStream, name: "stdout" | "stderr") => {

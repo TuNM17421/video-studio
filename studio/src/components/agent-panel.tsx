@@ -14,10 +14,36 @@ function time(t: number) {
   return new Date(t).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+/** 754000 → "12:34"; hours only appear once there are any. */
+function clock(ms: number) {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const s = String(total % 60).padStart(2, "0");
+  const m = Math.floor(total / 60);
+  return m < 60 ? `${m}:${s}` : `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}:${s}`;
+}
+
 export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () => void }) {
   const [confirmStopFor, setConfirmStopFor] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  /**
+   * Anchored at the first progress reading of this job rather than at its start: a render spends its first
+   * half-minute building the design system, and extrapolating across that reported twice the real wait.
+   */
+  const running = job?.status === "running";
+  const percent = job?.progress?.percent ?? null;
+  const startedAt = job?.startedAt ?? 0;
+
+  useEffect(() => {
+    if (!running) return;
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, [running]);
+
   if (!job || job.status !== "running") return null;
-  const percent = job.progress?.percent ?? null;
+  // The estimate comes from whoever is doing the work — render.mjs measures its own frame rate, and a
+  // guess extrapolated here would have counted the design-system build as if it were capture.
+  const elapsed = now - startedAt;
+  const remaining = job.progress?.etaMs ?? null;
   const taskLabel: Record<JobInfo["kind"], string> = {
     cues: "Lời & cue",
     voice: "Giọng đọc",
@@ -32,6 +58,10 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     <div className="job-progress" role="status">
       <LoadingOutlined spin />
       <span>{job.progress?.message || "Đang xử lý…"}</span>
+      <small className="job-timing">
+        đã chạy {clock(elapsed)}
+        {remaining !== null && <> · còn khoảng <strong>{clock(remaining)}</strong></>}
+      </small>
       <strong>{percent === null ? "" : `${Math.round(percent)}%`}</strong>
       {onStop && <Button type="text" danger size="small" className="vs-stop" icon={<StopOutlined />} onClick={() => setConfirmStopFor(job.startedAt)}>Dừng</Button>}
       <Progress className={percent === null ? "is-indeterminate" : ""} percent={percent ?? 36} showInfo={false} status="active" strokeLinecap="butt" />
