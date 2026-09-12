@@ -287,6 +287,7 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
     <SourcePickerField label="Thư mục audio" purpose="voice" value={settings.importDir} disabled={busy} onChange={(importDir) => setSettings({ ...settings, importDir })} />
     <div className="vs-import-run">
       <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
+      <div className="vs-import-action">
       <Button disabled={busy || !settings.importDir.trim()} icon={<SearchOutlined />} onClick={scan}>Kiểm tra thư mục</Button>
       {report && <p className={`vs-import-summary ${fresh ? (problems ? "is-error" : warnings ? "is-warn" : "is-ok") : "is-stale"}`}>
         <strong>{report.matched}/{report.needFile} câu có file</strong>
@@ -296,6 +297,7 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
         {report.align.used && <small>Đối chiếu nội dung bằng Whisper {report.align.model}</small>}
         {!fresh && <small>Thư mục hoặc khoảng nghỉ đã đổi — bấm Kiểm tra lại.</small>}
       </p>}
+      </div>
     </div>
     {report?.align.note && <Alert className="feedback" type="warning" showIcon message={report.align.note} />}
     {report && <div className="vs-map">

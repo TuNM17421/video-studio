@@ -822,19 +822,30 @@ button.vs-tile:hover {
   gap: 14px;
   margin-bottom: 16px;
 }
-.vs-import-run .field {
+/* The Ant bridge gives every .field a bottom margin; here the field sits in a row, not a stack, and
+   that margin would drop it below the button it is aligned with. */
+.vs-import-run .ant-form-item.field {
   margin: 0;
   width: 162px;
   flex: 0 0 auto;
+}
+/* The summary is two lines tall and the button one, so they centre on each other rather than
+   hanging off the row's baseline with the pause field. */
+.vs-import-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* Drops onto its own line rather than being squeezed into a column of single words. */
+  flex: 1 1 320px;
+  min-width: 0;
 }
 .vs-import-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  /* Drops onto its own line rather than being squeezed into a column of single words. */
-  flex: 1 1 250px;
+  min-width: 0;
   gap: 0 6px;
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 12px;
   color: var(--muted);
 }
