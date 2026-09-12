@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, PlayCircleFilled, WarningFilled } from "@ant-design/icons";
-import { Button, Checkbox, Collapse, Descriptions, Form, Input, Select, Upload } from "antd";
-import type { InputRef, UploadProps } from "antd";
+import { CheckCircleFilled, CopyOutlined, DeleteOutlined, DownOutlined, EditOutlined, FileOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, PlayCircleFilled, WarningFilled } from "@ant-design/icons";
+import { Button, Checkbox, Collapse, Descriptions, Dropdown, Form, Input, Select, Upload } from "antd";
+import type { InputRef, MenuProps, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import type { Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { StylePicker, StyleShowcase } from "./style-showcase";
@@ -57,43 +57,159 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
   ].filter(Boolean).join("\n");
 }
 
-function FolderField({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  const [check, setCheck] = useState<{ exists: boolean; files?: number } | null>(null);
+type SourcePurpose = "feedback" | "video";
+type SourceCheck = { exists: boolean; dir?: boolean; files?: number; name?: string; size?: number };
+type PickerResult = { cancelled: true } | ({ cancelled: false; path: string } & Omit<SourceCheck, "exists">);
+
+function sourceName(value: string) {
+  const clean = value.replace(/[\\/]+$/, "");
+  return clean.split(/[\\/]/).pop() || value;
+}
+
+function sourceSize(bytes?: number) {
+  if (bytes === undefined) return "1 tệp";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} MB`;
+}
+
+function SourcePickerField({ label, purpose, value, onChange, disabled }: { label: string; purpose: SourcePurpose; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [check, setCheck] = useState<SourceCheck | null>(null);
   const [checking, setChecking] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [manual, setManual] = useState(false);
+  const [issue, setIssue] = useState<string | null>(null);
+  const manualInput = useRef<InputRef>(null);
   const messageId = useId();
   useEffect(() => {
     if (!value.trim()) return;
+    let active = true;
     const t = setTimeout(() => {
-      api<{ exists: boolean; files?: number }>(`/api/fs-check?path=${encodeURIComponent(value.trim())}`)
-        .then((result) => { setCheck(result); setChecking(false); })
-        .catch(() => { setCheck(null); setChecking(false); });
+      api<SourceCheck>(`/api/fs-check?path=${encodeURIComponent(value.trim())}`)
+        .then((result) => {
+          if (!active) return;
+          setCheck(result);
+          setChecking(false);
+        })
+        .catch(() => {
+          if (!active) return;
+          setCheck(null);
+          setChecking(false);
+          setIssue("Không thể kiểm tra đường dẫn lúc này. Hãy thử lại.");
+        });
     }, 300);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, [value]);
   const invalid = !!value.trim() && check?.exists === false;
-  const hasMessage = !!value.trim() && (checking || check);
-  const help = hasMessage ? <span id={messageId} className={`vs-validation-message ${invalid ? "is-error" : check?.exists ? "is-ok" : "is-checking"}`} role={invalid ? "alert" : "status"}>
-    {checking ? <LoadingOutlined spin /> : invalid ? <WarningFilled /> : <CheckCircleFilled />}
-    {checking ? "Đang kiểm tra đường dẫn…" : invalid ? "Không tìm thấy thư mục. Kiểm tra lại đường dẫn đầy đủ." : `${check?.files ?? 0} tệp`}
-  </span> : undefined;
-  return <Form.Item className="field" label={<span className="vs-field-label">{label}</span>} validateStatus={invalid ? "error" : checking ? "validating" : check?.exists ? "success" : undefined} help={help}>
-    <Input
-      value={value}
-      disabled={disabled}
-      status={invalid ? "error" : undefined}
-      aria-invalid={invalid || undefined}
-      aria-describedby={hasMessage ? messageId : undefined}
-      data-validation-pending={checking || undefined}
-      onChange={(event) => {
-        const next = event.target.value;
-        setCheck(null);
-        setChecking(!!next.trim());
-        onChange(next);
-      }}
-      placeholder="/home/…/thư-mục"
-      spellCheck={false}
-      autoComplete="off"
-    />
+  const selectedName = check?.name || sourceName(value);
+  const selectedMeta = checking
+    ? "Đang kiểm tra đường dẫn…"
+    : invalid
+      ? "Không tìm thấy nguồn"
+      : check?.exists
+        ? check.dir ? `${check.files ?? 0} mục trong thư mục` : sourceSize(check.size)
+        : "Đường dẫn trên máy";
+  const idleTitle = purpose === "video" ? "Chọn video trên máy" : "Chọn feedback trên máy";
+  const idleHint = purpose === "video"
+    ? "Tệp MP4, MOV, WEBM, MKV hoặc thư mục nguồn"
+    : "Tệp ghi chú, ảnh hoặc thư mục của bản trước";
+  const help = issue || invalid
+    ? <span id={messageId} className="vs-validation-message is-error" role="alert"><WarningFilled />{issue || "Không tìm thấy tệp hoặc thư mục. Chọn lại nguồn hoặc sửa đường dẫn đầy đủ."}</span>
+    : undefined;
+
+  function updatePath(next: string) {
+    setIssue(null);
+    setCheck(null);
+    setChecking(!!next.trim());
+    onChange(next);
+  }
+
+  async function choose(kind: "file" | "directory") {
+    setIssue(null);
+    setPicking(true);
+    try {
+      const result = await api<PickerResult>("/api/fs-picker", { method: "POST", json: { kind, purpose } });
+      if (result.cancelled) return;
+      setManual(false);
+      setChecking(false);
+      setCheck({ exists: true, dir: result.dir, files: result.files, name: result.name, size: result.size });
+      onChange(result.path);
+    } catch (error) {
+      setIssue(error instanceof Error ? error.message : "Không thể mở trình chọn tệp.");
+      setManual(true);
+      requestAnimationFrame(() => manualInput.current?.focus());
+    } finally {
+      setPicking(false);
+    }
+  }
+
+  const items: MenuProps["items"] = [
+    { key: "file", icon: <FileOutlined />, label: purpose === "video" ? "Chọn một tệp video" : "Chọn một tệp" },
+    { key: "directory", icon: <FolderOpenOutlined />, label: "Chọn một thư mục" },
+    { type: "divider" },
+    { key: "manual", icon: <EditOutlined />, label: "Nhập đường dẫn thủ công" },
+  ];
+  if (value) items.push({ key: "clear", icon: <DeleteOutlined />, label: "Bỏ lựa chọn", danger: true });
+
+  const onMenuClick: NonNullable<MenuProps["onClick"]> = ({ key }) => {
+    if (key === "file" || key === "directory") {
+      void choose(key);
+      return;
+    }
+    if (key === "manual") {
+      setManual(true);
+      setIssue(null);
+      requestAnimationFrame(() => manualInput.current?.focus());
+      return;
+    }
+    if (key === "clear") {
+      setManual(false);
+      updatePath("");
+    }
+  };
+
+  return <Form.Item className="field vs-source-field" label={<span className="vs-field-label">{label}</span>} validateStatus={invalid ? "error" : checking ? "validating" : check?.exists ? "success" : undefined} help={help}>
+    <Dropdown disabled={disabled || picking} trigger={["click"]} placement="bottomLeft" menu={{ items, onClick: onMenuClick }}>
+      <button
+        type="button"
+        className={`vs-source-picker ${value ? "is-selected" : ""} ${invalid || issue ? "is-invalid" : ""}`}
+        disabled={disabled || picking}
+        aria-invalid={!manual && invalid || undefined}
+        aria-describedby={help ? messageId : undefined}
+        data-validation-pending={!manual && checking || undefined}
+      >
+        <span className="vs-source-picker-icon" aria-hidden="true">
+          {picking || checking ? <LoadingOutlined spin /> : invalid || issue ? <WarningFilled /> : value && check?.dir ? <FolderOpenOutlined /> : value ? <FileOutlined /> : <InboxOutlined />}
+        </span>
+        <span className="vs-source-picker-copy">
+          <strong>{picking ? "Đang mở trình chọn…" : value ? selectedName : idleTitle}</strong>
+          <small title={value || undefined}>{value || idleHint}</small>
+          <span className="vs-source-picker-meta">{value ? selectedMeta : "Nhấp để chọn tệp hoặc thư mục"}</span>
+        </span>
+        <span className="vs-source-picker-action" aria-hidden="true"><DownOutlined /></span>
+      </button>
+    </Dropdown>
+    {manual && <div className="vs-source-manual">
+      <Input
+        ref={manualInput}
+        value={value}
+        disabled={disabled}
+        status={invalid ? "error" : undefined}
+        aria-label={`Đường dẫn thủ công cho ${label}`}
+        aria-invalid={invalid || undefined}
+        aria-describedby={help ? messageId : undefined}
+        data-validation-pending={checking || undefined}
+        onChange={(event) => updatePath(event.target.value)}
+        placeholder="/home/…/tệp-hoặc-thư-mục"
+        spellCheck={false}
+        autoComplete="off"
+        allowClear
+      />
+      <Button type="link" size="small" onClick={() => setManual(false)}>Ẩn nhập thủ công</Button>
+    </div>}
   </Form.Item>;
 }
 
@@ -227,8 +343,8 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy }: { styles: 
             </Upload.Dragger>}
       </Form.Item>
       <div className="field-grid">
-        <FolderField label="Feedback bản cũ" value={draft.request.feedbackDir} disabled={busy} onChange={(v) => set({ feedbackDir: v })} />
-        <FolderField label="Video cũ" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
+        <SourcePickerField label="Feedback bản cũ" purpose="feedback" value={draft.request.feedbackDir} disabled={busy} onChange={(v) => set({ feedbackDir: v })} />
+        <SourcePickerField label="Video cũ" purpose="video" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
       </div>
       <Form.Item className="field" label={<span className="vs-field-label">Ghi chú</span>}>
         <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount onChange={(e) => set({ notes: e.target.value })} />
