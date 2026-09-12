@@ -53,5 +53,6 @@ export * from './context/Envelope.jsx';
 export * from './context/ContextBudget.jsx';
 export * from './context/ContextTray.jsx';
 export * from './context/FilingCabinet.jsx';
+export * from './figures/Dialogue.jsx';
 export * from './figures/Magnifier.jsx';
 export * from './figures/SourceCard.jsx';

@@ -53,5 +53,34 @@ export function createSpeech(raw, voice) {
     return c.speech ?? Math.round(syllables(c.text) * (FPS / 3));
   }
 
-  return { spokenAt, speechEnd };
+  /**
+   * Every word of cue `n` with the scene-local frame it starts being said — what a dialogue card reveals
+   * itself by, so the text on screen and the voice are the same thing rather than two guesses.
+   * Falls back to an even share of the measured speech when there are no word timings yet.
+   */
+  function spokenWords(n) {
+    const c = cue(n);
+    const v = recorded(n);
+    const words = c.text.split(/(\s+)/).filter((w) => w.trim());
+    if (v && v.words && v.words.length) {
+      const sent = v.alignText || v.ttsText || c.text;
+      let from = 0;
+      return words.map((w) => {
+        // Walk the sent text in step with the locked text: pronunciation swaps shift the offsets.
+        const at = sent.indexOf(w, from);
+        if (at >= 0) from = at + w.length;
+        const target = at >= 0 ? at : from;
+        let frame = v.words[0][1];
+        for (const [charIndex, f] of v.words) {
+          if (charIndex > target) break;
+          frame = f;
+        }
+        return { text: w, frame };
+      });
+    }
+    const total = speechEnd(n);
+    return words.map((w, i) => ({ text: w, frame: Math.round((i / Math.max(1, words.length)) * total) }));
+  }
+
+  return { spokenAt, speechEnd, spokenWords };
 }

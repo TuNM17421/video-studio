@@ -9,7 +9,7 @@ type StyleFile = Omit<StyleDef, "sampleVideo"> & { sampleVideo?: string | null }
 
 /** Component groups that exist only in Lesson Lab Style (the old 9-color set had none of them). */
 const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "system", "table", "ui"]);
-const LAB_COMPONENTS = new Set(["Magnifier", "SourceCard", "LineIcon", "Icon", "IllustrativeStamp"]);
+const LAB_COMPONENTS = new Set(["Magnifier", "SourceCard", "LineIcon", "Icon", "IllustrativeStamp", "DialogueCard"]);
 
 export function listStyles(): StyleDef[] {
   if (!exists(STYLES)) return [];
