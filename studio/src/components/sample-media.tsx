@@ -31,6 +31,7 @@ export function SampleMedia({ asset, emptyText = "Chưa có video mẫu" }: { as
     setOffline(typeof navigator !== "undefined" && navigator.onLine === false);
     setFailed(true);
   };
-  const props = { key: attempt, className: "video-player", src: asset.url, controls: true, preload: "metadata" as const, onError };
-  return asset.type.startsWith("audio/") ? <audio {...props} /> : <video {...props} />;
+  // `attempt` as the key: a retry re-mounts the element, which is what actually re-requests the file.
+  const props = { className: "video-player", src: asset.url, controls: true, preload: "metadata" as const, onError };
+  return asset.type.startsWith("audio/") ? <audio key={attempt} {...props} /> : <video key={attempt} {...props} />;
 }
