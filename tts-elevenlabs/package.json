@@ -1,6 +1,7 @@
 {
   "name": "vinuni-tts-elevenlabs",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "description": "ElevenLabs TTS for VinUni lesson-video cues: one continuous master + frame-accurate cue manifest",
   "engines": { "node": ">=20" },

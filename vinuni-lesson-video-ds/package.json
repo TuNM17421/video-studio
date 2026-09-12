@@ -2,6 +2,7 @@
   "name": "vinuni-lesson-video-ds",
   "version": "1.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "VinUni Lesson Video design system — React/SVG components + motion lib for 1920×1080 · 30 fps lesson scenes.",
   "type": "module",
   "module": "index.js",
