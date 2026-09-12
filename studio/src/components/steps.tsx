@@ -8,6 +8,7 @@ import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript,
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
 import { SourcePickerField } from "./source-picker";
+import { VoicePicker } from "./voice-picker";
 
 export interface StepProps {
   detail: VideoDetail;
@@ -365,8 +366,10 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
         ? <><Tag color="success" className="vs-key-on">Đã nhập key</Tag><Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => act(async () => { await api("/api/voice-key", { method: "DELETE" }); setHasKey(false); })}>Xoá key</Button></>
         : <><Input.Password className="vs-key-field" value={key} onChange={(e) => setKey(e.target.value)} placeholder="API key ElevenLabs" aria-label="API key ElevenLabs" autoComplete="off" spellCheck={false} /><Button disabled={!key.trim() || busy} onClick={saveKey}>Dùng key</Button></>}
     </div>
-    <div className="field-grid vs-grid-4">
-      <Form.Item className="field" label="Voice ID"><Input value={settings.voiceId} onChange={(e) => setSettings({ ...settings, voiceId: e.target.value.trim() })} spellCheck={false} autoComplete="off" /></Form.Item>
+    <Form.Item className="field vs-voice-field" label="Giọng đọc">
+      <VoicePicker value={settings.voiceId} onChange={(voiceId) => setSettings({ ...settings, voiceId })} disabled={busy} />
+    </Form.Item>
+    <div className="field-grid vs-grid-3">
       <Form.Item className="field" label="Model"><Select value={settings.model} onChange={(model) => setSettings({ ...settings, model })} options={MODELS.map((model) => ({ value: model.id, label: model.label }))} /></Form.Item>
       <Form.Item className="field" label="Ngôn ngữ"><Select value={settings.language} onChange={(language) => setSettings({ ...settings, language })} options={[{ value: "vi", label: "Tiếng Việt" }, { value: "auto", label: "Tự nhận (v3)" }]} /></Form.Item>
       <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>

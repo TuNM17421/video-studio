@@ -5,7 +5,7 @@ import { agentProviderLabel } from "@/lib/agent-providers";
 import { readAgentConfig, resolveAgentProvider } from "@/lib/server/agent-config";
 import { handle } from "@/lib/server/http";
 import { assertId, DAY_RE, exists, HttpError, projectDir, STYLES, videoDir } from "@/lib/server/paths";
-import { DEFAULT_VOICE, listVideos, requestMarkdown, writeState } from "@/lib/server/videos";
+import { listVideos, newVoice, requestMarkdown, writeState } from "@/lib/server/videos";
 
 export const GET = handle(() => Response.json(listVideos()));
 
@@ -43,7 +43,7 @@ export const POST = handle(async (req: Request) => {
   const state: VideoState = {
     id, createdAt: now, updatedAt: now, request, agent: { provider, sessionId: null },
     stages: { cues: "idle", voice: "idle", scenes: "idle", render: "idle", deliver: "idle" },
-    voice: { ...DEFAULT_VOICE, voiceId: String(body.voiceId || "") },
+    voice: { ...newVoice(), ...(body.voiceId ? { voiceId: String(body.voiceId) } : {}) },
     lastError: null,
   };
   writeState(state);

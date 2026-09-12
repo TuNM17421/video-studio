@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Library, LibraryGroup, StyleDef } from "../types";
-import { styleSample } from "./media";
+import type { Library, LibraryGroup, StyleDef, VoiceCatalog, VoiceDef } from "../types";
+import { mediaAsset, styleSample } from "./media";
 import { DS, exists, REPO, STYLES } from "./paths";
 
 /** A styles/*.json as written on disk: `sampleVideo` is a media key there, a resolved asset in StyleDef. */
@@ -23,6 +23,27 @@ export function listStyles(): StyleDef[] {
     })
     .sort((a, b) => a.order - b.order);
 }
+
+/** voices.json as written on disk: `sample` is a media key there, a resolved asset in VoiceDef. */
+type VoiceFile = Omit<VoiceDef, "sample" | "isDefault"> & { sample?: string | null; default?: boolean };
+
+const CATALOG = path.join(REPO, "voices.json");
+
+export function listVoices(): VoiceCatalog {
+  if (!exists(CATALOG)) return { sampleText: "", voices: [] };
+  const raw = JSON.parse(fs.readFileSync(CATALOG, "utf8")) as { sampleText?: string; voices?: VoiceFile[] };
+  return {
+    sampleText: raw.sampleText || "",
+    voices: (raw.voices || []).map((v) => ({
+      ...v,
+      sample: v.sample ? mediaAsset(v.sample) : null,
+      isDefault: v.default === true,
+    })),
+  };
+}
+
+/** What a new video starts with. Empty when the catalog names no default — then the studio must ask. */
+export const defaultVoiceId = () => listVoices().voices.find((v) => v.isDefault)?.id || "";
 
 export function getLibrary(): Library {
   const config = JSON.parse(fs.readFileSync(path.join(REPO, ".design-sync/config.json"), "utf8")) as {

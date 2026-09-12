@@ -31,7 +31,9 @@ Source script, notes and outputs live in `projects/<video-id>/` (kich-ban-goc.md
 style is `styles/<style>.json` (palette, showcase components, rules — they override defaults).
 1. **cues** — script → `projects/<id>/kich-ban-goc.md`; `cues.js` (text verbatim; `createSpeech(RAW, VOICE)`
    from lib/speech.js); `voice-timing.mjs --clear`; TTS `--dry-run`.
-2. **voice** — two sources, both ending at `voice/out/<id>/{voice.wav, voice.cues.json}`:
+2. **voice** — giọng đọc chọn trong `voices.json` (danh mục được commit: id, tên, giới tính, key file mẫu
+   trên R2, một giọng `"default": true`). Studio có bộ chọn kèm nút nghe thử; CLI nhận `--voice <id|tên>`,
+   thứ tự ưu tiên `--voice` → `ELEVENLABS_VOICE_ID` → mặc định trong danh mục. Hai nguồn audio, đều kết thúc ở `voice/out/<id>/{voice.wav, voice.cues.json}`:
    *ElevenLabs* — `node tts-elevenlabs/tts.mjs generate --cues <video>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id>`
    (dry-run first, ask before spending credit; key in `tts-elevenlabs/.env`, never print/commit it).
    *Recorded or local model* — `node tools/voice-export.mjs <video dir> --out projects/<id>/voice-script`

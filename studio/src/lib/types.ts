@@ -202,6 +202,27 @@ export interface MediaAsset {
   bytes: number;
 }
 
+/**
+ * One narrator in the committed catalog (voices.json). `engine` says who can speak it — "elevenlabs" now,
+ * "local" once a cloned model reads the same line — so adding a local voice later is a JSON edit.
+ */
+export interface VoiceDef {
+  id: string;
+  name: string;
+  engine: "elevenlabs" | "local";
+  gender?: string;
+  summary?: string;
+  /** Resolved from the media manifest; null when the sample has not been pushed to R2. */
+  sample: MediaAsset | null;
+  isDefault: boolean;
+}
+
+export interface VoiceCatalog {
+  /** The line every sample reads, so the picker can say what you are about to hear. */
+  sampleText: string;
+  voices: VoiceDef[];
+}
+
 export interface StyleDef {
   id: string;
   name: string;

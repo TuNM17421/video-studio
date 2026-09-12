@@ -4,6 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isAgentProvider } from "../agent-providers";
+import { defaultVoiceId } from "./catalog";
 import { isRunning } from "./jobs";
 import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
 
@@ -11,6 +12,8 @@ const execFileP = promisify(execFile);
 const STAGES: StageId[] = ["cues", "voice", "scenes", "render", "deliver"];
 
 export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "" };
+/** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
+export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
 type LegacyVideoState = Omit<VideoState, "agent"> & {
   agent?: Partial<VideoState["agent"]>;
@@ -106,7 +109,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: { ...DEFAULT_VOICE }, lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), lastError: null },
     managed: false,
   };
 }

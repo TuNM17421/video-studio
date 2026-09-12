@@ -1,0 +1,38 @@
+{
+  "sampleText": "Xin chào bạn, đây là giọng nói của tôi. Tôi đang đọc thử một đoạn ngắn để bạn nghe rõ cách phát âm, chỗ ngắt nghỉ và ngữ điệu tự nhiên của tôi khi kể một câu chuyện bằng tiếng Việt. Cảm ơn bạn đã lắng nghe.",
+  "voices": [
+    {
+      "id": "6adFm46eyy74snVn6YrT",
+      "name": "Nhật Phong",
+      "engine": "elevenlabs",
+      "gender": "nam",
+      "summary": "Giọng nam, cao độ trung bình ~147 Hz.",
+      "sample": "voices/nhat-phong.wav",
+      "default": true
+    },
+    {
+      "id": "CxJbDdwqY48MY3gPVYwe",
+      "name": "Đô Trịnh",
+      "engine": "elevenlabs",
+      "gender": "nam",
+      "summary": "Giọng nam trầm hơn, cao độ trung bình ~119 Hz.",
+      "sample": "voices/do-trinh.wav"
+    },
+    {
+      "id": "iSFxP4Z6YNcx9OXl62Ic",
+      "name": "Viên",
+      "engine": "elevenlabs",
+      "gender": "nữ",
+      "summary": "Giọng nữ, cao độ trung bình ~233 Hz.",
+      "sample": "voices/vien.wav"
+    },
+    {
+      "id": "x4KAhuXs2G8TfK9Zr7Q4",
+      "name": "Cẩm Hồng",
+      "engine": "elevenlabs",
+      "gender": "nữ",
+      "summary": "Giọng nữ, cao độ trung bình ~233 Hz.",
+      "sample": "voices/cam-hong.wav"
+    }
+  ]
+}

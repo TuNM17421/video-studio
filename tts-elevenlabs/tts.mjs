@@ -6,6 +6,7 @@
  *   node tts.mjs generate --cues <cues.js> [options]     synthesize every cue, assemble the master
  *
  * Options for generate:
+ *   --voice <id|tên>     who reads it — an ElevenLabs id or a name from voices.json
  *   --out <dir>          output folder (default out/<name of the cues folder>)
  *   --only 3,7           synthesize only these cues (others must be cached, or the run stops)
  *   --pause <seconds>    silence after each cue (default 1.0 — the script's "1 giây nghỉ")
@@ -23,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, FPS, sha256 } from '../tools/lib/voice-audio.mjs';
+import { defaultVoice, resolveVoice } from '../tools/lib/voices.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const API = 'https://api.elevenlabs.io';
@@ -62,7 +64,11 @@ function fail(msg) {
   process.exit(1);
 }
 const need = (...names) => {
-  for (const n of names) if (!cfg[n]) fail(`missing ${n === 'key' ? 'ELEVENLABS_API_KEY' : 'ELEVENLABS_VOICE_ID'} — copy .env.example to .env and fill it in`);
+  for (const n of names) {
+    if (cfg[n]) continue;
+    if (n === 'key') fail('missing ELEVENLABS_API_KEY — copy .env.example to .env and fill it in');
+    fail('no voice — pass --voice <id|tên>, or mark one "default" in voices.json');
+  }
 };
 
 // ── args ──────────────────────────────────────────────────────────────────────
@@ -74,6 +80,19 @@ for (let i = 0; i < rest.length; i++) {
   const next = rest[i + 1];
   if (next === undefined || next.startsWith('--')) args[a.slice(2)] = true;
   else args[a.slice(2)] = rest[++i];
+}
+
+// ── voice ─────────────────────────────────────────────────────────────────────
+// Who reads it, in order: --voice (an id or a name in voices.json) → ELEVENLABS_VOICE_ID (how Video Studio
+// passes each video's own choice) → the catalog default. Whichever wins is printed, so no run is silent
+// about the narrator it picked.
+{
+  const asked = typeof args.voice === 'string' ? args.voice : '';
+  if (asked && !resolveVoice(asked)) fail(`--voice "${asked}" is neither a voice id nor a name in voices.json`);
+  const chosen = resolveVoice(asked) || resolveVoice(cfg.voice) || defaultVoice();
+  cfg.voiceFrom = asked ? '--voice' : (cfg.voice ? 'ELEVENLABS_VOICE_ID' : 'voices.json (mặc định)');
+  cfg.voiceName = chosen && !chosen.unknown ? chosen.name : '';
+  cfg.voice = chosen ? chosen.id : '';
 }
 
 // ── API ───────────────────────────────────────────────────────────────────────
@@ -103,7 +122,8 @@ async function check() {
     if (!scoped(e)) throw e;
     console.log('· key is scoped without user_read — quota not shown (fine for TTS)');
   }
-  if (!cfg.voice) return console.log('! ELEVENLABS_VOICE_ID is empty');
+  if (!cfg.voice) return console.log('! no voice — pass --voice, set ELEVENLABS_VOICE_ID, or mark one "default" in voices.json');
+  console.log(`· voice ${cfg.voiceName || cfg.voice} (${cfg.voice}) ← ${cfg.voiceFrom}`);
   try {
     const voice = await (await api(`/v1/voices/${cfg.voice}`)).json();
     console.log(`✓ voice ${voice.name} (${cfg.voice}) · model ${cfg.model} · language ${cfg.language} · ${cfg.format}`);
@@ -183,6 +203,7 @@ async function generate() {
   const only = args.only ? new Set(String(args.only).split(',').map(Number)) : null;
   const mock = Boolean(args.mock);
   if (!args['dry-run'] && !mock) need('key', 'voice');
+  if (cfg.voice) console.log(`voice ${cfg.voiceName || cfg.voice} (${cfg.voice}) ← ${cfg.voiceFrom}`);
 
   // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400).
   const v3 = /^eleven_v3/.test(cfg.model);
