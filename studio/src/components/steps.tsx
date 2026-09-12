@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
-import { ArrowRightOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
-import { Alert, AutoComplete, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
+import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
-import { MUSIC_FILE, MUSIC_ID, NO_MUSIC } from "@/lib/music";
 import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
 import { SourcePickerField } from "./source-picker";
+import { VoicePicker } from "./voice-picker";
 
 export interface StepProps {
   detail: VideoDetail;
@@ -226,10 +226,10 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
 }
 
 const MODELS = [
+  { id: "eleven_turbo_v2_5", label: "Turbo v2.5" },
   { id: "eleven_flash_v2_5", label: "Flash v2.5" },
+  { id: "eleven_multilingual_v2", label: "Multilingual v2" },
   { id: "eleven_v3", label: "Eleven v3" },
-  { id: "eleven_turbo_v2_5", label: "Turbo v2.5 (ngừng hỗ trợ — dùng Flash v2.5)" },
-  { id: "eleven_multilingual_v2", label: "Multilingual v2 (không có tiếng Việt)" },
 ];
 
 const SOURCES = [
@@ -351,22 +351,6 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
   const [dry, setDry] = useState<DryRun | null>(detail.dryRun);
   const [checked, setChecked] = useState<string>(detail.dryRun ? JSON.stringify(detail.state.voice) : "");
   const [key, setKey] = useState("");
-  const [voices, setVoices] = useState<{ id: string; name: string; detail: string }[]>([]);
-  // Listing voices needs the key, so the picker fills in only once one is entered. A video that has
-  // no voice yet starts on whatever ELEVENLABS_VOICE_ID the CLI is already configured with.
-  const voiceId = settings.voiceId;
-  useEffect(() => {
-    if (!hasKey) return;
-    void (async () => {
-      try {
-        const res = await api<{ voices: typeof voices; envVoiceId: string }>("/api/voices");
-        setVoices(res.voices);
-        if (!voiceId && res.envVoiceId) setSettings({ ...settings, voiceId: res.envVoiceId });
-      } catch {}
-    })();
-    // settings is deliberately not a dependency: this seeds the field once, it does not track edits.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasKey]);
   const fresh = !!dry && checked === JSON.stringify(settings);
   const locked = !hasKey || !fresh;
   const saveKey = () => act(async () => { await api("/api/voice-key", { method: "POST", json: { key } }); setHasKey(true); setKey(""); });
@@ -382,18 +366,10 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
         ? <><Tag color="success" className="vs-key-on">Đã nhập key</Tag><Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => act(async () => { await api("/api/voice-key", { method: "DELETE" }); setHasKey(false); })}>Xoá key</Button></>
         : <><Input.Password className="vs-key-field" value={key} onChange={(e) => setKey(e.target.value)} placeholder="API key ElevenLabs" aria-label="API key ElevenLabs" autoComplete="off" spellCheck={false} /><Button disabled={!key.trim() || busy} onClick={saveKey}>Dùng key</Button></>}
     </div>
-    <div className="field-grid vs-grid-4">
-      {/* AutoComplete, not Select: a key scoped to text-to-speech cannot list voices, and the id
-          must still be typeable in that case. */}
-      <Form.Item className="field" label="Giọng đọc">
-        <AutoComplete
-          value={settings.voiceId}
-          onChange={(voiceId: string) => setSettings({ ...settings, voiceId: voiceId.trim() })}
-          placeholder={voices.length ? "Chọn giọng hoặc dán Voice ID" : "Dán Voice ID"}
-          filterOption={(input, option) => String(option?.label ?? "").toLowerCase().includes(input.toLowerCase())}
-          options={voices.map((v) => ({ value: v.id, label: v.detail ? `${v.name} · ${v.detail}` : v.name }))}
-        />
-      </Form.Item>
+    <Form.Item className="field vs-voice-field" label="Giọng đọc">
+      <VoicePicker value={settings.voiceId} onChange={(voiceId) => setSettings({ ...settings, voiceId })} disabled={busy} />
+    </Form.Item>
+    <div className="field-grid vs-grid-3">
       <Form.Item className="field" label="Model"><Select value={settings.model} onChange={(model) => setSettings({ ...settings, model })} options={MODELS.map((model) => ({ value: model.id, label: model.label }))} /></Form.Item>
       <Form.Item className="field" label="Ngôn ngữ"><Select value={settings.language} onChange={(language) => setSettings({ ...settings, language })} options={[{ value: "vi", label: "Tiếng Việt" }, { value: "auto", label: "Tự nhận (v3)" }]} /></Form.Item>
       <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
@@ -405,11 +381,32 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
         {!fresh && <small>Cài đặt đã đổi, bấm Kiểm tra lại.</small>}
       </div>}
     </div>
+    <Cast dry={dry} />
+    <div className="vs-dry">
+    </div>
     {detail.artifacts.voiceWav && <div className="audio-result vs-audio"><div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : ""}</span></div><audio controls src={fileUrl(detail.artifacts.voiceWav)} preload="none" /></div>}
     <Button type="primary" block disabled={locked || busy} icon={locked ? <LockOutlined /> : <SoundOutlined />} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "generate" }))}>
       {dry && fresh && dry.billable === 0 ? "Ghép giọng từ cache" : `Tạo giọng${dry && fresh ? ` · ${dry.toGenerate} câu, ${dry.billable.toLocaleString("vi-VN")} ký tự` : ""}`}
     </Button>
   </>;
+}
+
+/**
+ * Who actually reads this video. The cast is not a setting — it comes from the script: every câu names its
+ * speaker, and the dry-run (free) is the first place the real line-up can be seen and counted.
+ */
+function Cast({ dry }: { dry: DryRun | null }) {
+  if (!dry) return null;
+  const roles = new Map<string, number>();
+  for (const c of dry.cues) if (c.speaker) roles.set(c.speaker, (roles.get(c.speaker) || 0) + 1);
+  if (!roles.size) return null;
+  return <div className="vs-cast">
+    <strong><TeamOutlined />Dàn vai · {roles.size} nhân vật</strong>
+    <ul>
+      {[...roles].map(([name, count]) => <li key={name}><span>{name}</span><small>{count} câu</small></li>)}
+    </ul>
+    <small>Lấy từ `speaker` của từng câu trong cues.js. Đổi vai thì sửa kịch bản, không sửa ở đây.</small>
+  </div>;
 }
 
 export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKey }: StepProps & { hasKey: boolean; setHasKey: (v: boolean) => void }) {
@@ -475,26 +472,6 @@ export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
   </>;
 }
 
-const MUSIC_PREVIEW_SECONDS = 15;
-
-function MusicOption({ checked, available, onChange }: { checked: boolean; available: boolean; onChange: (checked: boolean) => void }) {
-  function stopAfterPreview(e: SyntheticEvent<HTMLAudioElement>) {
-    const audio = e.currentTarget;
-    window.setTimeout(() => { audio.pause(); audio.currentTime = 0; }, MUSIC_PREVIEW_SECONDS * 1000);
-  }
-  return (
-    <div className="vs-music-item">
-      <div className="vs-music-row">
-        <Checkbox checked={checked && available} disabled={!available} onChange={(e) => onChange(e.target.checked)}>Nhạc nền</Checkbox>
-        {available && <audio controls preload="none" src={fileUrl(`assets/music/${MUSIC_FILE}`)} onPlay={stopAfterPreview} />}
-      </div>
-      <small>{available
-        ? "Nghe thử tối đa 15 giây · khi render sẽ tự lặp cho khớp thời lượng video"
-        : `Chưa có bản nhạc — tải từ storage về ${`assets/music/${MUSIC_FILE}`} rồi tải lại trang.`}</small>
-    </div>
-  );
-}
-
 export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
   const id = detail.state.id;
   const status = detail.state.stages.render;
@@ -503,10 +480,6 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
   const runLogs = stageLogs(logs, /^Build design system/);
   const ready = detail.state.stages.scenes === "done";
   const [confirmRender, setConfirmRender] = useState(false);
-  const [music, setMusic] = useState(detail.state.music ?? NO_MUSIC);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setMusic(detail.state.music ?? NO_MUSIC); }, [detail.state.music]);
-  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music }));
   const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
   return <>
     <div className="vs-step-body">
@@ -519,14 +492,13 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         <div><span>Giọng</span><strong>{detail.state.voice.model}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
-      {ready && <MusicOption checked={music === MUSIC_ID} available={detail.musicAvailable} onChange={(checked) => setMusic(checked ? MUSIC_ID : NO_MUSIC)} />}
       {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
       {ready && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
         {path ? <CheckCircleFilled className="is-ok" /> : <span className="vs-dot" />}
         <span>{label}</span>
         {path ? <Button type="link" href={fileUrl(path)} target="_blank">{path}</Button> : <small>chưa có</small>}
       </li>)}</ul>}
-      {ready && <Button type="primary" block disabled={busy} icon={<PlayCircleFilled />} onClick={() => { if (a.mp4) setConfirmRender(true); else void startRender(); }}>{a.mp4 ? "Render lại" : "Render video"}</Button>}
+      {ready && <Button type="primary" block disabled={busy} icon={<PlayCircleFilled />} onClick={() => { if (a.mp4) setConfirmRender(true); else void act(() => post(`/api/videos/${id}/render`, {})); }}>{a.mp4 ? "Render lại" : "Render video"}</Button>}
       <AgentLog logs={runLogs} open={status === "running"} />
     </div>
     <div className="panel-footer"><span />{a.mp4 && <Button type="link" href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank" icon={<ArrowRightOutlined />} iconPlacement="end">Mở trình phát</Button>}</div>
@@ -535,7 +507,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
       description="Bản MP4 hiện có sẽ được thay bằng kết quả render mới. File nguồn và transcript không bị xoá."
       confirmLabel="Render lại"
       onCancel={() => setConfirmRender(false)}
-      onConfirm={() => { setConfirmRender(false); void startRender(); }}
+      onConfirm={() => { setConfirmRender(false); void act(() => post(`/api/videos/${id}/render`, {})); }}
     />}
   </>;
 }

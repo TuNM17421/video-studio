@@ -14,6 +14,9 @@
     "build": "node tools/build.mjs",
     "verify": "node tools/verify.mjs",
     "serve": "python3 -m http.server 8765 --bind 127.0.0.1 --directory vinuni-lesson-video-ds",
+    "voices": "node tools/voices-list.mjs",
+    "media": "node tools/media-push.mjs",
+    "test:tools": "node --test \"tools/**/*.test.mjs\"",
     "tts:check": "node tts-elevenlabs/tts.mjs check",
     "studio:install": "npm install --prefix studio",
     "studio": "npm run dev --prefix studio"
