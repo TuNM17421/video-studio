@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Library, LibraryGroup, StyleDef } from "../types";
+import { styleSample } from "./media";
 import { DS, exists, REPO, STYLES } from "./paths";
+
+/** A styles/*.json as written on disk: `sampleVideo` is a media key there, a resolved asset in StyleDef. */
+type StyleFile = Omit<StyleDef, "sampleVideo"> & { sampleVideo?: string | null };
 
 /** Component groups that exist only in Lesson Lab Style (the old 9-color set had none of them). */
 const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "system", "table", "ui"]);
@@ -9,12 +13,13 @@ const LAB_COMPONENTS = new Set(["Magnifier", "SourceCard", "LineIcon", "Icon", "
 
 export function listStyles(): StyleDef[] {
   if (!exists(STYLES)) return [];
-  const raw = fs.readdirSync(STYLES).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(fs.readFileSync(path.join(STYLES, f), "utf8")) as StyleDef);
+  const raw = fs.readdirSync(STYLES).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(fs.readFileSync(path.join(STYLES, f), "utf8")) as StyleFile);
   const byId = new Map(raw.map((s) => [s.id, s]));
   return raw
-    .map((s) => {
+    .map((s): StyleDef => {
       const parent = s.extends ? byId.get(s.extends) : undefined;
-      return parent ? { ...s, base: { name: parent.name, palette: parent.palette, showcase: parent.showcase } } : s;
+      const style = { ...s, sampleVideo: styleSample(s.id, s.sampleVideo) };
+      return parent ? { ...style, base: { name: parent.name, palette: parent.palette, showcase: parent.showcase } } : style;
     })
     .sort((a, b) => a.order - b.order);
 }

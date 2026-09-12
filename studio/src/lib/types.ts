@@ -194,6 +194,14 @@ export interface Showcase {
   image: string;
 }
 
+/** A file in the public R2 media bucket, already resolved to a URL the browser can play. */
+export interface MediaAsset {
+  key: string;
+  url: string;
+  type: string;
+  bytes: number;
+}
+
 export interface StyleDef {
   id: string;
   name: string;
@@ -202,7 +210,8 @@ export interface StyleDef {
   summary: string;
   palette: PaletteColor[];
   showcase: Showcase[];
-  sampleVideo: string | null;
+  /** Resolved from the media manifest; null when nothing has been pushed for this style. */
+  sampleVideo: MediaAsset | null;
   rules: string[];
   /** Resolved from `extends`: the parent's palette / showcase, shown before this style's additions. */
   base?: { name: string; palette: PaletteColor[]; showcase: Showcase[] };

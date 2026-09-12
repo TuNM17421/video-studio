@@ -60,6 +60,13 @@ server itself runs TTS (key in RAM only), the audio import, voice-timing, render
 `/ds` (render/QA base). `STUDIO_TTS_MOCK=1` = silent mock voice for development. New styles = new
 `styles/*.json`, no code change.
 
+## Media nặng (`media/`, Cloudflare R2)
+Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`
+(được commit) giữ base URL + danh sách asset, nên ai clone repo về cũng xem được mà không cần cấu hình gì.
+Chủ bucket bỏ file vào `media/files/<key>` (quy ước `styles/<mã style>/sample.mp4` = video mẫu của style),
+`npm run media -- --dry-run` rồi `npm run media`, và commit manifest. Khoá nằm ở `media/.env` (không bao giờ
+commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "không khả dụng", không vỡ giao diện.
+
 ## Notes
 - Imported voice: `docs/decisions/voice-align.md` records why word timestamps come from Whisper alone and
   what would justify moving to forced alignment; `/voice-align-check` measures whether that day has come.

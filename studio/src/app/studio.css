@@ -239,6 +239,20 @@ button.vs-tile:hover {
   padding: 16px;
   background: var(--surface);
 }
+/* Kho media ngoại tuyến: tiêu đề, lý do và nút thử lại xếp dọc trong card "không khả dụng". */
+.vs-sample-empty .ant-empty-description {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+.vs-sample-empty .ant-empty-description strong {
+  color: var(--text);
+}
+.vs-sample-empty .ant-empty-description small {
+  color: var(--subtle);
+  line-height: var(--vu-leading-normal);
+}
 
 /* ── plan form ──────────────────────────────────────────────────────────── */
 .vs-form-requirements {
