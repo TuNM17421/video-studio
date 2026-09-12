@@ -32,3 +32,16 @@ projects/*/.studio/
 /transcripts/Day*/*
 /chapters/Day*/*
 /vinuni-lesson-video-ds/ui_kits/lesson-video/videos/*/
+# Skills pulled in by `npx autoskills` — general web/React/testing guides, unrelated to making lesson
+# videos. Each member installs what they want locally; only the skills this team writes are tracked
+# (.claude/skills/make-video, .claude/skills/voice-align-check). Add new generated names here.
+.agents/
+skills-lock.json
+.claude/skills/accessibility/
+.claude/skills/composition-patterns/
+.claude/skills/frontend-design/
+.claude/skills/nodejs-backend-patterns/
+.claude/skills/nodejs-best-practices/
+.claude/skills/playwright-best-practices/
+.claude/skills/react-best-practices/
+.claude/skills/seo/
