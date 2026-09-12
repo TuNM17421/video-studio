@@ -20,9 +20,15 @@ export function readManifest() {
   }
 }
 
-/** null when the key was never pushed — an absent file, not a broken URL. */
+/**
+ * null when the key was never pushed — an absent file, not a broken URL.
+ * `?v=` is a fingerprint of the content: media is served with a day-long cache-control, so a file replaced
+ * under the same name would keep playing out of browsers that had already seen it.
+ */
 export function mediaUrl(key) {
   const { base, assets } = readManifest();
-  if (!key || !base || !assets[key]) return null;
-  return `${base}/${key.split('/').map(encodeURIComponent).join('/')}`;
+  const entry = key ? assets[key] : null;
+  if (!entry || !base) return null;
+  const version = entry.sha256 ? `?v=${entry.sha256.slice(0, 12)}` : '';
+  return `${base}/${key.split('/').map(encodeURIComponent).join('/')}${version}`;
 }

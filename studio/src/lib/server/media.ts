@@ -37,12 +37,21 @@ function manifest(): Manifest {
 /** MEDIA_BASE overrides the committed base — for pointing a dev machine at another bucket. */
 const baseOf = (m: Manifest) => (process.env.MEDIA_BASE || m.base).replace(/\/+$/, "");
 
-/** A key the manifest does not list has never been pushed: treat it as absent, not as a broken URL. */
+/**
+ * A key the manifest does not list has never been pushed: treat it as absent, not as a broken URL.
+ *
+ * The URL carries a fingerprint of the content (`?v=`), because media is served with a day-long
+ * cache-control: replacing a file under the same name would otherwise keep playing the old one out of
+ * every browser that had already seen it. A changed file gets a new URL; an unchanged one keeps its URL
+ * and stays cached, which is the point.
+ */
 export function resolveMedia(m: Manifest, key: string): MediaAsset | null {
   const entry = m.assets[key];
   const base = baseOf(m);
   if (!entry || !base) return null;
-  return { key, url: `${base}/${key.split("/").map(encodeURIComponent).join("/")}`, type: entry.type, bytes: entry.bytes };
+  const path = key.split("/").map(encodeURIComponent).join("/");
+  const version = entry.sha256 ? `?v=${entry.sha256.slice(0, 12)}` : "";
+  return { key, url: `${base}/${path}${version}`, type: entry.type, bytes: entry.bytes };
 }
 
 /**
