@@ -68,7 +68,8 @@ Mỗi cue khai `speaker` (tên/id một **nhân vật** — hoặc một giọng
 `voices.json → deliveries`, đổi tốc độ). `speaker` phải có sẵn trong danh mục, tên lạ thì `--dry-run` dừng
 ngay trước khi tốn credit; thêm nhân vật mới là việc của dev. Đừng nhầm với `cue.voice` — trường đó đã có
 từ trước và là audio tag của eleven_v3 (`[curious]`). `tts.mjs` gọi mỗi câu bằng giọng của người nói, và chỉ
-nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Mẫu viết kịch bản:
+nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Một câu có thể khai `model` riêng (`model: 'eleven_v3'`) khi model mặc định đọc sai đúng câu đó — ba câu
+còn lại vẫn trúng cache, chỉ câu ấy bị tính phí. Mẫu viết kịch bản:
 `templates/kich-ban-hoi-thoai.md`; `npm run voices` in danh sách giọng và kiểu đọc.
 Nhân vật là lớp riêng trong `voices.json → characters`: tên, avatar (key trên kho media), phía, màu, và
 giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Mai Anh, Tú) còn giọng đặt theo người thu (Nhật Phong,

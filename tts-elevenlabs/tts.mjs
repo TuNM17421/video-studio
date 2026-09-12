@@ -141,7 +141,8 @@ async function loadCues(file) {
   const cues = mod.CUES || mod.default;
   if (!Array.isArray(cues) || !cues.every((c) => c.text || c.silent)) fail(`${file} must export CUES = [{ n, text, … }]`);
   // Optional per cue: `speaker` = which voice in voices.json says it (dialogue) · `delivery` = the reading
-  // pace preset · `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as '[curious]';
+  // pace preset · `model` = read THIS câu with another model (one câu a model mispronounces, without
+  // re-billing the rest) · `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as '[curious]';
   // never shown or captioned) · `silent` = seconds of silence instead of speech (text '') ·
   // `pauseAfter` = seconds of silence after this cue (overrides --pause).
   return cues.map((c, i) => ({
@@ -149,6 +150,7 @@ async function loadCues(file) {
     text: c.text.trim(),
     speaker: c.speaker || '',
     delivery: c.delivery || '',
+    model: c.model || '',
     voice: c.voice || '',
     silent: c.silent || 0,
     pauseAfter: c.pauseAfter,
@@ -211,8 +213,10 @@ async function generate() {
   if (!args['dry-run'] && !mock) need('key', 'voice');
   if (cfg.voice) note(`voice ${cfg.voiceName || cfg.voice} (${cfg.voice}) ← ${cfg.voiceFrom}`);
 
-  // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400).
-  const v3 = /^eleven_v3/.test(cfg.model);
+  // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400). A câu may
+  // override the model, so this is decided per câu rather than once for the run.
+  const modelOf = (c) => c.model || cfg.model;
+  const isV3 = (c) => /^eleven_v3/.test(modelOf(c));
 
   /**
    * Who reads each câu. `speaker` (a name or id in voices.json) casts dialogue; without it the whole video
@@ -246,13 +250,16 @@ async function generate() {
     const c = cues[j];
     if (!c || !c.text) return undefined;
     if (cast[j].voice.id !== cast[i].voice.id) return undefined;
+    // Stitching a câu read by another model would describe audio that never runs next to it.
+    if (modelOf(c) !== modelOf(cues[i])) return undefined;
     return ttsText(c.text, pronounce);
   };
   const items = cues.map((c, i) => {
+    const v3 = isV3(c);
     const text = c.silent ? '' : `${v3 && c.voice ? `${c.voice} ` : ''}${ttsText(c.text, pronounce)}`;
     const body = {
       text,
-      model_id: cfg.model,
+      model_id: modelOf(c),
       language_code: cfg.language || undefined,
       voice_settings: { ...cfg.settings, speed: cast[i].speed },
       previous_text: v3 ? undefined : spoken(i - 1, i),
@@ -281,7 +288,7 @@ async function generate() {
   if (args['dry-run']) {
     for (const c of items) {
       const cached = fs.existsSync(c.cache) ? 'cached' : 'new';
-      const who = c.speaker ? ` · ${c.speakerName}${c.delivery ? ` (${c.delivery}, ×${c.speed})` : ''}` : '';
+      const who = `${c.speaker ? ` · ${c.speakerName}${c.delivery ? ` (${c.delivery}, ×${c.speed})` : ''}` : ''}${c.model ? ` · model ${c.model}` : ''}`;
       console.log(`câu ${String(c.n).padStart(2, '0')}${who} · ${[...c.ttsText].length} ký tự · ${cached}${c.ttsText !== c.text ? ' · có thay cách đọc' : ''}\n  ${c.ttsText}`);
     }
     const billable = items.filter((c) => !fs.existsSync(c.cache)).reduce((s, c) => s + [...c.ttsText].length, 0);
@@ -329,7 +336,7 @@ async function generate() {
       pauseAfter: c.pauseAfter,
       authoredFrames: c.authoredFrames,
       // Scenes read `speaker` back from voice.cues.json to place the right dialogue card.
-      extra: { cache: path.basename(c.cache), ...(c.speaker ? { speaker: c.speakerName, voiceId: c.voiceId, delivery: c.delivery || null, speed: c.speed, avatar: c.avatar, side: c.side, tone: c.tone } : {}) },
+      extra: { cache: path.basename(c.cache), ...(c.model ? { model: c.model } : {}), ...(c.speaker ? { speaker: c.speakerName, voiceId: c.voiceId, delivery: c.delivery || null, speed: c.speed, avatar: c.avatar, side: c.side, tone: c.tone } : {}) },
       align: c.align,
     })),
     sampleRate,
