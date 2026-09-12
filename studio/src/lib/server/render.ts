@@ -12,7 +12,11 @@ export async function renderVideo(id: string, base: string) {
   const wav = path.join(voiceOut(id), "voice.wav");
   if (!fs.existsSync(wav)) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
   const day = state.request.day;
-  const wantsMusic = state.music === MUSIC_ID;
+  // The track is fetched from storage, not carried in git, so a fresh clone may not have it yet.
+  // Render without music rather than handing ffmpeg a path that does not exist.
+  const musicFile = path.join(REPO, "assets/music", MUSIC_FILE);
+  const wantsMusic = state.music === MUSIC_ID && fs.existsSync(musicFile);
+  if (state.music === MUSIC_ID && !wantsMusic) log(id, "system", `Bỏ qua nhạc nền: chưa có assets/music/${MUSIC_FILE}`);
   startJob(id, "render");
   setStage(id, "render", "running");
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
@@ -38,7 +42,7 @@ export async function renderVideo(id: string, base: string) {
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
   const renderOk = await step("Render MP4", process.execPath, [
     "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
-    ...(wantsMusic ? ["--music", rel(path.join(REPO, "assets/music", MUSIC_FILE))] : []),
+    ...(wantsMusic ? ["--music", rel(musicFile)] : []),
     ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
     const m = line.match(/(\d+)\/(\d+) frames/);

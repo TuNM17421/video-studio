@@ -168,6 +168,8 @@ export interface VideoDetail {
   job: JobInfo | null;
   logs: LogEntry[];
   dryRun: DryRun | null;
+  /** Whether assets/music/<track> is present — it is fetched from storage, not carried in git. */
+  musicAvailable: boolean;
   importReport: ImportReport | null;
 }
 

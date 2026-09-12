@@ -42,7 +42,9 @@ loadEnv(path.join(HERE, '.env'));
 const cfg = {
   key: process.env.ELEVENLABS_API_KEY || '',
   voice: process.env.ELEVENLABS_VOICE_ID || '',
-  model: process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5',
+  // turbo_v2_5 is deprecated and functionally identical to flash_v2_5; both carry Vietnamese, which
+  // eleven_multilingual_v2 (the API's own default) does not — so model_id is always sent explicitly.
+  model: process.env.ELEVENLABS_MODEL_ID || 'eleven_flash_v2_5',
   language: process.env.ELEVENLABS_LANGUAGE === 'auto' ? '' : process.env.ELEVENLABS_LANGUAGE || 'vi', // 'auto' = no language_code (lets eleven_v3 read English terms in English)
   format: process.env.ELEVENLABS_OUTPUT_FORMAT || 'pcm_24000',
   settings: {
@@ -223,7 +225,10 @@ async function generate() {
   fs.mkdirSync(outDir, { recursive: true });
   for (const c of items) {
     const selected = !only || only.has(c.n);
-    if (fs.existsSync(c.cache) && !(selected && args.force)) continue;
+    // A cue voiced before with-timestamps existed has audio but no word marks, and the beats that
+    // need them fall back to a syllable estimate — so a cache hit requires both files, not just audio.
+    const cached = fs.existsSync(c.cache) && (c.silent || fs.existsSync(c.align));
+    if (cached && !(selected && args.force)) continue;
     if (!selected) fail(`câu ${c.n} is not cached and not in --only; synthesize it first`);
     let pcm;
     let alignment = null;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { ArrowRightOutlined, CheckCircleFilled, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
-import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
+import { Alert, AutoComplete, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import { MUSIC_FILE, MUSIC_ID, NO_MUSIC } from "@/lib/music";
 import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
@@ -226,10 +226,10 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
 }
 
 const MODELS = [
-  { id: "eleven_turbo_v2_5", label: "Turbo v2.5" },
   { id: "eleven_flash_v2_5", label: "Flash v2.5" },
-  { id: "eleven_multilingual_v2", label: "Multilingual v2" },
   { id: "eleven_v3", label: "Eleven v3" },
+  { id: "eleven_turbo_v2_5", label: "Turbo v2.5 (ngừng hỗ trợ — dùng Flash v2.5)" },
+  { id: "eleven_multilingual_v2", label: "Multilingual v2 (không có tiếng Việt)" },
 ];
 
 const SOURCES = [
@@ -351,6 +351,22 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
   const [dry, setDry] = useState<DryRun | null>(detail.dryRun);
   const [checked, setChecked] = useState<string>(detail.dryRun ? JSON.stringify(detail.state.voice) : "");
   const [key, setKey] = useState("");
+  const [voices, setVoices] = useState<{ id: string; name: string; detail: string }[]>([]);
+  // Listing voices needs the key, so the picker fills in only once one is entered. A video that has
+  // no voice yet starts on whatever ELEVENLABS_VOICE_ID the CLI is already configured with.
+  const voiceId = settings.voiceId;
+  useEffect(() => {
+    if (!hasKey) return;
+    void (async () => {
+      try {
+        const res = await api<{ voices: typeof voices; envVoiceId: string }>("/api/voices");
+        setVoices(res.voices);
+        if (!voiceId && res.envVoiceId) setSettings({ ...settings, voiceId: res.envVoiceId });
+      } catch {}
+    })();
+    // settings is deliberately not a dependency: this seeds the field once, it does not track edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasKey]);
   const fresh = !!dry && checked === JSON.stringify(settings);
   const locked = !hasKey || !fresh;
   const saveKey = () => act(async () => { await api("/api/voice-key", { method: "POST", json: { key } }); setHasKey(true); setKey(""); });
@@ -367,7 +383,17 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
         : <><Input.Password className="vs-key-field" value={key} onChange={(e) => setKey(e.target.value)} placeholder="API key ElevenLabs" aria-label="API key ElevenLabs" autoComplete="off" spellCheck={false} /><Button disabled={!key.trim() || busy} onClick={saveKey}>Dùng key</Button></>}
     </div>
     <div className="field-grid vs-grid-4">
-      <Form.Item className="field" label="Voice ID"><Input value={settings.voiceId} onChange={(e) => setSettings({ ...settings, voiceId: e.target.value.trim() })} spellCheck={false} autoComplete="off" /></Form.Item>
+      {/* AutoComplete, not Select: a key scoped to text-to-speech cannot list voices, and the id
+          must still be typeable in that case. */}
+      <Form.Item className="field" label="Giọng đọc">
+        <AutoComplete
+          value={settings.voiceId}
+          onChange={(voiceId: string) => setSettings({ ...settings, voiceId: voiceId.trim() })}
+          placeholder={voices.length ? "Chọn giọng hoặc dán Voice ID" : "Dán Voice ID"}
+          filterOption={(input, option) => String(option?.label ?? "").toLowerCase().includes(input.toLowerCase())}
+          options={voices.map((v) => ({ value: v.id, label: v.detail ? `${v.name} · ${v.detail}` : v.name }))}
+        />
+      </Form.Item>
       <Form.Item className="field" label="Model"><Select value={settings.model} onChange={(model) => setSettings({ ...settings, model })} options={MODELS.map((model) => ({ value: model.id, label: model.label }))} /></Form.Item>
       <Form.Item className="field" label="Ngôn ngữ"><Select value={settings.language} onChange={(language) => setSettings({ ...settings, language })} options={[{ value: "vi", label: "Tiếng Việt" }, { value: "auto", label: "Tự nhận (v3)" }]} /></Form.Item>
       <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
@@ -451,7 +477,7 @@ export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
 
 const MUSIC_PREVIEW_SECONDS = 15;
 
-function MusicOption({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+function MusicOption({ checked, available, onChange }: { checked: boolean; available: boolean; onChange: (checked: boolean) => void }) {
   function stopAfterPreview(e: SyntheticEvent<HTMLAudioElement>) {
     const audio = e.currentTarget;
     window.setTimeout(() => { audio.pause(); audio.currentTime = 0; }, MUSIC_PREVIEW_SECONDS * 1000);
@@ -459,10 +485,12 @@ function MusicOption({ checked, onChange }: { checked: boolean; onChange: (check
   return (
     <div className="vs-music-item">
       <div className="vs-music-row">
-        <Checkbox checked={checked} onChange={(e) => onChange(e.target.checked)}>Nhạc nền</Checkbox>
-        <audio controls preload="none" src={fileUrl(`assets/music/${MUSIC_FILE}`)} onPlay={stopAfterPreview} />
+        <Checkbox checked={checked && available} disabled={!available} onChange={(e) => onChange(e.target.checked)}>Nhạc nền</Checkbox>
+        {available && <audio controls preload="none" src={fileUrl(`assets/music/${MUSIC_FILE}`)} onPlay={stopAfterPreview} />}
       </div>
-      <small>Nghe thử tối đa 15 giây · khi render sẽ tự lặp cho khớp thời lượng video</small>
+      <small>{available
+        ? "Nghe thử tối đa 15 giây · khi render sẽ tự lặp cho khớp thời lượng video"
+        : `Chưa có bản nhạc — tải từ storage về ${`assets/music/${MUSIC_FILE}`} rồi tải lại trang.`}</small>
     </div>
   );
 }
@@ -491,7 +519,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         <div><span>Giọng</span><strong>{detail.state.voice.model}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
-      {ready && <MusicOption checked={music === MUSIC_ID} onChange={(checked) => setMusic(checked ? MUSIC_ID : NO_MUSIC)} />}
+      {ready && <MusicOption checked={music === MUSIC_ID} available={detail.musicAvailable} onChange={(checked) => setMusic(checked ? MUSIC_ID : NO_MUSIC)} />}
       {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
       {ready && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
         {path ? <CheckCircleFilled className="is-ok" /> : <span className="vs-dot" />}

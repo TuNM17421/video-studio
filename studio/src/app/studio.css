@@ -683,7 +683,9 @@ button.vs-tile:hover {
 }
 .vs-feedback .field {
   width: 100%;
-  margin-bottom: 8px;
+  /* Ant's showCount counter floats just under the textarea, outside the field box — without this
+     clearance it lands on top of the send button. */
+  margin-bottom: 26px;
 }
 .vs-log {
   border: 1px solid var(--line);

@@ -149,7 +149,9 @@ const ff = [
   ...(hasMusic ? ['-stream_loop', '-1', '-i', path.resolve(args.music)] : []),
   '-map', '0:v',
   ...(hasAudio && hasMusic
-    ? ['-filter_complex', '[2:a]volume=0.15[bg];[1:a][bg]amix=inputs=2:duration=first:dropout_transition=0[aout]', '-map', '[aout]']
+    // normalize=0 is required: amix otherwise divides every input by their count, quietening the
+    // narration by 6 dB the moment music is added.
+    ? ['-filter_complex', '[2:a]volume=0.15[bg];[1:a][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]', '-map', '[aout]']
     : hasAudio || hasMusic ? ['-map', '1:a']
     : []),
   ...(hasAudio || hasMusic ? ['-c:a', 'aac', '-b:a', '192k', '-ar', '48000'] : []),

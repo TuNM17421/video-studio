@@ -1058,8 +1058,13 @@ dialog::backdrop {
   margin-bottom: 20px;
   font-size: 12px;
 }
-.job-progress > span {
+/* Ant renders its spinner as a <span class="anticon"> too — without excluding it, the icon takes
+   flex: 1, stretches across a whole wrapped row, and its arc floats off on its own. */
+.job-progress > span:not(.anticon) {
   flex: 1;
+}
+.job-progress > .anticon {
+  flex: 0 0 auto;
 }
 .job-progress > strong {
   font-size: 11px;
