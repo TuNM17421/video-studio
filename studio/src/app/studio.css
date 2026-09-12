@@ -2173,6 +2173,23 @@ button.vs-tile:hover {
   line-height: var(--vu-leading-normal);
   color: var(--vu-text-muted);
 }
+/* The template path is the one thing to act on once the capability is on — let it stand out then. */
+.vs-module-copy code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  letter-spacing: 0.01em;
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background-color var(--vu-duration-fast) var(--vu-ease-standard),
+    color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-module.is-on .vs-module-copy code {
+  background: var(--vu-neutral-0);
+  border-color: var(--vu-blue-300);
+  color: var(--vu-blue-800);
+  font-weight: var(--vu-font-bold);
+}
 .vs-cast {
   display: grid;
   gap: 8px;
