@@ -13,7 +13,7 @@
 </head>
 <body>
 <h1>DialogueCard</h1>
-<p>Ba nhân vật đối đáp. Mỗi chữ hiện đúng frame nó được nói — ở video thật, các mốc này đến từ
+<p>Hai nhân vật đối đáp. Mỗi chữ hiện đúng frame nó được nói — ở video thật, các mốc này đến từ
 <code>spokenWords(n)</code>, tức mốc từng từ đo được từ bản thu; trang này mô phỏng bằng nhịp đều.
 Mỗi nhân vật một khuôn mặt, một màu và một phía cố định — tất cả khai trong <code>voices.json</code>.</p>
 <div id="root"></div>
@@ -26,7 +26,7 @@ Mỗi nhân vật một khuôn mặt, một màu và một phía cố định �
   }
   var FACE = 'https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/avatars/';
   VK.mountCard('#root', {
-    width: 1920, height: 1080, duration: 560,
+    width: 1920, height: 1080, duration: 400,
     render: function (f) {
       return h(VK.Fragment, null,
         h(VK.DialogueCard, {
@@ -36,10 +36,6 @@ Mỗi nhân vật một khuôn mặt, một màu và một phía cố định �
         f > 150 && h(VK.DialogueCard, {
           x: 860, y: 540, w: 760, side: 'right', speaker: 'Tú', tone: 'red', avatar: FACE + 'tu_2.jpg', frame: f,
           words: say('Nhưng em làm nhân sự, bài này có phải cho em không ạ?', 170),
-        }),
-        f > 300 && h(VK.DialogueCard, {
-          x: 280, y: 810, w: 860, side: 'left', speaker: 'Mai Anh', tone: 'strong', avatar: FACE + 'mai_anh_2.jpg', frame: f,
-          words: say('Hồi đầu mình cũng hỏi y hệt câu đó, mình cũng không phải dân kỹ thuật đâu.', 320),
         })
       );
     }

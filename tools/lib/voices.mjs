@@ -45,9 +45,9 @@ export function resolveVoice(value) {
  * narrator and no cast. Both are declared, and a name that is neither stops the run here, free, before
  * anything is billed: a video read entirely in the wrong voice is discovered far too late otherwise.
  *
- * The layers are separate because the material says so — the avatars are of Tới, Mai Anh and Tú, while the
- * voices are Nhật Phong, Đô Trịnh, Viên and Cẩm Hồng. Collapsing them would put one person's face above
- * another person's name.
+ * The layers are separate because the material says so — the avatars are of Tới and Tú, while the voices
+ * are Nhật Phong, Đô Trịnh, Viên and Cẩm Hồng. Collapsing them would put one person's face above another
+ * person's name.
  */
 export function castSpeaker(speaker) {
   const { voices, characters } = readVoices();

@@ -37,18 +37,6 @@
       "sha256": "16584cc47fb97fcd26525b3e8aa8245061e49a9962db460c926ee44c1885f8e1",
       "updated": "2026-09-12"
     },
-    "avatars/mai_anh_1.jpg": {
-      "type": "image/jpeg",
-      "bytes": 135892,
-      "sha256": "fc45114964cf6fd91f8430fef65b058149f109197159ec1c41a301a4cf4cdb97",
-      "updated": "2026-09-12"
-    },
-    "avatars/mai_anh_2.jpg": {
-      "type": "image/jpeg",
-      "bytes": 53319,
-      "sha256": "74d6fe4d20b8bf99c9a470939c50eb7fda06d0932f359e1fcdda831b04d71cc1",
-      "updated": "2026-09-12"
-    },
     "avatars/toi_1.jpg": {
       "type": "image/jpeg",
       "bytes": 138525,
@@ -73,22 +61,10 @@
       "sha256": "3e53a51737580b87671951768c39e615ce8aba0a5d1760407292ec946338fc9e",
       "updated": "2026-09-12"
     },
-    "modules/hoi-thoai-mau.mp4": {
+    "modules/hoi-thoai-mau-v2.mp4": {
       "type": "video/mp4",
-      "bytes": 703941,
-      "sha256": "a4c16e5636a6b64b0114ff7cff39511db0af04c8589d87ffe041cf9206d81b90",
-      "updated": "2026-09-12"
-    },
-    "qa/cau-04-turbo.mp3": {
-      "type": "audio/mpeg",
-      "bytes": 76179,
-      "sha256": "1f0f8418c35b494c23a20c8296edbf19c13e7e9cb035436c4454852a96d64869",
-      "updated": "2026-09-12"
-    },
-    "qa/cau-04-v3.mp3": {
-      "type": "audio/mpeg",
-      "bytes": 79532,
-      "sha256": "c19d4f18f204c67ac8b914d226943363178056c4664cde431441097425d749af",
+      "bytes": 500381,
+      "sha256": "b4af7be5ca84b00d8b75d66c5d0bfea141b41e57afd12b7ff647048eedd1c644",
       "updated": "2026-09-12"
     },
     "styles/lesson-lab/sample.mp4": {
