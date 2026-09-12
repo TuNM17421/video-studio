@@ -73,6 +73,12 @@
       "sha256": "3e53a51737580b87671951768c39e615ce8aba0a5d1760407292ec946338fc9e",
       "updated": "2026-09-12"
     },
+    "modules/hoi-thoai-mau.mp4": {
+      "type": "video/mp4",
+      "bytes": 689172,
+      "sha256": "cad390cf13a1c58683fe1e2585591657018e88acbc05df55f8390e0b03c7a9cc",
+      "updated": "2026-09-12"
+    },
     "styles/lesson-lab/sample.mp4": {
       "type": "video/mp4",
       "bytes": 17607633,
