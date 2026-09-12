@@ -62,6 +62,21 @@ server itself runs TTS (key in RAM only), the audio import, voice-timing, render
 `/ds` (render/QA base). `STUDIO_TTS_MOCK=1` = silent mock voice for development. New styles = new
 `styles/*.json`, no code change.
 
+### Giao diện Studio đi theo design system, không tự chế
+Mọi thay đổi UI/UX trong `studio/` phải theo **`studio/src/lib/design-tokens.ts`** — nguồn chuẩn duy nhất
+cho màu, bộ chữ, token bố cục, mức nhấn của luồng sản xuất và motion. Xem trực quan tại
+**`/design-system`** (`npm run studio` rồi mở http://127.0.0.1:3100/design-system).
+- Màu: dùng token (`brand.primary`, `neutral.600`, `status.warning`…) hoặc biến CSS tương ứng trong
+  `vinuni-tokens.css`. **Không** viết mã hex mới vào component hay `.css`; màu thương hiệu khớp
+  stylesheet của vinuni.edu.vn nên đổi tuỳ tiện là lệch nhận diện.
+- Chữ: Montserrat (tiêu đề/thương hiệu) · Be Vietnam Pro (nội dung, biểu mẫu, bảng) · IBM Plex Mono
+  (mã video, timecode, số frame, nhật ký agent).
+- Kích thước khung (sidebar, hàng bước, panel xem trước…) lấy từ `STUDIO_LAYOUT` thay vì số tự đặt.
+- Cần một giá trị chưa có? Thêm token vào `design-tokens.ts` trước, rồi mới dùng — đừng đặt riêng trong
+  một file CSS.
+Lưu ý: đây là design system **của giao diện Studio**, khác với design system của video bài giảng
+(`vinuni-lesson-video-ds/lib/tokens.js`, 9 màu, dùng khi dựng cảnh). Đừng lẫn hai bên.
+
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
 Mỗi cue khai `speaker` (tên/id một giọng trong `voices.json`) và `delivery` (kiểu đọc trong
