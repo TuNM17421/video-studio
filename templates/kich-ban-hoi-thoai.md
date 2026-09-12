@@ -21,7 +21,7 @@ Xem danh sách nhân vật và giọng hiện có bất cứ lúc nào:
 npm run voices
 ```
 
-Viết `speaker` bằng **tên** (`Mai Anh`) hay **id** (`mai-anh`) đều được, không phân biệt hoa thường.
+Viết `speaker` bằng **tên** (`Tới`) hay **id** (`toi`) đều được, không phân biệt hoa thường.
 
 Cần một vai chưa có? **Báo dev.** Hai việc khác hẳn nhau, nói rõ bạn cần cái nào:
 

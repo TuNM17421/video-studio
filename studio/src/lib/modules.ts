@@ -29,7 +29,7 @@ export const MODULES: ModuleDef[] = [
     name: "Video có hội thoại",
     summary: "Nhiều nhân vật cùng nói, mỗi người một giọng. Kịch bản phải khai ai nói câu nào.",
     template: "templates/kich-ban-hoi-thoai.md",
-    previewKey: "modules/hoi-thoai-mau.mp4",
+    previewKey: "modules/hoi-thoai-mau-v2.mp4",
   },
 ];
 

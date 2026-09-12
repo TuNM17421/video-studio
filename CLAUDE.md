@@ -72,7 +72,7 @@ nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Một
 còn lại vẫn trúng cache, chỉ câu ấy bị tính phí. Mẫu viết kịch bản:
 `templates/kich-ban-hoi-thoai.md`; `npm run voices` in danh sách giọng và kiểu đọc.
 Nhân vật là lớp riêng trong `voices.json → characters`: tên, avatar (key trên kho media), phía, màu, và
-giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Mai Anh, Tú) còn giọng đặt theo người thu (Nhật Phong,
+giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn giọng đặt theo người thu (Nhật Phong,
 Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng.
 
 ## Media nặng (`media/`, Cloudflare R2)
