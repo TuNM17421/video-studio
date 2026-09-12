@@ -2249,6 +2249,7 @@ button.vs-tile:hover {
   color: var(--vu-neutral-400);
 }
 .vs-voice-id {
+  margin-top: 6px;
   max-width: 420px;
 }
 .vs-voice-note {

@@ -97,21 +97,22 @@ export function VoicePicker({ value, onChange, disabled }: { value: string; onCh
       <Radio value={OTHER} className={`vs-voice-option is-other ${selection === OTHER ? "is-selected" : ""}`}>
         <span className="vs-voice-copy">
           <strong>ID khác</strong>
-          <small>Giọng chưa có trong voices.json — dán voice id của ElevenLabs.</small>
+          <small>Giọng chưa có trong voices.json — dán voice id lấy từ ElevenLabs.</small>
+          {selection === OTHER && <Input
+            className="vs-voice-id"
+            value={value}
+            onChange={(e) => onChange(e.target.value.trim())}
+            disabled={disabled}
+            placeholder="Ví dụ 6adFm46eyy74snVn6YrT"
+            aria-label="Voice ID"
+            spellCheck={false}
+            autoComplete="off"
+            // The field lives inside the Radio's own label; typing in it must not re-fire the choice.
+            onClick={(e) => e.stopPropagation()}
+          />}
         </span>
       </Radio>
     </Radio.Group>
-
-    {selection === OTHER && <Input
-      className="vs-voice-id"
-      value={value}
-      onChange={(e) => onChange(e.target.value.trim())}
-      disabled={disabled}
-      placeholder="Ví dụ 6adFm46eyy74snVn6YrT"
-      aria-label="Voice ID"
-      spellCheck={false}
-      autoComplete="off"
-    />}
 
     {preview.element}
 
