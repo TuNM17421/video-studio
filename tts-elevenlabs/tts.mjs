@@ -19,13 +19,12 @@
  * re-run never re-bills an unchanged cue. The locked narration is never modified: its hash and the TTS
  * text hash are both recorded.
  */
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assemble, FPS, sha256 } from '../tools/lib/voice-audio.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const FPS = 30;
 const API = 'https://api.elevenlabs.io';
 
 // ── config ────────────────────────────────────────────────────────────────────
@@ -57,7 +56,6 @@ const cfg = {
 const sampleRate = Number((cfg.format.match(/^pcm_(\d+)$/) || [])[1]);
 if (!sampleRate) fail(`ELEVENLABS_OUTPUT_FORMAT must be a pcm_<rate> format (got ${cfg.format}) — the master is assembled from raw PCM.`);
 if (sampleRate % FPS) fail(`sample rate ${sampleRate} is not a whole number of samples per frame at ${FPS} fps`);
-const SAMPLES_PER_FRAME = sampleRate / FPS;
 
 function fail(msg) {
   console.error(`✗ ${msg}`);
@@ -66,7 +64,6 @@ function fail(msg) {
 const need = (...names) => {
   for (const n of names) if (!cfg[n]) fail(`missing ${n === 'key' ? 'ELEVENLABS_API_KEY' : 'ELEVENLABS_VOICE_ID'} — copy .env.example to .env and fill it in`);
 };
-const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
 // ── args ──────────────────────────────────────────────────────────────────────
 const [cmd, ...rest] = process.argv.slice(2);
@@ -145,33 +142,6 @@ function ttsText(text, pronounce) {
 }
 
 // ── audio ─────────────────────────────────────────────────────────────────────
-function wav(pcm) {
-  const h = Buffer.alloc(44);
-  h.write('RIFF', 0);
-  h.writeUInt32LE(36 + pcm.length, 4);
-  h.write('WAVE', 8);
-  h.write('fmt ', 12);
-  h.writeUInt32LE(16, 16);
-  h.writeUInt16LE(1, 20); // PCM
-  h.writeUInt16LE(1, 22); // mono
-  h.writeUInt32LE(sampleRate, 24);
-  h.writeUInt32LE(sampleRate * 2, 28);
-  h.writeUInt16LE(2, 32);
-  h.writeUInt16LE(16, 34);
-  h.write('data', 36);
-  h.writeUInt32LE(pcm.length, 40);
-  return Buffer.concat([h, pcm]);
-}
-
-/** Leading/trailing near-silence in samples (16-bit mono), so boundaries follow the speech itself. */
-function speechBounds(pcm, threshold = 100) {
-  const n = pcm.length / 2;
-  let a = 0;
-  let b = n;
-  while (a < n && Math.abs(pcm.readInt16LE(a * 2)) < threshold) a++;
-  while (b > a && Math.abs(pcm.readInt16LE((b - 1) * 2)) < threshold) b--;
-  return { a, b };
-}
 
 /** Fake character timings for --mock: one word every 1/3 s, like the placeholder audio. */
 function mockAlignment(text) {
@@ -279,43 +249,26 @@ async function generate() {
   }
 
   // Assemble: every cue starts on a frame boundary; its segment = speech + pause, padded to whole frames.
-  const pauseSamples = Math.round(pause * sampleRate);
-  const parts = [];
-  const manifest = [];
-  let frame = 0;
-  for (const c of items) {
-    const raw = fs.readFileSync(c.cache);
-    const { a, b } = mock || c.silent ? { a: 0, b: raw.length / 2 } : speechBounds(raw);
-    const lead = Math.min(a, Math.round(0.05 * sampleRate)); // keep ≤ 50 ms of the generator's own lead-in
-    const tail = Math.min(raw.length / 2 - b, Math.round(0.08 * sampleRate)); // keep ≤ 80 ms of decay after the last word
-    const speech = raw.subarray((a - lead) * 2, (b + tail) * 2);
-    const speechSamples = speech.length / 2;
-    const after = c.silent ? 0 : c.pauseAfter != null ? Math.round(c.pauseAfter * sampleRate) : pauseSamples;
-    const frames = Math.ceil((speechSamples + after) / SAMPLES_PER_FRAME);
-    const segment = Buffer.alloc(frames * SAMPLES_PER_FRAME * 2);
-    speech.copy(segment, 0);
-    parts.push(segment);
-    const timing = wordTimings(c, (a - lead) / sampleRate);
-    manifest.push({
+  const built = assemble({
+    items: items.map((c) => ({
       n: c.n,
-      startFrame: frame,
-      endFrame: frame + frames,
-      durationInFrames: frames,
-      speechFrames: c.silent ? 0 : Math.ceil(speechSamples / SAMPLES_PER_FRAME),
-      authoredFrames: c.authoredFrames,
-      seconds: +(frame / FPS).toFixed(3),
-      speechDurationSeconds: +(speechSamples / sampleRate).toFixed(3),
       text: c.text,
-      textSha256: sha256(c.text),
       ttsText: c.ttsText,
-      ttsTextSha256: sha256(c.ttsText),
-      cache: path.basename(c.cache),
-      ...timing,
-    });
-    frame += frames;
-  }
-  const master = wav(Buffer.concat(parts));
-  fs.writeFileSync(path.join(outDir, 'voice.wav'), master);
+      pcm: fs.readFileSync(c.cache),
+      silent: c.silent,
+      pauseAfter: c.pauseAfter,
+      authoredFrames: c.authoredFrames,
+      extra: { cache: path.basename(c.cache) },
+      align: c.align,
+    })),
+    sampleRate,
+    pause,
+    trim: !mock,
+    onSegment: (c, offsetSeconds) => wordTimings(c, offsetSeconds),
+  });
+  const manifest = built.cues;
+  const frame = built.durationInFrames;
+  fs.writeFileSync(path.join(outDir, 'voice.wav'), built.wav);
   const receipt = {
     schema: 'vinuni-tts-elevenlabs/1',
     generator: mock ? 'mock (silent placeholder)' : 'elevenlabs',
@@ -330,8 +283,8 @@ async function generate() {
     cuesSource: path.relative(path.resolve(HERE, '..'), cuesFile).split(path.sep).join('/'), // repo-relative
     cuesSha256: sha256(fs.readFileSync(cuesFile, 'utf8')),
     durationInFrames: frame,
-    audioDurationSeconds: +((master.length - 44) / 2 / sampleRate).toFixed(3),
-    masterSha256: sha256(master),
+    audioDurationSeconds: built.audioDurationSeconds,
+    masterSha256: sha256(built.wav),
     cues: manifest,
   };
   fs.writeFileSync(path.join(outDir, 'voice.cues.json'), `${JSON.stringify(receipt, null, 2)}\n`);

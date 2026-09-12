@@ -5,6 +5,9 @@
 node_modules
 # generated media — keep the folders, not the heavy files
 tts-elevenlabs/cache/
+# imported-voice work area: decoded audio, Whisper models and the align venv are all per-machine
+voice/cache/
+voice/.venv/
 *.wav
 *.mp3
 *.mp4
@@ -20,6 +23,8 @@ projects/*/.studio/
 # templates remain tracked; add a future template explicitly when it is approved.
 /projects/*/
 /tts-elevenlabs/out/*/
+/voice/out/*/
+/projects/*/voice-script/
 /transcripts/Day*/*
 /chapters/Day*/*
 /vinuni-lesson-video-ds/ui_kits/lesson-video/videos/*/
