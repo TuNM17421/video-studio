@@ -690,8 +690,24 @@
 }
 
 .buttonRow { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 10px; }
+.workflowNavigation {
+  margin: 22px 22px 0;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+}
+.workflowNavigation > :global(.ant-btn):first-child { justify-self: start; }
+.workflowNavigation > :global(.ant-btn):last-child { justify-self: end; }
+.workflowNavigation > span { display: inline-flex; align-items: center; gap: 7px; color: var(--vu-text-muted); font-size: var(--vu-text-2xs); white-space: nowrap; }
+.workflowNavigation > span svg { color: var(--vu-green-700); }
 .formSpecimen { margin-top: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .formSpecimen label { display: grid; gap: 7px; color: var(--vu-text-secondary); font-size: 12px; font-weight: 600; }
+.countedTextarea { grid-column: 1 / -1; }
 .formSpecimen > :global(.ant-checkbox-wrapper),
 .switchLabel { align-self: center; display: flex; align-items: center; gap: 9px; }
 .componentPanel :global(.ant-segmented) { margin-top: 22px; width: calc(100% - 44px); }
@@ -852,6 +868,9 @@
   .layoutContract { grid-column: auto; }
   .layoutTokens { grid-template-columns: 1fr; }
   .formSpecimen { grid-template-columns: 1fr; }
+  .workflowNavigation { grid-template-columns: minmax(0, 1fr); }
+  .workflowNavigation > span { grid-column: 1; grid-row: 1; white-space: normal; }
+  .workflowNavigation > :global(.ant-btn) { width: 100%; }
   .componentPanel :global(.ant-segmented) { overflow-x: auto; }
   .motionFooter { align-items: stretch; flex-direction: column; }
   .motionFooter :global(.ant-btn) { align-self: flex-start; }

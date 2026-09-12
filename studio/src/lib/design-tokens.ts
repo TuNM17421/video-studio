@@ -63,10 +63,13 @@ export const STUDIO_TYPOGRAPHY = [
 ] as const;
 
 export const STUDIO_LAYOUT = [
-  { token: "shell.sidebar.desktop", value: "224 px", usage: "Giữ navigation gọn nhưng không ép nhãn menu" },
+  { token: "shell.sidebar.desktop", value: "232 px", usage: "Đủ khoảng thở giữa wordmark và control nhưng vẫn giữ bàn dựng rộng" },
+  { token: "shell.sidebar.collapsed", value: "72 px", usage: "Rail điều hướng rõ khối; nhãn chuyển sang tooltip" },
+  { token: "shell.sidebar.rail-item", value: "44 px", usage: "Điểm chạm icon cân giữa rail; active state không co theo glyph" },
   { token: "shell.sidebar.tablet", value: "196 px", usage: "Dành thêm chiều ngang cho bàn dựng ở 1024 px" },
   { token: "workflow.header", value: "28 px", usage: "Nhãn luồng là định hướng phụ, không cạnh tranh với tên bước" },
   { token: "workflow.step", value: "68 px", usage: "Giảm khoảng 18% so với rail cũ" },
+  { token: "field.counter.row", value: "24 px", usage: "Giữ bộ đếm ký tự ở một hàng riêng dưới textarea" },
   { token: "style.card.min", value: "280 px", usage: "Hai lựa chọn tự giãn kín hàng thay vì để cột trống" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },
 ] as const;

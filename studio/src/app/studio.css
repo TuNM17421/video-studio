@@ -1575,6 +1575,48 @@ button.vs-tile:hover {
   border-radius: var(--radius);
   box-shadow: var(--vu-shadow-xs);
 }
+
+.editor-panel {
+  scroll-margin-top: var(--vu-space-6);
+}
+
+.vs-gate-navigation {
+  min-height: 76px;
+  padding: 14px 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--vu-border-subtle);
+  background: var(--vu-surface-subtle);
+}
+
+.vs-gate-navigation-back {
+  justify-self: start;
+}
+
+.vs-gate-navigation-next {
+  justify-self: end;
+}
+
+.vs-gate-navigation-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+  text-align: center;
+}
+
+.vs-gate-navigation-status.is-ready svg {
+  color: var(--vu-green-700);
+}
+
+.vs-gate-navigation-status.is-locked svg {
+  color: var(--vu-neutral-500);
+}
 .vs-production-rail-head {
   min-height: var(--vu-workflow-header-height);
   padding: 0 20px;
@@ -1906,6 +1948,15 @@ button.vs-tile:hover {
   min-width: var(--vu-shell-sidebar-width) !important;
   max-width: var(--vu-shell-sidebar-width) !important;
   background: var(--surface) !important;
+  transition:
+    min-width var(--vu-duration-normal) var(--vu-ease-standard),
+    max-width var(--vu-duration-normal) var(--vu-ease-standard),
+    flex-basis var(--vu-duration-normal) var(--vu-ease-standard);
+}
+.sidebar.ant-layout-sider.ant-layout-sider-collapsed {
+  min-width: var(--vu-shell-sidebar-collapsed-width) !important;
+  max-width: var(--vu-shell-sidebar-collapsed-width) !important;
+  flex-basis: var(--vu-shell-sidebar-collapsed-width) !important;
 }
 @media (min-width: 681px) {
   .sidebar.ant-layout-sider {
@@ -1928,6 +1979,50 @@ button.vs-tile:hover {
 .topbar.ant-layout-header {
   line-height: normal;
   background: var(--vu-blue-900);
+}
+.vs-sidebar-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--vu-shell-sidebar-rail-item);
+}
+.vs-sidebar-head .vs-brand {
+  min-width: 0;
+  margin-left: 0;
+  gap: 6px;
+  font-size: var(--vu-text-md);
+  white-space: nowrap;
+}
+.vs-sidebar-head .brand-mark {
+  width: 24px;
+  flex: 0 0 24px;
+  transform: scale(0.8);
+  transform-origin: left center;
+}
+.vs-sidebar-toggle.ant-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: var(--vu-radius-sm);
+  color: var(--vu-neutral-700);
+  background: transparent;
+}
+.vs-sidebar-toggle-icon {
+  width: 19px;
+  height: 19px;
+}
+.vs-sidebar-toggle.ant-btn:hover {
+  border-color: var(--vu-border-subtle) !important;
+  background: var(--vu-neutral-100) !important;
+  color: var(--vu-blue-900) !important;
+}
+.vs-sidebar-toggle.ant-btn:focus-visible {
+  outline-color: var(--vu-border-focus) !important;
 }
 .breadcrumb.ant-breadcrumb,
 .breadcrumb.ant-breadcrumb a,
@@ -1967,6 +2062,114 @@ button.vs-tile:hover {
 }
 .vs-key-status .ant-badge {
   margin-left: auto;
+}
+
+@media (min-width: 681px) {
+  .sidebar.ant-layout-sider.ant-layout-sider-collapsed {
+    width: var(--vu-shell-sidebar-collapsed-width) !important;
+    min-width: var(--vu-shell-sidebar-collapsed-width) !important;
+    max-width: var(--vu-shell-sidebar-collapsed-width) !important;
+    flex: 0 0 var(--vu-shell-sidebar-collapsed-width) !important;
+    padding: 28px 0 20px;
+    overflow-x: hidden;
+  }
+  .sidebar.ant-layout-sider-collapsed .ant-layout-sider-children {
+    width: var(--vu-shell-sidebar-collapsed-width);
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-brand {
+    width: var(--vu-shell-sidebar-rail-item);
+    min-height: var(--vu-shell-sidebar-rail-item);
+    margin: 0 auto;
+    justify-content: center;
+    transition: opacity var(--vu-duration-fast) var(--vu-ease-standard);
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-brand .brand-mark {
+    width: 30px;
+    flex-basis: 30px;
+    transform: none;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-head {
+    width: var(--vu-shell-sidebar-collapsed-width);
+    justify-content: center;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-toggle.ant-btn {
+    position: absolute;
+    inset-block-start: 4px;
+    inset-inline-start: 16px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    opacity: 0;
+    transition:
+      opacity var(--vu-duration-fast) var(--vu-ease-standard),
+      color var(--vu-duration-fast) var(--vu-ease-standard),
+      background-color var(--vu-duration-fast) var(--vu-ease-standard);
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-head:hover .vs-brand,
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-head:focus-within .vs-brand {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-head:hover .vs-sidebar-toggle.ant-btn,
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-head:focus-within .vs-sidebar-toggle.ant-btn {
+    opacity: 1;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-brand-name,
+  .sidebar.ant-layout-sider-collapsed .workspace-label,
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-label,
+  .sidebar.ant-layout-sider-collapsed .sidebar-footer {
+    display: none;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu {
+    width: var(--vu-shell-sidebar-collapsed-width);
+    margin-top: 24px;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu .ant-menu-title-content {
+    display: none;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item {
+    width: var(--vu-shell-sidebar-rail-item);
+    height: var(--vu-shell-sidebar-rail-item);
+    margin: 4px auto;
+    justify-content: center;
+    padding-inline: 0 !important;
+    border: 1px solid transparent;
+    border-radius: var(--vu-radius-sm);
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item:hover {
+    border-color: var(--vu-border-subtle);
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item-selected {
+    border-color: var(--vu-blue-100);
+    border-left-color: var(--vu-blue-100);
+    box-shadow: inset 3px 0 0 var(--vu-blue-700);
+  }
+  .sidebar.ant-layout-sider-collapsed .sidebar-bottom {
+    width: var(--vu-shell-sidebar-collapsed-width);
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-key-status {
+    position: relative;
+    width: var(--vu-shell-sidebar-rail-item);
+    min-height: var(--vu-shell-sidebar-rail-item);
+    margin: 0 auto;
+    padding: 0 !important;
+    justify-content: center;
+    gap: 0;
+    border: 1px solid var(--vu-border-subtle);
+    border-left-color: var(--vu-border-subtle);
+    border-radius: var(--vu-radius-sm);
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge {
+    position: absolute;
+    inset-block-start: 7px;
+    inset-inline-end: 7px;
+    margin-left: 0;
+    line-height: 0;
+  }
+  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge-status-dot {
+    width: 6px;
+    height: 6px;
+  }
 }
 
 .ant-btn {
@@ -2044,6 +2247,12 @@ button.vs-tile:hover {
   color: var(--subtle);
   font-size: 11px;
   font-weight: var(--vu-font-semibold);
+}
+
+/* Ant positions showCount outside the textarea wrapper. Reserve one explicit
+   row so the counter never collides with the next control. */
+.vs-counted-textarea .ant-input-textarea-show-count {
+  margin-bottom: var(--vu-field-counter-row);
 }
 .vs-script-field .ant-upload-wrapper,
 .vs-script-field .ant-upload-drag {
@@ -2522,7 +2731,7 @@ button.vs-tile:hover {
    These rules intentionally live after the Ant bridge. Ant Sider writes a
    fixed flex-basis, so the mobile shell must override it at the same layer. */
 @media (min-width: 681px) and (max-width: 1100px) {
-  .sidebar.ant-layout-sider {
+  .sidebar.ant-layout-sider:not(.ant-layout-sider-collapsed) {
     min-width: var(--vu-shell-sidebar-tablet-width) !important;
     max-width: var(--vu-shell-sidebar-tablet-width) !important;
     flex-basis: var(--vu-shell-sidebar-tablet-width) !important;
@@ -2555,10 +2764,18 @@ button.vs-tile:hover {
     align-items: center;
   }
 
+  .vs-sidebar-toggle.ant-btn {
+    display: none;
+  }
+
   .sidebar .vs-brand {
     margin: 0;
     gap: 8px;
     font-size: 20px;
+  }
+
+  .sidebar .vs-sidebar-head {
+    min-height: 30px;
   }
 
   .sidebar .brand-mark {
@@ -2777,6 +2994,30 @@ button.vs-tile:hover {
   .panel-footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .vs-gate-navigation {
+    min-height: 0;
+    padding: 14px 17px 17px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .vs-gate-navigation-status {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .vs-gate-navigation-back,
+  .vs-gate-navigation-next {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .vs-gate-navigation > span[aria-hidden="true"] {
+    display: none;
   }
 
   .panel-footer .ant-btn-primary {

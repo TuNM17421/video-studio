@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircleFilled, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Checkbox, Input, Segmented, Select, Switch, Tag } from "antd";
 import styles from "./design-system.module.css";
 
@@ -29,9 +30,17 @@ export function DesignSystemPlayground() {
         <Button danger onClick={() => { void message.warning("Thao tác nhạy cảm cần xác nhận."); }}>Dừng tác vụ</Button>
         <Button disabled>Chưa đủ điều kiện</Button>
       </div>
+      <nav className={styles.workflowNavigation} aria-label="Ví dụ điều hướng giữa các bước sản xuất">
+        <Button icon={<LeftOutlined />}>Quay lại: Giọng đọc</Button>
+        <span><CheckCircleFilled />Đã xong Dựng cảnh</span>
+        <Button type="primary" icon={<RightOutlined />} iconPlacement="end">Tiếp: Render</Button>
+      </nav>
       <div className={styles.formSpecimen}>
         <label>Mã video<Input defaultValue="d02-r1-v03" spellCheck={false} /></label>
         <label>Agent<Select defaultValue="codex" options={[{ value: "codex", label: "Codex" }, { value: "claude", label: "Claude Code" }]} /></label>
+        <label className={`vs-counted-textarea ${styles.countedTextarea}`}>Ghi chú
+          <Input.TextArea rows={3} maxLength={5000} showCount placeholder="Thông tin bổ sung cho agent…" />
+        </label>
         <Checkbox defaultChecked>Render MP4 sau khi duyệt</Checkbox>
         <label className={styles.switchLabel}><Switch defaultChecked size="small" /> Giữ nhật ký chi tiết</label>
       </div>
