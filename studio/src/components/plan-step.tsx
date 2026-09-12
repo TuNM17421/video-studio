@@ -1,12 +1,15 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, LockOutlined, PlayCircleFilled, RobotOutlined, WarningFilled } from "@ant-design/icons";
 import { Button, Checkbox, Collapse, Descriptions, Form, Input, Select, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
 import type { AgentConfig, AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
+import { NO_MUSIC, type MusicCatalog, type MusicTrack } from "@/lib/music";
+import { AgentMark } from "./agent-mark";
+import { MusicPicker } from "./music-picker";
 import { SourcePickerField } from "./source-picker";
 import { MODULES, moduleNames } from "@/lib/modules";
 import { StylePicker, StyleShowcase } from "./style-showcase";
@@ -33,6 +36,8 @@ export interface PlanDraft {
   agentProvider: AgentProvider;
   request: VideoRequest;
   script: { name: string; content: string } | null;
+  /** Chosen here, not at render: the agent must know while writing cues.js which câu to mark `quiz: true`. */
+  quizMusic: string;
 }
 
 export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude"): PlanDraft => ({
@@ -40,6 +45,7 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
   agentProvider,
   request: { style, modules: [], day: "Day02", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
+  quizMusic: NO_MUSIC,
 });
 
 /** The prompt a member can paste into Claude Code (or Claude Design) instead of pressing Tạo video. */
@@ -74,6 +80,8 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
   const [idCheck, setIdCheck] = useState<{ value: string; taken: boolean } | null>(null);
   const [checkingId, setCheckingId] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [quizTracks, setQuizTracks] = useState<MusicTrack[]>([]);
+  useEffect(() => { api<MusicCatalog>("/api/music").then((c) => setQuizTracks(c.quiz)).catch(() => setQuizTracks([])); }, []);
   const styleLabelId = useId();
   const idErrorId = useId();
   const scriptLabelId = useId();
@@ -203,15 +211,32 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
           <span><strong>Agent dựng video</strong><small>{agentConfig.selectionLocked ? "Được ấn định bởi cấu hình máy và không thể đổi trong Studio." : "Chọn một lần. Video sẽ tiếp tục dùng agent này khi mở lại."}</small></span>
         </div>
         {agentConfig.selectionLocked
-          ? <span className="vs-agent-locked"><LockOutlined />{agentProviderLabel(agentConfig.defaultProvider)}</span>
+          ? <span className="vs-agent-locked"><LockOutlined /><AgentMark provider={agentConfig.defaultProvider} />{agentProviderLabel(agentConfig.defaultProvider)}</span>
           : <Select
               className="vs-agent-select"
               aria-label="Agent dựng video"
               value={draft.agentProvider}
               disabled={busy}
               onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
-              options={AGENT_PROVIDER_OPTIONS.map(({ value, label }) => ({ value, label }))}
+              options={AGENT_PROVIDER_OPTIONS.map(({ value, label }) => ({
+                value,
+                label: <span className="vs-agent-option"><AgentMark provider={value} />{label}</span>,
+              }))}
             />}
+      </div>
+      <div className="vs-quiz-music">
+        <h4 className="vs-section-title">Nhạc quiz</h4>
+        <p className="vs-music-note">
+          Chọn ngay từ đây vì agent phải biết lúc viết <code>cues.js</code> để đánh dấu đúng những câu thuộc phần hỏi.
+          Nhạc chỉ chạy trên các câu đó, và nhạc nền tắt hẳn trong đoạn quiz.
+        </p>
+        <MusicPicker
+          tracks={quizTracks}
+          value={draft.quizMusic}
+          disabled={busy}
+          noneLabel="Không có nhạc quiz"
+          onChange={(quizMusic) => setDraft((current) => ({ ...current, quizMusic }))}
+        />
       </div>
     </div>
     <div className="vs-section">

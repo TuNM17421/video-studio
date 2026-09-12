@@ -49,11 +49,16 @@ order and ask the user before spending ElevenLabs credit (show the dry-run first
   frames with ffmpeg (`node_modules/ffmpeg-static/ffmpeg` if ffmpeg is not on PATH) to see what to change.
   List every feedback item and how this version answers it (goes into PROMPTS.md at the end).
 - Write `cues.js` in the video dir, same shape as the reference: `RAW` entries
-  `{ n, seconds, section, title?, tag?, text, visual, voice?, pauseAfter?, silent? }` — `text` is the
+  `{ n, seconds, section, title?, tag?, text, visual, voice?, pauseAfter?, silent?, quiz? }` — `text` is the
   narration **verbatim** from the script (change it only where the feedback explicitly asks, and record why),
   `seconds` a script estimate, `visual` what the scene shows. Export `SECTIONS`, `CUES`, `DURATION` and
   `export const { spokenAt, speechEnd } = createSpeech(RAW, VOICE);` with
   `import { VOICE } from './voice.js'` and `import { createSpeech } from '../../../../lib/speech.js'`.
+- `quiz: true` marks a câu the quiz bed plays over — only the question itself and the pause where the viewer
+  thinks (usually the `silent` cue), never the explanation that follows. Consecutive marked câu become one
+  segment; the background bed goes silent across it and the quiz track fades in. Put `quiz` at the **end** of
+  the entry: `voice-timing.mjs --write-cues` rewrites everything between `n:` and `frames:`, so a field parked
+  there is deleted. Only mark câu when `projects/<id>/REQUEST.md` names a quiz track.
 - `node tools/voice-timing.mjs --clear <video dir>` (creates the empty voice.js).
 - Pronunciation swaps (English terms, abbreviations) → `projects/<id>/pronounce.json` (`{ "AI": "ây ai" }`).
 - Check: `node tts-elevenlabs/tts.mjs generate --cues <video dir>/cues.js --pronounce <pronounce.json> --dry-run`

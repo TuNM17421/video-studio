@@ -38,6 +38,8 @@ export const STUDIO_COLORS = {
     successSurface: "#effaf3",
     warning: "#874e00",
     warningSurface: "#fff8e8",
+    // the pale ground for danger; the danger ink itself is brand.secondary
+    dangerSurface: "#fff2f2",
   },
 } as const;
 

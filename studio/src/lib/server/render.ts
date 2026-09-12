@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
-import { MUSIC_FILE, MUSIC_ID } from "../music";
+import { NO_MUSIC } from "../music";
 import { runAgent } from "./agent";
 import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, REPO, rel, transcriptPath, voiceOut } from "./paths";
+import { HttpError, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
 /** Build → render MP4 (frames from this server's /ds) → transcript; then the agent writes chapters. */
@@ -12,11 +12,10 @@ export async function renderVideo(id: string, base: string) {
   const wav = path.join(voiceOut(id), "voice.wav");
   if (!fs.existsSync(wav)) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
   const day = state.request.day;
-  // The track is fetched from storage, not carried in git, so a fresh clone may not have it yet.
-  // Render without music rather than handing ffmpeg a path that does not exist.
-  const musicFile = path.join(REPO, "assets/music", MUSIC_FILE);
-  const wantsMusic = state.music === MUSIC_ID && fs.existsSync(musicFile);
-  if (state.music === MUSIC_ID && !wantsMusic) log(id, "system", `Bỏ qua nhạc nền: chưa có assets/music/${MUSIC_FILE}`);
+  // render.mjs resolves both tracks against music.json: it caches the audio from the media bucket into
+  // assets/music/ and reads the gain from the track's measured loudness. A track it cannot fetch is
+  // dropped there with a warning rather than failing the render.
+  const { background, quiz } = state.music;
   startJob(id, "render");
   setStage(id, "render", "running");
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
@@ -42,7 +41,8 @@ export async function renderVideo(id: string, base: string) {
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
   const renderOk = await step("Render MP4", process.execPath, [
     "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
-    ...(wantsMusic ? ["--music", rel(musicFile)] : []),
+    ...(background !== NO_MUSIC ? ["--music-track", background] : []),
+    ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
     ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
     const m = line.match(/(\d+)\/(\d+) frames/);

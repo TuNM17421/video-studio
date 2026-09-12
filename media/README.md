@@ -27,6 +27,11 @@ Các tuỳ chọn khác: `--list` (chỉ báo cáo), `--force` (đẩy lại t�
 object không còn trong `media/files/`). File không đổi nội dung sẽ bị bỏ qua nhờ so sánh SHA-256, nên
 chạy lại bao nhiêu lần cũng rẻ.
 
+> **Cẩn thận với `--prune`.** Nhạc nền và nhạc quiz (`audio/nen/*`, `audio/quiz/*`) được đưa thẳng lên
+> bucket chứ không qua công cụ này, nên `media/files/` không có bản sao. `npm run media` sẽ liệt kê
+> chúng ở mục "thừa", và `--prune` sẽ **xoá chúng khỏi R2**. Muốn dùng `--prune` thì tải 6 file đó về
+> `media/files/audio/...` trước, rồi đẩy lại một lần cho manifest có SHA-256.
+
 ## Quy ước tên cho video mẫu của style
 Studio tự nhận `styles/<mã style>/sample.<đuôi>` làm video (hoặc audio) mẫu của style đó — bỏ file vào
 đúng tên này là xong, không phải sửa `styles/*.json`. Muốn tên khác thì đặt `"sampleVideo": "<key>"`

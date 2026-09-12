@@ -1,10 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
-import { MUSIC_FILE } from "@/lib/music";
 import type { VideoDetail } from "@/lib/types";
 import { handle } from "@/lib/server/http";
 import { currentJob, isRunning, logs } from "@/lib/server/jobs";
-import { assertId, HttpError, REPO, rel } from "@/lib/server/paths";
+import { assertId, HttpError, rel } from "@/lib/server/paths";
 import { trashVideo } from "@/lib/server/trash-video";
 import { lastDryRun, lastImportReport } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
@@ -22,7 +19,6 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     logs: logs(id).slice(-300),
     dryRun: lastDryRun(id),
     importReport: lastImportReport(id),
-    musicAvailable: fs.existsSync(path.join(REPO, "assets/music", MUSIC_FILE)),
   };
   return Response.json(detail);
 });

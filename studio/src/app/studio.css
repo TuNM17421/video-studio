@@ -316,8 +316,19 @@ button.vs-tile:hover {
   line-height: 1.45;
 }
 .vs-agent-select {
-  width: 156px;
-  flex: 0 0 156px;
+  width: 178px;
+  flex: 0 0 178px;
+}
+.vs-agent-option,
+.vs-agent-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.vs-agent-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--vu-neutral-900);
 }
 .vs-agent-locked {
   display: inline-flex;
@@ -622,30 +633,21 @@ button.vs-tile:hover {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  font-weight: var(--vu-font-bold);
+  /* 10px bold in a 16px pill read as a smudge at arm's length */
+  font-size: 11px;
+  font-weight: var(--vu-font-semibold);
+  line-height: 16px;
   border-radius: var(--radius-sm);
-  padding: 4px 8px;
+  padding: 3px 10px;
   white-space: nowrap;
   background: var(--vu-neutral-100);
   color: var(--vu-neutral-700);
 }
-.vs-badge.is-running {
-  background: var(--vu-blue-50);
-  color: var(--vu-blue-700);
+.vs-badge .anticon {
+  font-size: 11px;
 }
-.vs-badge.is-review {
-  background: var(--amber-light);
-  color: var(--amber);
-}
-.vs-badge.is-done {
-  background: var(--green-light);
-  color: var(--green);
-}
-.vs-badge.is-error {
-  background: var(--red-light);
-  color: var(--red);
-}
+/* Status colors come from the Ant theme (ui-provider.tsx), which is fed the same design tokens.
+   Repeating them here only looked like it worked: Ant's own variant selector outranks .vs-badge.is-*. */
 .vs-summary {
   border: 1px solid var(--vu-blue-100);
   border-left: 3px solid var(--vu-blue-700);
@@ -1043,28 +1045,58 @@ button.vs-tile:hover {
   color: var(--subtle);
 }
 
-/* ── background music option (render step) ────────────────────────────────── */
-.vs-music-item {
-  display: flex;
-  flex-direction: column;
+/* ── music picker (background on render, quiz on plan) ────────────────────── */
+.vs-music.ant-radio-group {
+  display: grid;
   gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin: 0 0 18px;
+  width: 100%;
+  margin-bottom: 18px;
 }
-.vs-music-row {
+.vs-music-item.ant-radio-wrapper {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
-.vs-music-item audio {
-  height: 32px;
-  max-width: 220px;
+.vs-music-item.ant-radio-wrapper:hover {
+  border-color: var(--vu-blue-300);
+}
+.vs-music-item.ant-radio-wrapper-checked {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-blue-50);
+}
+/* Ant wraps the label in a span that defaults to inline — the row needs it to lay out its children */
+.vs-music-item.ant-radio-wrapper > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding-inline-end: 0;
+}
+.vs-music-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.vs-music-item strong {
+  color: var(--vu-blue-900);
+  font-size: 13px;
 }
 .vs-music-item small {
   color: var(--vu-neutral-600);
+  font-family: var(--vu-font-utility);
   font-size: 11px;
+}
+.vs-music-play.ant-btn {
+  flex: 0 0 auto;
+  color: var(--vu-blue-700);
+  font-size: 18px;
 }
 
 /* ── scenes + render ────────────────────────────────────────────────────── */
@@ -1884,10 +1916,6 @@ button.vs-tile:hover {
     color: var(--vu-neutral-600);
     font-size: 11px;
   }
-  .breadcrumb {
-    color: var(--vu-neutral-600);
-    font-size: 12px;
-  }
   .preview-panel .panel-heading h2 {
     font-size: 13px;
   }
@@ -2016,10 +2044,6 @@ button.vs-tile:hover {
   min-width: 0;
   background: var(--background);
 }
-.topbar.ant-layout-header {
-  line-height: normal;
-  background: var(--vu-blue-900);
-}
 .vs-sidebar-head {
   position: relative;
   display: flex;
@@ -2064,17 +2088,6 @@ button.vs-tile:hover {
 .vs-sidebar-toggle.ant-btn:focus-visible {
   outline-color: var(--vu-border-focus) !important;
 }
-.breadcrumb.ant-breadcrumb,
-.breadcrumb.ant-breadcrumb a,
-.breadcrumb.ant-breadcrumb .ant-breadcrumb-link {
-  color: rgb(255 255 255 / 72%);
-}
-.breadcrumb.ant-breadcrumb li:last-child .ant-breadcrumb-link {
-  color: white;
-}
-.breadcrumb .anticon {
-  margin-right: 6px;
-}
 
 .vs-sidebar-menu.ant-menu {
   width: 100%;
@@ -2082,7 +2095,8 @@ button.vs-tile:hover {
   background: transparent;
   font-size: 14px;
 }
-.vs-sidebar-menu.ant-menu .ant-menu-item {
+.vs-sidebar-menu.ant-menu .ant-menu-item,
+.vs-sidebar-menu.ant-menu .ant-menu-submenu-title {
   width: 100%;
   height: 46px;
   margin: 2px 0;
@@ -2099,6 +2113,22 @@ button.vs-tile:hover {
 }
 .vs-sidebar-menu.ant-menu .ant-menu-item-icon {
   font-size: 18px;
+}
+/* Library sections: a nested level that reads as subordinate without a second icon column. */
+.vs-sidebar-menu.ant-menu .ant-menu-sub.ant-menu-inline {
+  background: transparent;
+}
+.vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item {
+  height: 38px;
+  padding-inline: 12px 12px !important;
+  margin-inline-start: 21px;
+  width: calc(100% - 21px);
+  border-left: 1px solid var(--vu-border-subtle);
+  border-radius: 0 4px 4px 0;
+  font-size: 13px;
+}
+.vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item-selected {
+  border-left: 3px solid var(--vu-blue-700);
 }
 .vs-key-status .ant-badge {
   margin-left: auto;
@@ -2167,7 +2197,8 @@ button.vs-tile:hover {
   .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu .ant-menu-title-content {
     display: none;
   }
-  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item {
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item,
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-submenu-title {
     width: var(--vu-shell-sidebar-rail-item);
     height: var(--vu-shell-sidebar-rail-item);
     margin: 4px auto;
@@ -2176,10 +2207,13 @@ button.vs-tile:hover {
     border: 1px solid transparent;
     border-radius: var(--vu-radius-sm);
   }
-  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item:hover {
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item:hover,
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-submenu-title:hover {
     border-color: var(--vu-border-subtle);
   }
-  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item-selected {
+  /* Collapsed, a library section can only show as its parent rail icon. */
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-item-selected,
+  .sidebar.ant-layout-sider-collapsed .vs-sidebar-menu.ant-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
     border-color: var(--vu-blue-100);
     border-left-color: var(--vu-blue-100);
     box-shadow: inset 3px 0 0 var(--vu-blue-700);
@@ -3078,6 +3112,60 @@ button.vs-tile:hover {
     border-left-color: transparent;
   }
 
+  /* Nav here is one row of three; `display: contents` lets the library's sections form a second row
+     instead of cramming a nested list into a single cell. */
+  .vs-sidebar-menu.ant-menu > .ant-menu-submenu {
+    display: contents;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-submenu-title {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    margin: 0;
+    padding-inline: 8px !important;
+    justify-content: center;
+    gap: 7px;
+    border-top: 3px solid transparent;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-submenu-arrow {
+    display: none;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
+    border-top-color: var(--vu-brand-secondary);
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-sub.ant-menu-inline {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  /* the sub list carries `ant-menu` too, so it inherits the clearfix boxes — as grid items they would
+     take the first cell and shunt every section one across */
+  .vs-sidebar-menu.ant-menu .ant-menu-sub::before,
+  .vs-sidebar-menu.ant-menu .ant-menu-sub::after {
+    display: none;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item {
+    width: 100%;
+    margin: 0;
+    padding-inline: 8px !important;
+    border-top: 3px solid transparent;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item-selected {
+    border-top-color: var(--vu-brand-secondary);
+  }
+
   .vs-sidebar-menu.ant-menu .ant-menu-item-icon {
     font-size: 15px;
   }
@@ -3096,34 +3184,11 @@ button.vs-tile:hover {
     flex: 0 0 auto !important;
   }
 
-  .topbar.ant-layout-header {
-    width: 100%;
-    height: 44px;
-    min-height: 44px;
-    padding: 0 16px;
-  }
-
-  .breadcrumb.ant-breadcrumb {
-    min-width: 0;
-    font-size: 10px;
-  }
-
-  .breadcrumb.ant-breadcrumb ol {
-    min-width: 0;
-  }
-
-  .breadcrumb.ant-breadcrumb li:last-child {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .main-content {
     width: 100%;
     min-width: 0;
     max-width: none;
-    padding: 24px 16px 0;
+    padding: 14px 16px 0;
   }
 
   .page-heading {
@@ -3291,8 +3356,7 @@ button.vs-tile:hover {
     padding-inline: 14px;
   }
 
-  .vs-production-rail-head,
-  .topbar.ant-layout-header {
+  .vs-production-rail-head {
     padding-inline: 14px;
   }
 

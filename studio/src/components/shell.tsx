@@ -1,16 +1,32 @@
 "use client";
 
-import { useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { BookOutlined, KeyOutlined, PlusOutlined, UnorderedListOutlined, VideoCameraOutlined } from "@ant-design/icons";
-import { Badge, Breadcrumb, Button, Layout, Menu } from "antd";
+import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { BookOutlined, KeyOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Badge, Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Page = "new" | "library" | "videos";
+export type LibrarySection = "styles" | "components" | "videos";
+
+/** The library's three sections are sidebar children, not tabs on the page. */
+export const LIBRARY_SECTIONS: { id: LibrarySection; label: string }[] = [
+  { id: "styles", label: "Style" },
+  { id: "components", label: "Component" },
+  { id: "videos", label: "Video mẫu" },
+];
+export const librarySectionPath = (section: LibrarySection) => `/library/${section}`;
+const sectionKey = (section: LibrarySection) => `library:${section}`;
+
 const SIDEBAR_STORAGE_KEY = "video-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "video-studio:sidebar-change";
 const DESKTOP_SIDEBAR_QUERY = "(min-width: 681px)";
-const PAGE_ROUTES: Record<Page, string> = { new: "/", videos: "/videos", library: "/library" };
+const PAGE_ROUTES: Record<string, string> = {
+  new: "/",
+  videos: "/videos",
+  library: librarySectionPath("styles"),
+  ...Object.fromEntries(LIBRARY_SECTIONS.map((s) => [sectionKey(s.id), librarySectionPath(s.id)])),
+};
 let sidebarCollapsedFallback = false;
 
 function getSidebarCollapsed() {
@@ -42,9 +58,14 @@ function SidebarPanelIcon() {
   </svg>;
 }
 
-export function Shell({ page, crumb, hasKey, actions, children }: { page: Page; crumb: string; hasKey?: boolean; actions?: ReactNode; children: ReactNode }) {
+/** No top bar: the sidebar names where you are, and every page carries its own heading. */
+export function Shell({ page, section, hasKey, children }: { page: Page; section?: LibrarySection; hasKey?: boolean; children: ReactNode }) {
   const router = useRouter();
   const sidebarCollapsed = useSyncExternalStore(subscribeSidebarCollapsed, getSidebarCollapsed, () => false);
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+  // These sections replaced the library's tab bar, so they stay open the whole time you are in there —
+  // except on the collapsed rail, where an open submenu is a popup that would sit over the page.
+  const menuOpenKeys = page === "library" && !sidebarCollapsed ? ["library"] : openKeys;
   const toggleSidebar = (event: MouseEvent<HTMLElement>) => {
     const next = !sidebarCollapsed;
     sidebarCollapsedFallback = next;
@@ -57,7 +78,15 @@ export function Shell({ page, crumb, hasKey, actions, children }: { page: Page; 
   const navigation = [
     { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới">Video mới</Link> },
     { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video">Các video</Link> },
-    { key: "library", icon: <BookOutlined />, label: <Link href="/library" title="Thư viện">Thư viện</Link> },
+    {
+      key: "library",
+      icon: <BookOutlined />,
+      label: <Link href={librarySectionPath("styles")} title="Thư viện">Thư viện</Link>,
+      children: LIBRARY_SECTIONS.map(({ id, label }) => ({
+        key: sectionKey(id),
+        label: <Link href={librarySectionPath(id)} title={label}>{label}</Link>,
+      })),
+    },
   ];
   return <Layout className="studio-shell">
     <a href="#main-content" className="skip-link">Đến nội dung chính</a>
@@ -67,17 +96,24 @@ export function Shell({ page, crumb, hasKey, actions, children }: { page: Page; 
         <Button type="text" className="vs-sidebar-toggle" icon={<SidebarPanelIcon />} aria-label={sidebarCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"} aria-controls="studio-sidebar-navigation" aria-expanded={!sidebarCollapsed} title={sidebarCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"} onClick={toggleSidebar} />
       </div>
       <div className="workspace-label">AI IN ACTION 20K</div>
-      <Menu id="studio-sidebar-navigation" className="vs-sidebar-menu" mode="inline" inlineCollapsed={sidebarCollapsed} selectedKeys={[page]} items={navigation} aria-label="Điều hướng" onClick={({ key }) => { if (sidebarCollapsed) router.push(PAGE_ROUTES[key as Page]); }} />
+      <Menu
+        id="studio-sidebar-navigation"
+        className="vs-sidebar-menu"
+        mode="inline"
+        inlineCollapsed={sidebarCollapsed}
+        selectedKeys={[section ? sectionKey(section) : page]}
+        openKeys={menuOpenKeys}
+        onOpenChange={setOpenKeys}
+        items={navigation}
+        aria-label="Điều hướng"
+        onClick={({ key }) => { if (sidebarCollapsed && PAGE_ROUTES[key]) router.push(PAGE_ROUTES[key]); }}
+      />
       <div className="sidebar-bottom">
         {hasKey !== undefined && <div className="sidebar-item vs-key-status" role="status" aria-label={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`} title={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`}><KeyOutlined /><span className="vs-sidebar-label">ElevenLabs</span><Badge status={hasKey ? "success" : "default"} /></div>}
         <div className="sidebar-footer"><span>VIDEO STUDIO</span><span>vinuni-lesson-video-ds</span></div>
       </div>
     </Layout.Sider>
     <Layout className="workspace">
-      <Layout.Header className="topbar">
-        <Breadcrumb className="breadcrumb" items={[{ title: <span><VideoCameraOutlined /> Video Studio</span> }, { title: <strong>{crumb}</strong> }]} />
-        <div className="topbar-actions">{actions}</div>
-      </Layout.Header>
       <Layout.Content id="main-content" className="main-content">{children}</Layout.Content>
     </Layout>
   </Layout>;

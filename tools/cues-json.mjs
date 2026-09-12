@@ -26,6 +26,7 @@ const cues = (mod.CUES || []).map((c) => ({
   section: c.section ?? null,
   visual: c.visual || '',
   silent: Boolean(c.silent),
+  quiz: Boolean(c.quiz),
   start: c.start,
   end: c.end,
 }));

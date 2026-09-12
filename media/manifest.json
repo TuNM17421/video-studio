@@ -1,6 +1,36 @@
 {
   "base": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev",
   "assets": {
+    "audio/nen/BG_01.mp3": {
+      "type": "audio/mpeg",
+      "bytes": 3841044,
+      "updated": "2026-09-12"
+    },
+    "audio/nen/BG_02.mp3": {
+      "type": "audio/mpeg",
+      "bytes": 5505358,
+      "updated": "2026-09-12"
+    },
+    "audio/nen/BG_03.mp3": {
+      "type": "audio/mpeg",
+      "bytes": 7681253,
+      "updated": "2026-09-12"
+    },
+    "audio/nen/bg.wav": {
+      "type": "audio/wav",
+      "bytes": 69148844,
+      "updated": "2026-09-12"
+    },
+    "audio/quiz/nhac-quiz-1-thinking-timer.mp3": {
+      "type": "audio/mpeg",
+      "bytes": 2552058,
+      "updated": "2026-09-12"
+    },
+    "audio/quiz/nhac-quiz-3-loop-ngan-18s.mp3": {
+      "type": "audio/mpeg",
+      "bytes": 593664,
+      "updated": "2026-09-12"
+    },
     "styles/lesson-lab/sample.mp4": {
       "type": "video/mp4",
       "bytes": 17607633,

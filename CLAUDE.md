@@ -86,6 +86,19 @@ từ trước và là audio tag của eleven_v3 (`[curious]`). `tts.mjs` gọi m
 nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Mẫu viết kịch bản:
 `templates/kich-ban-hoi-thoai.md`; `npm run voices` in danh sách giọng và kiểu đọc.
 
+## Nhạc nền và nhạc quiz
+`music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),
+`seconds` và `lufs` — độ to đo được. Các bản master chênh nhau tới 15 dB nên **không** dùng gain cố định:
+`tools/lib/music.mjs` suy gain từ `lufs` về mức −32 LUFS (nhạc nền) / −28 LUFS (nhạc quiz), và tải file về
+`assets/music/` lần đầu dùng. Thêm bản mới = đẩy file lên R2, thêm key vào `media/manifest.json`, thêm mục
+vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
+- **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`.
+- **Nhạc quiz** chọn ở bước Kế hoạch, vì agent phải biết lúc viết `cues.js` để đánh dấu `quiz: true` cho
+  đúng những câu thuộc phần hỏi (câu hỏi + khoảng dừng suy nghĩ, **không** gồm phần chữa bài). Các câu liền
+  nhau gom thành một đoạn; `render.mjs --quiz-track <id>` tự đọc `cues.js` để lấy mốc thời gian. Trong đoạn
+  quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu.
+- `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
+
 ## Media nặng (`media/`, Cloudflare R2)
 Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`
 (được commit) giữ base URL + danh sách asset, nên ai clone repo về cũng xem được mà không cần cấu hình gì.

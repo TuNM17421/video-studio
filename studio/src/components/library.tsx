@@ -8,20 +8,12 @@ import {
   PlayCircleOutlined,
   RightOutlined,
 } from "@ant-design/icons";
-import { Alert, Button, Drawer, Empty, Input, Select, Spin, Tabs, Tag } from "antd";
+import { Alert, Button, Drawer, Empty, Input, Select, Spin, Tag } from "antd";
 import { api, dsUrl, fileUrl, useKeyStatus } from "@/lib/client";
 import type { Library as LibraryData, LibraryComponent, StyleDef } from "@/lib/types";
-import { Shell } from "./shell";
+import { Shell, type LibrarySection } from "./shell";
 import { StyleShowcase } from "./style-showcase";
 import styles from "./library.module.css";
-
-type Tab = "styles" | "components" | "videos";
-
-const TAB_META: Record<Tab, { index: string; label: string; description: string }> = {
-  styles: { index: "01", label: "Style", description: "Ngôn ngữ hình ảnh" },
-  components: { index: "02", label: "Component", description: "Khối dựng cảnh" },
-  videos: { index: "03", label: "Video mẫu", description: "Bản dựng tham chiếu" },
-};
 
 const PAGE_SIZE = 30;
 
@@ -60,17 +52,7 @@ function ComponentDrawer({ component, onClose, card }: { component: LibraryCompo
   </Drawer>;
 }
 
-function TabLabel({ tab, count }: { tab: Tab; count: number | null }) {
-  const meta = TAB_META[tab];
-  return <span className={styles.tabLabel}>
-    <span className={styles.tabIndex}>{meta.index}</span>
-    <span><strong>{meta.label}</strong><small>{meta.description}</small></span>
-    <span className={styles.tabCount}>{count ?? "—"}</span>
-  </span>;
-}
-
-export default function Library() {
-  const [tab, setTab] = useState<Tab>("styles");
+export default function Library({ section }: { section: LibrarySection }) {
   const [styleDefinitions, setStyleDefinitions] = useState<StyleDef[]>([]);
   const [lib, setLib] = useState<LibraryData | null>(null);
   const [query, setQuery] = useState("");
@@ -108,6 +90,8 @@ export default function Library() {
 
   const panels = {
     styles: <div className={styles.styleStack}>
+      {/* each style below carries its own visible h2; the page itself no longer has a title band */}
+      <h1 className="sr-only">Style — ngôn ngữ hình ảnh</h1>
       {stylesError && <Alert className="feedback" type="error" showIcon title="Không tải được style" description={stylesError} />}
       {!styleDefinitions.length && !stylesError && <LoadingState label="Đang tải style…" />}
       {styleDefinitions.map((style, index) => <section key={style.id} className={styles.stylePanel}>
@@ -131,7 +115,7 @@ export default function Library() {
     </div>,
     components: <section className={styles.catalogPanel}>
       <header className={styles.catalogHeader}>
-        <div><span className={styles.sectionEyebrow}>Component index</span><h2>Khối dựng cảnh</h2><p>Tìm theo tên hoặc nhóm, sau đó mở card để đọc đúng contract sử dụng.</p></div>
+        <div><span className={styles.sectionEyebrow}>Component index</span><h1>Khối dựng cảnh</h1><p>Tìm theo tên hoặc nhóm, sau đó mở card để đọc đúng contract sử dụng.</p></div>
         <span className={styles.catalogTotal}><strong>{allComponents.length || "—"}</strong> component</span>
       </header>
       <div className={styles.filterBar}>
@@ -177,7 +161,7 @@ export default function Library() {
     </section>,
     videos: <section className={styles.videoPanel}>
       <header className={styles.catalogHeader}>
-        <div><span className={styles.sectionEyebrow}>Reference cuts</span><h2>Bản dựng tham chiếu</h2><p>Đối chiếu nhịp cảnh, caption và chuyển động trước khi bắt đầu video mới.</p></div>
+        <div><span className={styles.sectionEyebrow}>Reference cuts</span><h1>Bản dựng tham chiếu</h1><p>Đối chiếu nhịp cảnh, caption và chuyển động trước khi bắt đầu video mới.</p></div>
         <span className={styles.catalogTotal}><strong>{lib?.videos.length || "—"}</strong> video</span>
       </header>
       {libraryError && <Alert className={styles.feedback} type="error" showIcon title="Không tải được video mẫu" description={libraryError} />}
@@ -204,41 +188,11 @@ export default function Library() {
         </div>}
       </div>}
     </section>,
-  } satisfies Record<Tab, React.ReactNode>;
+  } satisfies Record<LibrarySection, React.ReactNode>;
 
-  const tabCounts: Record<Tab, number | null> = {
-    styles: styleDefinitions.length || (stylesError ? 0 : null),
-    components: lib ? allComponents.length : libraryError ? 0 : null,
-    videos: lib ? lib.videos.length : libraryError ? 0 : null,
-  };
-
-  return <Shell page="library" crumb="Thư viện" hasKey={hasKey}>
+  return <Shell page="library" section={section} hasKey={hasKey}>
     <div className={styles.root}>
-      <header className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <div className={styles.eyebrow}><span aria-hidden="true" /> Design system index</div>
-          <h1>Thư viện dựng hình</h1>
-          <p>Một điểm tra cứu cho style, component và video mẫu đã sẵn sàng đưa vào luồng sản xuất.</p>
-        </div>
-        <dl className={styles.heroStats}>
-          <div><dt>Style</dt><dd>{tabCounts.styles ?? "—"}</dd></div>
-          <div><dt>Component</dt><dd>{tabCounts.components ?? "—"}</dd></div>
-          <div><dt>Video mẫu</dt><dd>{tabCounts.videos ?? "—"}</dd></div>
-        </dl>
-      </header>
-
-      <div className={styles.indexRail} aria-hidden="true"><span>DESIGN ASSETS</span><i /><strong>{TAB_META[tab].index} / 03</strong></div>
-
-      <Tabs
-        className={styles.tabs}
-        activeKey={tab}
-        onChange={(key) => setTab(key as Tab)}
-        items={(Object.keys(TAB_META) as Tab[]).map((tabId) => ({
-          key: tabId,
-          label: <TabLabel tab={tabId} count={tabCounts[tabId]} />,
-          children: panels[tabId],
-        }))}
-      />
+      {panels[section]}
       <footer className={styles.footer}>vinuni-lesson-video-ds <span>·</span> production reference library</footer>
     </div>
     {open && <ComponentDrawer key={`${open.group}-${open.name}`} component={open} card={cardOf(open.group)} onClose={() => setOpen(null)} />}

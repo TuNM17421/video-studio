@@ -1,3 +1,5 @@
+import type { MusicChoice } from "./music";
+
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan";
@@ -99,8 +101,11 @@ export interface VideoState {
   agent: AgentBinding;
   stages: Record<StageId, StageStatus>;
   voice: VoiceSettings;
-  /** Background music track id ("none" or a MUSIC_TRACKS id from lib/music.ts); render-only, not part of TTS. */
-  music: string;
+  /**
+   * Track ids from music.json, never part of TTS. `background` is picked on the render step; `quiz` is
+   * picked with the script, because it only plays over the cues marked `quiz: true` in cues.js.
+   */
+  music: MusicChoice;
   lastError: string | null;
 }
 
@@ -114,7 +119,8 @@ export interface JobInfo {
   kind: JobKind;
   status: "running" | "done" | "error" | "stopped";
   startedAt: number;
-  progress: { percent: number | null; message: string } | null;
+  /** `etaMs` is measured by the server from this job's own progress, so it excludes any phase before it. */
+  progress: { percent: number | null; message: string; etaMs?: number | null } | null;
 }
 
 export interface Cue {
@@ -124,6 +130,8 @@ export interface Cue {
   section: number | null;
   visual: string;
   silent: boolean;
+  /** Part of a question the viewer is meant to answer — the quiz track plays over these cues. */
+  quiz: boolean;
   start: number;
   end: number;
 }
@@ -170,8 +178,6 @@ export interface VideoDetail {
   job: JobInfo | null;
   logs: LogEntry[];
   dryRun: DryRun | null;
-  /** Whether assets/music/<track> is present — it is fetched from storage, not carried in git. */
-  musicAvailable: boolean;
   importReport: ImportReport | null;
 }
 

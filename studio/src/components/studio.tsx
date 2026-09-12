@@ -199,7 +199,7 @@ export default function Studio() {
   async function create() {
     if (!setupReady) return;
     await act(async () => {
-      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, request: draft.request, script: draft.script } });
+      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, request: draft.request, script: draft.script, quizMusic: draft.quizMusic } });
       await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
       window.history.pushState(null, "", `/?id=${draft.id}`);
       setAutoStep(false);
@@ -212,7 +212,7 @@ export default function Studio() {
   const current = STEPS.find((s) => s.id === step)!;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
 
-  return <Shell page={id ? "videos" : "new"} crumb={id || "Video mới"} hasKey={hasKey}>
+  return <Shell page={id ? "videos" : "new"} hasKey={hasKey}>
     <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div><h1>{detail?.state.request.title || id || "Video mới"}</h1></div></div>
     <div className="vs-production-rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>

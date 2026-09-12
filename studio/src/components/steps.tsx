@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
 import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
+import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
 import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
+import { MusicPicker } from "./music-picker";
 import { SourcePickerField } from "./source-picker";
 import { VoicePicker } from "./voice-picker";
 
@@ -480,6 +482,13 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
   const runLogs = stageLogs(logs, /^Build design system/);
   const ready = detail.state.stages.scenes === "done";
   const [confirmRender, setConfirmRender] = useState(false);
+  // the bed is a finishing decision, so it is chosen here and sent with the render request
+  const [music, setMusic] = useState(detail.state.music.background);
+  const [quizMusic, setQuizMusic] = useState(detail.state.music.quiz);
+  const [catalog, setCatalog] = useState<MusicCatalog>({ background: [], quiz: [] });
+  const quizCues = detail.cues?.cues.filter((c) => c.quiz).length ?? 0;
+  useEffect(() => { api<MusicCatalog>("/api/music").then(setCatalog).catch(() => {}); }, []);
+  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic }));
   const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
   return <>
     <div className="vs-step-body">
@@ -498,7 +507,20 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         <span>{label}</span>
         {path ? <Button type="link" href={fileUrl(path)} target="_blank">{path}</Button> : <small>chưa có</small>}
       </li>)}</ul>}
-      {ready && <Button type="primary" block disabled={busy} icon={<PlayCircleFilled />} onClick={() => { if (a.mp4) setConfirmRender(true); else void act(() => post(`/api/videos/${id}/render`, {})); }}>{a.mp4 ? "Render lại" : "Render video"}</Button>}
+      {ready && <div className="vs-music-section">
+        <div className="vs-section-title">Nhạc nền</div>
+        <MusicPicker tracks={catalog.background} value={music} disabled={busy} noneLabel="Không có nhạc nền" onChange={setMusic} />
+        {/* Which câu the question covers was settled in cues.js; only the track is still open here. */}
+        {quizCues > 0 && <>
+          <div className="vs-section-title">Nhạc quiz</div>
+          <p className="vs-music-note">{quizCues} câu được đánh dấu <code>quiz: true</code>. Nhạc nền tắt hẳn trong các đoạn đó.</p>
+          <MusicPicker tracks={catalog.quiz} value={quizMusic} disabled={busy} noneLabel="Không có nhạc quiz" onChange={setQuizMusic} />
+        </>}
+        {quizCues === 0 && quizMusic !== NO_MUSIC && <p className="vs-music-note">
+          Đã chọn nhạc quiz nhưng <code>cues.js</code> chưa câu nào đánh dấu <code>quiz: true</code> — nhạc quiz sẽ bị bỏ qua.
+        </p>}
+      </div>}
+      {ready && <Button type="primary" block disabled={busy} icon={<PlayCircleFilled />} onClick={() => { if (a.mp4) setConfirmRender(true); else void startRender(); }}>{a.mp4 ? "Render lại" : "Render video"}</Button>}
       <AgentLog logs={runLogs} open={status === "running"} />
     </div>
     <div className="panel-footer"><span />{a.mp4 && <Button type="link" href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank" icon={<ArrowRightOutlined />} iconPlacement="end">Mở trình phát</Button>}</div>
@@ -507,7 +529,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
       description="Bản MP4 hiện có sẽ được thay bằng kết quả render mới. File nguồn và transcript không bị xoá."
       confirmLabel="Render lại"
       onCancel={() => setConfirmRender(false)}
-      onConfirm={() => { setConfirmRender(false); void act(() => post(`/api/videos/${id}/render`, {})); }}
+      onConfirm={() => { setConfirmRender(false); void startRender(); }}
     />}
   </>;
 }

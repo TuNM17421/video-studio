@@ -16,6 +16,17 @@ const studioTheme: ThemeConfig = {
     colorSuccess: status.success,
     colorWarning: status.warning,
     colorError: brand.secondary,
+    // Ant derives its pale fills from the seed, and our seeds are dark ink colors — left to derive
+    // them it produced mud (a "done" tag came out rgb(151 161 154)). The design system already names
+    // the right surfaces, so hand them over instead of letting Ant guess.
+    colorSuccessBg: status.successSurface,
+    colorSuccessText: status.success,
+    colorWarningBg: status.warningSurface,
+    colorWarningText: status.warning,
+    colorErrorBg: status.dangerSurface,
+    colorErrorText: brand.secondary,
+    colorInfoBg: lesson.surface,
+    colorInfoText: brand.primary,
     colorText: neutral[800],
     colorTextSecondary: neutral[700],
     colorTextTertiary: neutral[600],
