@@ -1,4 +1,17 @@
 {
-  "base": "",
-  "assets": {}
+  "base": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev",
+  "assets": {
+    "styles/lesson-lab/sample.mp4": {
+      "type": "video/mp4",
+      "bytes": 17607633,
+      "sha256": "157cca294a9e97960db54007f3e22bc7f9a94045cb120bc3b2889e2f2f9cc682",
+      "updated": "2026-09-12"
+    },
+    "styles/lesson/sample.mp4": {
+      "type": "video/mp4",
+      "bytes": 6795159,
+      "sha256": "dc5c5ff81afdd641cb96a75cf75dd3f2512097241726af88ce7bd666741ce9f1",
+      "updated": "2026-09-12"
+    }
+  }
 }
