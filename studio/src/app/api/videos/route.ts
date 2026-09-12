@@ -20,7 +20,7 @@ export const POST = handle(async (req: Request) => {
   if (!content.trim()) throw new HttpError(400, "Thêm kịch bản trước.");
   if (content.length > 300_000) throw new HttpError(400, "Kịch bản quá dài (tối đa 300.000 ký tự).");
   for (const [label, dir] of [["Feedback", r.feedbackDir], ["Video cũ", r.oldVideoDir]] as const) {
-    if (dir && (!path.isAbsolute(dir) || !exists(dir))) throw new HttpError(400, `${label}: không tìm thấy thư mục ${dir}`);
+    if (dir && (!path.isAbsolute(dir) || !exists(dir))) throw new HttpError(400, `${label}: không tìm thấy tệp hoặc thư mục ${dir}`);
   }
   const request: VideoRequest = {
     style: r.style, day: r.day, title: String(r.title || "").slice(0, 200), scriptName: String(body.script.name || "").slice(0, 200),

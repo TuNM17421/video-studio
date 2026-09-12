@@ -352,6 +352,114 @@ button.vs-tile:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.vs-source-picker {
+  width: 100%;
+  min-height: 126px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px dashed var(--vu-blue-300);
+  border-radius: 8px;
+  background: var(--vu-blue-50);
+  color: var(--vu-blue-900);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+.vs-source-picker:hover:not(:disabled) {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-blue-100);
+}
+.vs-source-picker:focus-visible {
+  border-color: var(--vu-blue-700);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(27 83 145 / 16%);
+}
+.vs-source-picker:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.vs-source-picker.is-selected {
+  border-style: solid;
+  background: var(--surface);
+}
+.vs-source-picker.is-invalid {
+  border-color: var(--vu-red-700);
+  background: var(--vu-red-50);
+  box-shadow: inset 3px 0 0 var(--vu-red-700);
+}
+.vs-source-picker-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--vu-blue-700);
+  font-size: 18px;
+}
+.vs-source-picker.is-invalid .vs-source-picker-icon {
+  border-color: var(--vu-red-100);
+  color: var(--vu-red-700);
+}
+.vs-source-picker-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vs-source-picker-copy strong {
+  overflow: hidden;
+  color: var(--vu-blue-900);
+  font-size: 13px;
+  font-weight: var(--vu-font-bold);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-source-picker-copy small {
+  overflow: hidden;
+  color: var(--vu-neutral-600);
+  font-size: 10px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-source-picker-meta {
+  margin-top: 3px;
+  color: var(--vu-blue-700);
+  font-size: 10px;
+  font-weight: var(--vu-font-semibold);
+  line-height: 1.4;
+}
+.vs-source-picker.is-invalid .vs-source-picker-meta {
+  color: var(--vu-red-800);
+}
+.vs-source-picker-action {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--vu-blue-700);
+  font-size: 11px;
+}
+.vs-source-manual {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vs-source-manual .ant-input-affix-wrapper {
+  min-width: 0;
+  flex: 1;
+}
+.vs-source-manual .ant-btn {
+  flex: 0 0 auto;
+}
 .vs-scope {
   display: flex;
   flex-wrap: wrap;
@@ -1333,11 +1441,11 @@ button.vs-tile:hover {
   color: var(--vu-neutral-600) !important;
   white-space: nowrap;
 }
-.vs-production-table th:nth-child(1) { width: 27%; }
+.vs-production-table th:nth-child(1) { width: 25%; }
 .vs-production-table th:nth-child(2) { width: 9%; }
-.vs-production-table th:nth-child(3) { width: 38%; }
-.vs-production-table th:nth-child(4) { width: 18%; }
-.vs-production-table th:last-child { width: 8%; }
+.vs-production-table th:nth-child(3) { width: 35%; }
+.vs-production-table th:nth-child(4) { width: 17%; }
+.vs-production-table th:last-child { width: 14%; }
 .vs-production-table tbody tr {
   transition: background-color var(--vu-duration-fast) var(--vu-ease-standard);
 }
@@ -1958,6 +2066,16 @@ button.vs-tile:hover {
   color: var(--subtle);
   font-size: 10px;
 }
+.vs-video-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+.vs-video-actions .ant-btn {
+  padding-inline: 7px;
+}
 
 .vs-confirm-dialog.ant-modal {
   width: min(440px, calc(100vw - 32px)) !important;
@@ -1971,6 +2089,12 @@ button.vs-tile:hover {
   overflow: hidden;
   border-top: 4px solid var(--vu-red-700);
   border-radius: 8px;
+}
+.vs-confirm-dialog .ant-btn-primary.ant-btn-dangerous:not(:disabled) {
+  background: var(--vu-red-700);
+}
+.vs-confirm-dialog .ant-btn-primary.ant-btn-dangerous:not(:disabled):hover {
+  background: var(--vu-red-800) !important;
 }
 .vs-confirm-title {
   display: flex;
@@ -1986,4 +2110,20 @@ button.vs-tile:hover {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.65;
+}
+.vs-confirm-description p {
+  margin: 0;
+}
+.vs-delete-summary ul {
+  margin: 10px 0;
+  padding-left: 20px;
+  color: var(--vu-blue-900);
+}
+.vs-delete-recovery {
+  padding: 10px 12px;
+  border-left: 3px solid var(--vu-blue-700);
+  background: var(--vu-blue-50);
+}
+.vs-delete-summary .ant-alert {
+  margin-top: 12px;
 }

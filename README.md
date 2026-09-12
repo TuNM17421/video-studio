@@ -193,4 +193,6 @@ Video Studio và skill `make-video` đọc thẳng các file này, không cần 
 
 ## License
 
+Copyright 2026 Nguyễn Mạnh Tú.
+
 Project này được phát hành theo [Apache License 2.0](LICENSE).
