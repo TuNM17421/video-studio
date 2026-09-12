@@ -74,30 +74,179 @@
   gap: 12px;
 }
 .vs-style-option {
-  padding: 12px 12px 14px;
+  overflow: hidden;
+  padding: var(--vu-style-card-padding);
+}
+.vs-style-specimen {
+  display: grid;
+  height: var(--vu-style-specimen-height);
+  min-height: 0;
+  box-sizing: border-box;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 10px;
+  gap: 9px;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-blue-50);
+}
+.vs-style-specimen.is-lab {
+  background: var(--vu-neutral-50);
+}
+.vs-style-specimen-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--vu-blue-800);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-caps);
+  line-height: 1;
+  text-transform: uppercase;
+}
+.vs-style-specimen-heading > span:last-child {
+  color: var(--vu-neutral-500);
+  font-family: var(--vu-font-body);
+  font-weight: var(--vu-font-medium);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.vs-style-scene {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.55fr) minmax(82px, 0.8fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.vs-style-scene-frame {
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-neutral-0);
+}
+.vs-style-scene-frame.is-primary {
+  grid-row: 1 / span 2;
+}
+.vs-style-scene-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.vs-style-scene-frame > span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  padding: 2px 4px;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 3px;
+  background: rgb(255 255 255 / 92%);
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-medium);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-style-copy {
+  display: grid;
+  min-width: 0;
+  margin: 14px 5px 0;
 }
 .vs-style-option strong {
-  font-size: var(--vu-text-md);
+  font-size: var(--vu-text-lg);
   font-weight: var(--vu-font-bold);
   line-height: var(--vu-leading-snug);
   color: var(--vu-blue-900);
-  margin: 12px 2px 4px;
+  margin: 0 0 6px;
 }
 .vs-style-option small {
-  margin: 0 2px;
-  color: var(--vu-text-muted);
-  font-size: var(--vu-text-xs);
-  line-height: var(--vu-leading-relaxed);
-}
-.vs-style-strip {
-  display: flex;
-  height: 34px;
-  border-radius: 4px;
+  display: -webkit-box;
+  min-height: calc(2em * var(--vu-leading-relaxed));
   overflow: hidden;
-  border: 1px solid var(--vu-blue-100);
+  margin: 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-relaxed);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
-.vs-style-strip > span {
-  flex: 1;
+.vs-style-selected {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  border-radius: 50%;
+  background: var(--vu-blue-700);
+  color: var(--vu-neutral-0);
+  font-size: 10px;
+}
+.vs-style-selected svg {
+  color: var(--vu-neutral-0) !important;
+}
+.vs-style-footer {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  align-self: end;
+  margin: 14px 5px 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vu-blue-100);
+}
+.vs-style-tags {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.vs-style-tags > span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-50);
+  color: var(--vu-blue-800);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+  line-height: 1.25;
+}
+.vs-style-palette {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 4px;
+  color: var(--vu-neutral-500);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  line-height: 1;
+}
+.vs-style-dots {
+  display: flex;
+  padding-right: 4px;
+}
+.vs-style-dots > span {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin-right: -4px;
+  border: 1px solid rgb(11 42 77 / 16%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--vu-neutral-0);
 }
 .vs-showcase {
   display: grid;
@@ -2381,7 +2530,9 @@ button.vs-tile:hover {
 .vs-style-option.ant-radio-wrapper {
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
   margin: 0;
+  padding: var(--vu-style-card-padding);
   display: block;
   transition:
     border-color var(--vu-duration-fast) var(--vu-ease-standard),
@@ -2402,7 +2553,9 @@ button.vs-tile:hover {
 }
 .vs-style-option.ant-radio-wrapper > span:last-child {
   display: grid;
+  height: 100%;
   min-width: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
   padding-inline: 0;
 }
 /* ── năng lực chọn thêm + dàn vai ───────────────────────────────────────── */
@@ -2431,6 +2584,12 @@ button.vs-tile:hover {
   display: grid;
   gap: 2px;
   min-width: 0;
+  flex: 1;
+}
+/* Pinned to the far edge of the card, away from the checkbox it must not be mistaken for. */
+.vs-module-play {
+  align-self: center;
+  margin-left: auto;
 }
 .vs-module-copy strong {
   font-size: var(--vu-text-sm);
@@ -2485,7 +2644,7 @@ button.vs-tile:hover {
 }
 .vs-cast li {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   border: 1px solid var(--vu-blue-200);
   border-radius: 999px;
@@ -2494,6 +2653,13 @@ button.vs-tile:hover {
   font-size: var(--vu-text-xs);
   font-weight: var(--vu-font-bold);
   color: var(--vu-blue-900);
+}
+.vs-cast li img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-left: -6px;
 }
 .vs-cast li small,
 .vs-cast > small {
@@ -2577,7 +2743,8 @@ button.vs-tile:hover {
   border-radius: 3px;
   padding: 0 4px;
 }
-.vs-voice-play {
+.vs-voice-play,
+.vs-module-play {
   flex: none;
   width: 32px;
   height: 32px;
@@ -2594,7 +2761,8 @@ button.vs-tile:hover {
     background-color var(--vu-duration-fast) var(--vu-ease-standard),
     color var(--vu-duration-fast) var(--vu-ease-standard);
 }
-.vs-voice-play:hover {
+.vs-voice-play:hover,
+.vs-module-play:hover {
   border-color: var(--vu-blue-400);
   background: var(--vu-blue-50);
 }

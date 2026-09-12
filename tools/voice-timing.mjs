@@ -61,6 +61,8 @@ const voice = {
     // word starts (ElevenLabs timestamps) for spokenAt(); absent for câu recorded without timestamps
     ...(m.words ? { ttsText: m.ttsText, words: m.words } : {}),
     ...(m.alignText ? { alignText: m.alignText } : {}),
+    // who said it: scenes place the dialogue card and its avatar from this, never from hand-written lists
+    ...(m.speaker ? { speaker: m.speaker, avatar: m.avatar || null, side: m.side || 'left', tone: m.tone || 'accent' } : {}),
   })),
 };
 // words arrays stay on one line each so voice.js remains readable

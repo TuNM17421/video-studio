@@ -14,6 +14,13 @@ export interface ModuleDef {
   summary: string;
   /** Tài liệu người viết kịch bản phải theo khi bật năng lực này. */
   template?: string;
+  /** Key trên kho media của video xem thử; server đổi thành URL, thiếu thì nút xem thử không hiện. */
+  previewKey?: string;
+}
+
+/** Một năng lực kèm video xem thử đã dựng sẵn URL (trả qua /api/modules). */
+export interface ModuleInfo extends ModuleDef {
+  preview: { url: string; type: string } | null;
 }
 
 export const MODULES: ModuleDef[] = [
@@ -22,6 +29,7 @@ export const MODULES: ModuleDef[] = [
     name: "Video có hội thoại",
     summary: "Nhiều nhân vật cùng nói, mỗi người một giọng. Kịch bản phải khai ai nói câu nào.",
     template: "templates/kich-ban-hoi-thoai.md",
+    previewKey: "modules/hoi-thoai-mau-v2.mp4",
   },
 ];
 

@@ -4,25 +4,98 @@
   "order": 1,
   "summary": "Style gốc của video bài giảng: nền trắng, navy, xanh và đỏ, chỉ 9 màu.",
   "palette": [
-    { "hex": "#0b2a4d", "name": "Navy", "role": "chữ, thanh phụ đề" },
-    { "hex": "#1d6199", "name": "Xanh", "role": "dữ liệu, hạt, luồng" },
-    { "hex": "#134d8b", "name": "Xanh đậm", "role": "nhãn xanh đậm" },
-    { "hex": "#c72127", "name": "Đỏ", "role": "nhấn, rủi ro, eyebrow" },
-    { "hex": "#ffe0e1", "name": "Hồng nhạt", "role": "thẻ cảnh báo, tag" },
-    { "hex": "#4a4a4a", "name": "Xám", "role": "chữ phụ" },
-    { "hex": "#e0edf8", "name": "Xanh nhạt", "role": "nền connector, lưới" },
-    { "hex": "#f2f7fc", "name": "Nền thẻ", "role": "nền card, glassbox" },
-    { "hex": "#ffffff", "name": "Trắng", "role": "nền canvas" }
+    {
+      "hex": "#0b2a4d",
+      "name": "Navy",
+      "role": "chữ, thanh phụ đề"
+    },
+    {
+      "hex": "#1d6199",
+      "name": "Xanh",
+      "role": "dữ liệu, hạt, luồng"
+    },
+    {
+      "hex": "#134d8b",
+      "name": "Xanh đậm",
+      "role": "nhãn xanh đậm"
+    },
+    {
+      "hex": "#c72127",
+      "name": "Đỏ",
+      "role": "nhấn, rủi ro, eyebrow"
+    },
+    {
+      "hex": "#ffe0e1",
+      "name": "Hồng nhạt",
+      "role": "thẻ cảnh báo, tag"
+    },
+    {
+      "hex": "#4a4a4a",
+      "name": "Xám",
+      "role": "chữ phụ"
+    },
+    {
+      "hex": "#e0edf8",
+      "name": "Xanh nhạt",
+      "role": "nền connector, lưới"
+    },
+    {
+      "hex": "#f2f7fc",
+      "name": "Nền thẻ",
+      "role": "nền card, glassbox"
+    },
+    {
+      "hex": "#ffffff",
+      "name": "Trắng",
+      "role": "nền canvas"
+    }
   ],
   "showcase": [
-    { "component": "Card", "group": "cards", "image": "cards__Card.png" },
-    { "component": "GlassBox", "group": "cards", "image": "cards__GlassBox.png" },
-    { "component": "Flow", "group": "flow", "image": "flow__Flow.png" },
-    { "component": "ProbabilityBars", "group": "data", "image": "data__ProbabilityBars.png" },
-    { "component": "TokenChip", "group": "data", "image": "data__TokenChip.png" },
-    { "component": "Person", "group": "figures", "image": "figures__Person.png" },
-    { "component": "QuestionCard", "group": "beats", "image": "beats__QuestionCard.png" },
-    { "component": "Recap", "group": "beats", "image": "beats__Recap.png" }
+    {
+      "component": "Card",
+      "group": "cards",
+      "image": "cards__Card.png"
+    },
+    {
+      "component": "GlassBox",
+      "group": "cards",
+      "image": "cards__GlassBox.png"
+    },
+    {
+      "component": "Flow",
+      "group": "flow",
+      "image": "flow__Flow.png"
+    },
+    {
+      "component": "ProbabilityBars",
+      "group": "data",
+      "image": "data__ProbabilityBars.png"
+    },
+    {
+      "component": "TokenChip",
+      "group": "data",
+      "image": "data__TokenChip.png"
+    },
+    {
+      "component": "Person",
+      "group": "figures",
+      "image": "figures__Person.png"
+    },
+    {
+      "component": "QuestionCard",
+      "group": "beats",
+      "image": "beats__QuestionCard.png"
+    },
+    {
+      "component": "Recap",
+      "group": "beats",
+      "image": "beats__Recap.png"
+    },
+    {
+      "component": "DialogueCard",
+      "group": "figures",
+      "image": "figures__DialogueCard.png"
+    }
   ],
   "sampleVideo": null,
   "rules": [

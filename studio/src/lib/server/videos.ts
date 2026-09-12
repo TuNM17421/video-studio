@@ -198,16 +198,20 @@ export function styleName(id: string) {
 function moduleSections(modules: string[]) {
   const lines: string[] = [];
   if (modules.includes("dialogue")) {
-    const names = listVoices().voices.map((v) => `${v.name}${v.gender ? ` (${v.gender})` : ""}`).join(" · ");
+    const { voices, characters } = listVoices();
+    const names = characters.length
+      ? characters.map((c) => `${c.name} (giọng ${voices.find((v) => v.id === c.voice)?.name || c.voice})`).join(" · ")
+      : voices.map((v) => `${v.name}${v.gender ? ` (${v.gender})` : ""}`).join(" · ");
     lines.push(
       "## Hội thoại",
       "",
       "Video này có nhiều người nói. Viết kịch bản theo `templates/kich-ban-hoi-thoai.md`, và trong `cues.js`",
-      "mỗi câu phải khai `speaker` (tên một giọng dưới đây) cùng `delivery` (kiểu đọc: ke · giang · nhe · hoi · nhan).",
+      "mỗi câu phải khai `speaker` (tên một nhân vật dưới đây) cùng `delivery` (kiểu đọc: ke · giang · nhe · hoi · nhan).",
       "",
-      `Chỉ được dùng các giọng đã có: ${names}. Tên khác sẽ bị chặn ở bước dry-run.`,
+      `Chỉ được dùng các nhân vật đã có: ${names}. Tên khác sẽ bị chặn ở bước dry-run.`,
       "Gom các câu liền nhau của cùng một người lại — ngữ điệu không nối qua ranh giới nhân vật.",
-      "Thẻ hội thoại trên màn hình dùng component `DialogueCard` với `words={spokenWords(n)}`; không viết caption tay.",
+      "Thẻ hội thoại dùng `DialogueCard` với `words={spokenWords(n)}` và `avatar` lấy từ `VOICE.cues[i].avatar`;",
+      "không viết caption tay, không tự đặt phía hay màu — nhân vật đã mang sẵn.",
       "",
     );
   }

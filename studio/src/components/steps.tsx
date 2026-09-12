@@ -399,13 +399,20 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
  */
 function Cast({ dry }: { dry: DryRun | null }) {
   if (!dry) return null;
-  const roles = new Map<string, number>();
-  for (const c of dry.cues) if (c.speaker) roles.set(c.speaker, (roles.get(c.speaker) || 0) + 1);
+  const roles = new Map<string, { count: number; avatar: string | null }>();
+  for (const c of dry.cues) {
+    if (!c.speaker) continue;
+    const row = roles.get(c.speaker) || { count: 0, avatar: c.avatar };
+    roles.set(c.speaker, { count: row.count + 1, avatar: row.avatar || c.avatar });
+  }
   if (!roles.size) return null;
   return <div className="vs-cast">
     <strong><TeamOutlined />Dàn vai · {roles.size} nhân vật</strong>
     <ul>
-      {[...roles].map(([name, count]) => <li key={name}><span>{name}</span><small>{count} câu</small></li>)}
+      {[...roles].map(([name, { count, avatar }]) => <li key={name}>
+        {avatar ? <img src={avatar} alt="" loading="lazy" /> : null}
+        <span>{name}</span><small>{count} câu</small>
+      </li>)}
     </ul>
     <small>Lấy từ `speaker` của từng câu trong cues.js. Đổi vai thì sửa kịch bản, không sửa ở đây.</small>
   </div>;

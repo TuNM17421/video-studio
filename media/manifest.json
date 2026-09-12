@@ -4,31 +4,67 @@
     "audio/nen/BG_01.mp3": {
       "type": "audio/mpeg",
       "bytes": 3841044,
+      "sha256": "a851f073e282c54fcc45c4f6807ee90117566a352f9ff93b71b2a4e1f29e3f23",
       "updated": "2026-09-12"
     },
     "audio/nen/BG_02.mp3": {
       "type": "audio/mpeg",
       "bytes": 5505358,
+      "sha256": "2f4092370028e8886a96952328ac198932b37adca6d0280631d8a557e61a724a",
       "updated": "2026-09-12"
     },
     "audio/nen/BG_03.mp3": {
       "type": "audio/mpeg",
       "bytes": 7681253,
+      "sha256": "7991e797fde7a91cf0b2c07884fb0c91c7402f115cb8f9fd2b34367d2a9004e7",
       "updated": "2026-09-12"
     },
     "audio/nen/bg.wav": {
       "type": "audio/wav",
       "bytes": 69148844,
+      "sha256": "034599bac871d597357873e70fbf2e635dbbf378bc4240d760b6684cde899980",
       "updated": "2026-09-12"
     },
     "audio/quiz/nhac-quiz-1-thinking-timer.mp3": {
       "type": "audio/mpeg",
       "bytes": 2552058,
+      "sha256": "a70a591b9d501096fb69adcbfa30dfa2b0f4e276d6b648059b4b1643c2db998d",
       "updated": "2026-09-12"
     },
     "audio/quiz/nhac-quiz-3-loop-ngan-18s.mp3": {
       "type": "audio/mpeg",
       "bytes": 593664,
+      "sha256": "16584cc47fb97fcd26525b3e8aa8245061e49a9962db460c926ee44c1885f8e1",
+      "updated": "2026-09-12"
+    },
+    "avatars/toi_1.jpg": {
+      "type": "image/jpeg",
+      "bytes": 138525,
+      "sha256": "64f194fc69b6026378a1ec1295acf1a5310074283e02b55577cba7c0aa9479cd",
+      "updated": "2026-09-12"
+    },
+    "avatars/toi_2.jpg": {
+      "type": "image/jpeg",
+      "bytes": 74582,
+      "sha256": "271840d71659ce95d5977c8f24b945818c9b46e3892af51cf082368d4d3ee630",
+      "updated": "2026-09-12"
+    },
+    "avatars/tu_1.jpg": {
+      "type": "image/jpeg",
+      "bytes": 40944,
+      "sha256": "af877b449fc66bc6fbb135d9e66a1cec7df6e6e6b1e09cea638fff3785f59c8e",
+      "updated": "2026-09-12"
+    },
+    "avatars/tu_2.jpg": {
+      "type": "image/jpeg",
+      "bytes": 48481,
+      "sha256": "3e53a51737580b87671951768c39e615ce8aba0a5d1760407292ec946338fc9e",
+      "updated": "2026-09-12"
+    },
+    "modules/hoi-thoai-mau-v2.mp4": {
+      "type": "video/mp4",
+      "bytes": 500381,
+      "sha256": "b4af7be5ca84b00d8b75d66c5d0bfea141b41e57afd12b7ff647048eedd1c644",
       "updated": "2026-09-12"
     },
     "styles/lesson-lab/sample.mp4": {

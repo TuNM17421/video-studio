@@ -143,7 +143,8 @@ async function loadCues(file) {
   const cues = mod.CUES || mod.default;
   if (!Array.isArray(cues) || !cues.every((c) => c.text || c.silent)) fail(`${file} must export CUES = [{ n, text, … }]`);
   // Optional per cue: `speaker` = which voice in voices.json says it (dialogue) · `delivery` = the reading
-  // pace preset · `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as '[curious]';
+  // pace preset · `model` = read THIS câu with another model (one câu a model mispronounces, without
+  // re-billing the rest) · `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as '[curious]';
   // never shown or captioned) · `silent` = seconds of silence instead of speech (text '') ·
   // `pauseAfter` = seconds of silence after this cue (overrides --pause).
   return cues.map((c, i) => ({
@@ -151,6 +152,7 @@ async function loadCues(file) {
     text: c.text.trim(),
     speaker: c.speaker || '',
     delivery: c.delivery || '',
+    model: c.model || '',
     voice: c.voice || '',
     silent: c.silent || 0,
     pauseAfter: c.pauseAfter,
@@ -213,8 +215,10 @@ async function generate() {
   if (!args['dry-run'] && !mock) need('key', 'voice');
   if (cfg.voice) note(`voice ${cfg.voiceName || cfg.voice} (${cfg.voice}) ← ${cfg.voiceFrom}`);
 
-  // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400).
-  const v3 = /^eleven_v3/.test(cfg.model);
+  // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400). A câu may
+  // override the model, so this is decided per câu rather than once for the run.
+  const modelOf = (c) => c.model || cfg.model;
+  const isV3 = (c) => /^eleven_v3/.test(modelOf(c));
 
   /**
    * Who reads each câu. `speaker` (a name or id in voices.json) casts dialogue; without it the whole video
@@ -222,21 +226,23 @@ async function generate() {
    * Note `c.voice` is not this — it has always been an eleven_v3 audio tag such as `[curious]`.
    */
   const cast = cues.map((c) => {
-    if (!c.speaker) return { voice: { id: cfg.voice, name: cfg.voiceName || cfg.voice, speed: 1 }, speed: cfg.settings.speed };
-    let voice;
+    if (!c.speaker) {
+      return { name: cfg.voiceName || cfg.voice, voice: { id: cfg.voice }, speed: cfg.settings.speed, avatar: null, side: 'left', tone: 'accent' };
+    }
+    let who;
     try {
-      voice = castSpeaker(c.speaker);
+      who = castSpeaker(c.speaker);
     } catch (e) {
       fail(`câu ${c.n}: ${e.message}`);
     }
     let paced;
     try {
-      paced = speedFor(voice, c.delivery);
+      paced = speedFor(who, c.delivery);
     } catch (e) {
       fail(`câu ${c.n}: ${e.message}`);
     }
     if (paced.clamped) note(`! câu ${c.n}: tốc độ ${paced.wanted} ngoài khoảng API nhận, dùng ${paced.speed}`);
-    return { voice, speed: paced.speed };
+    return { ...who, speed: paced.speed };
   });
   const dialogue = cues.some((c) => c.speaker);
 
@@ -246,32 +252,37 @@ async function generate() {
     const c = cues[j];
     if (!c || !c.text) return undefined;
     if (cast[j].voice.id !== cast[i].voice.id) return undefined;
+    // Stitching a câu read by another model would describe audio that never runs next to it.
+    if (modelOf(c) !== modelOf(cues[i])) return undefined;
     return ttsText(c.text, pronounce);
   };
   const items = cues.map((c, i) => {
+    const v3 = isV3(c);
     const text = c.silent ? '' : `${v3 && c.voice ? `${c.voice} ` : ''}${ttsText(c.text, pronounce)}`;
     const body = {
       text,
-      model_id: cfg.model,
+      model_id: modelOf(c),
       language_code: cfg.language || undefined,
       voice_settings: { ...cfg.settings, speed: cast[i].speed },
       previous_text: v3 ? undefined : spoken(i - 1, i),
       next_text: v3 ? undefined : spoken(i + 1, i),
     };
     const hash = c.silent ? `silent-${c.silent}-${sampleRate}` : sha256(JSON.stringify({ voice: cast[i].voice.id, format: cfg.format, mock, ...body }));
-    return { ...c, voiceId: cast[i].voice.id, speakerName: cast[i].voice.name, speed: cast[i].speed, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`), align: path.join(cacheDir, `${hash}.align.json`) };
+    return { ...c, voiceId: cast[i].voice.id, speakerName: cast[i].name, avatar: cast[i].avatar, side: cast[i].side, tone: cast[i].tone, speed: cast[i].speed, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`), align: path.join(cacheDir, `${hash}.align.json`) };
   });
 
   if (dialogue) {
     const roles = new Map();
     for (const c of items) roles.set(c.speakerName, (roles.get(c.speakerName) || 0) + 1);
     note(`hội thoại · ${roles.size} nhân vật: ${[...roles].map(([n, k]) => `${n} (${k} câu)`).join(' · ')}`);
+    const noFace = [...new Set(items.filter((c) => c.speaker && !c.avatar).map((c) => c.speakerName))];
+    if (noFace.length) note(`! chưa có avatar trên kho media: ${noFace.join(' · ')} — thẻ hội thoại sẽ chỉ hiện tên`);
   }
 
   const chars = items.reduce((s, c) => s + [...c.ttsText].length, 0);
   if (args['dry-run'] && args.json) {
     // Machine-readable summary (the studio web shows it before asking to spend credit).
-    const rows = items.map((c) => ({ n: c.n, chars: [...c.ttsText].length, cached: fs.existsSync(c.cache), silent: Boolean(c.silent), text: c.ttsText, speaker: c.speaker ? c.speakerName : null, speed: c.speed }));
+    const rows = items.map((c) => ({ n: c.n, chars: [...c.ttsText].length, cached: fs.existsSync(c.cache), silent: Boolean(c.silent), text: c.ttsText, speaker: c.speaker ? c.speakerName : null, avatar: c.avatar || null, speed: c.speed }));
     const billable = rows.filter((r) => !r.cached).reduce((sum, r) => sum + r.chars, 0);
     console.log(JSON.stringify({ model: cfg.model, format: cfg.format, voice: cfg.voice || null, cues: rows, chars, billable, toGenerate: rows.filter((r) => !r.cached && !r.silent).length }));
     return;
@@ -279,7 +290,7 @@ async function generate() {
   if (args['dry-run']) {
     for (const c of items) {
       const cached = fs.existsSync(c.cache) ? 'cached' : 'new';
-      const who = c.speaker ? ` · ${c.speakerName}${c.delivery ? ` (${c.delivery}, ×${c.speed})` : ''}` : '';
+      const who = `${c.speaker ? ` · ${c.speakerName}${c.delivery ? ` (${c.delivery}, ×${c.speed})` : ''}` : ''}${c.model ? ` · model ${c.model}` : ''}`;
       console.log(`câu ${String(c.n).padStart(2, '0')}${who} · ${[...c.ttsText].length} ký tự · ${cached}${c.ttsText !== c.text ? ' · có thay cách đọc' : ''}\n  ${c.ttsText}`);
     }
     const billable = items.filter((c) => !fs.existsSync(c.cache)).reduce((s, c) => s + [...c.ttsText].length, 0);
@@ -330,7 +341,7 @@ async function generate() {
       pauseAfter: c.pauseAfter,
       authoredFrames: c.authoredFrames,
       // Scenes read `speaker` back from voice.cues.json to place the right dialogue card.
-      extra: { cache: path.basename(c.cache), ...(c.speaker ? { speaker: c.speakerName, voiceId: c.voiceId, delivery: c.delivery || null, speed: c.speed } : {}) },
+      extra: { cache: path.basename(c.cache), ...(c.model ? { model: c.model } : {}), ...(c.speaker ? { speaker: c.speakerName, voiceId: c.voiceId, delivery: c.delivery || null, speed: c.speed, avatar: c.avatar, side: c.side, tone: c.tone } : {}) },
       align: c.align,
     })),
     sampleRate,

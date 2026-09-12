@@ -34,7 +34,7 @@ export default function DesignSystemPage() {
     <div className={styles.content}>
       <section className={styles.hero} aria-labelledby="design-system-title">
         <div className={styles.heroCopy}>
-          <p className={styles.kicker}><span /> Studio foundations · v1.3.4</p>
+          <p className={styles.kicker}><span /> Studio foundations · v1.3.6</p>
           <h1 id="design-system-title">Bàn dựng học liệu,<br /><em>rõ đến từng cue.</em></h1>
           <p className={styles.lede}>Một ngôn ngữ giao diện cho người dựng video bài giảng: màu VinUni làm mốc, typography Việt dễ đọc và trạng thái vận hành chính xác như timecode.</p>
           <dl className={styles.heroFacts}>
@@ -157,6 +157,7 @@ export default function DesignSystemPage() {
           <li><strong>Đúng hệ:</strong> không thêm hex, font hay component library ngoài token contract mà không ghi lý do.</li>
           <li><strong>Đúng component boundary:</strong> CSS cho input native không được tràn vào input nội bộ của Ant Select, Cascader hoặc TreeSelect.</li>
           <li><strong>Đúng form spacing:</strong> textarea có bộ đếm phải dành riêng một hàng 24 px bên dưới; action kế tiếp không được chạm hoặc đè lên counter.</li>
+          <li><strong>Đúng style picker:</strong> mỗi lựa chọn phải cho thấy ngôn ngữ hình ảnh bằng mini-scene gồm ba component tiêu biểu, hiển thị trọn hình trong khung cố định và có padding 14 px; palette chỉ là metadata phụ, không dùng một dải màu làm preview chính.</li>
           <li><strong>Đúng navigation:</strong> sidebar desktop thu gọn thành rail 72 px; mỗi icon dùng điểm chạm 44 px, active state bao trọn điểm chạm và nhãn chuyển sang tooltip. Control thu gọn nằm trong header sidebar; khi rail đóng, logo nhường chỗ cho control mở rộng lúc hover hoặc focus. Trạng thái rail phải giữ nguyên khi đổi route, không nháy về sidebar mở. Mobile luôn hiển thị đầy đủ nhãn.</li>
           <li><strong>Đúng đường đi:</strong> cuối mỗi cổng có Back và Next; Next vẫn hiện khi bị khóa và nói rõ điều kiện để tiếp tục.</li>
           <li><strong>Đúng hierarchy:</strong> production flow dùng active 100%, completed 70%, future 35%; chữ trạng thái vẫn phải giữ contrast đọc được.</li>
