@@ -2371,6 +2371,12 @@ button.vs-tile:hover {
   display: grid;
   gap: 2px;
   min-width: 0;
+  flex: 1;
+}
+/* Pinned to the far edge of the card, away from the checkbox it must not be mistaken for. */
+.vs-module-play {
+  align-self: center;
+  margin-left: auto;
 }
 .vs-module-copy strong {
   font-size: var(--vu-text-sm);
@@ -2383,10 +2389,6 @@ button.vs-tile:hover {
   color: var(--vu-text-muted);
 }
 /* The template path is the one thing to act on once the capability is on — let it stand out then. */
-.vs-module-preview {
-  flex: none;
-  align-self: center;
-}
 .vs-module-copy code {
   padding: 1px 5px;
   border-radius: 4px;
@@ -2397,11 +2399,7 @@ button.vs-tile:hover {
     background-color var(--vu-duration-fast) var(--vu-ease-standard),
     color var(--vu-duration-fast) var(--vu-ease-standard);
 }
-.vs-module.is-on .vs-module-preview {
-  flex: none;
-  align-self: center;
-}
-.vs-module-copy code {
+.vs-module.is-on .vs-module-copy code {
   background: var(--vu-neutral-0);
   border-color: var(--vu-blue-300);
   color: var(--vu-blue-800);
@@ -2532,7 +2530,8 @@ button.vs-tile:hover {
   border-radius: 3px;
   padding: 0 4px;
 }
-.vs-voice-play {
+.vs-voice-play,
+.vs-module-play {
   flex: none;
   width: 32px;
   height: 32px;
@@ -2549,7 +2548,8 @@ button.vs-tile:hover {
     background-color var(--vu-duration-fast) var(--vu-ease-standard),
     color var(--vu-duration-fast) var(--vu-ease-standard);
 }
-.vs-voice-play:hover {
+.vs-voice-play:hover,
+.vs-module-play:hover {
   border-color: var(--vu-blue-400);
   background: var(--vu-blue-50);
 }

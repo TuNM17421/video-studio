@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, LockOutlined, PlayCircleFilled, RobotOutlined, WarningFilled } from "@ant-design/icons";
-import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Upload } from "antd";
+import { CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, LockOutlined, PlayCircleFilled, RobotOutlined, WarningFilled } from "@ant-design/icons";
+import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
@@ -67,14 +67,20 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
 function ModulePreview({ module: m }: { module: ModuleInfo }) {
   const [open, setOpen] = useState(false);
   if (!m.preview) return null;
+  const label = `Xem thử video mẫu · ${m.name}`;
   return <>
-    <Button
-      size="small"
-      icon={<PlayCircleFilled />}
-      className="vs-module-preview"
-      // Inside the card's own label: previewing must not toggle the capability.
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
-    >Xem thử</Button>
+    {/* Same round affordance as the voice picker's listen button — one gesture, one shape. */}
+    <Tooltip title={label}>
+      <button
+        type="button"
+        className="vs-module-play"
+        aria-label={label}
+        // Inside the card's own label: previewing must not toggle the capability.
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
+      >
+        <CaretRightFilled />
+      </button>
+    </Tooltip>
     <Modal
       open={open}
       onCancel={() => setOpen(false)}
