@@ -31,7 +31,9 @@ Source script, notes and outputs live in `projects/<video-id>/` (kich-ban-goc.md
 style is `styles/<style>.json` (palette, showcase components, rules — they override defaults).
 1. **cues** — script → `projects/<id>/kich-ban-goc.md`; `cues.js` (text verbatim; `createSpeech(RAW, VOICE)`
    from lib/speech.js); `voice-timing.mjs --clear`; TTS `--dry-run`.
-2. **voice** — two sources, both ending at `voice/out/<id>/{voice.wav, voice.cues.json}`:
+2. **voice** — giọng đọc chọn trong `voices.json` (danh mục được commit: id, tên, giới tính, key file mẫu
+   trên R2, một giọng `"default": true`). Studio có bộ chọn kèm nút nghe thử; CLI nhận `--voice <id|tên>`,
+   thứ tự ưu tiên `--voice` → `ELEVENLABS_VOICE_ID` → mặc định trong danh mục. Hai nguồn audio, đều kết thúc ở `voice/out/<id>/{voice.wav, voice.cues.json}`:
    *ElevenLabs* — `node tts-elevenlabs/tts.mjs generate --cues <video>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id>`
    (dry-run first, ask before spending credit; key in `tts-elevenlabs/.env`, never print/commit it).
    *Recorded or local model* — `node tools/voice-export.mjs <video dir> --out projects/<id>/voice-script`
@@ -60,6 +62,22 @@ server itself runs TTS (key in RAM only), the audio import, voice-timing, render
 `/ds` (render/QA base). `STUDIO_TTS_MOCK=1` = silent mock voice for development. New styles = new
 `styles/*.json`, no code change.
 
+## Video có hội thoại
+Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
+Mỗi cue khai `speaker` (tên/id một giọng trong `voices.json`) và `delivery` (kiểu đọc trong
+`voices.json → deliveries`, đổi tốc độ). `speaker` phải có sẵn trong danh mục, tên lạ thì `--dry-run` dừng
+ngay trước khi tốn credit; thêm nhân vật mới là việc của dev. Đừng nhầm với `cue.voice` — trường đó đã có
+từ trước và là audio tag của eleven_v3 (`[curious]`). `tts.mjs` gọi mỗi câu bằng giọng của người nói, và chỉ
+nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Mẫu viết kịch bản:
+`templates/kich-ban-hoi-thoai.md`; `npm run voices` in danh sách giọng và kiểu đọc.
+
+## Media nặng (`media/`, Cloudflare R2)
+Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`
+(được commit) giữ base URL + danh sách asset, nên ai clone repo về cũng xem được mà không cần cấu hình gì.
+Chủ bucket bỏ file vào `media/files/<key>` (quy ước `styles/<mã style>/sample.mp4` = video mẫu của style),
+`npm run media -- --dry-run` rồi `npm run media`, và commit manifest. Khoá nằm ở `media/.env` (không bao giờ
+commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "không khả dụng", không vỡ giao diện.
+
 ## Notes
 - Imported voice: `docs/decisions/voice-align.md` records why word timestamps come from Whisper alone and
   what would justify moving to forced alignment; `/voice-align-check` measures whether that day has come.
@@ -67,4 +85,7 @@ server itself runs TTS (key in RAM only), the audio import, voice-timing, render
   `studio/node_modules/next/dist/docs/` before changing studio code.
 - ElevenLabs is used only here; the Video-studio Remotion repo (the original style source) mandates Google
   Cloud TTS. This repo no longer depends on Video-studio.
+- `node tools/voice-sample.mjs --text "…" "Tên=<voice id>" …` đọc thử một đoạn bằng nhiều giọng ElevenLabs,
+  mỗi giọng một WAV trong `voice/samples/` — để chọn người dẫn hoặc lấy mẫu ~10 giây cho model local.
+  Luôn `--dry-run` trước vì mỗi yêu cầu đều bị tính ký tự.
 - Reply to the user in Vietnamese.

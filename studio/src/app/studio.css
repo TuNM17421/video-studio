@@ -388,6 +388,20 @@ button.vs-tile:hover {
   padding: 16px;
   background: var(--surface);
 }
+/* Kho media ngoại tuyến: tiêu đề, lý do và nút thử lại xếp dọc trong card "không khả dụng". */
+.vs-sample-empty .ant-empty-description {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+.vs-sample-empty .ant-empty-description strong {
+  color: var(--text);
+}
+.vs-sample-empty .ant-empty-description small {
+  color: var(--subtle);
+  line-height: var(--vu-leading-normal);
+}
 
 /* ── plan form ──────────────────────────────────────────────────────────── */
 .vs-form-requirements {
@@ -2483,6 +2497,223 @@ button.vs-tile:hover {
   min-width: 0;
   grid-template-rows: auto auto minmax(0, 1fr);
   padding-inline: 0;
+}
+/* ── năng lực chọn thêm + dàn vai ───────────────────────────────────────── */
+.vs-modules {
+  display: grid;
+  gap: 8px;
+}
+.vs-module {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: var(--vu-neutral-0);
+  cursor: pointer;
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background-color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-module.is-on {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-lesson-surface);
+}
+.vs-module-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.vs-module-copy strong {
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-bold);
+  color: var(--vu-blue-900);
+}
+.vs-module-copy small {
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-muted);
+}
+/* The template path is the one thing to act on once the capability is on — let it stand out then. */
+.vs-module-copy code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  letter-spacing: 0.01em;
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background-color var(--vu-duration-fast) var(--vu-ease-standard),
+    color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-module.is-on .vs-module-copy code {
+  background: var(--vu-neutral-0);
+  border-color: var(--vu-blue-300);
+  color: var(--vu-blue-800);
+  font-weight: var(--vu-font-bold);
+}
+.vs-cast {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 9px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: var(--vu-lesson-surface);
+}
+.vs-cast > strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--vu-text-sm);
+  color: var(--vu-blue-900);
+}
+.vs-cast ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-cast li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: 999px;
+  padding: 3px 12px;
+  background: var(--vu-neutral-0);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-bold);
+  color: var(--vu-blue-900);
+}
+.vs-cast li small,
+.vs-cast > small {
+  font-weight: 500;
+  color: var(--vu-text-muted);
+}
+/* ── voice picker ───────────────────────────────────────────────────────── */
+.vs-voice-picker {
+  display: grid;
+  gap: 10px;
+}
+.vs-voice-picker .ant-radio-group {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 8px;
+}
+.vs-voice-option.ant-radio-wrapper {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  display: block;
+  border: 1px solid var(--vu-blue-100);
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: var(--vu-neutral-0);
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background-color var(--vu-duration-fast) var(--vu-ease-standard),
+    box-shadow var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-voice-option.ant-radio-wrapper.is-selected {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-lesson-surface);
+  box-shadow: 0 0 0 1px var(--vu-blue-200), var(--vu-shadow-xs);
+}
+.vs-voice-option.ant-radio-wrapper > .ant-radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.vs-voice-option.ant-radio-wrapper > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-inline: 0;
+}
+/* The escape hatch is a full-width row: it carries an input, not a voice to compare. */
+.vs-voice-option.is-other {
+  grid-column: 1 / -1;
+}
+.vs-voice-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.vs-voice-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-bold);
+  color: var(--vu-blue-900);
+}
+.vs-voice-copy small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-voice-tag {
+  font-style: normal;
+  font-size: 8px;
+  font-weight: var(--vu-font-bold);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--blue);
+  border: 1px solid var(--vu-blue-200);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.vs-voice-play {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--vu-blue-200);
+  background: var(--vu-neutral-0);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color var(--vu-duration-fast) var(--vu-ease-standard),
+    background-color var(--vu-duration-fast) var(--vu-ease-standard),
+    color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-voice-play:hover {
+  border-color: var(--vu-blue-400);
+  background: var(--vu-blue-50);
+}
+.vs-voice-play.is-playing {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--vu-neutral-0);
+}
+.vs-voice-play.is-failed {
+  border-color: var(--vu-red-100);
+  color: var(--red);
+}
+.vs-voice-play.is-empty {
+  cursor: default;
+  border-style: dashed;
+  color: var(--vu-neutral-400);
+}
+.vs-voice-id {
+  margin-top: 6px;
+  max-width: 420px;
+}
+.vs-voice-note {
+  margin: 0;
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+  color: var(--subtle);
 }
 .vs-style-form-item {
   margin-bottom: 18px;

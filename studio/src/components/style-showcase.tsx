@@ -1,7 +1,8 @@
 "use client";
 
 import { CheckOutlined } from "@ant-design/icons";
-import { Collapse, Empty, Radio } from "antd";
+import { Collapse, Radio } from "antd";
+import { SampleMedia } from "@/components/sample-media";
 import { fileUrl } from "@/lib/client";
 import type { PaletteColor, Showcase, StyleDef } from "@/lib/types";
 
@@ -84,9 +85,7 @@ function ShowcaseContent({ style }: { style: StyleDef }) {
     </div>
     <div className="vs-showcase-block">
       <h4>Video mẫu</h4>
-      {style.sampleVideo
-        ? <video className="video-player" src={fileUrl(style.sampleVideo)} controls preload="metadata" />
-        : <Empty className="vs-sample-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có video mẫu" />}
+      <SampleMedia asset={style.sampleVideo} />
     </div>
   </div>;
 }

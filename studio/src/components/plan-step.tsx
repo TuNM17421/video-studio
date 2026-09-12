@@ -8,6 +8,7 @@ import { api } from "@/lib/client";
 import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
 import type { AgentConfig, AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { SourcePickerField } from "./source-picker";
+import { MODULES, moduleNames } from "@/lib/modules";
 import { StylePicker, StyleShowcase } from "./style-showcase";
 
 const DAYS = Array.from({ length: 30 }, (_, i) => `Day${String(i + 1).padStart(2, "0")}`);
@@ -37,7 +38,7 @@ export interface PlanDraft {
 export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude"): PlanDraft => ({
   id: "",
   agentProvider,
-  request: { style, day: "Day02", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
+  request: { style, modules: [], day: "Day02", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
 
@@ -55,6 +56,7 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
     r.feedbackDir && `Feedback so với bản cũ: ${r.feedbackDir}`,
     r.oldVideoDir && `Video cũ: ${r.oldVideoDir}`,
     showcase && `Component tiêu biểu của style: ${showcase}. Dùng khi nội dung phù hợp.`,
+    r.modules.includes("dialogue") && "Video có hội thoại: kịch bản theo templates/kich-ban-hoi-thoai.md, mỗi câu trong cues.js khai speaker + delivery, chỉ dùng giọng có trong voices.json.",
     ...(style?.rules || []).map((rule) => `- ${rule}`),
     `Làm đủ: ${scope}.`,
     r.notes.trim() && `Ghi chú: ${r.notes.trim()}`,
@@ -180,6 +182,21 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
             : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
       {style && <StyleShowcase style={style} collapsible />}
+      <Form.Item className="vs-modules-field" label={<span className="vs-section-title">Bổ sung</span>}>
+        <div className="vs-modules">
+          {MODULES.map((m) => <label key={m.id} className={`vs-module ${draft.request.modules.includes(m.id) ? "is-on" : ""}`}>
+            <Checkbox
+              checked={draft.request.modules.includes(m.id)}
+              disabled={busy}
+              onChange={(e) => set({ modules: e.target.checked ? [...draft.request.modules, m.id] : draft.request.modules.filter((x) => x !== m.id) })}
+            />
+            <span className="vs-module-copy">
+              <strong>{m.name}</strong>
+              <small>{m.summary}{m.template ? <> Kịch bản viết theo <code>{m.template}</code>.</> : null}</small>
+            </span>
+          </label>)}
+        </div>
+      </Form.Item>
       <div className="vs-agent-binding">
         <div className="vs-agent-binding-copy">
           <RobotOutlined />
@@ -264,6 +281,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
       { key: "feedback", label: "Feedback bản cũ", children: r.feedbackDir || "—" },
       { key: "video", label: "Video cũ", children: r.oldVideoDir || "—" },
+      { key: "modules", label: "Bổ sung", children: r.modules.length ? moduleNames(r.modules).join(", ") : "—" },
       { key: "notes", label: "Ghi chú", children: r.notes || "—" },
     ]} />
     {style && <StyleShowcase style={style} />}

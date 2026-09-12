@@ -23,6 +23,8 @@ export interface Scope {
 
 export interface VideoRequest {
   style: string;
+  /** Năng lực chọn thêm (lib/modules.ts) — ví dụ "dialogue". Rỗng = video một giọng như thường. */
+  modules: string[];
   day: string;
   title: string;
   scriptName: string;
@@ -141,7 +143,7 @@ export interface DryRun {
   chars: number;
   billable: number;
   toGenerate: number;
-  cues: { n: number; chars: number; cached: boolean; silent: boolean; text: string }[];
+  cues: { n: number; chars: number; cached: boolean; silent: boolean; text: string; speaker: string | null; speed: number }[];
 }
 
 export interface Artifacts {
@@ -194,6 +196,35 @@ export interface Showcase {
   image: string;
 }
 
+/** A file in the public R2 media bucket, already resolved to a URL the browser can play. */
+export interface MediaAsset {
+  key: string;
+  url: string;
+  type: string;
+  bytes: number;
+}
+
+/**
+ * One narrator in the committed catalog (voices.json). `engine` says who can speak it — "elevenlabs" now,
+ * "local" once a cloned model reads the same line — so adding a local voice later is a JSON edit.
+ */
+export interface VoiceDef {
+  id: string;
+  name: string;
+  engine: "elevenlabs" | "local";
+  gender?: string;
+  summary?: string;
+  /** Resolved from the media manifest; null when the sample has not been pushed to R2. */
+  sample: MediaAsset | null;
+  isDefault: boolean;
+}
+
+export interface VoiceCatalog {
+  /** The line every sample reads, so the picker can say what you are about to hear. */
+  sampleText: string;
+  voices: VoiceDef[];
+}
+
 export interface StyleDef {
   id: string;
   name: string;
@@ -202,7 +233,8 @@ export interface StyleDef {
   summary: string;
   palette: PaletteColor[];
   showcase: Showcase[];
-  sampleVideo: string | null;
+  /** Resolved from the media manifest; null when nothing has been pushed for this style. */
+  sampleVideo: MediaAsset | null;
   rules: string[];
   /** Resolved from `extends`: the parent's palette / showcase, shown before this style's additions. */
   base?: { name: string; palette: PaletteColor[]; showcase: Showcase[] };
