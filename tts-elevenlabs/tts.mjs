@@ -24,7 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, FPS, sha256 } from '../tools/lib/voice-audio.mjs';
-import { defaultVoice, resolveVoice } from '../tools/lib/voices.mjs';
+import { castSpeaker, defaultVoice, resolveVoice, speedFor } from '../tools/lib/voices.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const API = 'https://api.elevenlabs.io';
@@ -140,12 +140,15 @@ async function loadCues(file) {
   const mod = await import(`${pathToFileURL(file).href}?t=${Date.now()}`);
   const cues = mod.CUES || mod.default;
   if (!Array.isArray(cues) || !cues.every((c) => c.text || c.silent)) fail(`${file} must export CUES = [{ n, text, … }]`);
-  // Optional per cue: `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as
-  // '[curious]'; never shown or captioned) · `silent` = seconds of silence instead of speech (text '') ·
+  // Optional per cue: `speaker` = which voice in voices.json says it (dialogue) · `delivery` = the reading
+  // pace preset · `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as '[curious]';
+  // never shown or captioned) · `silent` = seconds of silence instead of speech (text '') ·
   // `pauseAfter` = seconds of silence after this cue (overrides --pause).
   return cues.map((c, i) => ({
     n: c.n ?? i + 1,
     text: c.text.trim(),
+    speaker: c.speaker || '',
+    delivery: c.delivery || '',
     voice: c.voice || '',
     silent: c.silent || 0,
     pauseAfter: c.pauseAfter,
@@ -207,25 +210,63 @@ async function generate() {
 
   // eleven_v3 takes audio tags but no request stitching (previous_text / next_text → HTTP 400).
   const v3 = /^eleven_v3/.test(cfg.model);
-  const spoken = (j) => (cues[j] && cues[j].text ? ttsText(cues[j].text, pronounce) : undefined);
+
+  /**
+   * Who reads each câu. `speaker` (a name or id in voices.json) casts dialogue; without it the whole video
+   * is the one voice chosen for the run. Unknown names stop the run here, before anything is billed.
+   * Note `c.voice` is not this — it has always been an eleven_v3 audio tag such as `[curious]`.
+   */
+  const cast = cues.map((c) => {
+    if (!c.speaker) return { voice: { id: cfg.voice, name: cfg.voiceName || cfg.voice, speed: 1 }, speed: cfg.settings.speed };
+    let voice;
+    try {
+      voice = castSpeaker(c.speaker);
+    } catch (e) {
+      fail(`câu ${c.n}: ${e.message}`);
+    }
+    let paced;
+    try {
+      paced = speedFor(voice, c.delivery);
+    } catch (e) {
+      fail(`câu ${c.n}: ${e.message}`);
+    }
+    if (paced.clamped) console.log(`! câu ${c.n}: tốc độ ${paced.wanted} ngoài khoảng API nhận, dùng ${paced.speed}`);
+    return { voice, speed: paced.speed };
+  });
+  const dialogue = cues.some((c) => c.speaker);
+
+  // Prosody carries across câu through previous_text / next_text — but only within one speaker's run.
+  // Feeding a character the line another character is about to say bends their delivery toward it.
+  const spoken = (j, i) => {
+    const c = cues[j];
+    if (!c || !c.text) return undefined;
+    if (cast[j].voice.id !== cast[i].voice.id) return undefined;
+    return ttsText(c.text, pronounce);
+  };
   const items = cues.map((c, i) => {
     const text = c.silent ? '' : `${v3 && c.voice ? `${c.voice} ` : ''}${ttsText(c.text, pronounce)}`;
     const body = {
       text,
       model_id: cfg.model,
       language_code: cfg.language || undefined,
-      voice_settings: cfg.settings,
-      previous_text: v3 ? undefined : spoken(i - 1),
-      next_text: v3 ? undefined : spoken(i + 1),
+      voice_settings: { ...cfg.settings, speed: cast[i].speed },
+      previous_text: v3 ? undefined : spoken(i - 1, i),
+      next_text: v3 ? undefined : spoken(i + 1, i),
     };
-    const hash = c.silent ? `silent-${c.silent}-${sampleRate}` : sha256(JSON.stringify({ voice: cfg.voice, format: cfg.format, mock, ...body }));
-    return { ...c, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`), align: path.join(cacheDir, `${hash}.align.json`) };
+    const hash = c.silent ? `silent-${c.silent}-${sampleRate}` : sha256(JSON.stringify({ voice: cast[i].voice.id, format: cfg.format, mock, ...body }));
+    return { ...c, voiceId: cast[i].voice.id, speakerName: cast[i].voice.name, speed: cast[i].speed, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`), align: path.join(cacheDir, `${hash}.align.json`) };
   });
+
+  if (dialogue) {
+    const roles = new Map();
+    for (const c of items) roles.set(c.speakerName, (roles.get(c.speakerName) || 0) + 1);
+    console.log(`hội thoại · ${roles.size} nhân vật: ${[...roles].map(([n, k]) => `${n} (${k} câu)`).join(' · ')}`);
+  }
 
   const chars = items.reduce((s, c) => s + [...c.ttsText].length, 0);
   if (args['dry-run'] && args.json) {
     // Machine-readable summary (the studio web shows it before asking to spend credit).
-    const rows = items.map((c) => ({ n: c.n, chars: [...c.ttsText].length, cached: fs.existsSync(c.cache), silent: Boolean(c.silent), text: c.ttsText }));
+    const rows = items.map((c) => ({ n: c.n, chars: [...c.ttsText].length, cached: fs.existsSync(c.cache), silent: Boolean(c.silent), text: c.ttsText, speaker: c.speaker ? c.speakerName : null, speed: c.speed }));
     const billable = rows.filter((r) => !r.cached).reduce((sum, r) => sum + r.chars, 0);
     console.log(JSON.stringify({ model: cfg.model, format: cfg.format, voice: cfg.voice || null, cues: rows, chars, billable, toGenerate: rows.filter((r) => !r.cached && !r.silent).length }));
     return;
@@ -233,7 +274,8 @@ async function generate() {
   if (args['dry-run']) {
     for (const c of items) {
       const cached = fs.existsSync(c.cache) ? 'cached' : 'new';
-      console.log(`câu ${String(c.n).padStart(2, '0')} · ${[...c.ttsText].length} ký tự · ${cached}${c.ttsText !== c.text ? ' · có thay cách đọc' : ''}\n  ${c.ttsText}`);
+      const who = c.speaker ? ` · ${c.speakerName}${c.delivery ? ` (${c.delivery}, ×${c.speed})` : ''}` : '';
+      console.log(`câu ${String(c.n).padStart(2, '0')}${who} · ${[...c.ttsText].length} ký tự · ${cached}${c.ttsText !== c.text ? ' · có thay cách đọc' : ''}\n  ${c.ttsText}`);
     }
     const billable = items.filter((c) => !fs.existsSync(c.cache)).reduce((s, c) => s + [...c.ttsText].length, 0);
     console.log(`\n${items.length} câu · ${chars} ký tự · sẽ tính phí khoảng ${billable} ký tự (phần chưa cache) · model ${cfg.model} · ${cfg.format}`);
@@ -255,9 +297,9 @@ async function generate() {
       pcm = Buffer.alloc(Math.round((words.length / 3) * sampleRate) * 2); // silent placeholder, 3 syllables/s
       alignment = mockAlignment(c.ttsText);
     } else {
-      process.stdout.write(`câu ${String(c.n).padStart(2, '0')} → ElevenLabs … `);
+      process.stdout.write(`câu ${String(c.n).padStart(2, '0')}${c.speaker ? ` · ${c.speakerName}` : ''} → ElevenLabs … `);
       // with-timestamps: same audio as /text-to-speech plus the start time of every character.
-      const res = await api(`/v1/text-to-speech/${cfg.voice}/with-timestamps`, { method: 'POST', body: c.body, query: { output_format: cfg.format } });
+      const res = await api(`/v1/text-to-speech/${c.voiceId}/with-timestamps`, { method: 'POST', body: c.body, query: { output_format: cfg.format } });
       const json = await res.json();
       pcm = Buffer.from(json.audio_base64, 'base64');
       alignment = json.alignment
@@ -279,7 +321,8 @@ async function generate() {
       silent: c.silent,
       pauseAfter: c.pauseAfter,
       authoredFrames: c.authoredFrames,
-      extra: { cache: path.basename(c.cache) },
+      // Scenes read `speaker` back from voice.cues.json to place the right dialogue card.
+      extra: { cache: path.basename(c.cache), ...(c.speaker ? { speaker: c.speakerName, voiceId: c.voiceId, delivery: c.delivery || null, speed: c.speed } : {}) },
       align: c.align,
     })),
     sampleRate,
@@ -294,6 +337,7 @@ async function generate() {
     schema: 'vinuni-tts-elevenlabs/1',
     generator: mock ? 'mock (silent placeholder)' : 'elevenlabs',
     voiceId: cfg.voice || null,
+    cast: dialogue ? [...new Map(items.filter((c) => c.speaker).map((c) => [c.voiceId, c.speakerName]))].map(([id, name]) => ({ id, name })) : null,
     model: cfg.model,
     language: cfg.language,
     outputFormat: cfg.format,

@@ -1,7 +1,7 @@
 /** npm run test:tools — the catalog is what both the studio and tts.mjs pick a voice from. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultVoice, readVoices, resolveVoice } from './voices.mjs';
+import { castSpeaker, defaultVoice, readVoices, resolveVoice, speedFor } from './voices.mjs';
 
 test('every voice is complete enough to be picked and heard', () => {
   const { voices, sampleText } = readVoices();
@@ -28,4 +28,25 @@ test('an id outside the catalog passes through, a wrong name does not', () => {
   assert.equal(loose.unknown, true);
   assert.equal(resolveVoice('Không Có Ai'), null);
   assert.equal(resolveVoice(''), null);
+});
+
+test('casts only voices the system actually has', () => {
+  const { voices } = readVoices();
+  assert.equal(castSpeaker(voices[0].name).id, voices[0].id);
+  assert.equal(castSpeaker(voices[0].id).id, voices[0].id, 'an id casts as well as a name');
+  // A character nobody recorded must stop the run, and the message must say what is available.
+  assert.throws(() => castSpeaker('Lucas'), (e) => /không có nhân vật "Lucas"/.test(e.message) && e.message.includes(voices[0].name));
+  assert.throws(() => castSpeaker(''), /không có nhân vật/);
+});
+
+test('reading speed multiplies the character pace by the delivery, inside the API range', () => {
+  const { voices, deliveries, speedRange } = readVoices();
+  const v = voices[0];
+  assert.equal(speedFor(v, 'nhan').speed, Number((v.speed * deliveries.nhan.speed).toFixed(3)));
+  assert.equal(speedFor(v, '').speed, v.speed, 'no delivery means the character pace itself');
+  assert.throws(() => speedFor(v, 'gao-thet'), /không có kiểu đọc/);
+  // Out-of-range is clamped, and says so, rather than letting the API reject a paid run.
+  const slow = speedFor({ speed: 0.5 }, 'nhan');
+  assert.equal(slow.speed, speedRange[0]);
+  assert.equal(slow.clamped, true);
 });

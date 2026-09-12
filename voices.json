@@ -1,5 +1,36 @@
 {
   "sampleText": "Xin chào bạn, đây là giọng nói của tôi. Tôi đang đọc thử một đoạn ngắn để bạn nghe rõ cách phát âm, chỗ ngắt nghỉ và ngữ điệu tự nhiên của tôi khi kể một câu chuyện bằng tiếng Việt. Cảm ơn bạn đã lắng nghe.",
+  "speedRange": [
+    0.7,
+    1.2
+  ],
+  "deliveries": {
+    "ke": {
+      "label": "kể",
+      "speed": 1.06,
+      "use": "kể chuyện, ví dụ — nhanh hơn, tươi hơn"
+    },
+    "giang": {
+      "label": "giảng",
+      "speed": 1.0,
+      "use": "giải thích khái niệm"
+    },
+    "nhe": {
+      "label": "thân mật",
+      "speed": 0.95,
+      "use": "nói riêng với một người"
+    },
+    "hoi": {
+      "label": "hỏi",
+      "speed": 0.9,
+      "use": "câu hỏi"
+    },
+    "nhan": {
+      "label": "chốt",
+      "speed": 0.86,
+      "use": "câu chốt — chậm lại, nặng tay"
+    }
+  },
   "voices": [
     {
       "id": "6adFm46eyy74snVn6YrT",
@@ -8,7 +39,8 @@
       "gender": "nam",
       "summary": "Giọng nam, cao độ trung bình ~147 Hz.",
       "sample": "voices/nhat-phong.wav",
-      "default": true
+      "default": true,
+      "speed": 1.0
     },
     {
       "id": "CxJbDdwqY48MY3gPVYwe",
@@ -16,7 +48,8 @@
       "engine": "elevenlabs",
       "gender": "nam",
       "summary": "Giọng nam trầm hơn, cao độ trung bình ~119 Hz.",
-      "sample": "voices/do-trinh.wav"
+      "sample": "voices/do-trinh.wav",
+      "speed": 1.0
     },
     {
       "id": "iSFxP4Z6YNcx9OXl62Ic",
@@ -24,7 +57,8 @@
       "engine": "elevenlabs",
       "gender": "nữ",
       "summary": "Giọng nữ, cao độ trung bình ~233 Hz.",
-      "sample": "voices/vien.wav"
+      "sample": "voices/vien.wav",
+      "speed": 1.0
     },
     {
       "id": "x4KAhuXs2G8TfK9Zr7Q4",
@@ -32,7 +66,8 @@
       "engine": "elevenlabs",
       "gender": "nữ",
       "summary": "Giọng nữ, cao độ trung bình ~233 Hz.",
-      "sample": "voices/cam-hong.wav"
+      "sample": "voices/cam-hong.wav",
+      "speed": 1.0
     }
   ]
 }
