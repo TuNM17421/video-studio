@@ -5,6 +5,55 @@ import { Collapse, Empty, Radio } from "antd";
 import { fileUrl } from "@/lib/client";
 import type { PaletteColor, Showcase, StyleDef } from "@/lib/types";
 
+const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "system", "table", "ui"]);
+
+const SIGNATURE_COMPONENTS = {
+  lesson: ["GlassBox", "Flow", "ProbabilityBars"],
+  lab: ["AgentLoop", "ChatWindow", "CodeBlock"],
+} as const;
+
+const SIGNATURE_LABELS: Record<string, string> = {
+  cards: "Thẻ kiến thức",
+  code: "Mã & công cụ",
+  data: "Dữ liệu",
+  flow: "Luồng trực quan",
+  loop: "Vòng lặp agent",
+  ui: "Giao diện",
+};
+
+function signatureOf(style: StyleDef) {
+  const variant = style.showcase.some((item) => LAB_GROUPS.has(item.group)) ? "lab" : "lesson";
+  const candidates = [...style.showcase, ...(style.base?.showcase || [])];
+  const preferred = SIGNATURE_COMPONENTS[variant]
+    .map((component) => candidates.find((item) => item.component === component))
+    .filter((item): item is Showcase => Boolean(item));
+  const remaining = candidates.filter((item) => !preferred.some((picked) => picked.image === item.image));
+  const items = [...preferred, ...remaining].slice(0, 3);
+
+  return {
+    variant,
+    eyebrow: variant === "lab" ? "Hệ thống tác tử" : "Học liệu cốt lõi",
+    items,
+    tags: items.map((item) => SIGNATURE_LABELS[item.group] || item.component),
+  };
+}
+
+function StyleSpecimen({ style }: { style: StyleDef }) {
+  const signature = signatureOf(style);
+  return <span className={`vs-style-specimen is-${signature.variant}`} aria-hidden="true">
+    <span className="vs-style-specimen-heading">
+      <span>{signature.eyebrow}</span>
+      <span>{signature.items.length} nét đặc trưng</span>
+    </span>
+    <span className="vs-style-scene">
+      {signature.items.map((item, index) => <span key={item.image} className={`vs-style-scene-frame ${index === 0 ? "is-primary" : ""}`}>
+        <img src={fileUrl(`styles/previews/${item.image}`)} alt="" />
+        <span>{item.component}</span>
+      </span>)}
+    </span>
+  </span>;
+}
+
 function Palette({ colors }: { colors: PaletteColor[] }) {
   return <ul className="vs-palette">{colors.map((c) => <li key={c.hex} title={`${c.name} · ${c.role}`}>
     <span className="vs-swatch" style={{ background: c.hex }} />
@@ -62,10 +111,21 @@ export function StylePicker({ styles, value, onChange, disabled, labelledBy }: {
   return <Radio.Group className="vs-style-picker" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} aria-required="true" aria-labelledby={labelledBy}>
     {styles.map((s) => {
       const colors = [...(s.base?.palette || []), ...s.palette];
+      const palette = s.base ? [...s.palette, ...s.base.palette] : s.palette;
+      const signature = signatureOf(s);
       return <Radio key={s.id} value={s.id} className={`visual-style-option vs-style-option ${value === s.id ? "is-selected" : ""}`}>
-        <span className="vs-style-strip" aria-hidden="true">{colors.map((c) => <span key={c.hex} style={{ background: c.hex }} />)}</span>
-        <strong>{s.name}{value === s.id && <CheckOutlined aria-hidden="true" />}</strong>
-        <small>{s.summary}</small>
+        <StyleSpecimen style={s} />
+        <span className="vs-style-copy">
+          <strong>{s.name}{value === s.id && <span className="vs-style-selected"><CheckOutlined aria-hidden="true" /><span className="sr-only">Đã chọn</span></span>}</strong>
+          <small>{s.summary}</small>
+        </span>
+        <span className="vs-style-footer">
+          <span className="vs-style-tags">{signature.tags.map((tag) => <span key={tag}>{tag}</span>)}</span>
+          <span className="vs-style-palette" title={colors.map((color) => color.name).join(" · ")}>
+            <span className="vs-style-dots" aria-hidden="true">{palette.slice(0, 6).map((color, index) => <span key={`${color.hex}-${index}`} style={{ background: color.hex }} />)}</span>
+            <span>{colors.length} màu</span>
+          </span>
+        </span>
       </Radio>;
     })}
   </Radio.Group>;
