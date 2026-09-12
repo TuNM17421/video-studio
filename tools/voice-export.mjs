@@ -42,21 +42,36 @@ const CUES = mod.CUES || [];
 if (!CUES.length) fail(`${cuesFile} exports no CUES`);
 const SECTIONS = mod.SECTIONS || [];
 
+const FPS = 30;
 const PAD = Math.max(2, String(Math.max(...CUES.map((c) => c.n))).length);
 const key = (n) => String(n).padStart(PAD, '0');
-const syllables = (s) => s.trim().split(/\s+/).filter(Boolean).length;
-/** Same 3 syllables/s estimate lib/speech.js uses before a recording exists. */
-const estimate = (c) => (c.silent ? Number(c.silent) : syllables(c.text) / 3);
 
+/**
+ * The same timing the Video Studio cue list shows: `start` / `end` in cues.js already carry the measured
+ * length once tools/voice-timing.mjs has written `frames`, and the script's estimate before that. Say
+ * which of the two it is, because "0:42" means something different when it is a guess.
+ */
+const measured = CUES.some((c) => c.frames != null);
 const spoken = CUES.filter((c) => !c.silent);
-const totalSeconds = CUES.reduce((s, c) => s + estimate(c), 0);
+const startSeconds = (c) => c.start / FPS;
+const lengthSeconds = (c) => (c.end - c.start) / FPS;
+/** Time spent speaking, without the pause after it — only known from a recording. */
+const speechSeconds = (c) => (c.speech != null ? c.speech / FPS : null);
+const totalSeconds = CUES.length ? CUES[CUES.length - 1].end / FPS : 0;
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+const secs = (s) => `${s.toFixed(1).replace('.', ',')}s`;
 
 // ── doc-thu.md — the human reading script ────────────────────────────────────
 const md = [
   `# Lời đọc · ${id}`,
   '',
-  `${CUES.length} câu (${spoken.length} câu có lời) · ước tính ${mmss(totalSeconds)} chưa tính khoảng nghỉ.`,
+  `${CUES.length} câu · ${spoken.length} câu có lời · tổng ${mmss(totalSeconds)} ${measured ? '(đo từ bản thu hiện tại)' : '(ước tính từ kịch bản)'}.`,
+  '',
+  measured
+    ? 'Mốc thời gian lấy từ bản thu đang gắn với video, nên là độ dài thật. Số giây của mỗi câu là phần đọc,'
+      + ' không tính khoảng nghỉ sau câu — vì vậy cộng lại sẽ nhỏ hơn tổng.'
+    : 'Chưa có bản thu nào, nên mốc thời gian chỉ là ước tính từ kịch bản (≈ 3 tiếng/giây).'
+      + ' Cứ đọc tự nhiên, đừng cố khớp: độ dài thật sẽ được đo lại khi nhập audio.',
   '',
   '## Quy ước bắt buộc',
   '',
@@ -87,13 +102,14 @@ let section = null;
 for (const c of CUES) {
   if (c.section != null && c.section !== section) {
     section = c.section;
-    md.push('', `## Phần ${section}${SECTIONS[section - 1] ? ` · ${SECTIONS[section - 1]}` : ''}`, '');
+    md.push('', `## Phần ${section}${SECTIONS[section - 1] ? ` · ${SECTIONS[section - 1]}` : ''} — từ ${mmss(startSeconds(c))}`, '');
   }
   if (c.silent) {
-    md.push(`**${key(c.n)}** · khoảng dừng ${c.silent}s · *không cần file audio*`, '');
+    md.push(`**${key(c.n)}** · ${mmss(startSeconds(c))} · khoảng dừng ${c.silent}s · *không cần file audio*`, '');
     continue;
   }
-  md.push(`**${key(c.n)}.wav** · ~${estimate(c).toFixed(1)}s${c.title ? ` · ${c.title}` : ''}`);
+  const length = speechSeconds(c) ?? lengthSeconds(c);
+  md.push(`**${key(c.n)}.wav** · ${mmss(startSeconds(c))} · ${measured ? '' : '~'}${secs(length)}${c.title ? ` · ${c.title}` : ''}`);
   if (c.voice) md.push(`> Cách đọc: ${c.voice}`);
   md.push('', c.text, '');
 }
