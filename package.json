@@ -12,7 +12,9 @@
     "build": "node tools/build.mjs",
     "verify": "node tools/verify.mjs",
     "serve": "python3 -m http.server 8765 --bind 127.0.0.1 --directory vinuni-lesson-video-ds",
-    "tts:check": "node tts-elevenlabs/tts.mjs check"
+    "tts:check": "node tts-elevenlabs/tts.mjs check",
+    "studio:install": "npm install --prefix studio",
+    "studio": "npm run dev --prefix studio"
   },
   "devDependencies": {
     "@dagrejs/dagre": "3.1.1",

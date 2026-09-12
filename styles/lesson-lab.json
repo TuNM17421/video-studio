@@ -1,0 +1,34 @@
+{
+  "id": "lesson-lab",
+  "name": "Lesson Lab Style",
+  "order": 2,
+  "extends": "lesson",
+  "summary": "Lesson Style cộng màu vai trò và các component mới cho agent, hệ thống, giao diện, mã và nguồn tin.",
+  "palette": [
+    { "hex": "#2f7d57", "name": "Xanh lá", "role": "đạt, kết quả mong muốn, output" },
+    { "hex": "#c8641e", "name": "Cam", "role": "cảnh báo, trở ngại, kiểm tra" },
+    { "hex": "#5b4b9a", "name": "Tím", "role": "giải pháp, xử lý, suy luận" },
+    { "hex": "#a87a0c", "name": "Vàng đậm", "role": "giả định, chưa xác nhận, bộ nhớ" }
+  ],
+  "showcase": [
+    { "component": "AgentLoop", "group": "loop", "image": "loop__AgentLoop.png" },
+    { "component": "ChatWindow", "group": "ui", "image": "ui__ChatWindow.png" },
+    { "component": "Magnifier", "group": "figures", "image": "figures__Magnifier.png" },
+    { "component": "Brand", "group": "brand", "image": "brand__Brand.png" },
+    { "component": "Icon", "group": "icons", "image": "icons__Icon.png" },
+    { "component": "Gate", "group": "control", "image": "control__Gate.png" },
+    { "component": "StopGate", "group": "control", "image": "control__StopGate.png" },
+    { "component": "Swimlane", "group": "system", "image": "system__Swimlane.png" },
+    { "component": "ToolCard", "group": "system", "image": "system__ToolCard.png" },
+    { "component": "CodeBlock", "group": "code", "image": "code__CodeBlock.png" },
+    { "component": "BrowserFrame", "group": "ui", "image": "ui__BrowserFrame.png" },
+    { "component": "SourceCard", "group": "figures", "image": "figures__SourceCard.png" },
+    { "component": "DataTable", "group": "table", "image": "table__DataTable.png" }
+  ],
+  "sampleVideo": null,
+  "rules": [
+    "Được dùng toàn bộ component của design system, ưu tiên component Lab khi nội dung nói về agent, công cụ, cổng kiểm soát, luồng hệ thống, giao diện chat, mã hoặc nguồn tin.",
+    "Màu vai trò (ROLE / ROLE_OF trong lib/tokens.js) chỉ dùng cho nhãn vùng, viền và nền nhạt gọi tên một vai trò: xanh lá = đạt / kết quả, cam = cảnh báo / trở ngại, tím = giải pháp, vàng đậm = giả định / chưa xác nhận. Không dùng cho chữ thân, số liệu hay hạt; đỏ giữ nghĩa nhấn và rủi ro.",
+    "Khai báo màu mới chỉ trong lib/tokens.js."
+  ]
+}

@@ -22,7 +22,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FPS = 30;
@@ -118,9 +118,9 @@ async function check() {
 
 // ── cues ──────────────────────────────────────────────────────────────────────
 async function loadCues(file) {
-  const src = fs.readFileSync(file, 'utf8');
-  // cues.js is a dependency-free ES module; import it from source without needing "type": "module".
-  const mod = await import(`data:text/javascript;base64,${Buffer.from(src).toString('base64')}`);
+  // cues.js is an ES module (the design-system package is "type": "module"); it may import
+  // lib/speech.js and its video's voice.js, so load it from disk rather than from a data: URL.
+  const mod = await import(`${pathToFileURL(file).href}?t=${Date.now()}`);
   const cues = mod.CUES || mod.default;
   if (!Array.isArray(cues) || !cues.every((c) => c.text || c.silent)) fail(`${file} must export CUES = [{ n, text, … }]`);
   // Optional per cue: `voice` = delivery direction for the TTS only (eleven_v3 audio tags such as
@@ -173,6 +173,34 @@ function speechBounds(pcm, threshold = 100) {
   return { a, b };
 }
 
+/** Fake character timings for --mock: one word every 1/3 s, like the placeholder audio. */
+function mockAlignment(text) {
+  const characters = [...text];
+  let word = -1;
+  const start = characters.map((ch, i) => {
+    if (ch.trim() && (i === 0 || !characters[i - 1].trim())) word++;
+    return Math.max(0, word) / 3;
+  });
+  return { characters, start };
+}
+
+/**
+ * Per-cue word starts from the cached character timestamps: words = [[charIndex, frame], …], frames
+ * counted from the start of the cue's segment in the master (the kept lead-in is `offsetSeconds`).
+ * charIndex points into alignText (the aligned string; only stored when it differs from ttsText).
+ */
+function wordTimings(c, offsetSeconds) {
+  if (c.silent || !fs.existsSync(c.align)) return {};
+  const { characters, start } = JSON.parse(fs.readFileSync(c.align, 'utf8'));
+  const alignText = characters.join('');
+  const words = [];
+  characters.forEach((ch, i) => {
+    if (!ch.trim() || (i > 0 && characters[i - 1].trim())) return;
+    words.push([i, Math.max(0, Math.round((start[i] - offsetSeconds) * FPS))]);
+  });
+  return { words, ...(alignText !== c.ttsText ? { alignText } : {}) };
+}
+
 async function generate() {
   if (!args.cues) fail('--cues <path/to/cues.js> is required');
   const cuesFile = path.resolve(args.cues);
@@ -200,10 +228,17 @@ async function generate() {
       next_text: v3 ? undefined : spoken(i + 1),
     };
     const hash = c.silent ? `silent-${c.silent}-${sampleRate}` : sha256(JSON.stringify({ voice: cfg.voice, format: cfg.format, mock, ...body }));
-    return { ...c, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`) };
+    return { ...c, ttsText: text, body, hash, cache: path.join(cacheDir, `${hash}.pcm`), align: path.join(cacheDir, `${hash}.align.json`) };
   });
 
   const chars = items.reduce((s, c) => s + [...c.ttsText].length, 0);
+  if (args['dry-run'] && args.json) {
+    // Machine-readable summary (the studio web shows it before asking to spend credit).
+    const rows = items.map((c) => ({ n: c.n, chars: [...c.ttsText].length, cached: fs.existsSync(c.cache), silent: Boolean(c.silent), text: c.ttsText }));
+    const billable = rows.filter((r) => !r.cached).reduce((sum, r) => sum + r.chars, 0);
+    console.log(JSON.stringify({ model: cfg.model, format: cfg.format, voice: cfg.voice || null, cues: rows, chars, billable, toGenerate: rows.filter((r) => !r.cached && !r.silent).length }));
+    return;
+  }
   if (args['dry-run']) {
     for (const c of items) {
       const cached = fs.existsSync(c.cache) ? 'cached' : 'new';
@@ -221,18 +256,26 @@ async function generate() {
     if (fs.existsSync(c.cache) && !(selected && args.force)) continue;
     if (!selected) fail(`câu ${c.n} is not cached and not in --only; synthesize it first`);
     let pcm;
+    let alignment = null;
     if (c.silent) {
       pcm = Buffer.alloc(Math.round(c.silent * sampleRate) * 2);
     } else if (mock) {
-      const syllables = c.ttsText.split(/\s+/).length;
-      pcm = Buffer.alloc(Math.round((syllables / 3) * sampleRate) * 2); // silent placeholder, 3 syllables/s
+      const words = c.ttsText.split(/\s+/).filter(Boolean);
+      pcm = Buffer.alloc(Math.round((words.length / 3) * sampleRate) * 2); // silent placeholder, 3 syllables/s
+      alignment = mockAlignment(c.ttsText);
     } else {
       process.stdout.write(`câu ${String(c.n).padStart(2, '0')} → ElevenLabs … `);
-      const res = await api(`/v1/text-to-speech/${cfg.voice}`, { method: 'POST', body: c.body, query: { output_format: cfg.format } });
-      pcm = Buffer.from(await res.arrayBuffer());
-      console.log(`${(pcm.length / 2 / sampleRate).toFixed(2)} s`);
+      // with-timestamps: same audio as /text-to-speech plus the start time of every character.
+      const res = await api(`/v1/text-to-speech/${cfg.voice}/with-timestamps`, { method: 'POST', body: c.body, query: { output_format: cfg.format } });
+      const json = await res.json();
+      pcm = Buffer.from(json.audio_base64, 'base64');
+      alignment = json.alignment
+        ? { characters: json.alignment.characters, start: json.alignment.character_start_times_seconds }
+        : null;
+      console.log(`${(pcm.length / 2 / sampleRate).toFixed(2)} s${alignment ? '' : ' · no timestamps'}`);
     }
     fs.writeFileSync(c.cache, pcm);
+    if (alignment) fs.writeFileSync(c.align, JSON.stringify(alignment));
   }
 
   // Assemble: every cue starts on a frame boundary; its segment = speech + pause, padded to whole frames.
@@ -252,6 +295,7 @@ async function generate() {
     const segment = Buffer.alloc(frames * SAMPLES_PER_FRAME * 2);
     speech.copy(segment, 0);
     parts.push(segment);
+    const timing = wordTimings(c, (a - lead) / sampleRate);
     manifest.push({
       n: c.n,
       startFrame: frame,
@@ -266,6 +310,7 @@ async function generate() {
       ttsText: c.ttsText,
       ttsTextSha256: sha256(c.ttsText),
       cache: path.basename(c.cache),
+      ...timing,
     });
     frame += frames;
   }
