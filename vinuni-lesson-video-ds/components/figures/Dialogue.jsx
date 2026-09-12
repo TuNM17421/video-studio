@@ -68,11 +68,13 @@ export function DialogueCard({
   const rows = wrapWords(words, w - padX * 2, size);
   const h = padY * 2 + rows.length * lineHeight;
   const nameSize = 19;
-  // The face sits outside the card, on the speaker's own side, so the card keeps its full width for text.
+  // The face hangs below the card, tucked under the tail on the speaker's own side — the tail points from
+  // the card down to whoever is talking. Beside the card it read as a separate element next to the text.
   const faceR = 46;
-  const faceGap = 20;
-  const faceX = side === 'left' ? x - faceGap - faceR : x + w + faceGap + faceR;
-  const faceY = y + h - faceR;
+  const tailDrop = 22;
+  const faceGap = 10;
+  const faceX = side === 'left' ? x - faceR / 2 : x + w + faceR / 2;
+  const faceY = y + h + tailDrop + faceGap + faceR;
   // The tail sits under the card on the speaker's own side, so who is talking reads at a glance.
   const tailX = side === 'left' ? x + 46 : x + w - 46;
   const tipX = side === 'left' ? x + 20 : x + w - 20;

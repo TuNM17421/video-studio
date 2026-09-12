@@ -16,7 +16,7 @@ export interface DialogueCardProps {
   side?: 'left' | 'right';
   /** Character name, shown above the card. Must match a character or voice in voices.json. */
   speaker: string;
-  /** Ready URL of the character's face (VOICE.cues[i].avatar). Without it the card shows the name only. */
+  /** Ready URL of the character's face (VOICE.cues[i].avatar), drawn below the tail. Omit for name only. */
   avatar?: string | null;
   /** The line, word by word — from `spokenWords(n)` in lib/speech.js. Never a hand-written caption. */
   words: readonly SpokenWord[];
