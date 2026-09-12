@@ -37,6 +37,16 @@ if (characters.length) {
   }
 }
 
+// Hai vai chung một giọng thì người xem nghe hai người nói y hệt nhau — nói ngay ở chỗ dev thêm vai.
+const byVoice = new Map();
+for (const c of characters) byVoice.set(c.voice, [...(byVoice.get(c.voice) || []), c.name]);
+for (const [voice, names] of byVoice) {
+  if (names.length > 1) {
+    const label = voices.find((v) => v.id === voice)?.name || voice;
+    console.log(`  ⚠ ${names.join(' và ')} đang dùng chung giọng ${label} — người xem sẽ không phân biệt được.\n`);
+  }
+}
+
 console.log(`GIỌNG — ${voices.length} giọng trong voices.json (nhân vật mượn từ đây; video một người dẫn dùng thẳng)\n`);
 for (const v of voices) {
   console.log(`  ${v.name}${v.default ? '  (mặc định)' : ''}`);
