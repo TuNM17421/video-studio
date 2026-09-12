@@ -1,14 +1,14 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, LockOutlined, PlayCircleFilled, RobotOutlined, WarningFilled } from "@ant-design/icons";
-import { Button, Checkbox, Collapse, Descriptions, Form, Input, Select, Upload } from "antd";
+import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, LockOutlined, PlayCircleFilled, RobotOutlined, WarningFilled } from "@ant-design/icons";
+import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
 import type { AgentConfig, AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { SourcePickerField } from "./source-picker";
-import { MODULES, moduleNames } from "@/lib/modules";
+import { MODULES, moduleNames, type ModuleInfo } from "@/lib/modules";
 import { StylePicker, StyleShowcase } from "./style-showcase";
 
 const DAYS = Array.from({ length: 30 }, (_, i) => `Day${String(i + 1).padStart(2, "0")}`);
@@ -63,7 +63,44 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
   ].filter(Boolean).join("\n");
 }
 
+/** "Bật cái này thì video trông thế nào?" — a question a checkbox cannot answer, so show the sample. */
+function ModulePreview({ module: m }: { module: ModuleInfo }) {
+  const [open, setOpen] = useState(false);
+  if (!m.preview) return null;
+  const label = `Xem thử video mẫu · ${m.name}`;
+  return <>
+    {/* Same round affordance as the voice picker's listen button — one gesture, one shape. */}
+    <Tooltip title={label}>
+      <button
+        type="button"
+        className="vs-module-play"
+        aria-label={label}
+        // Inside the card's own label: previewing must not toggle the capability.
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
+      >
+        <CaretRightFilled />
+      </button>
+    </Tooltip>
+    <Modal
+      open={open}
+      onCancel={() => setOpen(false)}
+      footer={null}
+      width={900}
+      destroyOnHidden
+      title={`Video mẫu · ${m.name}`}
+    >
+      <video className="video-player" src={m.preview.url} controls autoPlay preload="metadata" />
+    </Modal>
+  </>;
+}
+
 export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy, loading, unavailable }: { styles: StyleDef[]; agentConfig: AgentConfig; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean }) {
+  const [modules, setModules] = useState<ModuleInfo[]>(MODULES.map((m) => ({ ...m, preview: null })));
+  useEffect(() => {
+    let alive = true;
+    void api<ModuleInfo[]>("/api/modules").then((list) => { if (alive && list.length) setModules(list); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const style = styles.find((s) => s.id === draft.request.style);
   const formRef = useRef<HTMLDivElement>(null);
   const idInput = useRef<InputRef>(null);
@@ -184,7 +221,7 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
       {style && <StyleShowcase style={style} collapsible />}
       <Form.Item className="vs-modules-field" label={<span className="vs-section-title">Bổ sung</span>}>
         <div className="vs-modules">
-          {MODULES.map((m) => <label key={m.id} className={`vs-module ${draft.request.modules.includes(m.id) ? "is-on" : ""}`}>
+          {modules.map((m) => <label key={m.id} className={`vs-module ${draft.request.modules.includes(m.id) ? "is-on" : ""}`}>
             <Checkbox
               checked={draft.request.modules.includes(m.id)}
               disabled={busy}
@@ -194,6 +231,7 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
               <strong>{m.name}</strong>
               <small>{m.summary}{m.template ? <> Kịch bản viết theo <code>{m.template}</code>.</> : null}</small>
             </span>
+            <ModulePreview module={m} />
           </label>)}
         </div>
       </Form.Item>

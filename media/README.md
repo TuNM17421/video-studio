@@ -32,7 +32,12 @@ Studio tự nhận `styles/<mã style>/sample.<đuôi>` làm video (hoặc audio
 đúng tên này là xong, không phải sửa `styles/*.json`. Muốn tên khác thì đặt `"sampleVideo": "<key>"`
 trong file style tương ứng.
 
-Đối tượng được đẩy kèm `cache-control: max-age=86400`. Sửa nội dung mà vẫn giữ nguyên tên file thì bản cũ
-còn nằm trong cache trình duyệt tới một ngày; đổi tên file (`sample-v2.mp4`) là cách gọn nhất để thay ngay.
+Đối tượng được đẩy kèm `cache-control: max-age=86400`, và URL do Studio dựng luôn mang vân tay nội dung
+(`?v=<12 ký tự đầu của sha256>`). Nhờ đó **thay file mà giữ nguyên tên vẫn ăn ngay**: nội dung đổi thì URL
+đổi theo nên không trình duyệt nào phát lại bản cũ, còn file không đổi thì giữ nguyên URL và vẫn được cache.
+Chỉ cần nhớ commit `media/manifest.json` — vân tay nằm trong đó.
+
+Link chép tay từ `npm run voices` hay từ đây thì không có `?v=`; dán thẳng vào trình duyệt vẫn ra file mới
+nếu chưa từng mở, nhưng đã mở bản cũ rồi thì phải tải lại cứng.
 
 `media/.env` chứa khoá bí mật — không bao giờ commit, không in ra, không dán vào chat.

@@ -31,6 +31,35 @@
       "use": "câu chốt — chậm lại, nặng tay"
     }
   },
+  "characters": [
+    {
+      "id": "toi",
+      "name": "Tới",
+      "voice": "CxJbDdwqY48MY3gPVYwe",
+      "avatar": "avatars/toi_2.jpg",
+      "side": "left",
+      "tone": "accent",
+      "summary": "Nam · giọng Đô Trịnh (trầm nhất trong danh mục)."
+    },
+    {
+      "id": "mai-anh",
+      "name": "Mai Anh",
+      "voice": "iSFxP4Z6YNcx9OXl62Ic",
+      "avatar": "avatars/mai_anh_2.jpg",
+      "side": "left",
+      "tone": "strong",
+      "summary": "Nữ · giọng Viên."
+    },
+    {
+      "id": "tu",
+      "name": "Tú",
+      "voice": "6adFm46eyy74snVn6YrT",
+      "avatar": "avatars/tu_2.jpg",
+      "side": "right",
+      "tone": "red",
+      "summary": "Nam · giọng Nhật Phong (cao hơn Đô Trịnh, hợp vai học viên)."
+    }
+  ],
   "voices": [
     {
       "id": "6adFm46eyy74snVn6YrT",

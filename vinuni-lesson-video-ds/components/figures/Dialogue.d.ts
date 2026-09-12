@@ -14,8 +14,10 @@ export interface DialogueCardProps {
   w?: number;
   /** Which side of the frame this character speaks from — it places the tail. Default 'left'. */
   side?: 'left' | 'right';
-  /** Character name, shown above the card. Must match a voice in voices.json. */
+  /** Character name, shown above the card. Must match a character or voice in voices.json. */
   speaker: string;
+  /** Ready URL of the character's face (VOICE.cues[i].avatar), drawn below the tail. Omit for name only. */
+  avatar?: string | null;
   /** The line, word by word — from `spokenWords(n)` in lib/speech.js. Never a hand-written caption. */
   words: readonly SpokenWord[];
   /** Current scene frame; words appear as their own frame arrives. Omit for the settled card. */

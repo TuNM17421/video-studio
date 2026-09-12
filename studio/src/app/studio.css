@@ -2524,6 +2524,12 @@ button.vs-tile:hover {
   display: grid;
   gap: 2px;
   min-width: 0;
+  flex: 1;
+}
+/* Pinned to the far edge of the card, away from the checkbox it must not be mistaken for. */
+.vs-module-play {
+  align-self: center;
+  margin-left: auto;
 }
 .vs-module-copy strong {
   font-size: var(--vu-text-sm);
@@ -2578,7 +2584,7 @@ button.vs-tile:hover {
 }
 .vs-cast li {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   border: 1px solid var(--vu-blue-200);
   border-radius: 999px;
@@ -2587,6 +2593,13 @@ button.vs-tile:hover {
   font-size: var(--vu-text-xs);
   font-weight: var(--vu-font-bold);
   color: var(--vu-blue-900);
+}
+.vs-cast li img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-left: -6px;
 }
 .vs-cast li small,
 .vs-cast > small {
@@ -2670,7 +2683,8 @@ button.vs-tile:hover {
   border-radius: 3px;
   padding: 0 4px;
 }
-.vs-voice-play {
+.vs-voice-play,
+.vs-module-play {
   flex: none;
   width: 32px;
   height: 32px;
@@ -2687,7 +2701,8 @@ button.vs-tile:hover {
     background-color var(--vu-duration-fast) var(--vu-ease-standard),
     color var(--vu-duration-fast) var(--vu-ease-standard);
 }
-.vs-voice-play:hover {
+.vs-voice-play:hover,
+.vs-module-play:hover {
   border-color: var(--vu-blue-400);
   background: var(--vu-blue-50);
 }

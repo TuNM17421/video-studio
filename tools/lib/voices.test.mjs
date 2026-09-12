@@ -30,10 +30,10 @@ test('an id outside the catalog passes through, a wrong name does not', () => {
   assert.equal(resolveVoice(''), null);
 });
 
-test('casts only voices the system actually has', () => {
+test('casts only names the system actually has', () => {
   const { voices } = readVoices();
-  assert.equal(castSpeaker(voices[0].name).id, voices[0].id);
-  assert.equal(castSpeaker(voices[0].id).id, voices[0].id, 'an id casts as well as a name');
+  assert.equal(castSpeaker(voices[0].name).voice.id, voices[0].id);
+  assert.equal(castSpeaker(voices[0].id).voice.id, voices[0].id, 'an id casts as well as a name');
   // A character nobody recorded must stop the run, and the message must say what is available.
   assert.throws(() => castSpeaker('Lucas'), (e) => /không có nhân vật "Lucas"/.test(e.message) && e.message.includes(voices[0].name));
   assert.throws(() => castSpeaker(''), /không có nhân vật/);
@@ -41,7 +41,7 @@ test('casts only voices the system actually has', () => {
 
 test('reading speed multiplies the character pace by the delivery, inside the API range', () => {
   const { voices, deliveries, speedRange } = readVoices();
-  const v = voices[0];
+  const v = { speed: voices[0].speed };
   assert.equal(speedFor(v, 'nhan').speed, Number((v.speed * deliveries.nhan.speed).toFixed(3)));
   assert.equal(speedFor(v, '').speed, v.speed, 'no delivery means the character pace itself');
   assert.throws(() => speedFor(v, 'gao-thet'), /không có kiểu đọc/);
@@ -49,4 +49,28 @@ test('reading speed multiplies the character pace by the delivery, inside the AP
   const slow = speedFor({ speed: 0.5 }, 'nhan');
   assert.equal(slow.speed, speedRange[0]);
   assert.equal(slow.clamped, true);
+});
+
+test('a character carries its own face, side and hue, and borrows a voice', () => {
+  const { characters } = readVoices();
+  assert.ok(characters.length, 'voices.json has no characters');
+  for (const c of characters) {
+    const cast = castSpeaker(c.name);
+    assert.equal(cast.name, c.name);
+    assert.ok(cast.voice?.id, `${c.name} resolved to no voice`);
+    assert.match(cast.side, /^(left|right)$/);
+    assert.ok(cast.tone, `${c.name} has no hue`);
+    // The id is an alias for the name, so a script may write either.
+    assert.equal(castSpeaker(c.id).voice.id, cast.voice.id);
+  }
+  // Two characters must never share a voice, or the video has two people with one set of vocal cords.
+  const used = characters.map((c) => castSpeaker(c.name).voice.id);
+  assert.equal(new Set(used).size, used.length, 'two characters share a voice');
+});
+
+test('a bare voice still casts, for videos with one narrator', () => {
+  const { voices } = readVoices();
+  const cast = castSpeaker(voices[0].name);
+  assert.equal(cast.voice.id, voices[0].id);
+  assert.equal(cast.avatar, null);
 });

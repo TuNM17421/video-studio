@@ -64,12 +64,16 @@ server itself runs TTS (key in RAM only), the audio import, voice-timing, render
 
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
-Mỗi cue khai `speaker` (tên/id một giọng trong `voices.json`) và `delivery` (kiểu đọc trong
+Mỗi cue khai `speaker` (tên/id một **nhân vật** — hoặc một giọng, cho video một người dẫn) và `delivery` (kiểu đọc trong
 `voices.json → deliveries`, đổi tốc độ). `speaker` phải có sẵn trong danh mục, tên lạ thì `--dry-run` dừng
 ngay trước khi tốn credit; thêm nhân vật mới là việc của dev. Đừng nhầm với `cue.voice` — trường đó đã có
 từ trước và là audio tag của eleven_v3 (`[curious]`). `tts.mjs` gọi mỗi câu bằng giọng của người nói, và chỉ
-nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Mẫu viết kịch bản:
+nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Một câu có thể khai `model` riêng (`model: 'eleven_v3'`) khi model mặc định đọc sai đúng câu đó — ba câu
+còn lại vẫn trúng cache, chỉ câu ấy bị tính phí. Mẫu viết kịch bản:
 `templates/kich-ban-hoi-thoai.md`; `npm run voices` in danh sách giọng và kiểu đọc.
+Nhân vật là lớp riêng trong `voices.json → characters`: tên, avatar (key trên kho media), phía, màu, và
+giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Mai Anh, Tú) còn giọng đặt theo người thu (Nhật Phong,
+Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng.
 
 ## Media nặng (`media/`, Cloudflare R2)
 Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`
@@ -88,4 +92,16 @@ commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "k
 - `node tools/voice-sample.mjs --text "…" "Tên=<voice id>" …` đọc thử một đoạn bằng nhiều giọng ElevenLabs,
   mỗi giọng một WAV trong `voice/samples/` — để chọn người dẫn hoặc lấy mẫu ~10 giây cho model local.
   Luôn `--dry-run` trước vì mỗi yêu cầu đều bị tính ký tự.
+- **Sinh ảnh preview cho một component** (`styles/previews/<nhóm>__<Component>.png`, thứ Thư viện của Studio
+  hiển thị): repo không có công cụ riêng, làm thủ công bằng `tools/shoot.mjs`. Viết một file HTML tạm **bên
+  trong** `vinuni-lesson-video-ds/` (để nạp được `dist/vk.js` và `styles.css`) — đặt ở `ui_kits/lesson-video/demos/`,
+  **đừng** đặt trong `components/<nhóm>/` vì verify chỉ cho đúng một file .html mỗi thư mục component.
+  Dựng component bằng `VK.mountCard`, chạy `npm run build` trước nếu component vừa thêm, phục vụ thư mục DS
+  (`npm run serve`, cổng 8765) rồi:
+  `node tools/shoot.mjs "http://127.0.0.1:8765/ui_kits/lesson-video/demos/<file>.html" styles/previews/<nhóm>__<Component>.png 367 210`
+  Cỡ chuẩn là rộng **367 px** (cao tuỳ component, 210–250). Hai cái bẫy đã vấp:
+  shoot.mjs **cắt** trang theo viewport chứ không thu nhỏ, nên phải tự thu bằng
+  `transform: scale(...)` với `transform-origin: top left` trên một div bọc có kích thước thật;
+  và component tràn mép thì bị xén âm thầm — chụp xong **phải mở ảnh ra nhìn**, đừng tin exit code.
+  Xoá file HTML tạm sau khi chụp.
 - Reply to the user in Vietnamese.
