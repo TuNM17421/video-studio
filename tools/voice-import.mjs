@@ -18,9 +18,10 @@
  *   --no-align       skip Whisper: no word timestamps and no wrong-file check. Degraded, see the doc.
  *   --force          import despite blocking problems (a câu whose audio does not match its text)
  *
- * File names are matched leniently — the first run of digits in the name is the câu number, so 01.wav,
- * 1.wav, cau-01.wav and sample_001.wav all land on câu 1. The report always shows which file went to
- * which câu, because a folder that is silently off by one is the one mistake that survives to the MP4.
+ * The file-name convention (01.wav = câu 1) and the lenient matching that reads it live in
+ * tools/lib/voice-files.mjs, shared with tools/voice-export.mjs so the two cannot drift apart. The
+ * report always shows which file went to which câu, because a folder that is silently off by one is
+ * the one mistake that survives all the way to the MP4.
  */
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
@@ -29,11 +30,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, FPS, sha256 } from './lib/voice-audio.mjs';
+import { cueKey, isAudioFile, matchAudioFolder } from './lib/voice-files.mjs';
 import { mapWords, MODEL_CACHE, runAlign, SETUP_HINT, venvPython } from './lib/voice-align.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SAMPLE_RATE = 24000;
-const AUDIO_EXT = ['.wav', '.mp3', '.m4a', '.mp4', '.aac', '.flac', '.ogg', '.opus', '.webm'];
 /** A câu whose transcript matches this little is almost certainly the wrong file. */
 const MATCH_BLOCK = 0.4;
 const MATCH_WARN = 0.65;
@@ -73,37 +74,17 @@ const CUES = (mod.CUES || []).map((c, i) => ({
   authoredFrames: c.end != null ? c.end - c.start : null,
 }));
 if (!CUES.length) fail(`${cuesFile} không export CUES`);
-const PAD = Math.max(2, String(Math.max(...CUES.map((c) => c.n))).length);
+const key = cueKey(CUES);
 const syllables = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 const secs = (v) => `${v.toFixed(1).replace('.', ',')}s`;
 const expectedSeconds = (c) => (c.silent ? Number(c.silent) : syllables(c.text) / 3);
 
 // ── which file belongs to which câu ──────────────────────────────────────────
 const entries = fs.readdirSync(fromDir, { withFileTypes: true })
-  .filter((d) => d.isFile() && !d.name.startsWith('.') && AUDIO_EXT.includes(path.extname(d.name).toLowerCase()))
+  .filter((d) => d.isFile() && isAudioFile(d.name))
   .map((d) => d.name)
   .sort();
-
-const key = (n) => String(n).padStart(PAD, '0');
-const byCue = new Map();
-const extra = [];
-const clashes = [];
-// Two files can claim the same câu (07.wav next to 07-ban-hai.wav). The one named exactly as the
-// convention asks wins, whatever the alphabet says, and the other is reported rather than silently lost.
-const candidates = entries
-  .map((name) => {
-    const stem = path.basename(name, path.extname(name));
-    const digits = stem.match(/\d+/);
-    const n = digits ? Number(digits[0]) : null;
-    return { name, stem, n, exact: n !== null && (stem === key(n) || stem === String(n)) };
-  })
-  .sort((a, b) => Number(b.exact) - Number(a.exact) || a.name.localeCompare(b.name));
-for (const { name, n } of candidates) {
-  const cue = n === null ? null : CUES.find((c) => c.n === n);
-  if (!cue) { extra.push({ file: name, reason: n === null ? 'tên không có số câu' : `không có câu ${n}` }); continue; }
-  if (byCue.has(cue.n)) { clashes.push({ file: name, n: cue.n, kept: byCue.get(cue.n) }); continue; }
-  byCue.set(cue.n, name);
-}
+const { byCue, extra, clashes } = matchAudioFolder(entries, CUES, key);
 
 // ── audio ────────────────────────────────────────────────────────────────────
 const require = createRequire(import.meta.url);

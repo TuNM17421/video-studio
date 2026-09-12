@@ -18,6 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { cueKey } from './lib/voice-files.mjs';
 
 const fail = (m) => { console.error(`✗ ${m}`); process.exit(1); };
 const VALUE_FLAGS = new Set(['out']);
@@ -43,8 +44,7 @@ if (!CUES.length) fail(`${cuesFile} exports no CUES`);
 const SECTIONS = mod.SECTIONS || [];
 
 const FPS = 30;
-const PAD = Math.max(2, String(Math.max(...CUES.map((c) => c.n))).length);
-const key = (n) => String(n).padStart(PAD, '0');
+const key = cueKey(CUES);
 
 /**
  * The same timing the Video Studio cue list shows: `start` / `end` in cues.js already carry the measured
