@@ -245,7 +245,7 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
             <SourcePickerField label="Feedback bản cũ" purpose="feedback" value={draft.request.feedbackDir} disabled={busy} onChange={(v) => set({ feedbackDir: v })} />
             <SourcePickerField label="Video cũ" purpose="video" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
           </div>
-          <Form.Item className="field" label={<span className="vs-field-label">Ghi chú</span>}>
+          <Form.Item className="field vs-counted-textarea" label={<span className="vs-field-label">Ghi chú</span>}>
             <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount onChange={(e) => set({ notes: e.target.value })} />
           </Form.Item>
         </>,

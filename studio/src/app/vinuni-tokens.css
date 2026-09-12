@@ -142,6 +142,7 @@
   --vu-button-disclosure-arrow-width: 16px;
   --vu-button-disclosure-arrow-height: 28px;
   --vu-field-height: var(--vu-control-lg);
+  --vu-field-counter-row: var(--vu-space-6);
   --vu-select-indicator-size: 20px;
   --vu-select-indicator-inset: var(--vu-space-3);
   --vu-overlay-scrim: rgba(0, 0, 0, 0.56);
@@ -150,7 +151,9 @@
   --vu-z-toast: 500;
 
   /* Studio layout density and workflow hierarchy. */
-  --vu-shell-sidebar-width: 224px;
+  --vu-shell-sidebar-width: 232px;
+  --vu-shell-sidebar-collapsed-width: 72px;
+  --vu-shell-sidebar-rail-item: 44px;
   --vu-shell-sidebar-tablet-width: 196px;
   --vu-workflow-header-height: 28px;
   --vu-workflow-step-height: 68px;
