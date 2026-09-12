@@ -1,6 +1,7 @@
 {
   "name": "vinuni-lesson-video-studio",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "description": "VinUni \"AI in Action 20K\" lesson videos: design system, build/QA/render tools, ElevenLabs voice.",
   "engines": {

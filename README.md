@@ -190,3 +190,7 @@ branch `lab`, duyệt xong mới merge vào `main`, sau đó `/design-sync` đ�
 3. Ảnh preview component lấy từ lần `/design-sync` gần nhất: `python3 studio/scripts/make-previews.py`.
 
 Video Studio và skill `make-video` đọc thẳng các file này, không cần sửa code.
+
+## License
+
+Project này được phát hành theo [Apache License 2.0](LICENSE).
