@@ -16,3 +16,10 @@ ds-bundle/
 # QA stills and Video Studio's per-machine run state (agent session ids, logs)
 projects/*/qa/
 projects/*/.studio/
+# Per-video inputs and generated deliverables stay local. Existing tracked Day02
+# templates remain tracked; add a future template explicitly when it is approved.
+/projects/*/
+/tts-elevenlabs/out/*/
+/transcripts/Day*/*
+/chapters/Day*/*
+/vinuni-lesson-video-ds/ui_kits/lesson-video/videos/*/

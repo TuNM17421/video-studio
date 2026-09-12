@@ -10,19 +10,22 @@ chạy được bằng web **Video Studio** (`studio/`) hoặc trực tiếp b�
 | Đường dẫn | Nội dung |
 |---|---|
 | `vinuni-lesson-video-ds/` | **Design system** (bản đã duyệt): token màu và chữ, component, lib chuyển động, scene mẫu, video mẫu. Đọc `README.md` và `SKILL.md` bên trong trước khi thiết kế |
-| `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/` | Mã nguồn từng video: `cues.js`, `sNN.jsx`, `video.jsx`, `timeline.js`, `voice.js`, `STORYBOARD.md` |
-| `projects/<id>/` | Kịch bản gốc (`kich-ban-goc.md`), ghi chú dựng (`PROMPTS.md`), `render/` (MP4, không đưa lên git) |
-| `tts-elevenlabs/` | Tạo giọng ElevenLabs → `out/<id>/voice.wav` (không đưa lên git) + `voice.cues.json` (có trên git) |
+| `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/` | Mã nguồn từng video: `cues.js`, `sNN.jsx`, `video.jsx`, `timeline.js`, `voice.js`, `STORYBOARD.md`; video mới là dữ liệu theo lần dựng và không đưa lên git |
+| `projects/<id>/` | Kịch bản gốc (`kich-ban-goc.md`), ghi chú dựng (`PROMPTS.md`), QA và `render/`; đều giữ trên máy |
+| `tts-elevenlabs/` | Tạo giọng ElevenLabs → `out/<id>/voice.wav` + `voice.cues.json`; toàn bộ output giữ trên máy |
 | `tools/` | `build.mjs`, `verify.mjs`, `shoot.mjs` (chụp ảnh QA), `render.mjs` (MP4), `voice-timing.mjs`, `transcript.mjs` |
 | `studio/` | **Video Studio**: web local chọn style, tạo video và điều khiển agent Claude Code theo từng bước |
 | `styles/` | Danh sách style (`lesson.json`, `lesson-lab.json`: màu, component tiêu biểu, luật) và ảnh preview component |
 | `.claude/skills/make-video/` | Skill `/make-video`: quy trình dựng video, dùng chung cho Video Studio và CLI |
-| `transcripts/DayNN/`, `chapters/DayNN/` | Sản phẩm đi kèm mỗi video |
+| `transcripts/DayNN/`, `chapters/DayNN/` | Sản phẩm đi kèm mỗi video, giữ trên máy |
 | `.design-sync/`, `.ds-sync/` | Cấu hình và công cụ đồng bộ design system lên Claude Design (`/design-sync`) |
 
 **Video mẫu nên xem trước:** `d2-01-lab`, gồm kịch bản `projects/d2-01-lab/`, mã nguồn
 `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/d2-01-lab/`, transcript và chapters trong `Day02/`.
 File MP4 và WAV không có trên git. Muốn có thì gen lại theo các bước dưới đây.
+
+Git chỉ lưu core dùng chung: Studio, pipeline, design system, style, component và các template Day02 đã
+được duyệt. Kịch bản, mã cảnh, giọng, QA, MP4, transcript và chapter của video mới đều bị `.gitignore` loại.
 
 ## Branch
 
@@ -141,11 +144,11 @@ từng bước khi được hỏi):
    - `chapters/DayNN/<id>-chương.txt`: dạng `MM:SS: tên chương`, mỗi chương ứng với một phần của kịch bản
      hoặc một ranh giới cảnh. Claude tóm tắt tên chương từ lời đọc.
    - `projects/<id>/PROMPTS.md`: ghi chú dựng (kịch bản nguồn, giọng, lệnh đã chạy, feedback đã áp dụng).
-7. **Commit.** `git add -A && git commit` rồi push lên branch của bạn. `.gitignore` đã loại MP4, WAV,
-   cache giọng và `.env`.
+7. **Commit core.** Chỉ stage pipeline, Studio, design system, style và component dùng chung. `.gitignore`
+   loại dữ liệu theo từng video: kịch bản, mã cảnh, output giọng, QA, MP4, transcript và chapter.
 
 Muốn sửa một video có sẵn (ví dụ `d2-01-lab`) nhưng chưa có `voice.wav` thì gen lại giọng ở bước 2.
-Nếu lời trong `cues.js` không đổi, `voice.cues.json` trên git vẫn khớp nên chỉ cần `voice.wav` khi render.
+Nếu lời trong `cues.js` không đổi, `voice.cues.json` cục bộ vẫn khớp nên chỉ cần `voice.wav` khi render.
 
 ## Đưa design system lên Claude Design (bằng tài khoản của bạn)
 

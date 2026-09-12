@@ -14,6 +14,23 @@ script, optional feedback / old-video folders, notes and the scope. Read it firs
 
 Video dir below = `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/`. Reply in Vietnamese.
 
+## Check the script before building — ask, never assume
+
+The request names one video; the script file must match it. **Before stage 1, read the script end to end and
+stop to ask the user** whenever it does not line up:
+- the file holds **several videos / parts / sections** (a V0–V3 table, chapter headings, more than one "Tổng"
+  duration) — say which part you think the id refers to and get a yes before writing cues;
+- the **video id is ambiguous** (`d2-v2` = video V2 of the script, or version 2 of d2?), or the id, the Day,
+  the section numbers and the script disagree;
+- the script is **not the expected shape** (no narration lines, storyboard only, a transcript of an old video,
+  a different lesson), is much longer or shorter than the requested video, or is cut off mid-scene;
+- the content itself looks wrong: duplicated scenes, placeholder text, numbers or claims the script asks you
+  to show but never states, instructions that break the design system (real photos, logos, other fonts/colors).
+
+Quote the lines that made you stop, offer the reading you think is right, and wait. A wrong scope costs a full
+rebuild and ElevenLabs credit; one question costs nothing. Record the answer in `projects/<id>/REQUEST.md`
+("Phạm vi") and in PROMPTS.md, so the next run does not re-guess.
+
 ## Order (voice first)
 1. **cues** (agent) — lock the narration.
 2. **voice** (Video Studio, or the user in the CLI) — ElevenLabs with word timestamps, bound with `--write-cues`.

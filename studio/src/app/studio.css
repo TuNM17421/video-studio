@@ -403,25 +403,6 @@ button.vs-tile:hover {
   margin: 12px 0;
   font-family: var(--vu-font-brand);
 }
-.vs-facts {
-  margin: 0 0 4px;
-  display: grid;
-  gap: 10px;
-}
-.vs-facts > div {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 12px;
-  font-size: 12px;
-}
-.vs-facts dt {
-  color: var(--subtle);
-}
-.vs-facts dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
 /* ── agent run ──────────────────────────────────────────────────────────── */
 .vs-badge {
   display: inline-flex;
@@ -1459,10 +1440,6 @@ button.vs-tile:hover {
   .vs-step-body {
     padding: 18px;
   }
-  .vs-facts > div {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
 }
 
 /* ── Ant Design component bridge ─────────────────────────────────────────
@@ -1481,6 +1458,15 @@ button.vs-tile:hover {
   min-width: 224px !important;
   max-width: 224px !important;
   background: var(--surface) !important;
+}
+@media (min-width: 681px) {
+  .sidebar.ant-layout-sider {
+    position: sticky;
+    inset-block-start: 0;
+    align-self: flex-start;
+    height: 100dvh;
+    overflow-y: auto;
+  }
 }
 .sidebar .ant-layout-sider-children {
   min-height: 100%;
@@ -1615,28 +1601,33 @@ button.vs-tile:hover {
   background: transparent;
 }
 .vs-script-field .ant-upload-drag {
-  min-height: 186px;
+  min-height: 148px;
   border-color: var(--vu-blue-300);
   background: var(--vu-blue-50);
+}
+.vs-script-field .ant-upload-btn {
+  padding: 12px 16px !important;
 }
 .vs-script-field .vs-drop.is-invalid .ant-upload-drag {
   border-color: var(--vu-red-700);
   background: var(--vu-red-50);
 }
 .vs-script-field .ant-upload-drag-icon {
-  margin-bottom: 8px !important;
+  margin-bottom: 6px !important;
 }
 .vs-script-field .ant-upload-drag-icon .anticon {
   color: var(--vu-blue-700) !important;
-  font-size: 34px;
+  font-size: 30px !important;
 }
 .vs-script-field .ant-upload-text {
   color: var(--vu-blue-900) !important;
   font-family: var(--vs-font-display);
+  font-size: 14px !important;
   font-weight: var(--vu-font-semibold);
+  line-height: 1.45 !important;
 }
 .vs-script-field .ant-upload-hint {
-  margin: 5px 0 12px !important;
+  margin: 3px 0 10px !important;
   color: var(--subtle) !important;
   font-size: 12px !important;
 }
@@ -1667,6 +1658,12 @@ button.vs-tile:hover {
   display: grid;
   min-width: 0;
   padding-inline: 0;
+}
+.vs-style-form-item {
+  margin-bottom: 18px;
+}
+.vs-style-form-item .vs-section-title {
+  margin-bottom: 0;
 }
 .vs-collapse-label {
   width: 100%;
@@ -1714,18 +1711,25 @@ button.vs-tile:hover {
 }
 .vs-scope.ant-form-item {
   display: block;
+  margin-bottom: 17px;
 }
 .vs-scope-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 16px;
 }
 .vs-scope-options .ant-checkbox-wrapper {
+  min-width: 0;
+  margin-inline-start: 0;
   font-size: 12px;
 }
 .vs-facts.ant-descriptions {
   display: block;
   margin-bottom: 18px;
+}
+.vs-facts.ant-descriptions > .ant-descriptions-view,
+.vs-facts.ant-descriptions > .ant-descriptions-view > table {
+  width: 100%;
 }
 .vs-facts .ant-descriptions-item-label {
   width: 160px;
@@ -1742,30 +1746,39 @@ button.vs-tile:hover {
   padding: 0;
   background: var(--surface);
 }
-.vs-workflow.ant-steps .ant-steps-item {
+.vs-workflow.ant-steps .vs-workflow-item {
+  flex: 1 1 0 !important;
   min-width: 0;
 }
-.vs-workflow.ant-steps .ant-steps-item-container {
-  padding: 12px 10px 14px;
+.vs-workflow.ant-steps .vs-workflow-item-wrapper {
+  min-width: 0;
+  padding: 12px 12px 14px;
 }
-.vs-workflow.ant-steps .ant-steps-item-title {
+.vs-workflow.ant-steps .vs-workflow-item-section {
+  min-width: 0;
+}
+.vs-workflow.ant-steps .vs-workflow-item-title {
+  overflow: hidden;
   color: var(--vu-blue-900);
   font-family: var(--vs-font-display);
   font-size: 13px;
   font-weight: var(--vu-font-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.vs-workflow.ant-steps .ant-steps-item-content {
+.vs-workflow.ant-steps .vs-workflow-item-content {
   min-width: 0;
-}
-.vs-workflow.ant-steps .ant-steps-item-content-wrapper {
+  overflow: hidden;
   color: var(--subtle);
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.vs-workflow.ant-steps .ant-steps-item-process .ant-steps-item-icon {
+.vs-workflow.ant-steps .ant-steps-item-process .vs-workflow-item-icon {
   background: var(--vu-blue-700);
   border-color: var(--vu-blue-700);
 }
-.vs-workflow.ant-steps .ant-steps-item-finish .ant-steps-item-icon {
+.vs-workflow.ant-steps .ant-steps-item-finish .vs-workflow-item-icon {
   background: var(--vu-green-50);
   border-color: var(--vu-green-700);
 }

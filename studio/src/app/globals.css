@@ -329,6 +329,7 @@ dialog::backdrop {
   background: var(--vu-green-700);
 }
 .main-content {
+  width: 100%;
   max-width: 1350px;
   padding: 43px 42px 0;
   margin: 0 auto;

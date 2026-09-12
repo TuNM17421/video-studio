@@ -26,6 +26,13 @@ export default function Videos() {
   const { hasKey } = useKeyStatus();
   useEffect(() => { api<VideoSummary[]>("/api/videos").then(setVideos).catch((e) => setError(e.message)); }, []);
   const filtered = useMemo(() => videos?.filter((video) => matchesVideo(video, query, filter)) || [], [videos, query, filter]);
+  const loading = videos === null && !error;
+  const countLabel = videos ? `${filtered.length} / ${videos.length} VIDEO` : error ? "KHÔNG THỂ TẢI" : "ĐANG TẢI VIDEO…";
+  const emptyText = videos === null || error
+    ? null
+    : videos.length
+      ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có video phù hợp. Đổi từ khóa hoặc bộ lọc trạng thái." />
+      : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có video. Tạo video đầu tiên để bắt đầu luồng sản xuất." />;
   const columns: TableProps<VideoSummary>["columns"] = [
     { title: "Video", key: "video", render: (_, video) => <div className="vs-video-cell"><strong>{video.id}</strong>{video.title !== video.id && <small>{video.title}</small>}{!video.managed && <small>làm ngoài Video Studio</small>}</div> },
     { title: "Ngày", dataIndex: "day", key: "day", render: (day: string) => day || "—" },
@@ -35,17 +42,17 @@ export default function Videos() {
   ];
   return <Shell page="videos" crumb="Các video" hasKey={hasKey}>
     <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> projects/</div><h1>Các video</h1></div></div>
-    {error && <Alert className="feedback" type="error" showIcon message="Không tải được danh sách video" description={error} />}
-    <section className="editor-panel vs-video-index">
+    {error && <Alert className="feedback" type="error" showIcon title="Không tải được danh sách video" description={error} />}
+    <section className="editor-panel vs-video-index" aria-busy={loading}>
       <div className="vs-index-toolbar">
         <div><span className="eyebrow">LUỒNG SẢN XUẤT</span><h2>Theo dõi từng cổng duyệt</h2></div>
         <div className="vs-index-controls">
           <Input.Search className="vs-search" allowClear value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, tên hoặc ngày…" aria-label="Tìm video" />
           <Select aria-label="Lọc trạng thái" value={filter} onChange={(value) => setFilter(value)} options={[{ value: "all", label: "Tất cả trạng thái" }, { value: "active", label: "Đang xử lý" }, { value: "attention", label: "Cần chú ý" }, { value: "done", label: "Đã hoàn tất" }]} />
-          <span className="quiet-label">{filtered.length} / {videos?.length || 0} VIDEO</span>
+          <span className="quiet-label" aria-live="polite">{countLabel}</span>
         </div>
       </div>
-      <Table className="vs-table vs-production-table" rowKey="id" columns={columns} dataSource={filtered} pagination={false} loading={!videos && !error} locale={{ emptyText: videos?.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có video phù hợp. Đổi từ khóa hoặc bộ lọc trạng thái." /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có video. Tạo video đầu tiên để bắt đầu luồng sản xuất." /> }} />
+      <Table className="vs-table vs-production-table" rowKey="id" columns={columns} dataSource={filtered} pagination={false} loading={loading} locale={{ emptyText }} />
     </section>
     <footer className="workspace-footer" />
   </Shell>;

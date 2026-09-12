@@ -89,7 +89,7 @@ export default function Studio() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoStep, setAutoStep] = useState(true);
-  const { detail, logs, job, error: loadError } = useVideo(id);
+  const { detail, logs, job, error: loadError, refresh } = useVideo(id);
   const { hasKey, setHasKey } = useKeyStatus();
 
   useEffect(() => {
@@ -106,7 +106,14 @@ export default function Studio() {
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
-    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
   async function create() {
     await act(async () => {
@@ -131,6 +138,14 @@ export default function Studio() {
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
       <Steps
         className="workflow vs-workflow"
+        classNames={{
+          item: "vs-workflow-item",
+          itemWrapper: "vs-workflow-item-wrapper",
+          itemIcon: "vs-workflow-item-icon",
+          itemSection: "vs-workflow-item-section",
+          itemTitle: "vs-workflow-item-title",
+          itemContent: "vs-workflow-item-content",
+        }}
         current={STEPS.findIndex((item) => item.id === step)}
         responsive={false}
         onChange={(index) => { const target = STEPS[index]; if (target.id === "plan" || detail) setStep(target.id); }}
@@ -142,8 +157,8 @@ export default function Studio() {
         }))}
       />
     </div>
-    {shown && <Alert className="feedback" type="error" showIcon closable message="Thao tác chưa hoàn tất" description={shown} onClose={() => setError(null)} />}
-    {detail && !detail.managed && <Alert className="feedback" type="info" showIcon message="Video được làm ngoài Video Studio" description="Bạn chỉ có thể xem tệp và kết quả của video này." />}
+    {shown && <Alert className="feedback" type="error" showIcon closable title="Thao tác chưa hoàn tất" description={shown} onClose={() => setError(null)} />}
+    {detail && !detail.managed && <Alert className="feedback" type="info" showIcon title="Video được làm ngoài Video Studio" description="Bạn chỉ có thể xem tệp và kết quả của video này." />}
     <div className="editor-layout">
       <section className="editor-panel" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>

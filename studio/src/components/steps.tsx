@@ -160,7 +160,7 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       <div className="vs-step-status"><StageBadge status={status} />{count > 0 && <span className="quiet-label">{count} CÂU · {formatFrames(detail.cues?.duration)} ƯỚC TÍNH</span>}</div>
       <JobProgress job={job?.kind === "cues" ? job : null} onStop={stop} />
       {status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy agent</Button></Empty>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon message="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
+      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
       <AgentSummary logs={runLogs} />
       <CueList detail={detail} />
       {(status === "review" || (status === "done" && !voiced)) && <FeedbackBox disabled={busy} placeholder="Ví dụ: tách câu 12 thành hai câu; đổi tên nhân vật Minh thành Dũng…" onSend={(message) => act(() => post(`/api/videos/${id}/agent`, { stage: "cues", message }))} />}
@@ -231,7 +231,7 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
           </div>}
         </div>
         <JobProgress job={job?.kind === "voice" ? job : null} onStop={stop} />
-        {status === "error" && <Alert className="feedback" type="error" showIcon message="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
+        {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
         {detail.artifacts.voice && <div className="audio-result vs-audio"><div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : ""}</span></div><audio controls src={fileUrl(`tts-elevenlabs/out/${id}/voice.wav`)} preload="none" /></div>}
         <Button type="primary" block disabled={locked || busy} icon={locked ? <LockOutlined /> : <SoundOutlined />} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "generate" }))}>
           {dry && fresh && dry.billable === 0 ? "Ghép giọng từ cache" : `Tạo giọng${dry && fresh ? ` · ${dry.toGenerate} câu, ${dry.billable.toLocaleString("vi-VN")} ký tự` : ""}`}
@@ -254,7 +254,7 @@ export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       <JobProgress job={job?.kind === "scenes" ? job : null} onStop={stop} />
       {!voiced && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tạo giọng đọc trước" />}
       {voiced && status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Bắt đầu dựng cảnh</Button></Empty>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon message="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
+      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
       <AgentSummary logs={runLogs} />
       {detail.qa.length > 0 && <QaGallery paths={detail.qa} />}
       {(status === "review" || status === "done") && detail.state.stages.render !== "running" && <FeedbackBox disabled={busy} placeholder="Ví dụ: cảnh 12 đổi Gate sang StopGate; cảnh 20 chữ bị tràn khung…" onSend={(message) => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes", message }))} />}
@@ -289,7 +289,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         <div><span>Giọng</span><strong>{detail.state.voice.model}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon message="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
+      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
       {ready && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
         {path ? <CheckCircleFilled className="is-ok" /> : <span className="vs-dot" />}
         <span>{label}</span>

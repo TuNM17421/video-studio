@@ -57,7 +57,7 @@ export default function Library() {
   const cardOf = (g: string) => lib?.groups.find((x) => x.id === g)?.card ?? null;
   const panels = {
     styles: <div className="vs-stack">
-      {stylesError && <Alert className="feedback" type="error" showIcon message="Không tải được style" description={stylesError} />}
+      {stylesError && <Alert className="feedback" type="error" showIcon title="Không tải được style" description={stylesError} />}
       {!styles.length && !stylesError && <LoadingState label="Đang tải style…" />}
       {styles.map((style) => <section key={style.id} className="editor-panel">
         <div className="panel-heading"><div><h2>{style.name}</h2><p>{style.summary}</p></div><Tag className="pill-label mono">styles/{style.id}.json</Tag></div>
@@ -72,7 +72,7 @@ export default function Library() {
         <Select aria-label="Nhóm component" value={group} onChange={(value) => { setGroup(value); setVisibleCount(PAGE_SIZE); }} options={[{ value: "all", label: "Tất cả nhóm" }, ...(lib?.groups.map((item) => ({ value: item.id, label: `${item.id} (${item.components.length})` })) || [])]} />
         <span className="quiet-label">HIỂN THỊ {Math.min(visibleCount, components.length)} / {components.length}</span>
       </div>
-      {libraryError && <Alert className="feedback vs-library-feedback" type="error" showIcon message="Không tải được component" description={libraryError} />}
+      {libraryError && <Alert className="feedback vs-library-feedback" type="error" showIcon title="Không tải được component" description={libraryError} />}
       {!lib && !libraryError && <LoadingState label="Đang lập chỉ mục component…" />}
       {lib && !components.length && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có component phù hợp. Đổi từ khóa hoặc chọn nhóm khác." />}
       <ul className="vs-tiles vs-library-grid">{visibleComponents.map((component) => <li key={`${component.group}-${component.name}`}>
@@ -84,7 +84,7 @@ export default function Library() {
       {visibleCount < components.length && <div className="vs-load-more"><span>Còn {components.length - visibleCount} component</span><Button icon={<DownOutlined />} iconPlacement="end" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>Hiển thị thêm</Button></div>}
     </section>,
     videos: <section className="editor-panel">
-      {libraryError && <Alert className="feedback vs-library-feedback" type="error" showIcon message="Không tải được video mẫu" description={libraryError} />}
+      {libraryError && <Alert className="feedback vs-library-feedback" type="error" showIcon title="Không tải được video mẫu" description={libraryError} />}
       {!lib && !libraryError && <LoadingState label="Đang tải video mẫu…" />}
       <div className="vs-section vs-videos-tab">
         <div className="vs-video-list">{lib?.videos.map((item) => <Button key={item.id} type={video === item.id ? "primary" : "text"} className="scene-list-item" onClick={() => setVideo(item.id)}>{item.id}</Button>)}</div>
