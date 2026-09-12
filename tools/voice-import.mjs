@@ -75,6 +75,7 @@ const CUES = (mod.CUES || []).map((c, i) => ({
 if (!CUES.length) fail(`${cuesFile} không export CUES`);
 const PAD = Math.max(2, String(Math.max(...CUES.map((c) => c.n))).length);
 const syllables = (s) => s.trim().split(/\s+/).filter(Boolean).length;
+const secs = (v) => `${v.toFixed(1).replace('.', ',')}s`;
 const expectedSeconds = (c) => (c.silent ? Number(c.silent) : syllables(c.text) / 3);
 
 // ── which file belongs to which câu ──────────────────────────────────────────
@@ -143,8 +144,8 @@ for (const c of CUES) {
     c.pcm = pcm;
     row.seconds = +(pcm.length / 2 / SAMPLE_RATE).toFixed(2);
     const ratio = row.seconds / Math.max(0.5, row.expectedSeconds);
-    if (ratio < SHORT) { row.level = 'warn'; row.notes.push(`ngắn bất thường (${row.seconds}s so với ~${row.expectedSeconds}s)`); }
-    else if (ratio > LONG) { row.level = 'warn'; row.notes.push(`dài bất thường (${row.seconds}s so với ~${row.expectedSeconds}s)`); }
+    if (ratio < SHORT) { row.level = 'warn'; row.notes.push(`ngắn bất thường (${secs(row.seconds)} so với ~${secs(row.expectedSeconds)})`); }
+    else if (ratio > LONG) { row.level = 'warn'; row.notes.push(`dài bất thường (${secs(row.seconds)} so với ~${secs(row.expectedSeconds)})`); }
   } catch (e) {
     row.level = 'error';
     row.notes.push(`không giải mã được: ${e.message}`);
@@ -187,10 +188,10 @@ if (align) {
     row.avgLogprob = heard.avgLogprob ?? null;
     if (matchRatio < MATCH_BLOCK) {
       row.level = 'error';
-      row.notes.push(`nội dung không khớp lời câu ${row.key} (khớp ${Math.round(matchRatio * 100)}%) — nhiều khả năng nhầm file`);
+      row.notes.push(`nội dung nghe được không khớp lời câu ${row.key} — nhiều khả năng nhầm file`);
     } else if (matchRatio < MATCH_WARN) {
       row.level = row.level === 'error' ? 'error' : 'warn';
-      row.notes.push(`chỉ khớp ${Math.round(matchRatio * 100)}% lời — nghe lại câu này`);
+      row.notes.push('chỉ khớp một phần lời — nghe lại câu này trước khi nhập');
     }
   }
 }
@@ -219,7 +220,7 @@ function print() {
   for (const r of rows) {
     const mark = r.level === 'error' ? '✗' : r.level === 'warn' ? '!' : '·';
     const match = r.matchRatio != null ? ` · khớp ${Math.round(r.matchRatio * 100)}%` : '';
-    console.log(`${mark} ${r.key} ← ${r.file || '—'}${r.seconds ? ` · ${r.seconds}s` : ''}${match}${r.notes.length ? ` · ${r.notes.join('; ')}` : ''}`);
+    console.log(`${mark} ${r.key} ← ${r.file || '—'}${r.seconds ? ` · ${secs(r.seconds)}` : ''}${match}${r.notes.length ? ` · ${r.notes.join('; ')}` : ''}`);
   }
   for (const e of extra) console.log(`! thừa: ${e.file} (${e.reason})`);
   for (const c of clashes) console.log(`! trùng số câu ${c.n}: dùng ${c.kept}, bỏ qua ${c.file}`);

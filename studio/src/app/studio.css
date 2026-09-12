@@ -814,66 +814,158 @@ button.vs-tile:hover {
 .vs-source {
   margin-bottom: 18px;
 }
-.vs-import-pick {
-  grid-template-columns: 1fr 170px;
+/* Folder, pause and the check button: everything that shapes a scan, right above its result. */
+.vs-import-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 16px;
 }
-/* The mapping table: one row per câu, showing the file it got and how much of it was heard. */
+.vs-import-run .field {
+  margin: 0;
+  width: 162px;
+  flex: 0 0 auto;
+}
+.vs-import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  /* Drops onto its own line rather than being squeezed into a column of single words. */
+  flex: 1 1 250px;
+  gap: 0 6px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.vs-import-summary strong {
+  font-weight: var(--vu-font-semibold);
+  color: var(--text);
+}
+.vs-import-summary.is-ok strong {
+  color: var(--green);
+}
+.vs-import-summary.is-warn strong {
+  color: var(--amber);
+}
+.vs-import-summary.is-error strong {
+  color: var(--vu-red-800);
+}
+.vs-import-summary.is-stale {
+  color: var(--subtle);
+}
+.vs-import-summary.is-stale strong {
+  color: var(--subtle);
+  text-decoration: line-through;
+}
+.vs-import-summary small {
+  flex-basis: 100%;
+  font-size: 10px;
+  color: var(--subtle);
+}
+.vs-import-summary.is-stale small:last-child {
+  color: var(--amber);
+}
+
+/* Câu → tệp, with the measured length and how much of the câu was actually heard in it. */
 .vs-map {
-  list-style: none;
   margin: 0 0 14px;
-  padding: 0;
-  max-height: 420px;
-  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
+  max-height: 420px;
+  overflow-y: auto;
 }
-.vs-map li {
+.vs-map-row {
   display: grid;
-  grid-template-columns: 38px 150px 1fr auto auto;
+  grid-template-columns: 34px 132px minmax(0, 1fr) 54px 46px;
   align-items: baseline;
-  gap: 10px;
+  gap: 4px 10px;
   padding: 8px 12px;
   font-size: 12px;
   border-bottom: 1px solid var(--line);
 }
-.vs-map li:last-child {
+.vs-map-row.has-play {
+  grid-template-columns: 34px 132px minmax(0, 1fr) 54px 46px 30px;
+}
+.vs-map-row:last-child {
   border-bottom: 0;
 }
-.vs-map li.is-warn {
+.vs-map-row.is-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--vu-blue-50);
+  border-bottom: 1px solid var(--vu-blue-100);
+  font-size: 10px;
+  font-weight: var(--vu-font-bold);
+  letter-spacing: 0.02em;
+  color: var(--vu-blue-800);
+  text-transform: uppercase;
+}
+.vs-map-row.is-head > span:nth-child(4),
+.vs-map-row.is-head > span:nth-child(5) {
+  text-align: right;
+}
+.vs-map-row.is-warn {
   background: var(--amber-light);
 }
-.vs-map li.is-error {
+.vs-map-row.is-error {
   background: var(--red-light);
 }
 .vs-map-key {
   font-weight: var(--vu-font-bold);
   color: var(--vu-blue-800);
 }
-.vs-map-file {
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
+.vs-map-file,
 .vs-map-text {
-  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.vs-map-meta {
+.vs-map-file {
+  color: var(--muted);
+}
+.vs-map-file.is-none {
+  color: var(--subtle);
+  font-style: italic;
+}
+.vs-map-text {
+  color: var(--text);
+}
+.vs-map-len,
+.vs-map-match {
+  text-align: right;
   color: var(--subtle);
   white-space: nowrap;
 }
-.vs-map-notes {
-  grid-column: 2 / -1;
-  color: var(--vu-red-800);
-  font-size: 11px;
-}
-.vs-map li.is-warn .vs-map-notes {
+/* A câu matched this poorly is mostly interpolated timing — worth a second look before importing. */
+.vs-map-match.is-weak {
   color: var(--amber);
+  font-weight: var(--vu-font-bold);
+}
+.vs-map-row.is-error .vs-map-match.is-weak {
+  color: var(--vu-red-800);
 }
 .vs-map-play {
-  grid-row: 1;
-  grid-column: 5;
+  justify-self: end;
+}
+/* The button must not make its row taller than a row without one. */
+.vs-map-play .ant-btn {
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  line-height: 1;
+}
+.vs-map-notes {
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: var(--subtle);
+}
+.vs-map-row.is-warn .vs-map-notes {
+  color: var(--amber);
+}
+.vs-map-row.is-error .vs-map-notes {
+  color: var(--vu-red-800);
 }
 .vs-map-aside {
   list-style: none;
@@ -1758,17 +1850,25 @@ button.vs-tile:hover {
   }
   .vs-grid-3,
   .vs-grid-4,
-  .field-grid,
-  .vs-import-pick {
+  .field-grid {
     grid-template-columns: 1fr;
   }
-  /* The import table drops the file column onto its own line rather than squeezing the narration. */
-  .vs-map li {
-    grid-template-columns: 38px 1fr auto;
+  .vs-import-run {
+    flex-wrap: wrap;
   }
-  .vs-map-file {
-    grid-column: 2 / -1;
-    grid-row: 2;
+  /* The import table drops its length and match columns rather than squeezing the narration. */
+  .vs-map-row,
+  .vs-map-row.has-play {
+    grid-template-columns: 34px minmax(0, 1fr) 46px;
+  }
+  .vs-map-file,
+  .vs-map-len,
+  .vs-map-play {
+    display: none;
+  }
+  .vs-map-row.is-head > span:nth-child(2),
+  .vs-map-row.is-head > span:nth-child(4) {
+    display: none;
   }
   .vs-map-notes {
     grid-column: 1 / -1;

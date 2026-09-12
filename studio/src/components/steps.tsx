@@ -239,10 +239,11 @@ const SOURCES = [
 /** Whether a scan still describes the folder on screen — same rule as the ElevenLabs dry-run. */
 const scanKey = (s: VoiceSettings) => JSON.stringify([s.importDir, s.pause]);
 
-function matchTag(row: ImportReport["rows"][number]) {
-  if (row.matchRatio == null) return null;
-  return `khớp ${Math.round(row.matchRatio * 100)}%`;
-}
+/** One decimal, Vietnamese comma — 4.86 and 22.8 should not read as different kinds of number. */
+const seconds = (v: number) => `${v.toFixed(1).replace(".", ",")}s`;
+
+/** Below this share of the câu's words, spokenAt() is mostly interpolating rather than measuring. */
+const WEAK_MATCH = 0.65;
 
 /**
  * Narration recorded by a member or made by a local model: one audio file per câu in one folder.
@@ -283,28 +284,39 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
   };
 
   return <>
-    <div className="field-grid vs-import-pick">
-      <SourcePickerField label="Thư mục audio" purpose="voice" value={settings.importDir} disabled={busy} onChange={(importDir) => setSettings({ ...settings, importDir })} />
+    <SourcePickerField label="Thư mục audio" purpose="voice" value={settings.importDir} disabled={busy} onChange={(importDir) => setSettings({ ...settings, importDir })} />
+    <div className="vs-import-run">
       <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
-    </div>
-    <div className="vs-dry">
       <Button disabled={busy || !settings.importDir.trim()} icon={<SearchOutlined />} onClick={scan}>Kiểm tra thư mục</Button>
-      {report && <div className={`vs-dry-result ${fresh ? "" : "is-stale"}`}>
-        <strong>{report.matched}/{report.needFile} câu có file · {problems} lỗi · {warnings} cảnh báo{report.align.used ? ` · đối chiếu bằng Whisper ${report.align.model}` : ""}</strong>
-        {!fresh && <small>Thư mục hoặc khoảng nghỉ đã đổi, bấm Kiểm tra lại.</small>}
-      </div>}
+      {report && <p className={`vs-import-summary ${fresh ? (problems ? "is-error" : warnings ? "is-warn" : "is-ok") : "is-stale"}`}>
+        <strong>{report.matched}/{report.needFile} câu có file</strong>
+        {problems > 0 && <span> · {problems} lỗi</span>}
+        {warnings > 0 && <span> · {warnings} cảnh báo</span>}
+        {problems === 0 && warnings === 0 && <span> · không có vấn đề</span>}
+        {report.align.used && <small>Đối chiếu nội dung bằng Whisper {report.align.model}</small>}
+        {!fresh && <small>Thư mục hoặc khoảng nghỉ đã đổi — bấm Kiểm tra lại.</small>}
+      </p>}
     </div>
     {report?.align.note && <Alert className="feedback" type="warning" showIcon message={report.align.note} />}
-    {report && <ul className="vs-map">
-      {report.rows.map((r) => <li key={r.n} className={`is-${r.level}`}>
-        <span className="vs-map-key mono">{r.key}</span>
-        <span className="vs-map-file mono">{r.file ?? (r.silent ? "im lặng" : "—")}</span>
-        <span className="vs-map-text">{r.silent ? "(khoảng dừng)" : r.text}</span>
-        <span className="vs-map-meta">{r.seconds ? `${r.seconds}s` : ""}{matchTag(r) ? ` · ${matchTag(r)}` : ""}</span>
-        {r.notes.length > 0 && <span className="vs-map-notes">{r.notes.join(" · ")}</span>}
-        {bound.length > 0 && !r.silent && <Button className="vs-map-play" type="text" size="small" aria-label={`Nghe câu ${r.key}`} icon={<PlayCircleFilled />} onClick={() => play(r.n)} />}
-      </li>)}
-    </ul>}
+    {report && <div className="vs-map">
+      <div className={`vs-map-row is-head ${bound.length ? "has-play" : ""}`}>
+        <span>Câu</span><span>Tệp</span><span>Lời</span><span>Dài</span><span>Khớp</span>{bound.length > 0 && <span className="vs-map-play-head" />}
+      </div>
+      {report.rows.map((r) => {
+        // The silent row's only note repeats what its own text column already says.
+        const notes = r.silent ? [] : r.notes;
+        const weak = r.matchRatio != null && r.matchRatio < WEAK_MATCH;
+        return <div key={r.n} className={`vs-map-row is-${r.level} ${bound.length ? "has-play" : ""}`}>
+          <span className="vs-map-key mono">{r.key}</span>
+          <span className={`vs-map-file ${r.silent ? "is-none" : "mono"}`} title={r.file || undefined}>{r.file ?? (r.silent ? "không cần" : "—")}</span>
+          <span className="vs-map-text" title={r.silent ? undefined : r.text}>{r.silent ? `Khoảng dừng ${r.expectedSeconds} giây` : r.text}</span>
+          <span className="vs-map-len mono">{r.seconds != null ? seconds(r.seconds) : "—"}</span>
+          <span className={`vs-map-match mono ${weak ? "is-weak" : ""}`}>{r.matchRatio != null ? `${Math.round(r.matchRatio * 100)}%` : "—"}</span>
+          {bound.length > 0 && <span className="vs-map-play">{!r.silent && <Button type="text" size="small" aria-label={`Nghe câu ${r.key}`} icon={<PlayCircleFilled />} onClick={() => play(r.n)} />}</span>}
+          {notes.length > 0 && <span className="vs-map-notes">{notes.join(" · ")}</span>}
+        </div>;
+      })}
+    </div>}
     {report && (report.extra.length > 0 || report.clashes.length > 0) && <ul className="vs-map-aside">
       {report.extra.map((e) => <li key={e.file}>Thừa: <span className="mono">{e.file}</span> — {e.reason}</li>)}
       {report.clashes.map((c) => <li key={c.file}>Câu {c.n} trùng: dùng <span className="mono">{c.kept}</span>, bỏ qua <span className="mono">{c.file}</span></li>)}
@@ -318,7 +330,7 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
     </Checkbox>}
     <Button type="primary" block disabled={busy || !fresh || (problems > 0 && !force)} icon={fresh && (problems === 0 || force) ? <ImportOutlined /> : <LockOutlined />}
       onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "import", force }))}>
-      {fresh ? `Nhập giọng · ${report?.matched ?? 0} câu` : "Kiểm tra thư mục trước"}
+      {!fresh ? "Kiểm tra thư mục trước" : `${detail.artifacts.voice ? "Nhập lại giọng" : "Nhập giọng"} · ${report?.matched ?? 0} câu`}
     </Button>
   </>;
 }
