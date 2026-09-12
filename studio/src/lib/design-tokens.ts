@@ -71,6 +71,8 @@ export const STUDIO_LAYOUT = [
   { token: "workflow.step", value: "68 px", usage: "Giảm khoảng 18% so với rail cũ" },
   { token: "field.counter.row", value: "24 px", usage: "Giữ bộ đếm ký tự ở một hàng riêng dưới textarea" },
   { token: "style.card.min", value: "280 px", usage: "Hai lựa chọn tự giãn kín hàng thay vì để cột trống" },
+  { token: "style.card.padding", value: "14 px", usage: "Tách nội dung và metadata khỏi viền chọn của card" },
+  { token: "style.specimen", value: "156 px", usage: "Mini-scene khóa chiều cao, hiển thị trọn ba component mà không kéo giãn card" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },
 ] as const;
 

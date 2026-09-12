@@ -159,6 +159,8 @@
   --vu-workflow-step-height: 68px;
   --vu-workflow-step-icon: 36px;
   --vu-style-card-min-width: 280px;
+  --vu-style-card-padding: 14px;
+  --vu-style-specimen-height: 156px;
   --vu-preview-panel-width: 296px;
   --vu-emphasis-active: 1;
   --vu-emphasis-complete: 0.7;
