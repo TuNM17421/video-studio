@@ -1441,11 +1441,11 @@ button.vs-tile:hover {
   color: var(--vu-neutral-600) !important;
   white-space: nowrap;
 }
-.vs-production-table th:nth-child(1) { width: 27%; }
+.vs-production-table th:nth-child(1) { width: 25%; }
 .vs-production-table th:nth-child(2) { width: 9%; }
-.vs-production-table th:nth-child(3) { width: 38%; }
-.vs-production-table th:nth-child(4) { width: 18%; }
-.vs-production-table th:last-child { width: 8%; }
+.vs-production-table th:nth-child(3) { width: 35%; }
+.vs-production-table th:nth-child(4) { width: 17%; }
+.vs-production-table th:last-child { width: 14%; }
 .vs-production-table tbody tr {
   transition: background-color var(--vu-duration-fast) var(--vu-ease-standard);
 }
@@ -2066,6 +2066,16 @@ button.vs-tile:hover {
   color: var(--subtle);
   font-size: 10px;
 }
+.vs-video-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+.vs-video-actions .ant-btn {
+  padding-inline: 7px;
+}
 
 .vs-confirm-dialog.ant-modal {
   width: min(440px, calc(100vw - 32px)) !important;
@@ -2079,6 +2089,12 @@ button.vs-tile:hover {
   overflow: hidden;
   border-top: 4px solid var(--vu-red-700);
   border-radius: 8px;
+}
+.vs-confirm-dialog .ant-btn-primary.ant-btn-dangerous:not(:disabled) {
+  background: var(--vu-red-700);
+}
+.vs-confirm-dialog .ant-btn-primary.ant-btn-dangerous:not(:disabled):hover {
+  background: var(--vu-red-800) !important;
 }
 .vs-confirm-title {
   display: flex;
@@ -2094,4 +2110,20 @@ button.vs-tile:hover {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.65;
+}
+.vs-confirm-description p {
+  margin: 0;
+}
+.vs-delete-summary ul {
+  margin: 10px 0;
+  padding-left: 20px;
+  color: var(--vu-blue-900);
+}
+.vs-delete-recovery {
+  padding: 10px 12px;
+  border-left: 3px solid var(--vu-blue-700);
+  background: var(--vu-blue-50);
+}
+.vs-delete-summary .ant-alert {
+  margin-top: 12px;
 }

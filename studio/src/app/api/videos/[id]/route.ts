@@ -1,7 +1,8 @@
 import type { VideoDetail } from "@/lib/types";
 import { handle } from "@/lib/server/http";
-import { currentJob, logs } from "@/lib/server/jobs";
-import { assertId } from "@/lib/server/paths";
+import { currentJob, isRunning, logs } from "@/lib/server/jobs";
+import { assertId, HttpError, rel } from "@/lib/server/paths";
+import { trashVideo } from "@/lib/server/trash-video";
 import { lastDryRun } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
 
@@ -19,4 +20,12 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     dryRun: lastDryRun(id),
   };
   return Response.json(detail);
+});
+
+export const DELETE = handle(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
+  const { id } = await ctx.params;
+  assertId(id);
+  if (isRunning(id)) throw new HttpError(409, "Video đang có tác vụ chạy. Hãy dừng tác vụ rồi thử xóa lại.");
+  const targets = await trashVideo(id);
+  return Response.json({ id, trashed: targets.map((target) => ({ kind: target.kind, path: rel(target.path) })) });
 });
