@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, LockOutlined, PlayCircleFilled, RobotOutlined, WarningFilled } from "@ant-design/icons";
+import { CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PlayCircleFilled, QuestionOutlined, WarningFilled } from "@ant-design/icons";
 import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
-import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
-import type { AgentConfig, AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
+import { agentProviderLabel } from "@/lib/agent-providers";
+import type { AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { NO_MUSIC, type MusicCatalog, type MusicTrack } from "@/lib/music";
-import { AgentMark } from "./agent-mark";
 import { MusicPicker } from "./music-picker";
 import { SourcePickerField } from "./source-picker";
 import { MODULES, moduleNames, type ModuleInfo } from "@/lib/modules";
@@ -63,6 +62,7 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
     r.oldVideoDir && `Video cũ: ${r.oldVideoDir}`,
     showcase && `Component tiêu biểu của style: ${showcase}. Dùng khi nội dung phù hợp.`,
     r.modules.includes("dialogue") && "Video có hội thoại: kịch bản theo templates/kich-ban-hoi-thoai.md, mỗi câu trong cues.js khai speaker + delivery, chỉ dùng giọng có trong voices.json.",
+    r.modules.includes("quiz") && "Video có quiz: chỉ đánh dấu quiz: true cho khoảng chờ suy nghĩ (cue silent), không đánh dấu câu đọc câu hỏi hay phần chữa bài.",
     ...(style?.rules || []).map((rule) => `- ${rule}`),
     `Làm đủ: ${scope}.`,
     r.notes.trim() && `Ghi chú: ${r.notes.trim()}`,
@@ -75,16 +75,14 @@ function ModulePreview({ module: m }: { module: ModuleInfo }) {
   if (!m.preview) return null;
   const label = `Xem thử video mẫu · ${m.name}`;
   return <>
-    {/* Same round affordance as the voice picker's listen button — one gesture, one shape. */}
     <Tooltip title={label}>
       <button
         type="button"
         className="vs-module-play"
         aria-label={label}
-        // Inside the card's own label: previewing must not toggle the capability.
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
+        onClick={() => setOpen(true)}
       >
-        <CaretRightFilled />
+        <CaretRightFilled /><span>Xem video mẫu</span>
       </button>
     </Tooltip>
     <Modal
@@ -100,7 +98,11 @@ function ModulePreview({ module: m }: { module: ModuleInfo }) {
   </>;
 }
 
-export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy, loading, unavailable }: { styles: StyleDef[]; agentConfig: AgentConfig; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean }) {
+function ModuleGlyph({ icon }: { icon: ModuleInfo["icon"] }) {
+  return <span className="vs-module-glyph" aria-hidden="true">{icon === "dialogue" ? <MessageOutlined /> : <QuestionOutlined />}</span>;
+}
+
+export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, unavailable }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean }) {
   const [modules, setModules] = useState<ModuleInfo[]>(MODULES.map((m) => ({ ...m, preview: null })));
   useEffect(() => {
     let alive = true;
@@ -125,6 +127,17 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
   const scriptErrorId = useId();
   const prompt = useMemo(() => buildPrompt(draft, style), [draft, style]);
   const set = (patch: Partial<VideoRequest>) => setDraft((current) => ({ ...current, request: { ...current.request, ...patch } }));
+  const quizEnabled = draft.request.modules.includes("quiz");
+  const setModule = (id: string, checked: boolean) => setDraft((current) => ({
+    ...current,
+    quizMusic: id === "quiz" && !checked ? NO_MUSIC : current.quizMusic,
+    request: {
+      ...current.request,
+      modules: checked
+        ? [...new Set([...current.request.modules, id])]
+        : current.request.modules.filter((moduleId) => moduleId !== id),
+    },
+  }));
   const formatError = videoIdError(draft.id);
   const duplicateError = idCheck?.value === draft.id && idCheck.taken ? `Đã có video “${draft.id}”. Chọn một mã khác.` : null;
   const shownIdError = touched.id ? formatError || duplicateError : null;
@@ -205,7 +218,7 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
           ? "Sửa các trường được đánh dấu ở trên."
           : complete
             ? "Sẽ tạo project và chạy agent Lời & cue."
-            : "Điền các trường có dấu * rồi bấm tạo.";
+            : "Thêm mã video và kịch bản để tiếp tục.";
   const uploadProps: UploadProps = {
     accept: ".md,.txt,text/markdown,text/plain",
     disabled: busy,
@@ -218,8 +231,7 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
   };
   return <div ref={formRef}><Form className="vs-plan-form" layout="vertical" requiredMark={false} aria-busy={loading} onFinish={() => { void submit(); }}>
     <div className="vs-section">
-      <p className="vs-form-requirements"><span className="vs-required" aria-hidden="true">*</span><span>Trường có dấu sao là bắt buộc.</span></p>
-      <Form.Item className="vs-style-form-item" label={<span id={styleLabelId} className="vs-section-title">Style<RequiredMark /></span>}>
+      <Form.Item className="vs-style-form-item" label={<span id={styleLabelId} className="vs-section-title">Style hình ảnh<RequiredMark /></span>}>
         {loading
           ? <div className="vs-inline-state" role="status"><LoadingOutlined spin /><span>Đang tải style và cấu hình agent…</span></div>
           : unavailable
@@ -227,55 +239,53 @@ export function PlanForm({ styles, agentConfig, draft, setDraft, onCreate, busy,
             : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
       {style && <StyleShowcase style={style} collapsible />}
-      <Form.Item className="vs-modules-field" label={<span className="vs-section-title">Bổ sung</span>}>
+      <section className="vs-capabilities" aria-labelledby="vs-capabilities-title">
+        <div className="vs-capabilities-head">
+          <h3 id="vs-capabilities-title" className="vs-section-title">Tính năng nội dung</h3>
+          <p>Có thể chọn nhiều. Mỗi tính năng mở đúng phần cấu hình liên quan.</p>
+        </div>
         <div className="vs-modules">
-          {modules.map((m) => <label key={m.id} className={`vs-module ${draft.request.modules.includes(m.id) ? "is-on" : ""}`}>
+          {modules.map((m) => {
+            const checked = draft.request.modules.includes(m.id);
+            return <article key={m.id} className={`vs-module ${checked ? "is-on" : ""} ${busy ? "is-disabled" : ""}`}>
             <Checkbox
-              checked={draft.request.modules.includes(m.id)}
+              className="vs-module-toggle"
+              checked={checked}
               disabled={busy}
-              onChange={(e) => set({ modules: e.target.checked ? [...draft.request.modules, m.id] : draft.request.modules.filter((x) => x !== m.id) })}
-            />
-            <span className="vs-module-copy">
-              <strong>{m.name}</strong>
-              <small>{m.summary}{m.template ? <> Kịch bản viết theo <code>{m.template}</code>.</> : null}</small>
-            </span>
+              onChange={(e) => setModule(m.id, e.target.checked)}
+            >
+              <span className="vs-module-identity">
+                <ModuleGlyph icon={m.icon} />
+                <span className="vs-module-copy">
+                  <strong>{m.name}</strong>
+                  <small>{m.summary}{m.template ? <> Dùng <code>{m.template}</code>.</> : null}</small>
+                  {checked && <span className="vs-module-status">Đã bật</span>}
+                </span>
+              </span>
+            </Checkbox>
             <ModulePreview module={m} />
-          </label>)}
+          </article>;
+          })}
         </div>
-      </Form.Item>
-      <div className="vs-agent-binding">
-        <div className="vs-agent-binding-copy">
-          <RobotOutlined />
-          <span><strong>Agent dựng video</strong><small>{agentConfig.selectionLocked ? "Được ấn định bởi cấu hình máy và không thể đổi trong Studio." : "Chọn một lần. Video sẽ tiếp tục dùng agent này khi mở lại."}</small></span>
-        </div>
-        {agentConfig.selectionLocked
-          ? <span className="vs-agent-locked"><LockOutlined /><AgentMark provider={agentConfig.defaultProvider} />{agentProviderLabel(agentConfig.defaultProvider)}</span>
-          : <Select
-              className="vs-agent-select"
-              aria-label="Agent dựng video"
-              value={draft.agentProvider}
+        {quizEnabled && <div className="vs-module-config" aria-labelledby="vs-quiz-config-title">
+          <div className="vs-module-config-head">
+            <h4 id="vs-quiz-config-title">Cấu hình · Video có quiz</h4>
+            <p>Nhạc nền tự tắt trong đoạn quiz.</p>
+          </div>
+          <div className="vs-module-config-field">
+            <span className="vs-field-label">Nhạc khi người học suy nghĩ</span>
+            <MusicPicker
+              compact
+              tracks={quizTracks}
+              value={draft.quizMusic}
               disabled={busy}
-              onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
-              options={AGENT_PROVIDER_OPTIONS.map(({ value, label }) => ({
-                value,
-                label: <span className="vs-agent-option"><AgentMark provider={value} />{label}</span>,
-              }))}
-            />}
-      </div>
-      <div className="vs-quiz-music">
-        <h4 className="vs-section-title">Nhạc quiz</h4>
-        <p className="vs-music-note">
-          Chọn ngay từ đây vì agent phải biết lúc viết <code>cues.js</code> để đánh dấu đúng những câu thuộc phần hỏi.
-          Nhạc chỉ chạy trên các câu đó, và nhạc nền tắt hẳn trong đoạn quiz.
-        </p>
-        <MusicPicker
-          tracks={quizTracks}
-          value={draft.quizMusic}
-          disabled={busy}
-          noneLabel="Không có nhạc quiz"
-          onChange={(quizMusic) => setDraft((current) => ({ ...current, quizMusic }))}
-        />
-      </div>
+              noneLabel="Không có nhạc quiz"
+              onChange={(quizMusic) => setDraft((current) => ({ ...current, quizMusic }))}
+            />
+          </div>
+        </div>
+        }
+      </section>
     </div>
     <div className="vs-section">
       <h3 className="vs-section-title">Nội dung video</h3>
@@ -344,7 +354,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
       { key: "feedback", label: "Feedback bản cũ", children: r.feedbackDir || "—" },
       { key: "video", label: "Video cũ", children: r.oldVideoDir || "—" },
-      { key: "modules", label: "Bổ sung", children: r.modules.length ? moduleNames(r.modules).join(", ") : "—" },
+      { key: "modules", label: "Tính năng nội dung", children: r.modules.length ? moduleNames(r.modules).join(", ") : "—" },
       { key: "notes", label: "Ghi chú", children: r.notes || "—" },
     ]} />
     {style && <StyleShowcase style={style} />}

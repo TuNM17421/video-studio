@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { normalizeVideoState } from "./videos";
+import { NO_MUSIC } from "../music";
+import { normalizeVideoState, requestMarkdown } from "./videos";
 
 const storedState = {
   id: "d2-01-lab",
@@ -24,5 +25,21 @@ describe("video agent binding migration", () => {
   it("preserves an explicit Codex binding", () => {
     const state = normalizeVideoState({ ...storedState, agent: { provider: "codex", sessionId: "codex-thread" } });
     expect(state.agent).toEqual({ provider: "codex", sessionId: "codex-thread" });
+  });
+
+  it("migrates an existing quiz music choice into the quiz capability", () => {
+    const state = normalizeVideoState({ ...storedState, music: { background: "none", quiz: "quiz-timer" } });
+    expect(state.request.modules).toContain("quiz");
+    expect(state.music.quiz).toBe("quiz-timer");
+  });
+});
+
+describe("quiz request contract", () => {
+  it("tells the agent to mark quiz cues even when no quiz music is selected", () => {
+    const state = normalizeVideoState(storedState);
+    const markdown = requestMarkdown("d2-quiz", { ...state.request, modules: ["quiz"] }, "Codex", NO_MUSIC);
+    expect(markdown).toContain("## Quiz");
+    expect(markdown).toContain("`quiz: true`");
+    expect(markdown).toContain("không dùng nhạc quiz");
   });
 });
