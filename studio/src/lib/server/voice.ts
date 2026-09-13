@@ -167,13 +167,20 @@ async function toolJson<T>(id: string, args: string[], onLine?: (line: string) =
  * Trạng thái môi trường OmniVoice. `--check` thoát mã 1 khi chưa cài, nên đọc stdout rồi mới xét mã —
  * "chưa cài" là một câu trả lời hợp lệ, không phải lỗi.
  */
-/** Chạy một tool của repo và đọc JSON nó in ra; mã thoát khác 0 vẫn có thể kèm JSON hợp lệ. */
-function toolState<T>(args: string[], fallback: T): Promise<T> {
+/** Chạy một tool của repo, giữ lại cả mã thoát lẫn stderr để người gọi quyết định. */
+function toolRun(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    execFile(process.execPath, args, { cwd: REPO }, (_error, stdout) => {
-      try { resolve(JSON.parse(stdout) as T); } catch { resolve(fallback); }
+    execFile(process.execPath, args, { cwd: REPO }, (error, stdout, stderr) => {
+      const code = error && typeof (error as { code?: number }).code === "number" ? (error as { code: number }).code : error ? 1 : 0;
+      resolve({ code, stdout, stderr });
     });
   });
+}
+
+/** Chạy một tool của repo và đọc JSON nó in ra; mã thoát khác 0 vẫn có thể kèm JSON hợp lệ. */
+async function toolState<T>(args: string[], fallback: T): Promise<T> {
+  const { stdout } = await toolRun(args);
+  try { return JSON.parse(stdout) as T; } catch { return fallback; }
 }
 
 type ServerState = OmnivoiceStatus["server"];
@@ -228,7 +235,12 @@ export async function setupAlign(id: string) {
  * giết luôn server, mà server là thứ dùng chung cho mọi video.
  */
 export async function omnivoiceServer(action: "start" | "stop"): Promise<OmnivoiceStatus> {
-  await toolState(["tools/omnivoice-server.mjs", action, "--json"], NO_SERVER);
+  // Tool in lý do ra stderr rồi thoát khác 0 (cổng bị chiếm, thiếu thư viện, không chịu tắt). Nuốt nó
+  // là nút bật lặng lẽ bật lại như chưa có gì xảy ra — đúng triệu chứng khó hiểu nhất của bước này.
+  const { code, stderr } = await toolRun(["tools/omnivoice-server.mjs", action, "--json"]);
+  if (code !== 0) {
+    throw new HttpError(500, stderr.trim().replace(/^✗ /m, "") || `Không ${action === "start" ? "bật" : "tắt"} được server OmniVoice.`);
+  }
   return omnivoiceStatus();
 }
 

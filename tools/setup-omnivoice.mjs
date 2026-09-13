@@ -61,15 +61,20 @@ function run(cmd, args, opts = {}) {
 
 if (flag('force')) fs.rmSync(VENV, { recursive: true, force: true });
 
-const device = value('device', detectDevice().id);
+const forced = value('device', null);
+const detected = detectDevice(); // spawn nvidia-smi — gọi đúng một lần
+const device = forced ?? detected.id;
 if (!['cuda', 'mps', 'cpu'].includes(device)) fail(`--device chỉ nhận cuda, mps hoặc cpu (nhận được "${device}").`);
-console.log(`· phần cứng: ${detectDevice().label}${value('device', null) ? ' (ép bằng --device)' : ''}`);
+console.log(`· phần cứng: ${forced ? `${device} (ép bằng --device, máy dò ra ${detected.label})` : detected.label}`);
 
 if (!venvPython()) {
   fs.mkdirSync(path.dirname(VENV), { recursive: true });
   if (has('uv')) {
     console.log('· tạo môi trường bằng uv (Python 3.12)');
-    if (await run('uv', ['venv', '--python', '3.12', VENV], { stdio: ['ignore', 'pipe', 'pipe'] }) !== 0) fail('uv venv thất bại.');
+    // --seed: uv mặc định KHÔNG cài pip vào venv. Thiếu nó, lần chạy sau mà uv không còn trên PATH
+    // (trình cài uv chỉ chèn PATH vào ~/.zshrc — Studio spawn từ Next.js không nạp file đó) thì
+    // nhánh dự phòng `python -m pip` chết với "No module named pip".
+    if (await run('uv', ['venv', '--seed', '--python', '3.12', VENV], { stdio: ['ignore', 'pipe', 'pipe'] }) !== 0) fail('uv venv thất bại.');
   } else {
     const python = ['python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => has(p));
     if (!python) fail('Cần Python 3.10+ (hoặc cài uv: https://docs.astral.sh/uv/). Không tìm thấy bản nào.');
@@ -80,7 +85,9 @@ if (!venvPython()) {
 const python = venvPython();
 if (!python) fail(`Không tạo được ${path.relative(ROOT, VENV)}.`);
 
-const pip = (args) => (has('uv')
+// Chốt trình cài một lần: hỏi lại has('uv') ở từng lệnh thì nửa chừng đổi đường là hỏng nửa môi trường.
+const useUv = has('uv');
+const pip = (args) => (useUv
   ? run('uv', ['pip', 'install', '--python', python, ...args], { stdio: ['ignore', 'pipe', 'pipe'] })
   : run(python, ['-m', 'pip', 'install', '--upgrade', ...args], { stdio: ['ignore', 'pipe', 'pipe'] }));
 

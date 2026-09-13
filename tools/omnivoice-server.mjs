@@ -14,6 +14,7 @@
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { inferBatchBin, MODEL_ID, ROOT, SETUP_HINT, venvBin } from './lib/omnivoice.mjs';
@@ -82,6 +83,20 @@ function status() {
   };
 }
 
+/**
+ * Cổng còn trống không. Phải hỏi TRƯỚC khi spawn: Gradio nạp trọng số model vài phút rồi mới bind, nên
+ * cổng bị chiếm không lộ ra ở giây thứ hai — nó chạy ngon lành một lúc lâu rồi mới ném OSError vào log,
+ * lúc đó tiến trình đã báo "đã bật" và người dùng đã đi chỗ khác.
+ */
+function portFree(port) {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once('error', () => resolve(false));
+    probe.once('listening', () => probe.close(() => resolve(true)));
+    probe.listen(port, '127.0.0.1');
+  });
+}
+
 /** Mấy dòng cuối của log — thứ duy nhất nói được vì sao server vừa chết. */
 function logTail(lines = 6) {
   try {
@@ -95,6 +110,7 @@ async function start() {
   const bin = venvBin('omnivoice-demo');
   if (!bin) fail(SETUP_HINT);
   const port = wantedPort();
+  if (!(await portFree(port))) fail(`Cổng ${port} đang bị chương trình khác dùng. Tắt nó, hoặc chạy lại với --port <số khác>.`);
   fs.mkdirSync(STATE_DIR, { recursive: true });
   const out = fs.openSync(LOG_FILE, 'a');
   fs.writeSync(out, `\n=== ${new Date().toISOString()} · khởi động cổng ${port} ===\n`);

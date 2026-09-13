@@ -106,7 +106,11 @@ export async function refAudioFor(voice, log = () => {}) {
     log(`Tải mẫu giọng ${voice.name} về ${path.relative(ROOT, file)}`);
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+    // Ghi ra .part rồi mới đổi tên: bị giết giữa lúc ghi mà để nguyên tên thì lần sau thấy "có file,
+    // size > 0" và nhân bản giọng từ một file cụt — mãi mãi, vì không có gì phát hiện ra.
+    const part = `${file}.part`;
+    fs.writeFileSync(part, Buffer.from(await res.arrayBuffer()));
+    fs.renameSync(part, file);
     return { file, text: sampleText || '' };
   } catch (error) {
     log(`Không tải được mẫu giọng: ${error instanceof Error ? error.message : error}`);
