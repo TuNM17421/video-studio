@@ -4,14 +4,15 @@
  * Style là ngôn ngữ hình (bảng màu, component, quy tắc); một năng lực là thứ đổi *cách làm*: kịch bản
  * viết khác, bước giọng chạy khác. Hai thứ tổ hợp tự do, nên video hội thoại vẫn là Lesson Lab Style.
  *
- * Cố tình giữ ở mức một danh sách phẳng thay vì một khung plugin: mới có đúng một năng lực thật, và
- * năng lực thứ hai ("tìm ảnh thực tế để minh hoạ") sẽ thêm hẳn một công đoạn chứ không mở rộng dữ liệu
- * như cái này. Rút ra cái chung khi đã có hai ví dụ thật, không phải một ví dụ cộng một phỏng đoán.
+ * Các năng lực là một collection phẳng để Studio tự xếp thành card. Thêm năng lực không cần đổi layout;
+ * logic riêng của năng lực vẫn phải được khai rõ trong REQUEST.md thay vì suy đoán từ tên card.
  */
 export interface ModuleDef {
   id: string;
   name: string;
   summary: string;
+  /** Glyph dùng trên card; là chuỗi để API modules có thể trả nguyên object. */
+  icon: "dialogue" | "quiz";
   /** Tài liệu người viết kịch bản phải theo khi bật năng lực này. */
   template?: string;
   /** Key trên kho media của video xem thử; server đổi thành URL, thiếu thì nút xem thử không hiện. */
@@ -28,8 +29,15 @@ export const MODULES: ModuleDef[] = [
     id: "dialogue",
     name: "Video có hội thoại",
     summary: "Nhiều nhân vật cùng nói, mỗi người một giọng. Kịch bản phải khai ai nói câu nào.",
+    icon: "dialogue",
     template: "templates/kich-ban-hoi-thoai.md",
     previewKey: "modules/hoi-thoai-mau-v2.mp4",
+  },
+  {
+    id: "quiz",
+    name: "Video có quiz",
+    summary: "Đặt câu hỏi, dành thời gian suy nghĩ và tách rõ phần hỏi khỏi phần chữa bài.",
+    icon: "quiz",
   },
 ];
 

@@ -75,6 +75,12 @@ export const STUDIO_LAYOUT = [
   { token: "style.card.min", value: "280 px", usage: "Hai lựa chọn tự giãn kín hàng thay vì để cột trống" },
   { token: "style.card.padding", value: "14 px", usage: "Tách nội dung và metadata khỏi viền chọn của card" },
   { token: "style.specimen", value: "156 px", usage: "Mini-scene khóa chiều cao, hiển thị trọn ba component mà không kéo giãn card" },
+  { token: "header.agent.width", value: "440 px", usage: "Cô lập lựa chọn agent ở cấp trang mà không lấn tiêu đề video" },
+  { token: "header.agent.min-height", value: "84 px", usage: "Giữ khối agent cân với heading ở trạng thái chọn và khóa" },
+  { token: "header.agent.control", value: "180 px", usage: "Đủ chỗ cho tên provider và dấu mở danh sách" },
+  { token: "capability.card.min", value: "280 px", usage: "Card tính năng tự chuyển từ hai cột xuống một cột khi không đủ chỗ" },
+  { token: "capability.card.min-height", value: "148 px", usage: "Giữ các card tính năng cân hàng dù nội dung và preview khác nhau" },
+  { token: "capability.card.padding", value: "16 px", usage: "Giữ checkbox, glyph và mô tả tách khỏi viền chọn" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },
 ] as const;
 

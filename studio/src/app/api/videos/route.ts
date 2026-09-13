@@ -45,7 +45,7 @@ export const POST = handle(async (req: Request) => {
   fs.mkdirSync(path.join(projectDir(id), "render"), { recursive: true });
   fs.writeFileSync(path.join(projectDir(id), "render", ".gitkeep"), "");
   fs.writeFileSync(path.join(projectDir(id), "kich-ban-goc.md"), content.endsWith("\n") ? content : `${content}\n`);
-  const quizMusic = isTrackId(body.quizMusic, "quiz") ? body.quizMusic : NO_MUSIC;
+  const quizMusic = modules.includes("quiz") && isTrackId(body.quizMusic, "quiz") ? body.quizMusic : NO_MUSIC;
   fs.writeFileSync(path.join(projectDir(id), "REQUEST.md"), requestMarkdown(id, request, agentProviderLabel(provider), quizMusic));
   const now = new Date().toISOString();
   const state: VideoState = {

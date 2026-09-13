@@ -404,19 +404,6 @@ button.vs-tile:hover {
 }
 
 /* ── plan form ──────────────────────────────────────────────────────────── */
-.vs-form-requirements {
-  min-height: 34px;
-  margin: 0 0 18px;
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border-left: 3px solid var(--vu-red-700);
-  background: var(--vu-neutral-50);
-  color: var(--vu-neutral-700);
-  font-size: 11px;
-  line-height: 1.5;
-}
 .vs-required {
   margin-left: 2px;
   color: var(--vu-red-700);
@@ -424,49 +411,62 @@ button.vs-tile:hover {
   font-weight: var(--vu-font-bold);
   line-height: 1;
 }
-.vs-form-requirements > .vs-required {
-  margin-left: 0;
+.vs-page-heading {
+  align-items: stretch;
 }
-.vs-agent-binding {
-  margin-top: 20px;
-  padding: 13px 14px;
+.vs-page-heading > div:first-child {
+  align-self: flex-end;
+}
+.vs-page-agent {
+  width: min(100%, var(--vu-page-agent-width));
+  min-height: var(--vu-page-agent-min-height);
+  padding: var(--vu-space-3) var(--vu-space-4);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  border: 1px solid var(--vu-blue-100);
-  border-left: 3px solid var(--vu-blue-700);
-  border-radius: 7px;
-  background: var(--vu-blue-50);
+  gap: var(--vu-space-4);
+  border: 1px solid var(--vu-blue-300);
+  border-inline-start: 4px solid var(--vu-blue-700);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-neutral-0);
+  box-shadow: var(--vu-shadow-sm);
 }
-.vs-agent-binding-copy {
+.vs-page-agent-copy {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--vu-space-3);
   min-width: 0;
   color: var(--vu-blue-700);
 }
-.vs-agent-binding-copy > svg {
+.vs-page-agent-icon {
+  width: var(--vu-control-sm);
+  height: var(--vu-control-sm);
+  display: grid;
+  place-items: center;
   flex: 0 0 auto;
-  font-size: 17px;
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-blue-100);
+  font-size: var(--vu-text-md);
 }
-.vs-agent-binding-copy > span {
+.vs-page-agent-copy > span:last-child {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.vs-agent-binding-copy strong {
+.vs-page-agent-copy strong {
   color: var(--vu-blue-900);
-  font-size: 12px;
+  font-family: var(--vs-font-display);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-bold);
 }
-.vs-agent-binding-copy small {
+.vs-page-agent-copy small {
   color: var(--vu-neutral-600);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
 }
 .vs-agent-select {
-  width: 178px;
-  flex: 0 0 178px;
+  width: var(--vu-page-agent-control-width);
+  flex: 0 0 var(--vu-page-agent-control-width);
 }
 .vs-agent-option,
 .vs-agent-locked {
@@ -485,8 +485,12 @@ button.vs-tile:hover {
   gap: 7px;
   flex: 0 0 auto;
   color: var(--vu-blue-800);
-  font-size: 11px;
+  font-size: var(--vu-text-xs);
   font-weight: var(--vu-font-bold);
+}
+.vs-agent-locked.is-loading {
+  color: var(--vu-text-muted);
+  font-weight: var(--vu-font-medium);
 }
 .vs-section-title,
 .vs-field-label {
@@ -769,12 +773,13 @@ button.vs-tile:hover {
   margin-bottom: 0;
 }
 @media (max-width: 680px) {
-  .vs-agent-binding {
+  .vs-page-agent {
     align-items: stretch;
     flex-direction: column;
   }
   .vs-agent-select {
     width: 100%;
+    flex-basis: auto;
   }
 }
 /* ── agent run ──────────────────────────────────────────────────────────── */
@@ -1195,6 +1200,30 @@ button.vs-tile:hover {
 }
 
 /* ── music picker (background on render, quiz on plan) ────────────────────── */
+.vs-music-compact {
+  min-width: 0;
+  display: grid;
+  gap: var(--vu-space-1);
+}
+.vs-music-compact-control {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-music-compact-control .ant-select {
+  min-width: 0;
+  flex: 1;
+}
+.vs-music-compact > small {
+  overflow: hidden;
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .vs-music.ant-radio-group {
   display: grid;
   gap: 6px;
@@ -2487,7 +2516,7 @@ button.vs-tile:hover {
   background: transparent;
 }
 .vs-script-field .ant-upload-drag {
-  min-height: 148px;
+  min-height: var(--vu-capability-card-min-height);
   border-color: var(--vu-blue-300);
   background: var(--vu-blue-50);
 }
@@ -2559,37 +2588,105 @@ button.vs-tile:hover {
   padding-inline: 0;
 }
 /* ── năng lực chọn thêm + dàn vai ───────────────────────────────────────── */
+.vs-capabilities {
+  margin-top: var(--vu-space-6);
+  overflow: hidden;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: var(--vu-radius-lg);
+  background: var(--vu-neutral-50);
+}
+.vs-capabilities-head {
+  padding: var(--vu-space-3) var(--vu-space-4);
+  border-bottom: 1px solid var(--vu-blue-100);
+  background: var(--vu-blue-50);
+}
+.vs-capabilities-head .vs-section-title {
+  margin: 0;
+}
+.vs-capabilities-head p {
+  margin: 3px 0 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+}
 .vs-modules {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(var(--vu-capability-card-min-width), 1fr));
+  gap: var(--vu-space-3);
+  padding: var(--vu-space-4);
 }
 .vs-module {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  border: 1px solid var(--vu-blue-100);
-  border-radius: 9px;
-  padding: 10px 12px;
+  min-width: 0;
+  min-height: var(--vu-capability-card-min-height);
+  flex-direction: column;
+  border: 1px solid var(--vu-border-default);
+  border-radius: var(--vu-radius-md);
   background: var(--vu-neutral-0);
-  cursor: pointer;
   transition:
     border-color var(--vu-duration-fast) var(--vu-ease-standard),
-    background-color var(--vu-duration-fast) var(--vu-ease-standard);
+    background-color var(--vu-duration-fast) var(--vu-ease-standard),
+    box-shadow var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-module:hover:not(.is-disabled) {
+  border-color: var(--vu-blue-300);
 }
 .vs-module.is-on {
   border-color: var(--vu-blue-700);
   background: var(--vu-lesson-surface);
+  box-shadow: 0 0 0 1px var(--vu-blue-100);
+}
+.vs-module.is-disabled {
+  background: var(--vu-neutral-100);
+}
+.vs-module-toggle.ant-checkbox-wrapper {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  padding: var(--vu-capability-card-padding);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vu-space-3);
+}
+.vs-module-toggle.ant-checkbox-wrapper > .ant-checkbox {
+  align-self: flex-start;
+  order: 2;
+  margin-top: 2px;
+  margin-inline-start: auto;
+}
+.vs-module-toggle.ant-checkbox-wrapper > span:last-child {
+  min-width: 0;
+  flex: 1;
+  order: 1;
+  padding-inline: 0;
+}
+.vs-module-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vu-space-3);
+  min-width: 0;
+}
+.vs-module-glyph {
+  width: var(--vu-control-sm);
+  height: var(--vu-control-sm);
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--vu-control-sm);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-blue-100);
+  color: var(--vu-blue-700);
+  font-size: var(--vu-text-md);
+}
+.vs-module.is-on .vs-module-glyph {
+  background: var(--vu-blue-700);
+  color: var(--vu-neutral-0);
 }
 .vs-module-copy {
   display: grid;
-  gap: 2px;
+  gap: var(--vu-space-1);
   min-width: 0;
   flex: 1;
-}
-/* Pinned to the far edge of the card, away from the checkbox it must not be mistaken for. */
-.vs-module-play {
-  align-self: center;
-  margin-left: auto;
 }
 .vs-module-copy strong {
   font-size: var(--vu-text-sm);
@@ -2600,6 +2697,20 @@ button.vs-tile:hover {
   font-size: var(--vu-text-xs);
   line-height: var(--vu-leading-normal);
   color: var(--vu-text-muted);
+}
+.vs-module-status {
+  width: fit-content;
+  margin-top: var(--vu-space-1);
+  padding: 3px var(--vu-space-2);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-100);
+  color: var(--vu-blue-800);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-bold);
+  letter-spacing: var(--vu-tracking-caps);
+  line-height: 1;
+  text-transform: uppercase;
 }
 /* The template path is the one thing to act on once the capability is on — let it stand out then. */
 .vs-module-copy code {
@@ -2617,6 +2728,57 @@ button.vs-tile:hover {
   border-color: var(--vu-blue-300);
   color: var(--vu-blue-800);
   font-weight: var(--vu-font-bold);
+}
+.vs-module-play {
+  width: fit-content;
+  min-height: var(--vu-control-sm);
+  margin: 0 var(--vu-capability-card-padding) var(--vu-space-2);
+  padding: 0 var(--vu-space-1);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vu-space-1);
+  border: 0;
+  border-radius: var(--vu-radius-sm);
+  background: transparent;
+  color: var(--vu-text-link);
+  cursor: pointer;
+  font: var(--vu-font-semibold) var(--vu-text-xs) / 1 var(--vu-font-body);
+}
+.vs-module-play:hover {
+  background: var(--vu-blue-100);
+}
+.vs-module-play:focus-visible {
+  outline: none;
+  box-shadow: var(--vu-shadow-focus);
+}
+.vs-module-config {
+  margin: 0 var(--vu-space-4) var(--vu-space-4);
+  padding: var(--vu-space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(var(--vu-capability-card-min-width), 1.3fr);
+  gap: var(--vu-space-5);
+  align-items: end;
+  border: 1px solid var(--vu-border-default);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-neutral-0);
+}
+.vs-module-config-head h4 {
+  margin: 0;
+  color: var(--vu-blue-900);
+  font-family: var(--vs-font-display);
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-bold);
+}
+.vs-module-config-head p {
+  margin: var(--vu-space-1) 0 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-module-config-field {
+  min-width: 0;
+  display: grid;
+  gap: var(--vu-space-2);
 }
 .vs-cast {
   display: grid;
@@ -2743,8 +2905,7 @@ button.vs-tile:hover {
   border-radius: 3px;
   padding: 0 4px;
 }
-.vs-voice-play,
-.vs-module-play {
+.vs-voice-play {
   flex: none;
   width: 32px;
   height: 32px;
@@ -2761,8 +2922,7 @@ button.vs-tile:hover {
     background-color var(--vu-duration-fast) var(--vu-ease-standard),
     color var(--vu-duration-fast) var(--vu-ease-standard);
 }
-.vs-voice-play:hover,
-.vs-module-play:hover {
+.vs-voice-play:hover {
   border-color: var(--vu-blue-400);
   background: var(--vu-blue-50);
 }
@@ -3455,7 +3615,7 @@ button.vs-tile:hover {
     line-height: 1.5;
   }
 
-  .vs-agent-binding {
+  .vs-page-agent {
     align-items: stretch;
     flex-direction: column;
   }
@@ -3530,6 +3690,37 @@ button.vs-tile:hover {
 
   .vs-workflow.ant-steps .vs-workflow-item-title {
     font-size: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .vs-page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vs-page-heading > div:first-child {
+    align-self: auto;
+  }
+
+  .vs-page-agent {
+    width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .vs-modules,
+  .vs-module-config {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vs-module-config {
+    align-items: stretch;
+    gap: var(--vu-space-3);
+  }
+
+  .vs-music-compact > small {
+    white-space: normal;
   }
 }
 
