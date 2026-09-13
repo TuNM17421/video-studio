@@ -35,6 +35,10 @@ export function normalizeVideoState(value: unknown): VideoState {
   const stored = value as LegacyVideoState;
   const { sessionId: legacySessionId, ...state } = stored;
   const provider = isAgentProvider(stored.agent?.provider) ? stored.agent.provider : "claude";
+  const music = normalizeMusic(stored.music);
+  const modules = cleanModules(state.request?.modules);
+  // Quiz existed as a music-only choice before it became a first-class capability card.
+  if (music.quiz !== NO_MUSIC && !modules.includes("quiz")) modules.push("quiz");
   const currentSession = stored.agent?.sessionId;
   const sessionId = typeof currentSession === "string" || currentSession === null
     ? currentSession
@@ -42,9 +46,9 @@ export function normalizeVideoState(value: unknown): VideoState {
   return {
     ...state,
     agent: { provider, sessionId },
-    request: { ...state.request, modules: cleanModules(state.request?.modules) },
+    request: { ...state.request, modules },
     voice: { ...DEFAULT_VOICE, ...stored.voice },
-    music: normalizeMusic(stored.music),
+    music,
   } as VideoState;
 }
 
@@ -218,20 +222,24 @@ function moduleSections(modules: string[]) {
   return lines;
 }
 
-/** What the agent must do about quiz music — it is the only stage that can mark the câu it plays over. */
-function quizMusicSection(quiz: string) {
-  if (quiz === NO_MUSIC) return [];
+/** What the agent must do for a quiz — cues must be marked even when the video uses no quiz music. */
+function quizSection(enabled: boolean, quiz: string) {
+  if (!enabled) return [];
   return [
-    "## Nhạc quiz",
+    "## Quiz",
     "",
-    `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng những câu thuộc phần hỏi**:`,
+    quiz === NO_MUSIC
+      ? "Video này có quiz nhưng không dùng nhạc quiz. Trong `cues.js`, vẫn đánh dấu `quiz: true` cho **đúng những câu thuộc phần hỏi**:"
+      : `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng những câu thuộc phần hỏi**:`,
     "câu đọc câu hỏi và câu dừng cho người xem suy nghĩ (thường là cue `silent`). **Không** đánh dấu phần chữa bài —",
     "nhạc phải tắt ngay khi bắt đầu giải thích.",
     "",
     "Các câu liền nhau cùng có `quiz: true` được gom thành một đoạn. Đặt trường này ở cuối phần khai của câu,",
     "**đừng** đặt ngay sau `n:` — `voice-timing.mjs --write-cues` ghi `frames`/`speech` vào đúng chỗ đó và sẽ xoá mất nó.",
     "",
-    "Trong đoạn quiz, nhạc nền tự động tắt hẳn và nhạc quiz vào (có fade 0,5 giây hai đầu) — không phải làm gì thêm.",
+    quiz === NO_MUSIC
+      ? "Không có nhạc quiz; giữ nguyên khoảng suy nghĩ theo kịch bản."
+      : "Trong đoạn quiz, nhạc nền tự động tắt hẳn và nhạc quiz vào (có fade 0,5 giây hai đầu) — không phải làm gì thêm.",
     "",
   ];
 }
@@ -251,7 +259,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
     ...moduleSections(r.modules),
-    ...quizMusicSection(quizMusic),
+    ...quizSection(r.modules.includes("quiz") || quizMusic !== NO_MUSIC, quizMusic),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

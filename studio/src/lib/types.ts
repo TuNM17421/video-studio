@@ -25,7 +25,7 @@ export interface Scope {
 
 export interface VideoRequest {
   style: string;
-  /** Năng lực chọn thêm (lib/modules.ts) — ví dụ "dialogue". Rỗng = video một giọng như thường. */
+  /** Tính năng nội dung chọn thêm (lib/modules.ts), ví dụ "dialogue" hoặc "quiz". */
   modules: string[];
   day: string;
   title: string;

@@ -9,6 +9,7 @@ import { agentProviderLabel } from "@/lib/agent-providers";
 import type { AgentConfig, StageId, StyleDef, VideoDetail } from "@/lib/types";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
+import { PageAgentBinding } from "./page-agent-binding";
 import { CuesStep, RenderStep, ScenesStep, VoiceStep } from "./steps";
 
 type Step = "plan" | "cues" | "voice" | "scenes" | "render";
@@ -211,9 +212,20 @@ export default function Studio() {
   const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop } : null;
   const current = STEPS.find((s) => s.id === step)!;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
+  const pageProvider = detail?.state.agent.provider ?? draft.agentProvider;
 
   return <Shell page={id ? "videos" : "new"} hasKey={hasKey}>
-    <div className="page-heading"><div><div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div><h1>{detail?.state.request.title || id || "Video mới"}</h1></div></div>
+    <div className="page-heading vs-page-heading">
+      <div><div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div><h1>{detail?.state.request.title || id || "Video mới"}</h1></div>
+      <PageAgentBinding
+        provider={pageProvider}
+        selectionLocked={agentConfig.selectionLocked}
+        immutable={Boolean(id)}
+        loading={setupLoading || Boolean(id && !detail && !loadError)}
+        disabled={busy || setupLoading || !setupReady}
+        onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
+      />
+    </div>
     <div className="vs-production-rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
       <Steps
@@ -244,7 +256,7 @@ export default function Studio() {
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
-        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} agentConfig={agentConfig} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
+        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}
