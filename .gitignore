@@ -35,6 +35,11 @@ projects/*/.studio/
 /transcripts/Day*/*
 /chapters/Day*/*
 /vinuni-lesson-video-ds/ui_kits/lesson-video/videos/*/
+# Bundle dựng sẵn của design system. Nó được build từ ui_kits/.../videos/*/ — thư mục bị bỏ qua ngay
+# dòng trên — nên bundle commit lên sẽ mang theo video riêng của máy người build và thiếu video của
+# người khác (bản cũ trong git từng chứa d1, d1-2, d2-v2, d3 mà repo không hề có). Không đẩy lên nữa:
+# `npm install` tự build (postinstall), và `npm run verify` báo nếu thiếu.
+/vinuni-lesson-video-ds/dist/
 # Skills pulled in by `npx autoskills` — general web/React/testing guides, unrelated to making lesson
 # videos. Each member installs what they want locally; only the skills this team writes are tracked
 # (.claude/skills/make-video, .claude/skills/voice-align-check). Add new generated names here.

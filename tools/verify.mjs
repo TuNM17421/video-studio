@@ -33,6 +33,16 @@ const files = walk(DS);
 const rel = (f) => path.relative(DS, f);
 const problems = [];
 
+// 0 · the built bundle
+// dist/ is not in git (it is built from the local videos/, which are not in git either), so a checkout
+// that has never been built has no bundle — and every card.html and the lesson-video kit then load
+// nothing and paint a blank page whose only clue is `VK is not defined` in the browser console. Say so
+// here instead, where someone is already looking.
+const BUNDLE = path.join(DS, 'dist/vk.js');
+if (!fs.existsSync(BUNDLE) || fs.statSync(BUNDLE).size === 0) {
+  problems.push(`${path.relative(ROOT, BUNDLE)} chưa được dựng — chạy \`npm run build\` (card và kit sẽ trắng trang nếu thiếu)`);
+}
+
 // 1 · cards
 const cardRe = /^<!-- @dsCard group="([^"]+)" viewport="(\d+)x(\d+)" name="([^"]+)" subtitle="([^"]*)" -->$/;
 const cards = [];

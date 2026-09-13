@@ -47,7 +47,7 @@ hoặc **Codex** (đã đăng nhập trên máy), và một tài khoản
 
 ```console
 git clone <url repo> Claude-Design && cd Claude-Design
-npm install          # esbuild, react, ffmpeg (ffmpeg-static), playwright… và link design system vào node_modules
+npm install          # esbuild, react, ffmpeg (ffmpeg-static), playwright…, link design system vào node_modules, và build dist/vk.js
 npm run setup        # tải Chromium dùng để chụp frame và render (một lần)
 npm run setup:voice  # môi trường nhận diện giọng, chỉ cần khi dùng giọng tự thu / model local (một lần)
 
@@ -59,6 +59,10 @@ npm run build && npm run verify     # phải kết thúc bằng "all checks pass
 npm run studio:install              # cài Video Studio (một lần)
 ```
 
+- `vinuni-lesson-video-ds/dist/vk.js` (bundle mà mọi `card.html` và kit video nạp) **không nằm trong git**:
+  nó được build từ `ui_kits/lesson-video/videos/*/`, mà các thư mục đó cũng không nằm trong git, nên một
+  bundle commit lên sẽ mang video riêng của máy người build. `npm install` tự dựng nó; dựng lại bất cứ lúc
+  nào bằng `npm run build` (1,5 giây). Thiếu nó thì card và kit ra trang trắng, và `npm run verify` báo lỗi.
 - **Nhạc nền** không nằm trong repo (audio không đẩy lên git): tải bản nhạc từ storage của nhóm về
   `assets/music/bg.mp3`. Thiếu file thì ô "Nhạc nền" ở bước Render bị khoá và video vẫn render bình
   thường, chỉ không có nhạc.
