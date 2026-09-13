@@ -44,7 +44,9 @@ run `/design-sync` — the studio or the user does those. Run by hand in the CLI
 order and ask the user before spending ElevenLabs credit (show the dry-run first).
 
 ## Stage 1 · cues
-- Copy the script to `projects/<id>/kich-ban-goc.md` if it is not there yet.
+- Copy the script to `projects/<id>/kich-ban-goc.md` if it is not there yet. Scripts follow
+  `templates/kich-ban-co-ban.md`; every capability named in REQUEST.md adds its own
+  `templates/modules/<id>.md` on top — read those files, they carry the rules for that capability.
 - If the request gives a feedback folder or old videos: read the feedback files; for old MP4s extract a few
   frames with ffmpeg (`node_modules/ffmpeg-static/ffmpeg` if ffmpeg is not on PATH) to see what to change.
   List every feedback item and how this version answers it (goes into PROMPTS.md at the end).
@@ -60,7 +62,7 @@ order and ask the user before spending ElevenLabs credit (show the dry-run first
   music is already gone before the answer is given. Consecutive marked câu become one
   segment; the background bed goes silent across it and the quiz track fades in. Put `quiz` at the **end** of
   the entry: `voice-timing.mjs --write-cues` rewrites everything between `n:` and `frames:`, so a field parked
-  there is deleted. Only mark câu when `projects/<id>/REQUEST.md` names a quiz track.
+  there is deleted. Only mark câu when `projects/<id>/REQUEST.md` turns the quiz capability on.
 - `node tools/voice-timing.mjs --clear <video dir>` (creates the empty voice.js).
 - Pronunciation swaps (English terms, abbreviations) → `projects/<id>/pronounce.json` (`{ "AI": "ây ai" }`).
 - Check: `node tts-elevenlabs/tts.mjs generate --cues <video dir>/cues.js --pronounce <pronounce.json> --dry-run`
