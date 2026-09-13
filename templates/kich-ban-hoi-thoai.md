@@ -12,8 +12,8 @@ trước khi tốn một ký tự credit nào.
 ## Luật cứng: chỉ dùng nhân vật đã có trong hệ thống
 
 Nhân vật **phải** là một cái tên đang có trong `voices.json` — một nhân vật (có mặt, có phía, có màu,
-mượn sẵn một giọng) hoặc một giọng trần cho video chỉ có người dẫn. Đặt một cái tên chưa khai — `Lucas`,
-`Minh` — thì cả video dừng lại với thông báo chỉ rõ câu nào sai.
+mượn sẵn một giọng) hoặc một giọng trần cho video chỉ có người dẫn. Đặt một cái tên chưa khai — `Minh`,
+`Hương` — thì cả video dừng lại với thông báo chỉ rõ câu nào sai.
 
 Xem danh sách nhân vật và giọng hiện có bất cứ lúc nào:
 
@@ -22,6 +22,13 @@ npm run voices
 ```
 
 Viết `speaker` bằng **tên** (`Tới`) hay **id** (`toi`) đều được, không phân biệt hoa thường.
+
+Một nhân vật có thể mang **biệt danh** riêng cho một bộ video: khai trong `voices.json` →
+`characters[].aliases`, rồi kịch bản gọi thẳng biệt danh. Nó mượn mặt, giọng và phía đứng của nhân vật
+gốc, còn tên hiện trên thẻ thoại là biệt danh. Day 04 gọi Tới là **Lucas** theo cách đó.
+
+Nhân vật **chưa có ảnh chân dung** vẫn dùng được: để `avatar` rỗng, thẻ thoại tự vẽ một biểu tượng người
+theo màu của nhân vật. Không có ảnh thì đừng mượn tạm ảnh người khác.
 
 Cần một vai chưa có? **Báo dev.** Hai việc khác hẳn nhau, nói rõ bạn cần cái nào:
 
@@ -61,6 +68,37 @@ Viết sao thì nghe vậy — đừng viết tắt, đừng để số hay ký 
 **Trên màn hình** — mô tả ý đồ hình, không phải lời đọc. **Đừng viết thẻ hội thoại, phía đứng hay khuôn
 mặt vào đây** — nhân vật đã mang sẵn cả ba, hệ thống tự dựng. Cột này chỉ dành cho thứ *thêm* bên cạnh
 thẻ thoại: một câu trích lớn, một bảng, một danh sách. Nhiều câu thoại không cần gì thêm, để trống là đúng.
+
+---
+
+## Khoảng lặng: viết **Dừng** thay cho **Lời**
+
+Có những chỗ không ai nói gì mà vẫn chiếm thời lượng: khoảng chờ người xem chọn đáp án, một nhịp lặng
+trước câu chốt. Viết như một câu bình thường, chỉ thay dòng **Lời** bằng dòng **Dừng**:
+
+```markdown
+### Dừng 1
+- **Dừng:** 8 giây
+- **Trên màn hình:** Hai đáp án đứng yên, vòng đếm giờ chạy hết tám giây
+```
+
+Nói rõ **mấy giây**. Con số đó thành một cue `silent` dài đúng bấy nhiêu, và đó là toàn bộ cách thời
+lượng khoảng lặng được quyết định — không có chỗ nào khác khai nó. Khoảng lặng không cần **Ai** và
+không tốn credit đọc.
+
+---
+
+## Quiz: nhạc chỉ chạy trong lúc chờ
+
+Nếu video có nhạc quiz, mỗi phần hỏi phải tách bạch **ba** mẩu, viết liền nhau theo thứ tự:
+
+1. Câu hỏi — một câu thoại bình thường, có **Ai** và **Lời**.
+2. Khoảng chờ — một mục **Dừng** như trên.
+3. Phần chữa bài — câu thoại bình thường.
+
+Ranh giới 2 và 3 là chỗ quan trọng nhất: nhạc quiz chỉ phủ mẩu số 2. Lúc người hỏi đang đọc câu hỏi
+thì vẫn là nhạc nền, và nhạc quiz phải tắt trước khi bắt đầu giải thích. Kịch bản viết gộp "hỏi rồi
+giải thích" mà không tách khoảng chờ thì không dựng được đoạn nhạc quiz nào.
 
 ---
 

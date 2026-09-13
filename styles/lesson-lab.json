@@ -91,6 +91,11 @@
       "component": "DataTable",
       "group": "table",
       "image": "table__DataTable.png"
+    },
+    {
+      "component": "Countdown",
+      "group": "figures",
+      "image": "figures__Countdown.png"
     }
   ],
   "sampleVideo": null,

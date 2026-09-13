@@ -39,7 +39,19 @@
       "avatar": "avatars/toi_2.jpg",
       "side": "left",
       "tone": "accent",
-      "summary": "Nam · giọng Đô Trịnh (trầm nhất trong danh mục)."
+      "summary": "Nam · giọng Đô Trịnh (trầm nhất trong danh mục). Day 04 gọi là Lucas.",
+      "aliases": [
+        "Lucas"
+      ]
+    },
+    {
+      "id": "mai-anh",
+      "name": "Mai Anh",
+      "voice": "iSFxP4Z6YNcx9OXl62Ic",
+      "avatar": null,
+      "side": "left",
+      "tone": "strong",
+      "summary": "Nữ · giọng Viên. Chưa có ảnh chân dung — thẻ thoại vẽ biểu tượng người thay mặt."
     },
     {
       "id": "tu",

@@ -54,12 +54,19 @@ export function castSpeaker(speaker) {
   const wanted = String(speaker || '').trim();
   const lower = wanted.toLowerCase();
 
-  const character = characters.find((c) => c.id === lower || c.name.toLowerCase() === lower);
+  // An alias is a name one script gives a character — Day 04 calls Tới "Lucas". It borrows that
+  // character's face, voice and side, and the alias is what goes above the card, so the same person can
+  // carry a different name from one course to the next without a second entry (and a second entry would
+  // mean two characters sharing one voice, which the catalog does not allow).
+  const character = characters.find(
+    (c) => c.id === lower || c.name.toLowerCase() === lower || (c.aliases || []).some((a) => String(a).toLowerCase() === lower),
+  );
   if (character) {
+    const alias = (character.aliases || []).find((a) => String(a).toLowerCase() === lower);
     const voice = voices.find((v) => v.id === character.voice || v.name.toLowerCase() === String(character.voice).toLowerCase());
     if (!voice) throw new Error(`nhân vật "${character.name}" trỏ tới giọng "${character.voice}" không có trong voices.json.`);
     return {
-      name: character.name,
+      name: alias || character.name,
       voice,
       speed: character.speed ?? voice.speed ?? 1,
       avatar: mediaUrl(character.avatar),
@@ -72,7 +79,7 @@ export function castSpeaker(speaker) {
   const voice = voices.find((v) => v.id === wanted || v.name.toLowerCase() === lower);
   if (voice) return { name: voice.name, voice, speed: voice.speed ?? 1, avatar: null, avatarKey: null, side: 'left', tone: 'accent' };
 
-  const who = [...characters.map((c) => c.name), ...voices.map((v) => v.name)].join(' · ');
+  const who = [...characters.map((c) => [c.name, ...(c.aliases || [])].join('/')), ...voices.map((v) => v.name)].join(' · ');
   throw new Error(`không có nhân vật "${wanted}" trong voices.json.\n  Hội thoại chỉ dùng được: ${who}\n  Cần thêm nhân vật mới thì báo dev bổ sung vào voices.json.`);
 }
 

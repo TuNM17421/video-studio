@@ -31,7 +31,15 @@ export const CHROME = findChrome();
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function launch() {
+/**
+ * A headless Chrome plus a CDP connection to it.
+ *
+ * `timeout` caps every command: Chrome normally answers a screenshot in milliseconds, but a renderer
+ * that dies quietly never answers at all, and an un-capped promise turns that into a hang with no error
+ * (tools/render.mjs waited forever on one such tab). A capped one rejects, and the caller can retry
+ * somewhere else. Pass 0 to wait indefinitely.
+ */
+export async function launch({ timeout = 30000 } = {}) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'vk-shoot-'));
   const proc = spawn(CHROME, [
     '--headless',
@@ -77,39 +85,87 @@ export async function launch() {
       else resolve(msg.result);
     } else if (msg.method) for (const l of listeners) l(msg);
   };
-  const send = (method, params = {}, sessionId) =>
+  const send = (method, params = {}, sessionId, timeoutMs = timeout) =>
     new Promise((resolve, reject) => {
       const mid = ++id;
-      pending.set(mid, { resolve, reject });
+      const timer =
+        timeoutMs > 0
+          ? setTimeout(() => {
+              if (pending.delete(mid)) reject(new Error(`${method} không trả lời trong ${(timeoutMs / 1000).toFixed(0)} s`));
+            }, timeoutMs)
+          : null;
+      pending.set(mid, {
+        resolve: (v) => {
+          clearTimeout(timer);
+          resolve(v);
+        },
+        reject: (e) => {
+          clearTimeout(timer);
+          reject(e);
+        },
+      });
       ws.send(JSON.stringify({ id: mid, method, params, sessionId }));
     });
-  /** New tab with a fixed viewport; returns s(method, params) bound to it, plus its sessionId. */
+  /**
+   * New tab with a fixed viewport; returns s(method, params, { timeout }) bound to it, plus its
+   * sessionId and targetId (the caller needs targetId to close a tab that stopped answering).
+   */
   const page = async (width = 1920, height = 1080) => {
     const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
     const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
-    const s = (method, params) => send(method, params, sessionId);
+    const s = (method, params, opts) => send(method, params, sessionId, opts?.timeout);
     await s('Page.enable');
     await s('Runtime.enable');
     await s('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
     s.sessionId = sessionId;
+    s.targetId = targetId;
     return s;
   };
-  const close = async () => {
+  /**
+   * Kill Chrome and drop its profile, synchronously so it is safe from an 'exit' handler.
+   *
+   * Without this, a tool that is interrupted (Ctrl-C, the studio cancelling a job, a crash) leaves a
+   * headless Chrome behind holding a gigabyte and a temp profile in /tmp — and the next render then
+   * competes with the ghost of the last one.
+   */
+  const reap = () => {
     try {
-      await send('Browser.close');
+      proc.kill('SIGKILL');
     } catch {
-      /* already closing */
+      /* already gone */
+    }
+    try {
+      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    } catch {
+      /* leftover temp profile — harmless */
+    }
+  };
+  const onExit = () => reap();
+  const onSignal = (signal) => {
+    reap();
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  };
+  process.on('exit', onExit);
+  process.on('SIGINT', onSignal);
+  process.on('SIGTERM', onSignal);
+  process.on('SIGHUP', onSignal);
+
+  const close = async () => {
+    process.off('exit', onExit);
+    process.off('SIGINT', onSignal);
+    process.off('SIGTERM', onSignal);
+    process.off('SIGHUP', onSignal);
+    try {
+      await send('Browser.close', {}, undefined, 5000);
+    } catch {
+      /* already closing, or wedged — SIGKILL below settles it either way */
     }
     ws.close();
     const exited = proc.exitCode !== null ? Promise.resolve() : new Promise((r) => proc.once('exit', r));
     proc.kill('SIGKILL');
     await Promise.race([exited, sleep(3000)]);
     // Chrome's helpers may still be flushing the profile; cleanup is best-effort.
-    try {
-      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
-    } catch {
-      /* leftover temp profile — harmless */
-    }
+    reap();
   };
   return { send, page, listeners, close };
 }

@@ -101,7 +101,20 @@ export function DialogueCard({
           />
           <circle cx={faceX} cy={faceY} r={faceR} fill="none" stroke={c} strokeWidth={4} />
         </g>
-      ) : null}
+      ) : (
+        // A character with no portrait yet still gets a face-shaped mark, so the row of speakers keeps
+        // one rhythm and the card does not look like a different component. Head and shoulders only —
+        // a placeholder that never pretends to be a photograph of anyone.
+        <g>
+          <circle cx={faceX} cy={faceY} r={faceR} fill={C.bg} stroke={c} strokeWidth={4} />
+          <circle cx={faceX} cy={faceY - faceR * 0.22} r={faceR * 0.3} fill={c} />
+          <path
+            d={`M ${faceX - faceR * 0.52} ${faceY + faceR * 0.62}
+                a ${faceR * 0.52} ${faceR * 0.46} 0 0 1 ${faceR * 1.04} 0 Z`}
+            fill={c}
+          />
+        </g>
+      )}
       <SvgText
         x={side === 'left' ? x + padX : x + w - padX}
         y={y - 12}

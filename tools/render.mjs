@@ -5,7 +5,16 @@
  *
  *   node tools/render.mjs --scene n2-00-gioi-thieu-ngay-2 --out video.mp4 [--audio voice.wav]
  *        [--music-track bg-02] [--quiz-track quiz-timer] [--workers 4] [--from 0] [--to N] [--crf 18]
- *        [--base http://127.0.0.1:8765] [--keep-frames dir]
+ *        [--base http://127.0.0.1:8765] [--keep-frames dir] [--frame-timeout 15000]
+ *        [--music-db -3] [--quiz-db -2]
+ *
+ * --music-db / --quiz-db nudge a catalog track's target level for this render only (negative = quieter);
+ * how far under the narration music belongs is a call about one video, not a property of the track.
+ *
+ * The capture tabs share one queue and every frame is capped at --frame-timeout ms: a tab that stops
+ * answering is replaced and its frame is shot elsewhere, instead of the run hanging on it forever.
+ * --keep-frames both keeps the frames and reuses the ones already in that directory, so a run that
+ * failed part-way is finished by repeating the same command — only the missing frames are painted.
  *
  * --music-track names a bed from music.json: the audio is fetched from the media bucket into
  * assets/music/ once, and the catalog's measured loudness sets the gain (the masters differ by 15 dB,
@@ -105,11 +114,19 @@ async function quizWindowsFromCues(scene) {
   if (!fs.existsSync(file)) return [];
   const { CUES = [] } = await import(`${pathToFileURL(file).href}?t=${Date.now()}`);
   const runs = [];
+  const spoken = [];
   for (const c of CUES) {
     if (!c.quiz) continue;
+    // The bed belongs over the pause where the viewer thinks, not over the question being read: while
+    // someone is speaking the background music carries the scene.
+    if (!c.silent && String(c.text || '').trim()) spoken.push(c.n);
     const last = runs[runs.length - 1];
     if (last && last[1] === c.start) last[1] = c.end;
     else runs.push([c.start, c.end]);
+  }
+  if (spoken.length) {
+    console.warn(`⚠ Câu ${spoken.join(', ')} có lời đọc nhưng được đánh dấu \`quiz: true\` — nhạc quiz sẽ đè lên tiếng nói.`);
+    console.warn('  Cờ này chỉ dành cho khoảng chờ im lặng; xem mục "Nhạc nền và nhạc quiz" trong CLAUDE.md.');
   }
   return runs.map(([a, b]) => [a / FPS, b / FPS]);
 }
@@ -119,12 +136,12 @@ async function quizWindowsFromCues(scene) {
 const bed = args.music
   ? { file: path.resolve(args.music), gain: Number(args['music-gain']) || 0.15 }
   : args['music-track'] && args['music-track'] !== NO_MUSIC
-    ? { file: await trackFile(args['music-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['music-track'], 'background') }
+    ? { file: await trackFile(args['music-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['music-track'], 'background', args['music-db']) }
     : { file: null, gain: 0 };
 const quiz = args['quiz-music']
   ? { file: path.resolve(args['quiz-music']), gain: Number(args['quiz-gain']) || 0.18 }
   : args['quiz-track'] && args['quiz-track'] !== NO_MUSIC
-    ? { file: await trackFile(args['quiz-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['quiz-track'], 'quiz') }
+    ? { file: await trackFile(args['quiz-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['quiz-track'], 'quiz', args['quiz-db']) }
     : { file: null, gain: 0 };
 const windows = args['quiz-at'] ? parseWindows(args['quiz-at']) : quiz.file ? await quizWindowsFromCues(args.scene) : [];
 const hasQuiz = Boolean(quiz.file) && windows.length > 0;
@@ -145,7 +162,6 @@ if (!(await waitReady(probe, 'typeof window.vkSetFrame === "function"'))) fail(`
 const duration = (await probe('Runtime.evaluate', { expression: 'window.vkDuration', returnByValue: true })).result.value;
 const from = Number(args.from || 0);
 const to = Math.min(duration, Number(args.to || duration));
-const total = to - from;
 console.log(`▶ ${args.scene} · ${duration} f (${(duration / FPS).toFixed(2)} s) · rendering ${from}–${to - 1} with ${workers} tabs → ${framesDir}`);
 
 if (args.audio) {
@@ -156,41 +172,105 @@ if (args.audio) {
   }
 }
 
+const frameFile = (f) => path.join(framesDir, `f${String(f - from).padStart(6, '0')}.png`);
+const alreadyShot = (f) => {
+  try {
+    return fs.statSync(frameFile(f)).size > 0;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * One shared queue rather than a fixed slice per tab: a tab that stalls simply stops taking work and
+ * the others drain what is left, instead of the whole run waiting on its slice. With --keep-frames the
+ * frames already on disk are skipped, so a re-run after a failure costs only what is missing.
+ */
+const queue = [];
+let reused = 0;
+for (let f = from; f < to; f++) {
+  if (args['keep-frames'] && alreadyShot(f)) reused++;
+  else queue.push(f);
+}
+const total = queue.length;
+if (reused) console.log(`  ${reused} frame đã có sẵn trong ${framesDir} — chỉ chụp ${total} frame còn thiếu`);
+if (!total) console.log('  không còn frame nào phải chụp');
+
+// A frame is a screenshot of a page that is already painted: seconds, not minutes. The cap is what turns
+// a tab that died quietly into a retry somewhere else instead of a run that never ends.
+const FRAME_TIMEOUT = Math.max(1000, Number(args['frame-timeout'] || 15000));
+const MAX_ATTEMPTS = 3;
+
 let done = 0;
 const t0 = Date.now();
 const errors = [];
-async function work(s, frames) {
-  for (const f of frames) {
-    await s('Runtime.evaluate', { expression: `window.vkSetFrame(${f})`, awaitPromise: true });
-    const shot = await s('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-    fs.writeFileSync(path.join(framesDir, `f${String(f - from).padStart(6, '0')}.png`), Buffer.from(shot.data, 'base64'));
-    done++;
-    if (done % 150 === 0 || done === total) {
-      const el = (Date.now() - t0) / 1000;
-      process.stdout.write(`  ${done}/${total} frames · ${el.toFixed(0)} s · ~${((el / done) * (total - done)).toFixed(0)} s left\n`);
-    }
-  }
-}
-const tabs = [probe];
-for (let i = 1; i < workers; i++) {
+const attempts = new Map();
+
+const newTab = async () => {
   const s = await b.page();
   await s('Page.navigate', { url });
   if (!(await waitReady(s, 'typeof window.vkSetFrame === "function"'))) fail('capture tab not ready');
-  tabs.push(s);
+  return s;
+};
+const dropTab = async (s) => {
+  // Free the wedged renderer; it may not answer either, so never wait long on it.
+  try {
+    await b.send('Target.closeTarget', { targetId: s.targetId }, undefined, 5000);
+  } catch {
+    /* the tab is beyond talking to — Browser.close at the end reaps it */
+  }
+};
+
+async function work(seat, first) {
+  let s = first;
+  let strikes = 0;
+  while (queue.length) {
+    const f = queue.shift();
+    try {
+      await s('Runtime.evaluate', { expression: `window.vkSetFrame(${f})`, awaitPromise: true }, { timeout: FRAME_TIMEOUT });
+      const shot = await s('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, { timeout: FRAME_TIMEOUT });
+      fs.writeFileSync(frameFile(f), Buffer.from(shot.data, 'base64'));
+      strikes = 0;
+      done++;
+      if (done % 150 === 0 || done === total) {
+        const el = (Date.now() - t0) / 1000;
+        process.stdout.write(`  ${done}/${total} frames · ${el.toFixed(0)} s · ~${((el / done) * (total - done)).toFixed(0)} s left\n`);
+      }
+    } catch (error) {
+      const tries = (attempts.get(f) || 0) + 1;
+      attempts.set(f, tries);
+      const why = error instanceof Error ? error.message : String(error);
+      if (tries >= MAX_ATTEMPTS) throw new Error(`frame ${f} hỏng sau ${tries} lần thử: ${why}`);
+      queue.push(f); // back of the queue: a fresh tab will get to it
+      strikes++;
+      console.warn(`  ⚠ tab ${seat} nghẹn ở frame ${f} (${why}) — chụp lại ở tab khác`);
+      if (strikes >= 2) {
+        console.warn(`  ↻ tab ${seat} thay bằng tab mới`);
+        await dropTab(s);
+        s = await newTab();
+        strikes = 0;
+      }
+    }
+  }
 }
+
+const tabs = [probe];
+for (let i = 1; i < Math.min(workers, Math.max(1, total)); i++) tabs.push(await newTab());
 b.listeners.add((msg) => {
   if (msg.method === 'Runtime.exceptionThrown') errors.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text);
 });
-const chunk = Math.ceil(total / workers);
-await Promise.all(
-  tabs.map((s, i) => {
-    const frames = [];
-    for (let f = from + i * chunk; f < Math.min(to, from + (i + 1) * chunk); f++) frames.push(f);
-    return work(s, frames);
-  }),
-);
+try {
+  await Promise.all(tabs.map((s, i) => work(i + 1, s)));
+} catch (error) {
+  // --keep-frames means the frames captured so far survive, and the next run resumes from them.
+  await b.close();
+  fail(`${error instanceof Error ? error.message : error}${args['keep-frames'] ? `\n  (frame đã chụp vẫn nằm ở ${framesDir} — chạy lại với --keep-frames để chụp nốt)` : ''}`);
+}
 await b.close();
 if (errors.length) fail(`page threw during capture: ${errors[0]}`);
+const missing = [];
+for (let f = from; f < to; f++) if (!alreadyShot(f)) missing.push(f);
+if (missing.length) fail(`thiếu ${missing.length} frame (từ ${missing[0]}) sau khi chụp xong — không mã hoá bản thiếu frame`);
 console.log(`✓ ${total} frames in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
 
 // ── encode ────────────────────────────────────────────────────────────────────

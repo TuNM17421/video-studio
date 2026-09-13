@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "postinstall": "node tools/link-ds.mjs",
+    "postinstall": "node tools/link-ds.mjs && node tools/build.mjs",
     "setup": "playwright install chromium",
     "setup:voice": "node tools/setup-voice-align.mjs",
     "build": "node tools/build.mjs",

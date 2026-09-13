@@ -62,7 +62,7 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
     r.oldVideoDir && `Video cũ: ${r.oldVideoDir}`,
     showcase && `Component tiêu biểu của style: ${showcase}. Dùng khi nội dung phù hợp.`,
     r.modules.includes("dialogue") && "Video có hội thoại: kịch bản theo templates/kich-ban-hoi-thoai.md, mỗi câu trong cues.js khai speaker + delivery, chỉ dùng giọng có trong voices.json.",
-    r.modules.includes("quiz") && "Video có quiz: đánh dấu quiz: true cho câu hỏi và khoảng suy nghĩ, không đánh dấu phần chữa bài.",
+    r.modules.includes("quiz") && "Video có quiz: chỉ đánh dấu quiz: true cho khoảng chờ suy nghĩ (cue silent), không đánh dấu câu đọc câu hỏi hay phần chữa bài.",
     ...(style?.rules || []).map((rule) => `- ${rule}`),
     `Làm đủ: ${scope}.`,
     r.notes.trim() && `Ghi chú: ${r.notes.trim()}`,

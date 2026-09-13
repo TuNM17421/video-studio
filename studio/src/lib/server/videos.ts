@@ -229,10 +229,12 @@ function quizSection(enabled: boolean, quiz: string) {
     "## Quiz",
     "",
     quiz === NO_MUSIC
-      ? "Video này có quiz nhưng không dùng nhạc quiz. Trong `cues.js`, vẫn đánh dấu `quiz: true` cho **đúng những câu thuộc phần hỏi**:"
-      : `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng những câu thuộc phần hỏi**:`,
-    "câu đọc câu hỏi và câu dừng cho người xem suy nghĩ (thường là cue `silent`). **Không** đánh dấu phần chữa bài —",
-    "nhạc phải tắt ngay khi bắt đầu giải thích.",
+      ? "Video này có quiz nhưng không dùng nhạc quiz. Trong `cues.js`, vẫn đánh dấu `quiz: true` cho **đúng khoảng chờ người"
+      : `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng khoảng chờ người`,
+    "xem suy nghĩ** — cue `silent`, lúc đồng hồ chạy và không có lời đọc.",
+    "",
+    "**Không** đánh dấu câu đọc câu hỏi: người hỏi đang nói thì vẫn là nhạc nền, nhạc quiz chỉ vào khi câu hỏi đã",
+    "dứt. Cũng **không** đánh dấu phần chữa bài — nhạc phải tắt trước khi bắt đầu giải thích.",
     "",
     "Các câu liền nhau cùng có `quiz: true` được gom thành một đoạn. Đặt trường này ở cuối phần khai của câu,",
     "**đừng** đặt ngay sau `n:` — `voice-timing.mjs --write-cues` ghi `frames`/`speech` vào đúng chỗ đó và sẽ xoá mất nó.",
