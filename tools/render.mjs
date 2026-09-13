@@ -110,11 +110,19 @@ async function quizWindowsFromCues(scene) {
   if (!fs.existsSync(file)) return [];
   const { CUES = [] } = await import(`${pathToFileURL(file).href}?t=${Date.now()}`);
   const runs = [];
+  const spoken = [];
   for (const c of CUES) {
     if (!c.quiz) continue;
+    // The bed belongs over the pause where the viewer thinks, not over the question being read: while
+    // someone is speaking the background music carries the scene.
+    if (!c.silent && String(c.text || '').trim()) spoken.push(c.n);
     const last = runs[runs.length - 1];
     if (last && last[1] === c.start) last[1] = c.end;
     else runs.push([c.start, c.end]);
+  }
+  if (spoken.length) {
+    console.warn(`⚠ Câu ${spoken.join(', ')} có lời đọc nhưng được đánh dấu \`quiz: true\` — nhạc quiz sẽ đè lên tiếng nói.`);
+    console.warn('  Cờ này chỉ dành cho khoảng chờ im lặng; xem mục "Nhạc nền và nhạc quiz" trong CLAUDE.md.');
   }
   return runs.map(([a, b]) => [a / FPS, b / FPS]);
 }

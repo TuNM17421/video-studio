@@ -64,6 +64,37 @@ thẻ thoại: một câu trích lớn, một bảng, một danh sách. Nhiều 
 
 ---
 
+## Khoảng lặng: viết **Dừng** thay cho **Lời**
+
+Có những chỗ không ai nói gì mà vẫn chiếm thời lượng: khoảng chờ người xem chọn đáp án, một nhịp lặng
+trước câu chốt. Viết như một câu bình thường, chỉ thay dòng **Lời** bằng dòng **Dừng**:
+
+```markdown
+### Dừng 1
+- **Dừng:** 8 giây
+- **Trên màn hình:** Hai đáp án đứng yên, vòng đếm giờ chạy hết tám giây
+```
+
+Nói rõ **mấy giây**. Con số đó thành một cue `silent` dài đúng bấy nhiêu, và đó là toàn bộ cách thời
+lượng khoảng lặng được quyết định — không có chỗ nào khác khai nó. Khoảng lặng không cần **Ai** và
+không tốn credit đọc.
+
+---
+
+## Quiz: nhạc chỉ chạy trong lúc chờ
+
+Nếu video có nhạc quiz, mỗi phần hỏi phải tách bạch **ba** mẩu, viết liền nhau theo thứ tự:
+
+1. Câu hỏi — một câu thoại bình thường, có **Ai** và **Lời**.
+2. Khoảng chờ — một mục **Dừng** như trên.
+3. Phần chữa bài — câu thoại bình thường.
+
+Ranh giới 2 và 3 là chỗ quan trọng nhất: nhạc quiz chỉ phủ mẩu số 2. Lúc người hỏi đang đọc câu hỏi
+thì vẫn là nhạc nền, và nhạc quiz phải tắt trước khi bắt đầu giải thích. Kịch bản viết gộp "hỏi rồi
+giải thích" mà không tách khoảng chờ thì không dựng được đoạn nhạc quiz nào.
+
+---
+
 ## Đừng để quá hai người cùng lúc
 
 Trên màn hình chỉ nên có tối đa hai thẻ hội thoại một lúc. Đây là bài giảng, không phải bản ghi hội thoại:

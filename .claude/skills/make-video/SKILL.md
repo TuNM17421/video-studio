@@ -54,8 +54,10 @@ order and ask the user before spending ElevenLabs credit (show the dry-run first
   `seconds` a script estimate, `visual` what the scene shows. Export `SECTIONS`, `CUES`, `DURATION` and
   `export const { spokenAt, speechEnd } = createSpeech(RAW, VOICE);` with
   `import { VOICE } from './voice.js'` and `import { createSpeech } from '../../../../lib/speech.js'`.
-- `quiz: true` marks a câu the quiz bed plays over — only the question itself and the pause where the viewer
-  thinks (usually the `silent` cue), never the explanation that follows. Consecutive marked câu become one
+- `quiz: true` marks a câu the quiz bed plays over — only the pause where the viewer thinks (the `silent` cue,
+  while the timer runs). Never the câu that reads the question out loud: the background bed carries that, and
+  the quiz track comes in once the question is finished. Never the explanation that follows either, so the
+  music is already gone before the answer is given. Consecutive marked câu become one
   segment; the background bed goes silent across it and the quiz track fades in. Put `quiz` at the **end** of
   the entry: `voice-timing.mjs --write-cues` rewrites everything between `n:` and `frames:`, so a field parked
   there is deleted. Only mark câu when `projects/<id>/REQUEST.md` names a quiz track.

@@ -97,10 +97,11 @@ giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn gi�
 `assets/music/` lần đầu dùng. Thêm bản mới = đẩy file lên R2, thêm key vào `media/manifest.json`, thêm mục
 vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
 - **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`.
-- **Nhạc quiz** chọn ở bước Kế hoạch, vì agent phải biết lúc viết `cues.js` để đánh dấu `quiz: true` cho
-  đúng những câu thuộc phần hỏi (câu hỏi + khoảng dừng suy nghĩ, **không** gồm phần chữa bài). Các câu liền
-  nhau gom thành một đoạn; `render.mjs --quiz-track <id>` tự đọc `cues.js` để lấy mốc thời gian. Trong đoạn
-  quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu.
+- **Nhạc quiz** chọn ở bước Kế hoạch, vì agent phải biết lúc viết `cues.js` để đánh dấu `quiz: true`.
+  Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc đồng hồ chạy) — **không** đặt ở câu
+  đọc câu hỏi và **không** ở phần chữa bài. Người hỏi đang nói thì vẫn là nhạc nền; nhạc quiz chỉ vào khi
+  câu hỏi đã dứt. Các câu liền nhau gom thành một đoạn; `render.mjs --quiz-track <id>` tự đọc `cues.js` để
+  lấy mốc thời gian. Trong đoạn quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
 ## Media nặng (`media/`, Cloudflare R2)
