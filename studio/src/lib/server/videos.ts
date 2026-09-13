@@ -5,7 +5,8 @@ import { promisify } from "node:util";
 import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isAgentProvider } from "../agent-providers";
 import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
-import { cleanModules, moduleById } from "../modules";
+import { BASE_TEMPLATE_PATH } from "../modules";
+import { cleanModules, moduleById } from "./modules";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { isRunning } from "./jobs";
 import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
@@ -200,7 +201,18 @@ export function styleName(id: string) {
 /** REQUEST.md: what the agent (and anyone running the video by hand) reads first. */
 /** What each chosen capability demands of the script — written into REQUEST.md, which is what the agent reads. */
 function moduleSections(modules: string[]) {
-  const lines: string[] = [];
+  // Every script follows the base template; each chosen capability adds only its own file on top. This part
+  // is generic, so a capability added as a new templates/modules/<id>.md reaches the agent with no code.
+  const lines: string[] = [
+    "## Mẫu kịch bản",
+    "",
+    `Kịch bản theo \`${BASE_TEMPLATE_PATH}\`.`,
+  ];
+  for (const id of modules) {
+    const m = moduleById(id);
+    if (m) lines.push(`Có **${m.name}**: đọc thêm \`${m.template}\` — file đó chỉ ghi phần thêm so với mẫu cơ bản.`);
+  }
+  lines.push("");
   if (modules.includes("dialogue")) {
     const { voices, characters } = listVoices();
     const names = characters.length
@@ -209,7 +221,7 @@ function moduleSections(modules: string[]) {
     lines.push(
       "## Hội thoại",
       "",
-      "Video này có nhiều người nói. Viết kịch bản theo `templates/kich-ban-hoi-thoai.md`, và trong `cues.js`",
+      "Video này có nhiều người nói. Trong `cues.js`",
       "mỗi câu phải khai `speaker` (tên một nhân vật dưới đây) cùng `delivery` (kiểu đọc: ke · giang · nhe · hoi · nhan).",
       "",
       `Chỉ được dùng các nhân vật đã có: ${names}. Tên khác sẽ bị chặn ở bước dry-run.`,

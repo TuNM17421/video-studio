@@ -7,7 +7,7 @@ import { isTrackId } from "@/lib/server/music";
 import { readAgentConfig, resolveAgentProvider } from "@/lib/server/agent-config";
 import { handle } from "@/lib/server/http";
 import { assertId, DAY_RE, exists, HttpError, projectDir, STYLES, videoDir } from "@/lib/server/paths";
-import { cleanModules, isModuleId } from "@/lib/modules";
+import { cleanModules, isModuleId } from "@/lib/server/modules";
 import { listVideos, newVoice, requestMarkdown, writeState } from "@/lib/server/videos";
 
 export const GET = handle(() => Response.json(listVideos()));

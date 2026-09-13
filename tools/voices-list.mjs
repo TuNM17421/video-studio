@@ -4,7 +4,7 @@
  *
  *   npm run voices
  *
- * A dialogue script can only name voices that appear here (see templates/kich-ban-hoi-thoai.md).
+ * A dialogue script can only name voices that appear here (see templates/modules/dialogue.md).
  * Adding one is a dev job: clone the voice, take a ~10 s sample with tools/voice-sample.mjs, push it with
  * `npm run media`, then declare it in voices.json.
  */
@@ -64,4 +64,4 @@ for (const [key, d] of Object.entries(deliveries)) {
 
 console.log(`\nMẫu nghe thử đều đọc cùng một đoạn:\n  “${sampleText}”\n`);
 console.log('Kịch bản hội thoại chỉ được đặt tên nhân vật trùng các tên trên.');
-console.log('Xem cách viết: templates/kich-ban-hoi-thoai.md\n');
+console.log('Xem cách viết: templates/kich-ban-co-ban.md + templates/modules/dialogue.md\n');
