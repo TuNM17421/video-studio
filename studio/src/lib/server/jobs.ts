@@ -121,8 +121,12 @@ interface RunOptions {
   onLine?: (line: string, stream: "stdout" | "stderr") => void;
 }
 
-/** On Windows `npm` is a .cmd shim; Node can only run it through a shell, not by direct spawn. */
-const needsShell = (cmd: string) => process.platform === "win32" && cmd === "npm";
+/**
+ * On Windows a batch shim (`npm`, and any agent CLI installed through npm) can only be run through a
+ * shell: spawning one directly throws EINVAL. Matched on the extension too, so pointing CLAUDE_BIN /
+ * CODEX_BIN / ANTIGRAVITY_BIN at a `.cmd` works instead of crashing the job.
+ */
+const needsShell = (cmd: string) => process.platform === "win32" && (cmd === "npm" || /\.(cmd|bat)$/i.test(cmd));
 
 /** Run a command in the repo, attached to the video's current job (so Dừng can kill it). */
 export function run(id: string, cmd: string, args: string[], opts: RunOptions = {}) {

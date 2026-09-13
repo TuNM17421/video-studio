@@ -2,7 +2,8 @@ import type { AgentProvider } from "@/lib/types";
 
 /**
  * Brand marks for the agent CLIs, drawn inline so the Studio stays asset-free.
- * Claude is Anthropic's radiating burst; Codex is OpenAI's six-fold knot.
+ * Claude is Anthropic's radiating burst; the other two are approximations of their marks — swap in the
+ * official SVGs if exactness matters.
  */
 
 const RAYS = 11;
@@ -25,6 +26,34 @@ function CodexMark() {
   </svg>;
 }
 
+/** Antigravity's "A": one thick round-capped arch, blue at the feet warming to red at the apex. */
+function AntigravityMark() {
+  return <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+    <defs>
+      {/* vertical, not diagonal: both feet are blue in the real mark and only the apex runs warm */}
+      <linearGradient id="vs-agy" x1="8" y1="14" x2="8" y2="2.5" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stopColor="#4285f4" />
+        <stop offset="0.45" stopColor="#34a853" />
+        <stop offset="0.78" stopColor="#f9ab00" />
+        <stop offset="1" stopColor="#ea4335" />
+      </linearGradient>
+    </defs>
+    <path
+      d="M2.6 13.5C4.6 6.8 6 3 8 3s3.4 3.8 5.4 10.5"
+      stroke="url(#vs-agy)"
+      strokeWidth="3"
+      strokeLinecap="round"
+    />
+  </svg>;
+}
+
+const MARKS: Record<AgentProvider, () => React.ReactElement> = {
+  claude: ClaudeMark,
+  codex: CodexMark,
+  antigravity: AntigravityMark,
+};
+
 export function AgentMark({ provider }: { provider: AgentProvider }) {
-  return <span className="vs-agent-mark">{provider === "claude" ? <ClaudeMark /> : <CodexMark />}</span>;
+  const Mark = MARKS[provider] ?? ClaudeMark;
+  return <span className="vs-agent-mark"><Mark /></span>;
 }

@@ -2,7 +2,7 @@
 
 Repo dựng **video bài giảng** cho khoá *AI in Action 20K* (VinUni): design system React/SVG 1920×1080 · 30 fps,
 bộ công cụ build / QA / render MP4, và giọng đọc ElevenLabs. Từ kịch bản đến MP4 kèm transcript và chapters
-chạy được bằng web **Video Studio** (`studio/`) với **Claude Code hoặc Codex**, hoặc trực tiếp bằng CLI. Design system
+chạy được bằng web **Video Studio** (`studio/`) với **Claude Code, Codex hoặc Antigravity**, hoặc trực tiếp bằng CLI. Design system
 đồng bộ được lên **Claude Design** (claude.ai/design).
 
 ## Có gì bên trong
@@ -14,7 +14,7 @@ chạy được bằng web **Video Studio** (`studio/`) với **Claude Code ho�
 | `projects/<id>/` | Kịch bản gốc (`kich-ban-goc.md`), ghi chú dựng (`PROMPTS.md`), QA và `render/`; đều giữ trên máy |
 | `tts-elevenlabs/` | Tạo giọng ElevenLabs → `out/<id>/voice.wav` + `voice.cues.json`; toàn bộ output giữ trên máy |
 | `tools/` | `build.mjs`, `verify.mjs`, `shoot.mjs` (chụp ảnh QA), `render.mjs` (MP4), `voice-timing.mjs`, `transcript.mjs` |
-| `studio/` | **Video Studio**: web local chọn style, tạo video và điều khiển Claude Code hoặc Codex theo từng bước |
+| `studio/` | **Video Studio**: web local chọn style, tạo video và điều khiển Claude Code, Codex hoặc Antigravity theo từng bước |
 | `styles/` | Danh sách style (`lesson.json`, `lesson-lab.json`: màu, component tiêu biểu, luật) và ảnh preview component |
 | `.claude/skills/make-video/` | Skill `/make-video`: quy trình dựng video, dùng chung cho Video Studio và CLI |
 | `transcripts/DayNN/`, `chapters/DayNN/` | Sản phẩm đi kèm mỗi video, giữ trên máy |
@@ -41,8 +41,8 @@ git switch main           # dựng video chính thức
 
 ## Setup lần đầu
 
-Cần có: **Node ≥ 20**, **Python 3** (server xem trước), **git**, ít nhất một trong hai CLI **Claude Code**
-hoặc **Codex** (đã đăng nhập trên máy), và một tài khoản
+Cần có: **Node ≥ 20**, **Python 3** (server xem trước), **git**, ít nhất một trong ba CLI **Claude Code**,
+**Codex** hoặc **Antigravity** (`agy`, đã đăng nhập trên máy), và một tài khoản
 **ElevenLabs** (API key + voice ID) nếu tự tạo giọng.
 
 ```console
@@ -99,7 +99,7 @@ Studio mặc định dùng Claude để tương thích với video cũ. Có th�
 
 ```console
 cp studio/.env.example studio/.env
-# sửa STUDIO_AGENT_PROVIDER=claude hoặc codex
+# sửa STUDIO_AGENT_PROVIDER=claude, codex hoặc antigravity
 # đặt STUDIO_AGENT_PROVIDER_LOCKED=1 nếu không muốn hiện lựa chọn agent khi tạo video
 npm run studio
 ```
@@ -108,7 +108,7 @@ npm run studio
 gắn với agent ngay khi tạo và luôn tiếp tục bằng agent đó, kể cả sau khi khởi động lại máy. Studio không có
 nút đổi agent cho video đang làm. Video Studio cũ chưa có trường provider được xem là video Claude.
 
-Mỗi video đi qua 5 bước. Agent đã gắn (Claude Code hoặc Codex chạy nền bằng tài khoản đang đăng nhập trên máy) làm các bước
+Mỗi video đi qua 5 bước. Agent đã gắn (Claude Code, Codex hoặc Antigravity chạy nền bằng tài khoản đang đăng nhập trên máy) làm các bước
 dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
 
 1. **Kế hoạch.** Chọn style (xem dải màu, component tiêu biểu, video mẫu), nhập mã video, ngày, kịch bản
@@ -125,7 +125,9 @@ dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
 - Trang **Các video** mở lại video đang làm dở (trạng thái lưu ở `projects/<id>/.studio/`, không lên git).
 - Trang **Thư viện** xem style, toàn bộ component (tài liệu `.prompt.md`) và các video mẫu.
 - Agent chạy ở chế độ không hỏi. Claude dùng allowlist/denylist của Studio; Codex dùng sandbox
-  `workspace-write` và policy không xin quyền, đồng thời tuân theo `AGENTS.md`. Cả hai đều không nhận key
+  `workspace-write` và policy không xin quyền; Antigravity chạy `--dangerously-skip-permissions` vì bản
+  headless của nó không có allowlist theo từng lần gọi, và mặc định sẽ **âm thầm bỏ qua** mọi lệnh cần
+  duyệt rồi vẫn thoát mã 0. Cả ba đều tuân theo `AGENTS.md` và không nhận key
   ElevenLabs đang giữ trong RAM; không được đọc `.env`, tạo giọng tốn phí, commit/push hay `/design-sync`.
 - Khi phát triển Video Studio: `STUDIO_TTS_MOCK=1 npm run studio` tạo giọng im lặng thay vì gọi ElevenLabs.
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
-import { claudeExecArgs, codexExecArgs } from "./agent-cli";
+import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs } from "./agent-cli";
 import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
 import { readState, setStage, styleName, updateState } from "./videos";
 
@@ -44,6 +44,34 @@ interface CodexStreamMessage {
   item?: CodexStreamItem;
   message?: string;
   error?: string | { message?: string };
+}
+
+/** agy --output-format stream-json: one `init`, any number of `step_update`, exactly one `result`. */
+interface AntigravityStreamMessage {
+  event?: string;
+  conversation_id?: string;
+  init?: { cwd?: string; permission_mode?: string };
+  step_update?: {
+    conversation_id?: string;
+    step_index?: number;
+    state?: string;
+    step_type?: string;
+    text_delta?: string;
+    tool_name?: string;
+    tool_info?: {
+      name?: string;
+      parameters?: Record<string, unknown>;
+      output?: string;
+      error?: { type?: string; message?: string };
+    };
+  };
+  result?: {
+    conversation_id?: string;
+    status?: string;
+    response?: string;
+    error?: string;
+    num_turns?: number;
+  };
 }
 
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
@@ -231,6 +259,72 @@ async function runCodex(id: string, prompt: string, sessionId: string | null) {
   return { ok, code };
 }
 
+/** agy names its own tools; `run_command` carries the command under a capitalised parameter. */
+function describeAntigravityTool(tool: NonNullable<NonNullable<AntigravityStreamMessage["step_update"]>["tool_info"]>, fallback: string) {
+  const p = tool.parameters || {};
+  const name = tool.name || fallback || "thao tác";
+  const arg = p.CommandLine ?? p.command ?? p.Path ?? p.path ?? p.file_path ?? p.AbsolutePath ?? p.query ?? p.Query;
+  return arg ? `${name === "run_command" ? "$" : name} ${short(arg, 200)}` : name;
+}
+
+async function runAntigravity(id: string, prompt: string, sessionId: string | null) {
+  let ok = false;
+  let terminalEvent = false;
+  let tools = 0;
+  let finalText = "";
+  /**
+   * agy streams an answer as `text_delta` fragments across the ACTIVE updates of one step, and the DONE
+   * update carries only the trailing newline — reading the text off DONE alone (as a tool step is read)
+   * would log whitespace and drop the message. Accumulate per step, flush when the step finishes.
+   */
+  const saying = new Map<number, string>();
+  const code = await run(id, process.env.ANTIGRAVITY_BIN || "agy", antigravityExecArgs(sessionId), {
+    env: sanitizedAgentEnv(),
+    input: antigravityStdin(prompt),
+    onLine(line, stream) {
+      // stdout is the NDJSON protocol; stderr carries ordinary diagnostics and permission notices.
+      if (stream === "stderr") return log(id, "system", short(line, 400));
+      let msg: AntigravityStreamMessage;
+      try { msg = JSON.parse(line); } catch { return; }
+      if (msg.event === "init") {
+        if (msg.conversation_id) saveSession(id, "antigravity", msg.conversation_id);
+      } else if (msg.event === "step_update") {
+        const step = msg.step_update || {};
+        const index = step.step_index ?? -1;
+        if (step.step_type === "agent_response") {
+          if (step.text_delta) saying.set(index, (saying.get(index) ?? "") + step.text_delta);
+          if (step.state === "DONE") {
+            const said = (saying.get(index) ?? "").trim();
+            saying.delete(index);
+            if (said) log(id, "agent", said);
+          }
+          return;
+        }
+        // A tool repeats as ACTIVE then DONE; only the finished one carries its output.
+        if (step.state !== "DONE") return;
+        if (step.step_type === "tool") {
+          tools++;
+          log(id, "tool", describeAntigravityTool(step.tool_info || {}, step.tool_name || ""));
+          setProgress(id, null, `Antigravity đang làm việc · ${tools} thao tác`);
+          const failure = step.tool_info?.error;
+          if (failure) log(id, "error", short(failure.message || failure.type || "Tool lỗi.", 300));
+        }
+      } else if (msg.event === "result") {
+        const r = msg.result || {};
+        if (r.conversation_id) saveSession(id, "antigravity", r.conversation_id);
+        ok = r.status === "SUCCESS";
+        terminalEvent = true;
+        finalText = r.response?.trim() || "";
+        const turns = typeof r.num_turns === "number" ? ` · ${r.num_turns} lượt` : "";
+        if (ok) log(id, "result", `Antigravity đã dừng${turns}${finalText ? `\n${finalText}` : "."}`);
+        else log(id, "error", `Antigravity báo lỗi (${r.status || "không rõ"})${turns}: ${r.error || finalText || "không có chi tiết."}`);
+      }
+    },
+  });
+  if (!ok && !terminalEvent && !wasStopped(id)) log(id, "error", `Antigravity kết thúc với mã ${code} nhưng không có sự kiện result.`);
+  return { ok, code };
+}
+
 /** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
 export async function runAgent(id: string, stage: AgentStage, base: string, message?: string) {
   const { state } = readState(id);
@@ -242,9 +336,8 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
   setProgress(id, null, message ? `${providerLabel} đang sửa theo góp ý…` : `${providerLabel} đang làm việc…`);
   log(id, "system", message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
 
-  const result = provider === "codex"
-    ? await runCodex(id, prompt, state.agent.sessionId)
-    : await runClaude(id, prompt, state.agent.sessionId);
+  const runner = { codex: runCodex, antigravity: runAntigravity, claude: runClaude }[provider] ?? runClaude;
+  const result = await runner(id, prompt, state.agent.sessionId);
 
   if (wasStopped(id)) {
     setStage(id, stage, "error", "Đã dừng agent.");

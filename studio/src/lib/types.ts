@@ -3,7 +3,7 @@ import type { MusicChoice } from "./music";
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan";
-export type AgentProvider = "claude" | "codex";
+export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
   defaultProvider: AgentProvider;
