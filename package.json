@@ -11,6 +11,7 @@
     "postinstall": "node tools/link-ds.mjs && node tools/build.mjs",
     "setup": "playwright install chromium",
     "setup:voice": "node tools/setup-voice-align.mjs",
+    "setup:omnivoice": "node tools/setup-omnivoice.mjs",
     "build": "node tools/build.mjs",
     "verify": "node tools/verify.mjs",
     "serve": "python3 -m http.server 8765 --bind 127.0.0.1 --directory vinuni-lesson-video-ds",

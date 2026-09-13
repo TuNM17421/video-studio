@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, DownloadOutlined, ExportOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
 import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
-import type { DryRun, ImportReport, JobInfo, LogEntry, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
+import type { DryRun, ImportReport, JobInfo, LogEntry, OmnivoiceStatus, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
 import { MusicPicker } from "./music-picker";
@@ -237,6 +237,7 @@ const MODELS = [
 const SOURCES = [
   { value: "elevenlabs", label: "Tạo bằng ElevenLabs" },
   { value: "import", label: "Nhập audio có sẵn" },
+  { value: "local", label: "Model local" },
 ];
 
 /** Whether a scan still describes the folder on screen — same rule as the ElevenLabs dry-run. */
@@ -255,6 +256,192 @@ const WEAK_MATCH = 0.65;
  * while recording, the rest shifted up — reaches the MP4 looking fine, so every file is shown against
  * the câu it landed on, with how much of that câu's words were actually heard in it.
  */
+/**
+ * Model chạy dưới máy. OmniVoice không phải nguồn giọng thứ ba theo nghĩa kỹ thuật — nó sinh ra một thư
+ * mục 01.wav, 02.wav… rồi đi tiếp bằng đúng đường "Nhập audio có sẵn". Panel này lo khâu duy nhất mà hai
+ * tab kia không lo hộ được: dựng môi trường Python trên máy.
+ */
+function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
+  detail: VideoDetail;
+  settings: VoiceSettings;
+  setSettings: (v: VoiceSettings) => void;
+  busy: boolean;
+  act: StepProps["act"];
+}) {
+  const id = detail.state.id;
+  const [status, setStatus] = useState<OmnivoiceStatus | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [confirmSetup, setConfirmSetup] = useState(false);
+  const job = detail.job;
+  const jobRunning = (kind: string) => job?.kind === kind && job.status === "running";
+  const installing = jobRunning("omnivoice-setup");
+  const aligning = jobRunning("align-setup");
+
+  const send = useCallback(
+    (action: string) => api<OmnivoiceStatus>(`/api/videos/${id}/voice`, { method: "POST", json: { action } }),
+    [id],
+  );
+  const refresh = useCallback(
+    () => send("omnivoice-status").then((s) => { setStatus(s); setFailed(false); }).catch(() => setFailed(true)),
+    [send],
+  );
+  // Cài xong thì job kết thúc — hỏi lại để bước 1 tự chuyển sang "xong". Cũng chạy lượt đầu khi mở tab.
+  useEffect(() => { if (!installing && !aligning) void refresh(); }, [installing, aligning, refresh]);
+
+  const server = (action: "start" | "stop") => act(async () => {
+    setWorking(true);
+    try { setStatus(await send(`omnivoice-server-${action}`)); } finally { setWorking(false); }
+  });
+
+  const installed = status?.installed ?? false;
+  const aligned = status?.align ?? false;
+  const running = status?.server.running ?? false;
+  const generating = jobRunning("omnivoice-generate");
+  const spoken = detail.cues?.cues.filter((c) => !c.silent && c.text.trim()).length ?? 0;
+  // Thư mục nhập đang trỏ vào kết quả của chính model local: bước 3 đã chạy xong ít nhất một lần.
+  const generated = detail.state.voice.importDir.replace(/\\/g, "/").endsWith("/voice-script/omnivoice");
+  const device = status?.device;
+  // Máy yếu: không GPU thì chậm tới mức không dùng nổi, còn VRAM sát thì câu dài dễ tràn.
+  const weak = device?.tight ?? false;
+  const weakText = !device ? "" : device.id === "cpu"
+    ? `Máy không có GPU. Model ${status?.modelGb} GB sẽ chạy bằng CPU — mỗi câu có thể mất hàng phút, không hợp để dựng cả video.`
+    : `Card ${device.vramGb} GB VRAM, model chiếm ~${status?.modelGb} GB. Chạy được nhưng sát: câu dài có thể tràn VRAM và phải sinh lại từng câu ngắn hơn.`;
+
+  // Mất trạng thái thì panel rỗng trông như hỏng hẳn, và mất luôn nút Cài — phải còn đường thử lại.
+  if (failed && !status) {
+    return <div className="vs-local">
+      <Alert
+        type="error"
+        showIcon
+        title="Không đọc được trạng thái model local"
+        description="Máy chủ Studio không trả lời. Kiểm tra cửa sổ đang chạy `npm run studio` rồi thử lại."
+        action={<Button size="small" onClick={() => void refresh()}>Thử lại</Button>}
+      />
+    </div>;
+  }
+
+  return <div className="vs-local">
+    <header className="vs-local-head">
+      <div>
+        <h3>OmniVoice · model giọng chạy dưới máy</h3>
+        <p>Sinh giọng ngay trên máy này nên không tốn credit ElevenLabs. Nhân bản giọng cho 600+ ngôn ngữ, giấy phép Apache-2.0.</p>
+      </div>
+      {status && <Tag className="vs-badge" color={installed ? "success" : "default"}>{installed ? "Đã cài" : "Chưa cài"}</Tag>}
+    </header>
+
+    {status && weak && <Alert
+      className="vs-local-warning"
+      type={device?.id === "cpu" ? "error" : "warning"}
+      showIcon
+      title={device?.id === "cpu" ? "Máy này không đủ sức chạy model local" : "Máy này chạy được nhưng sát sức"}
+      description={weakText}
+    />}
+
+    <ol className="vs-local-flow">
+      <li className={`vs-local-step ${installed ? "is-done" : "is-now"}`}>
+        <span className="vs-local-num">{installed ? <CheckCircleFilled /> : 1}</span>
+        <div className="vs-local-body">
+          <strong>Cài model</strong>
+          {installed
+            ? <small>{device?.label} · <code>{status?.venv}</code></small>
+            : <small>Cài torch hợp phần cứng rồi cài gói <code>omnivoice</code>. Lần đầu tải vài GB.</small>}
+          {!installed && status && <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            loading={installing}
+            disabled={busy || installing}
+            onClick={() => setConfirmSetup(true)}
+          >Setup OmniVoice local model</Button>}
+        </div>
+        {status && !installed && <span className="vs-local-aside">{device?.label}</span>}
+      </li>
+
+      <li className={`vs-local-step ${!installed ? "is-wait" : settings.voiceId ? "is-done" : "is-now"}`}>
+        <span className="vs-local-num">{installed && settings.voiceId ? <CheckCircleFilled /> : 2}</span>
+        <div className="vs-local-body">
+          <strong>Chọn giọng để nhân bản</strong>
+          {/* OmniVoice clone giọng từ một đoạn mẫu, và voices.json đã có sẵn mẫu của cả bốn người
+              dẫn trên kho media — dùng lại đúng bộ chọn của tab ElevenLabs để giọng không lệch nhau. */}
+          <small>Mẫu của giọng được chọn sẽ là <code>ref_audio</code> cho OmniVoice, nên giọng local khớp với giọng ElevenLabs đang dùng.</small>
+          <VoicePicker value={settings.voiceId} onChange={(voiceId) => setSettings({ ...settings, voiceId })} disabled={busy || !installed} />
+        </div>
+      </li>
+
+      <li className={`vs-local-step ${!installed || !settings.voiceId ? "is-wait" : generated ? "is-done" : "is-now"}`}>
+        <span className="vs-local-num">{generated ? <CheckCircleFilled /> : 3}</span>
+        <div className="vs-local-body">
+          <strong>Sinh giọng cho cả video</strong>
+          <small>
+            Sinh {spoken || "tất cả"} câu trong một lượt, đặt tên <code>01.wav, 02.wav…</code> đúng số câu.
+            Thiếu dù một câu là báo lỗi chứ không nhận kết quả dở.
+          </small>
+          <Button
+            type="primary"
+            icon={<SoundOutlined />}
+            loading={generating}
+            disabled={busy || generating || !installed || !settings.voiceId}
+            onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-generate", settings }))}
+          >{generated ? "Sinh lại" : "Sinh giọng bằng model local"}</Button>
+          {!settings.voiceId && installed && <small className="vs-local-log">Chọn một giọng ở bước 2 trước.</small>}
+          {/* Đo thật trên card 6 GB: server giữ model sẵn, lệnh sinh nạp thêm một bản nữa → VRAM lên 97 %
+              và cả hai cùng ì. Máy VRAM rộng thì chạy song song vô tư, nên chỉ nhắc khi card chật. */}
+          {running && device?.tight && <small className="vs-local-log vs-local-hint">
+            Card này chật mà server Gradio đang giữ model trong VRAM. Tắt nó ở cuối trang trước khi sinh.
+          </small>}
+        </div>
+      </li>
+
+      <li className={`vs-local-step ${generated ? "is-now" : "is-wait"}`}>
+        <span className="vs-local-num">4</span>
+        <div className="vs-local-body">
+          <strong>Nhập vào video</strong>
+          <small>
+            Sinh xong mới chỉ là một thư mục wav, chưa phải giọng của video. Sang tab <strong>“Nhập audio có sẵn”</strong> —
+            thư mục vừa sinh đã điền sẵn ở đó — bấm kiểm tra rồi nhập. Bước Giọng đọc hoàn tất ở đó.
+          </small>
+          {/* Whisper nằm ở voice/.venv, KHÁC venv của OmniVoice. Cài xong OmniVoice mà thiếu nó thì
+              sinh giọng vẫn chạy ngon rồi chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút. */}
+          {status && !aligned && <Alert
+            className="vs-local-warning"
+            type="warning"
+            showIcon
+            title="Còn thiếu môi trường nhận diện giọng"
+            description="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, bản cài OmniVoice không bao gồm."
+            action={<Button size="small" type="primary" loading={aligning} disabled={busy || aligning} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "align-setup" }))}>Cài Whisper</Button>}
+          />}
+          {status && aligned && <small className="vs-local-log">Môi trường nhận diện giọng: đã cài.</small>}
+        </div>
+      </li>
+    </ol>
+
+    {/* Server Gradio KHÔNG nằm trên đường sinh giọng: lệnh sinh gọi thẳng omnivoice-infer-batch và
+        không biết tới cổng nào. Để nó ở đây như một tiện ích, không phải một bước bắt buộc. */}
+    {installed && <details className="vs-local-extra">
+      <summary>Giao diện thử từng câu (tuỳ chọn)</summary>
+      <p>Server Gradio của OmniVoice, để nghe thử một câu lẻ. Không cần bật để sinh giọng — bật lúc đang sinh là nạp model hai lần.</p>
+      <div className="vs-local-actions">
+        {running
+          ? <>
+              <a className="vs-local-url" href={status?.server.url ?? "#"} target="_blank" rel="noreferrer">{status?.server.url}</a>
+              <Button size="small" icon={<ExportOutlined />} href={status?.server.url ?? undefined} target="_blank">Mở giao diện</Button>
+              <Button size="small" danger loading={working} disabled={busy} onClick={() => server("stop")}>Tắt server</Button>
+            </>
+          : <Button size="small" icon={<PlayCircleFilled />} loading={working} disabled={busy} onClick={() => server("start")}>Bật server</Button>}
+      </div>
+      {running && <small className="vs-local-log">Nhật ký: <code>{status?.server.log}</code></small>}
+    </details>}
+
+    {confirmSetup && <ConfirmDialog
+      title="Cài OmniVoice lên máy này?"
+      description={`Sẽ tải khoảng ${status?.device.id === "cuda" ? "3–4 GB" : "1–2 GB"} thư viện torch vào ${status?.venv}, rồi ~${status?.modelGb} GB trọng số model ở lần sinh giọng đầu tiên. Chỉ cài một lần, gỡ bằng cách xoá thư mục đó.${weak ? ` Lưu ý: ${weakText}` : ""}`}
+      confirmLabel="Cài đặt"
+      onCancel={() => setConfirmSetup(false)}
+      onConfirm={() => { setConfirmSetup(false); void act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-setup" })); }}
+    />}
+  </div>;
+}
+
 function ImportPanel({ detail, settings, setSettings, busy, act }: {
   detail: VideoDetail;
   settings: VoiceSettings;
@@ -426,7 +613,7 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSettings(detail.state.voice); }, [detail.state.voice]);
   const cuesApproved = detail.state.stages.cues === "done";
-  const runLogs = stageLogs(logs, /^Tạo giọng ·|^Nhập giọng ·/);
+  const runLogs = stageLogs(logs, /^Tạo giọng ·|^Nhập giọng ·|^Cài model local|^Cài Whisper|^Model local đã sinh/);
   const panel = { detail, settings, setSettings, busy, act };
   /** Remember the choice server-side, so a reload does not drop the member back onto the API tab. */
   const changeSource = (source: VoiceSettings["source"]) => {
@@ -442,11 +629,11 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
         <Segmented className="vs-source" aria-label="Nguồn giọng đọc" value={settings.source} onChange={(value) => changeSource(value as VoiceSettings["source"])} options={SOURCES} block />
         {/* Labels stack above their field, as in the plan form; without it antd lays them out inline. */}
         <Form layout="vertical" requiredMark={false} component={false}>
-          {settings.source === "import"
-            ? <ImportPanel {...panel} />
+          {settings.source === "local" ? <LocalModelPanel {...panel} />
+            : settings.source === "import" ? <ImportPanel {...panel} />
             : <ElevenLabsPanel {...panel} hasKey={hasKey} setHasKey={setHasKey} />}
         </Form>
-        <JobProgress job={job && ["voice", "import-scan"].includes(job.kind) ? job : null} onStop={stop} />
+        <JobProgress job={job && ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup"].includes(job.kind) ? job : null} onStop={stop} />
         {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
         <AgentLog logs={runLogs} open={status === "running"} />
       </>}

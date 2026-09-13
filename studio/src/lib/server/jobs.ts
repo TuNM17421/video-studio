@@ -107,11 +107,29 @@ export function finishJob(id: string, status: JobInfo["status"]) {
   emit(id, { type: "state" });
 }
 
+/**
+ * Dừng phải với tới cả tiến trình cháu. Sinh giọng bằng model local là node → python, và python giữ
+ * vài GB VRAM: giết mỗi node thì job báo "đã dừng" trong khi GPU vẫn bận và vẫn ghi wav.
+ *
+ * Trên Windows SIGTERM chỉ là TerminateProcess — tiến trình con không chạy được handler nào để dọn
+ * đứa cháu, nên phải nhờ `taskkill /T`. Trên macOS/Linux thì ngược lại: SIGTERM tới nơi và tool tự
+ * chuyển tín hiệu xuống python, nên không cần đụng tới process group (đổi group sẽ làm Ctrl-C ở cửa
+ * sổ chạy studio không còn lan xuống job).
+ */
+function killTree(child: ChildProcess | undefined) {
+  if (!child?.pid) return;
+  if (process.platform === "win32") {
+    spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" }).on("error", () => child.kill());
+    return;
+  }
+  child.kill("SIGTERM");
+}
+
 export function stopJob(id: string) {
   const job = registry.jobs.get(id);
   if (!job || job.status !== "running") return false;
   job.stopped = true;
-  job.child?.kill("SIGTERM");
+  killTree(job.child);
   return true;
 }
 
