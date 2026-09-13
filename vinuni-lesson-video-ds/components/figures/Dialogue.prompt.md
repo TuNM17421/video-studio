@@ -3,7 +3,7 @@
 One character's line in a conversation video, revealed **word by word on the real voice**.
 
 **Use for** "thẻ hội thoại", "hai nhân vật nói chuyện", "học viên hỏi — giảng viên trả lời": a video where
-more than one voice speaks (see `templates/kich-ban-hoi-thoai.md`).
+more than one voice speaks (see `templates/modules/dialogue.md`).
 **Not for** a chat-app mock (→ `ChatWindow`), a single question in someone's words (→ `SpeechBubble`),
 the narrator's own captions (→ the caption bar, `lib/captions.js`).
 

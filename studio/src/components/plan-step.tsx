@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PlayCircleFilled, QuestionOutlined, WarningFilled } from "@ant-design/icons";
+import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PlayCircleFilled, QuestionOutlined, WarningFilled } from "@ant-design/icons";
 import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
@@ -10,7 +10,7 @@ import type { AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSum
 import { NO_MUSIC, type MusicCatalog, type MusicTrack } from "@/lib/music";
 import { MusicPicker } from "./music-picker";
 import { SourcePickerField } from "./source-picker";
-import { MODULES, moduleNames, type ModuleInfo } from "@/lib/modules";
+import { BASE_TEMPLATE_PATH, moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
 import { StylePicker, StyleShowcase } from "./style-showcase";
 
 const DAYS = Array.from({ length: 30 }, (_, i) => `Day${String(i + 1).padStart(2, "0")}`);
@@ -48,7 +48,7 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
 });
 
 /** The prompt a member can paste into Claude Code (or Claude Design) instead of pressing Tạo video. */
-export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
+export function buildPrompt(draft: PlanDraft, style?: StyleDef, modules: ModuleInfo[] = []) {
   const r = draft.request;
   const id = draft.id || "<mã-video>";
   const scope = [r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ");
@@ -61,8 +61,11 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef) {
     r.feedbackDir && `Feedback so với bản cũ: ${r.feedbackDir}`,
     r.oldVideoDir && `Video cũ: ${r.oldVideoDir}`,
     showcase && `Component tiêu biểu của style: ${showcase}. Dùng khi nội dung phù hợp.`,
-    r.modules.includes("dialogue") && "Video có hội thoại: kịch bản theo templates/kich-ban-hoi-thoai.md, mỗi câu trong cues.js khai speaker + delivery, chỉ dùng giọng có trong voices.json.",
-    r.modules.includes("quiz") && "Video có quiz: chỉ đánh dấu quiz: true cho khoảng chờ suy nghĩ (cue silent), không đánh dấu câu đọc câu hỏi hay phần chữa bài.",
+    `Kịch bản theo ${BASE_TEMPLATE_PATH}.`,
+    ...r.modules.map((id) => {
+      const m = modules.find((x) => x.id === id);
+      return m ? `${m.name}: đọc thêm ${m.template} (chỉ ghi phần thêm so với mẫu cơ bản).` : "";
+    }),
     ...(style?.rules || []).map((rule) => `- ${rule}`),
     `Làm đủ: ${scope}.`,
     r.notes.trim() && `Ghi chú: ${r.notes.trim()}`,
@@ -99,16 +102,24 @@ function ModulePreview({ module: m }: { module: ModuleInfo }) {
 }
 
 function ModuleGlyph({ icon }: { icon: ModuleInfo["icon"] }) {
-  return <span className="vs-module-glyph" aria-hidden="true">{icon === "dialogue" ? <MessageOutlined /> : <QuestionOutlined />}</span>;
+  // A capability added as a template file may name an icon the form has no glyph for; it gets the generic one.
+  const glyph = icon === "dialogue" ? <MessageOutlined /> : icon === "quiz" ? <QuestionOutlined /> : <AppstoreOutlined />;
+  return <span className="vs-module-glyph" aria-hidden="true">{glyph}</span>;
+}
+
+/** The capability catalog: one card per templates/modules/<id>.md, served by /api/modules. */
+function useModules() {
+  const [modules, setModules] = useState<ModuleInfo[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void api<ModuleInfo[]>("/api/modules").then((list) => { if (alive) setModules(list); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  return modules;
 }
 
 export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, unavailable }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean }) {
-  const [modules, setModules] = useState<ModuleInfo[]>(MODULES.map((m) => ({ ...m, preview: null })));
-  useEffect(() => {
-    let alive = true;
-    void api<ModuleInfo[]>("/api/modules").then((list) => { if (alive && list.length) setModules(list); }).catch(() => {});
-    return () => { alive = false; };
-  }, []);
+  const modules = useModules();
   const style = styles.find((s) => s.id === draft.request.style);
   const formRef = useRef<HTMLDivElement>(null);
   const idInput = useRef<InputRef>(null);
@@ -125,7 +136,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const idErrorId = useId();
   const scriptLabelId = useId();
   const scriptErrorId = useId();
-  const prompt = useMemo(() => buildPrompt(draft, style), [draft, style]);
+  const prompt = useMemo(() => buildPrompt(draft, style, modules), [draft, style, modules]);
   const set = (patch: Partial<VideoRequest>) => setDraft((current) => ({ ...current, request: { ...current.request, ...patch } }));
   const quizEnabled = draft.request.modules.includes("quiz");
   const setModule = (id: string, checked: boolean) => setDraft((current) => ({
@@ -345,6 +356,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
 /** Read-only plan of a video that already exists. */
 export function PlanSummary({ state, styles }: { state: VideoState; styles: StyleDef[] }) {
   const r = state.request;
+  const modules = useModules();
   const style = styles.find((s) => s.id === r.style);
   return <div className="vs-section">
     <Descriptions className="vs-facts" bordered column={1} size="small" items={[
@@ -354,7 +366,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
       { key: "feedback", label: "Feedback bản cũ", children: r.feedbackDir || "—" },
       { key: "video", label: "Video cũ", children: r.oldVideoDir || "—" },
-      { key: "modules", label: "Tính năng nội dung", children: r.modules.length ? moduleNames(r.modules).join(", ") : "—" },
+      { key: "modules", label: "Tính năng nội dung", children: r.modules.length ? moduleNamesFrom(modules, r.modules).join(", ") : "—" },
       { key: "notes", label: "Ghi chú", children: r.notes || "—" },
     ]} />
     {style && <StyleShowcase style={style} />}

@@ -77,6 +77,16 @@ cho màu, bộ chữ, token bố cục, mức nhấn của luồng sản xuất 
 Lưu ý: đây là design system **của giao diện Studio**, khác với design system của video bài giảng
 (`vinuni-lesson-video-ds/lib/tokens.js`, 9 màu, dùng khi dựng cảnh). Đừng lẫn hai bên.
 
+## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
+Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
+quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ
+bản — hiện có `dialogue.md` và `quiz.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
+`order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
+`REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
+code; chỉ năng lực cần cấu hình riêng trên form (chọn nhạc quiz) hay dữ liệu chèn vào REQUEST.md (danh sách
+nhân vật) mới cần dev. Tên file là id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem
+`templates/modules/README.md`.
+
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
 Mỗi cue khai `speaker` (tên/id một **nhân vật** — hoặc một giọng, cho video một người dẫn) và `delivery` (kiểu đọc trong
@@ -85,7 +95,7 @@ ngay trước khi tốn credit; thêm nhân vật mới là việc của dev. Đ
 từ trước và là audio tag của eleven_v3 (`[curious]`). `tts.mjs` gọi mỗi câu bằng giọng của người nói, và chỉ
 nối `previous_text`/`next_text` trong một chuỗi câu cùng người. Một câu có thể khai `model` riêng (`model: 'eleven_v3'`) khi model mặc định đọc sai đúng câu đó — ba câu
 còn lại vẫn trúng cache, chỉ câu ấy bị tính phí. Mẫu viết kịch bản:
-`templates/kich-ban-hoi-thoai.md`; `npm run voices` in danh sách giọng và kiểu đọc.
+`templates/modules/dialogue.md` (thêm vào mẫu cơ bản); `npm run voices` in danh sách giọng và kiểu đọc.
 Nhân vật là lớp riêng trong `voices.json → characters`: tên, avatar (key trên kho media), phía, màu, và
 giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn giọng đặt theo người thu (Nhật Phong,
 Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng.
