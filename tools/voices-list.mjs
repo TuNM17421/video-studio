@@ -30,7 +30,8 @@ if (characters.length) {
   console.log(`\nNHÂN VẬT — ${characters.length} vai, đây là tên kịch bản phải dùng ở \`speaker\`\n`);
   for (const c of characters) {
     const voice = voices.find((v) => v.id === c.voice || v.name === c.voice);
-    console.log(`  ${c.name}  (id: ${c.id})`);
+    const alias = (c.aliases || []).length ? ` · biệt danh: ${c.aliases.join(', ')}` : '';
+    console.log(`  ${c.name}  (id: ${c.id}${alias})`);
     console.log(`    giọng   ${voice ? voice.name : `?? ${c.voice}`}`);
     console.log(`    ${[c.side === 'right' ? 'đứng phải' : 'đứng trái', `màu ${c.tone || 'accent'}`].join(' · ')}`);
     console.log(`    mặt    ${sampleUrl(c.avatar)}\n`);

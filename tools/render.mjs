@@ -6,6 +6,10 @@
  *   node tools/render.mjs --scene n2-00-gioi-thieu-ngay-2 --out video.mp4 [--audio voice.wav]
  *        [--music-track bg-02] [--quiz-track quiz-timer] [--workers 4] [--from 0] [--to N] [--crf 18]
  *        [--base http://127.0.0.1:8765] [--keep-frames dir] [--frame-timeout 15000]
+ *        [--music-db -3] [--quiz-db -2]
+ *
+ * --music-db / --quiz-db nudge a catalog track's target level for this render only (negative = quieter);
+ * how far under the narration music belongs is a call about one video, not a property of the track.
  *
  * The capture tabs share one queue and every frame is capped at --frame-timeout ms: a tab that stops
  * answering is replaced and its frame is shot elsewhere, instead of the run hanging on it forever.
@@ -132,12 +136,12 @@ async function quizWindowsFromCues(scene) {
 const bed = args.music
   ? { file: path.resolve(args.music), gain: Number(args['music-gain']) || 0.15 }
   : args['music-track'] && args['music-track'] !== NO_MUSIC
-    ? { file: await trackFile(args['music-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['music-track'], 'background') }
+    ? { file: await trackFile(args['music-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['music-track'], 'background', args['music-db']) }
     : { file: null, gain: 0 };
 const quiz = args['quiz-music']
   ? { file: path.resolve(args['quiz-music']), gain: Number(args['quiz-gain']) || 0.18 }
   : args['quiz-track'] && args['quiz-track'] !== NO_MUSIC
-    ? { file: await trackFile(args['quiz-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['quiz-track'], 'quiz') }
+    ? { file: await trackFile(args['quiz-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['quiz-track'], 'quiz', args['quiz-db']) }
     : { file: null, gain: 0 };
 const windows = args['quiz-at'] ? parseWindows(args['quiz-at']) : quiz.file ? await quizWindowsFromCues(args.scene) : [];
 const hasQuiz = Boolean(quiz.file) && windows.length > 0;

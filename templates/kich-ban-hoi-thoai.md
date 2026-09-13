@@ -12,8 +12,8 @@ trước khi tốn một ký tự credit nào.
 ## Luật cứng: chỉ dùng nhân vật đã có trong hệ thống
 
 Nhân vật **phải** là một cái tên đang có trong `voices.json` — một nhân vật (có mặt, có phía, có màu,
-mượn sẵn một giọng) hoặc một giọng trần cho video chỉ có người dẫn. Đặt một cái tên chưa khai — `Lucas`,
-`Minh` — thì cả video dừng lại với thông báo chỉ rõ câu nào sai.
+mượn sẵn một giọng) hoặc một giọng trần cho video chỉ có người dẫn. Đặt một cái tên chưa khai — `Minh`,
+`Hương` — thì cả video dừng lại với thông báo chỉ rõ câu nào sai.
 
 Xem danh sách nhân vật và giọng hiện có bất cứ lúc nào:
 
@@ -22,6 +22,13 @@ npm run voices
 ```
 
 Viết `speaker` bằng **tên** (`Tới`) hay **id** (`toi`) đều được, không phân biệt hoa thường.
+
+Một nhân vật có thể mang **biệt danh** riêng cho một bộ video: khai trong `voices.json` →
+`characters[].aliases`, rồi kịch bản gọi thẳng biệt danh. Nó mượn mặt, giọng và phía đứng của nhân vật
+gốc, còn tên hiện trên thẻ thoại là biệt danh. Day 04 gọi Tới là **Lucas** theo cách đó.
+
+Nhân vật **chưa có ảnh chân dung** vẫn dùng được: để `avatar` rỗng, thẻ thoại tự vẽ một biểu tượng người
+theo màu của nhân vật. Không có ảnh thì đừng mượn tạm ảnh người khác.
 
 Cần một vai chưa có? **Báo dev.** Hai việc khác hẳn nhau, nói rõ bạn cần cái nào:
 

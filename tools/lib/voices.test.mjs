@@ -35,8 +35,21 @@ test('casts only names the system actually has', () => {
   assert.equal(castSpeaker(voices[0].name).voice.id, voices[0].id);
   assert.equal(castSpeaker(voices[0].id).voice.id, voices[0].id, 'an id casts as well as a name');
   // A character nobody recorded must stop the run, and the message must say what is available.
-  assert.throws(() => castSpeaker('Lucas'), (e) => /không có nhân vật "Lucas"/.test(e.message) && e.message.includes(voices[0].name));
+  assert.throws(() => castSpeaker('Khong Ai Ca'), (e) => /không có nhân vật "Khong Ai Ca"/.test(e.message) && e.message.includes(voices[0].name));
   assert.throws(() => castSpeaker(''), /không có nhân vật/);
+});
+
+test('an alias speaks with its character voice and face, under the alias name', () => {
+  const { characters } = readVoices();
+  const withAlias = characters.find((c) => (c.aliases || []).length);
+  if (!withAlias) return; // no course is renaming anyone at the moment
+  const alias = withAlias.aliases[0];
+  const asAlias = castSpeaker(alias);
+  const asSelf = castSpeaker(withAlias.name);
+  assert.equal(asAlias.name, alias, 'the card shows the alias, not the catalog name');
+  assert.equal(asAlias.voice.id, asSelf.voice.id, 'same voice');
+  assert.equal(asAlias.avatar, asSelf.avatar, 'same face');
+  assert.equal(asAlias.side, asSelf.side, 'same side of the frame');
 });
 
 test('reading speed multiplies the character pace by the delivery, inside the API range', () => {

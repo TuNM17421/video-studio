@@ -1,4 +1,4 @@
-<!-- @dsCard group="Components" viewport="700x300" name="Figures · người, phiếu, bong bóng, đồng hồ" subtitle="Person · DocumentSheet · FormSheet (ô trống = chưa đo) · SpeechBubble · Stopwatch — cho tình huống MINH HỌA" -->
+<!-- @dsCard group="Components" viewport="700x300" name="Figures · người, phiếu, bong bóng, đồng hồ" subtitle="Person · DocumentSheet · FormSheet (ô trống = chưa đo) · SpeechBubble · Stopwatch · Countdown (khoảng dừng quiz) — cho tình huống MINH HỌA" -->
 <!doctype html>
 <html lang="vi">
 <head>
@@ -17,7 +17,7 @@
 <script>
   var h = VK.h, C = VK.C;
   VK.mountCard('#root', {
-    width: 1400, height: 600, duration: 120,
+    width: 1400, height: 600, duration: 900,
     render: function (f) {
       return h(VK.Fragment, null,
         h(VK.Person, { x: 120, y: 150, r: 66, name: 'Học viên', role: 'tìm hướng dẫn' }),
@@ -29,7 +29,8 @@
         h(VK.Stopwatch, { x: 1000, y: 440, sweep: 0.45, label: 'Mục tiêu', color: C.accent }),
         h(VK.SvgText, { x: 1080, y: 110, size: 19, weight: 600, anchor: 'start', color: C.textMuted }, 'ô trống nét đứt'),
         h(VK.SvgText, { x: 1080, y: 138, size: 19, weight: 600, anchor: 'start', color: C.textMuted }, '= chưa có số đo'),
-        h(VK.SvgText, { x: 900, y: 578, size: 19, weight: 600, color: C.textMuted }, 'đồng hồ không có số')
+        h(VK.SvgText, { x: 900, y: 578, size: 19, weight: 600, color: C.textMuted }, 'đồng hồ không có số'),
+        h(VK.Countdown, { x: 1230, y: 430, r: 86, seconds: 30, fps: 30, frame: f, label: 'giây để suy nghĩ' })
       );
     }
   });

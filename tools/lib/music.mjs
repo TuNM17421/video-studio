@@ -28,11 +28,17 @@ export const NO_MUSIC = 'none';
 const BED_TARGET_LUFS = -32;
 const QUIZ_TARGET_LUFS = -28;
 
-/** Gain factor that puts a track at its target level; 1 when the track was never measured. */
-export function trackGain(id, kind = 'background') {
+/**
+ * Gain factor that puts a track at its target level; 1 when the track was never measured.
+ *
+ * `db` shifts that target for one render — a negative value is a quieter bed. It exists because how loud
+ * music should sit under narration is a judgement about a particular video (a talky one wants it further
+ * back), not a property of the track, which is what the catalog already measures.
+ */
+export function trackGain(id, kind = 'background', db = 0) {
   const track = findTrack(id);
   if (!track || typeof track.lufs !== 'number') return 1;
-  const target = kind === 'quiz' ? QUIZ_TARGET_LUFS : BED_TARGET_LUFS;
+  const target = (kind === 'quiz' ? QUIZ_TARGET_LUFS : BED_TARGET_LUFS) + (Number(db) || 0);
   return Number((10 ** ((target - track.lufs) / 20)).toFixed(3));
 }
 
