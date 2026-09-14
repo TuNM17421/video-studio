@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircleFilled, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Checkbox, Input, Segmented, Select, Switch, Tag } from "antd";
+import { AGENT_PROVIDER_OPTIONS } from "@/lib/agent-providers";
 import styles from "./design-system.module.css";
 
 const STATUS_COPY = {
@@ -37,7 +38,8 @@ export function DesignSystemPlayground() {
       </nav>
       <div className={styles.formSpecimen}>
         <label>Mã video<Input defaultValue="d02-r1-v03" spellCheck={false} /></label>
-        <label>Agent<Select defaultValue="codex" options={[{ value: "codex", label: "Codex" }, { value: "claude", label: "Claude Code" }]} /></label>
+        {/* the real list, so a new agent shows up here too instead of quietly going stale */}
+        <label>Agent<Select defaultValue={AGENT_PROVIDER_OPTIONS[0].value} options={AGENT_PROVIDER_OPTIONS.map(({ value, label }) => ({ value, label }))} /></label>
         <label className={`vs-counted-textarea ${styles.countedTextarea}`}>Ghi chú
           <Input.TextArea rows={3} maxLength={5000} showCount placeholder="Thông tin bổ sung cho agent…" />
         </label>

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { BookOutlined, KeyOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { BookOutlined, KeyOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { Badge, Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type Page = "new" | "library" | "videos";
+type Page = "new" | "library" | "videos" | "guide";
 export type LibrarySection = "styles" | "components" | "videos";
 
 /** The library's three sections are sidebar children, not tabs on the page. */
@@ -25,6 +25,7 @@ const PAGE_ROUTES: Record<string, string> = {
   new: "/",
   videos: "/videos",
   library: librarySectionPath("styles"),
+  guide: "/guide",
   ...Object.fromEntries(LIBRARY_SECTIONS.map((s) => [sectionKey(s.id), librarySectionPath(s.id)])),
 };
 let sidebarCollapsedFallback = false;
@@ -78,6 +79,7 @@ export function Shell({ page, section, hasKey, children }: { page: Page; section
   const navigation = [
     { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới">Video mới</Link> },
     { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video">Các video</Link> },
+    { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn">Hướng dẫn</Link> },
     {
       key: "library",
       icon: <BookOutlined />,

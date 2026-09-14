@@ -1,6 +1,7 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { DryRun, ImportReport, VoiceScript, VoiceSettings } from "../types";
+import type { DryRun, ImportReport, OmnivoiceStatus, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -71,7 +72,9 @@ function ttsArgs(id: string, v: VoiceSettings) {
 
 export function validateVoice(v: VoiceSettings) {
   if (!(v.pause >= 0 && v.pause <= 5)) throw new HttpError(400, "Khoảng nghỉ phải trong 0–5 giây.");
-  if (v.source === "import") return;
+  // Giọng tự thu và model local không gọi API ElevenLabs: model/ngôn ngữ của ElevenLabs không liên quan,
+  // và bắt chúng hợp lệ sẽ chặn nhầm bước kiểm tra thư mục của hai nguồn đó.
+  if (v.source !== "elevenlabs") return;
   if (!/^[A-Za-z0-9]{8,40}$/.test(v.voiceId)) throw new HttpError(400, "Voice ID không hợp lệ.");
   if (!/^eleven_[a-z0-9_]+$/.test(v.model)) throw new HttpError(400, "Model không hợp lệ.");
   if (!["vi", "auto"].includes(v.language)) throw new HttpError(400, "Ngôn ngữ không hợp lệ.");
@@ -160,6 +163,154 @@ async function toolJson<T>(id: string, args: string[], onLine?: (line: string) =
   });
   if (code !== 0) throw new HttpError(500, errors.join("\n").replace(/^✗ /, "") || "Không chạy được công cụ.");
   try { return JSON.parse(out) as T; } catch { throw new HttpError(500, errors.join("\n") || "Công cụ trả về dữ liệu không đọc được."); }
+}
+
+/**
+ * Trạng thái môi trường OmniVoice. `--check` thoát mã 1 khi chưa cài, nên đọc stdout rồi mới xét mã —
+ * "chưa cài" là một câu trả lời hợp lệ, không phải lỗi.
+ */
+/** Chạy một tool của repo, giữ lại cả mã thoát lẫn stderr để người gọi quyết định. */
+function toolRun(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    execFile(process.execPath, args, { cwd: REPO }, (error, stdout, stderr) => {
+      const code = error && typeof (error as { code?: number }).code === "number" ? (error as { code: number }).code : error ? 1 : 0;
+      resolve({ code, stdout, stderr });
+    });
+  });
+}
+
+/** Chạy một tool của repo và đọc JSON nó in ra; mã thoát khác 0 vẫn có thể kèm JSON hợp lệ. */
+async function toolState<T>(args: string[], fallback: T): Promise<T> {
+  const { stdout } = await toolRun(args);
+  try { return JSON.parse(stdout) as T; } catch { return fallback; }
+}
+
+type ServerState = OmnivoiceStatus["server"];
+const NO_SERVER: ServerState = { running: false, pid: null, port: 7860, url: null, log: "voice/.omnivoice/server.log" };
+
+/**
+ * Bước nhập soát từng file bằng Whisper, và Whisper sống ở `voice/.venv` — venv khác hẳn cái mà
+ * OmniVoice dựng. Không hỏi trước thì người dùng sinh xong 40 câu (hàng chục phút GPU) mới đụng tường.
+ */
+const alignInstalled = () =>
+  ["bin/python", "Scripts/python.exe"].some((p) => fs.existsSync(path.join(REPO, "voice/.venv", p)));
+
+export async function omnivoiceStatus(): Promise<OmnivoiceStatus> {
+  const [env, server] = await Promise.all([
+    toolState(["tools/setup-omnivoice.mjs", "--check"], {
+      installed: false, bin: null, venv: "voice/.venv-omnivoice",
+      device: { id: "cpu" as const, label: "không xác định", vramGb: null, tight: true },
+      modelId: "k2-fsa/OmniVoice", modelGb: 3.3,
+    }),
+    toolState(["tools/omnivoice-server.mjs", "status", "--json"], NO_SERVER),
+  ]);
+  // Đường dẫn hiện nguyên văn trong giao diện, mà dấu \ của Windows đọc như ký tự escape — đưa về / cho
+  // giống mọi chỗ khác trong Studio (và giống đúng những gì README bảo người dùng gõ).
+  const slash = (p: string) => p.replace(/\\/g, "/");
+  return {
+    ...env,
+    venv: slash(env.venv),
+    align: alignInstalled(),
+    server: { running: server.running, pid: server.pid, port: server.port, url: server.url, log: slash(server.log) },
+  };
+}
+
+/**
+ * Cài môi trường nhận diện giọng (`npm run setup:voice`). Chung một job với các bước khác để người dùng
+ * không phải mở terminal giữa chừng — đây là cái tường duy nhất của luồng model local.
+ */
+export async function setupAlign(id: string) {
+  startJob(id, "align-setup");
+  setProgress(id, null, "Cài môi trường nhận diện giọng (Whisper)…");
+  log(id, "system", "Cài Whisper vào voice/.venv — bước nhập dùng nó để soát từng file có đúng câu không.");
+  const code = await run(id, process.execPath, ["tools/setup-voice-align.mjs"], {
+    onLine: (line) => log(id, "output", line),
+  });
+  const stopped = wasStopped(id);
+  finishJob(id, code === 0 ? "done" : "error");
+  if (code !== 0) throw new HttpError(500, stopped ? "Đã dừng cài đặt." : "Cài môi trường nhận diện giọng thất bại, xem nhật ký.");
+  return omnivoiceStatus();
+}
+
+/**
+ * Bật/tắt server. Tiến trình chạy tách hẳn (detached) nên không dùng job của video: một job bị Dừng sẽ
+ * giết luôn server, mà server là thứ dùng chung cho mọi video.
+ */
+export async function omnivoiceServer(action: "start" | "stop"): Promise<OmnivoiceStatus> {
+  // Tool in lý do ra stderr rồi thoát khác 0 (cổng bị chiếm, thiếu thư viện, không chịu tắt). Nuốt nó
+  // là nút bật lặng lẽ bật lại như chưa có gì xảy ra — đúng triệu chứng khó hiểu nhất của bước này.
+  const { code, stderr } = await toolRun(["tools/omnivoice-server.mjs", action, "--json"]);
+  if (code !== 0) {
+    throw new HttpError(500, stderr.trim().replace(/^✗ /m, "") || `Không ${action === "start" ? "bật" : "tắt"} được server OmniVoice.`);
+  }
+  return omnivoiceStatus();
+}
+
+/**
+ * Cài OmniVoice. Chạy như một job của video đang mở để nhật ký và nút Dừng dùng chung một chỗ, dù thứ
+ * nó cài là của cả máy chứ không riêng video nào — tải vài GB, không thể để người dùng ngồi nhìn màn im.
+ */
+export async function setupOmnivoice(id: string) {
+  startJob(id, "omnivoice-setup");
+  setProgress(id, null, "Cài model local (OmniVoice)…");
+  log(id, "system", "Cài model local: torch + omnivoice vào voice/.venv-omnivoice");
+  const code = await run(id, process.execPath, ["tools/setup-omnivoice.mjs"], {
+    onLine: (line) => log(id, "output", line),
+  });
+  const stopped = wasStopped(id);
+  finishJob(id, code === 0 ? "done" : "error");
+  if (code !== 0) throw new HttpError(500, stopped ? "Đã dừng cài đặt." : "Cài model local thất bại, xem nhật ký.");
+  return omnivoiceStatus();
+}
+
+/**
+ * Sinh cả video bằng model local. Kết quả là một thư mục 01.wav, 02.wav… — tức là đúng thứ bước "Nhập
+ * audio có sẵn" nhận, nên từ đây trở đi đường đi giống hệt giọng tự thu: kiểm thư mục rồi nhập.
+ */
+export async function generateLocal(id: string, voiceId: string) {
+  const out = path.join(voiceScriptDir(id), "omnivoice");
+  startJob(id, "omnivoice-generate");
+  setProgress(id, null, "Sinh giọng bằng model local…");
+  try {
+    const result = await toolJson<{ dir: string; files: number; cues: number; voice: string }>(id, [
+      "tools/omnivoice-generate.mjs",
+      "--cues", rel(path.join(videoDir(id), "cues.js")),
+      "--voice", voiceId,
+      "--out", rel(out),
+      "--json",
+    ], (line) => log(id, "output", line));
+    // Trỏ sẵn thư mục vừa sinh vào ô nhập, để bước tiếp theo chỉ còn bấm kiểm tra. Đồng thời xoá báo
+    // cáo quét cũ: giữ lại thì màn hình Nhập hiện "không có vấn đề" cho một thư mục vừa bị ghi đè.
+    updateState(id, (s) => { s.voice = { ...s.voice, importDir: out }; });
+    fs.rmSync(importReportFile(id), { force: true });
+    log(id, "system", `Model local đã sinh ${result.files}/${result.cues} câu · giọng ${result.voice} → ${result.dir}`);
+    finishJob(id, "done");
+    // Thư mục vừa sinh là của chính Studio, không phải thư mục người dùng dán vào — nên tự kiểm luôn.
+    // Không có bước này thì sinh xong phải sang tab khác, dán lại đúng đường dẫn ấy rồi mới bấm kiểm tra.
+    await autoScan(id, out);
+    return result;
+  } catch (error) {
+    finishJob(id, "error");
+    if (wasStopped(id)) throw new HttpError(500, "Đã dừng.");
+    throw error;
+  }
+}
+
+/**
+ * Kiểm thư mục vừa sinh, ngay sau khi sinh. Là việc làm thêm cho tiện, nên hỏng thì chỉ ghi nhật ký:
+ * thư mục wav vẫn còn nguyên đó và bước 4 vẫn có nút kiểm tra lại — đừng biến một lượt sinh thành công
+ * (hàng chục phút GPU) thành một job báo lỗi đỏ.
+ */
+async function autoScan(id: string, dir: string) {
+  if (!alignInstalled()) {
+    log(id, "system", "Chưa cài môi trường nhận diện giọng nên bỏ qua bước kiểm tra. Cài xong thì bấm Kiểm tra lại ở bước 4.");
+    return;
+  }
+  try {
+    await scanImport(id, dir, readState(id).state.voice);
+  } catch (error) {
+    log(id, "system", `Chưa tự kiểm được thư mục vừa sinh: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** Write the reading script + the local-model exports so a member can record the narration elsewhere. */

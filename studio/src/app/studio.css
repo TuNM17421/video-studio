@@ -492,6 +492,26 @@ button.vs-tile:hover {
   color: var(--vu-text-muted);
   font-weight: var(--vu-font-medium);
 }
+/* Agent chưa có rào chắn kỹ thuật thì phải nói ngay chỗ chọn, không giấu trong README: cảnh báo xuống
+   hàng riêng bên dưới hàng chọn, nên hộp phải cho phép wrap. */
+.vs-page-agent {
+  flex-wrap: wrap;
+}
+.vs-agent-flag.ant-tag {
+  margin-inline: 6px 0;
+  padding-inline: 6px;
+  border-color: var(--vu-neutral-300);
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-600);
+  font-family: var(--vu-font-utility);
+  font-size: 10px;
+  font-weight: var(--vu-font-medium);
+  line-height: 16px;
+}
+.vs-agent-warning.ant-alert {
+  flex: 1 0 100%;
+  margin-top: var(--vu-space-2);
+}
 .vs-section-title,
 .vs-field-label {
   display: inline-flex;
@@ -582,6 +602,199 @@ button.vs-tile:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* ── model giọng chạy dưới máy (OmniVoice) ──────────────────────────────────── */
+.vs-local {
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--vu-neutral-0);
+  overflow: hidden;
+}
+.vs-local-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--vu-neutral-50);
+}
+.vs-local-head h3 {
+  margin: 0;
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-brand);
+  font-size: 14px;
+}
+.vs-local-head p {
+  margin: 4px 0 0;
+  max-width: 66ch;
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+  line-height: var(--vu-leading-relaxed);
+}
+
+/* Cảnh báo máy yếu nằm ngay dưới tiêu đề, trước khi người dùng kịp bấm cài. */
+.vs-local-warning.ant-alert {
+  margin: 14px 18px 0;
+}
+
+/* Các bước nối nhau bằng một đường dọc chạy qua các mốc tròn. */
+.vs-local-flow {
+  margin: 0;
+  padding: 6px 18px 18px;
+  list-style: none;
+}
+.vs-local-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 0 14px 0;
+}
+.vs-local-step::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 40px;
+  bottom: -14px;
+  width: 1px;
+  background: var(--line);
+}
+.vs-local-step:last-child::before {
+  display: none;
+}
+.vs-local-num {
+  position: relative;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--vu-neutral-0);
+  color: var(--vu-neutral-600);
+  font-family: var(--vu-font-utility);
+  font-size: 12px;
+}
+.vs-local-step.is-now .vs-local-num {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-blue-700);
+  color: #fff;
+}
+.vs-local-step.is-done .vs-local-num {
+  border-color: var(--vu-green-700);
+  background: var(--vu-green-50);
+  color: var(--vu-green-700);
+}
+/* Bước chưa tới thì mờ đi, để mắt rơi đúng vào việc đang phải làm. */
+.vs-local-step.is-wait {
+  opacity: 0.55;
+}
+.vs-local-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.vs-local-body strong {
+  color: var(--vu-blue-900);
+  font-size: 13px;
+}
+.vs-local-body small {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-local-body code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--vu-neutral-100);
+  font-family: var(--vu-font-utility);
+  font-size: 11px;
+}
+.vs-local-body .ant-btn {
+  justify-self: start;
+  margin-top: 4px;
+}
+.vs-local-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+.vs-local-actions .ant-btn {
+  margin-top: 0;
+}
+.vs-local-url {
+  padding: 3px 8px;
+  border: 1px solid var(--vu-green-700);
+  border-radius: 4px;
+  background: var(--vu-green-50);
+  color: var(--vu-green-700);
+  font-family: var(--vu-font-utility);
+  font-size: 11px;
+}
+.vs-local-log {
+  margin-top: 2px;
+}
+.vs-local-aside {
+  color: var(--vu-neutral-500);
+  font-family: var(--vu-font-utility);
+  font-size: 11px;
+  text-align: right;
+  max-width: 180px;
+}
+/* Thư mục vừa sinh + hai nút của nó. Đường dẫn tuyệt đối dài hơn mọi khung ta có, nên cho nó chiếm
+   trọn một hàng và cắt bằng ellipsis; hai nút luôn xuống hàng dưới thay vì bị đẩy ra khỏi panel. */
+.vs-local-out {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  flex-wrap: wrap;
+  margin-top: 2px;
+  min-width: 0;
+}
+.vs-local-out > code {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 39 dòng câu sẽ nuốt cả bước 4, nên gấp lại — nhưng tự bung khi có câu lỗi, vì lúc đó nó là thứ
+   người dùng cần nhìn chứ không phải thứ để giấu. */
+.vs-local-map > summary {
+  color: var(--vu-neutral-600);
+  cursor: pointer;
+  font-size: 12px;
+  list-style-position: inside;
+  margin-bottom: var(--vu-space-2);
+}
+.vs-local-map > summary:hover {
+  color: var(--vu-brand-primary);
+}
+/* Server Gradio là tiện ích ngoài luồng, nên gấp lại: mở ra mới thấy, không chen vào bốn bước. */
+.vs-local-extra {
+  border-top: 1px solid var(--vu-neutral-200);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+.vs-local-extra > summary {
+  color: var(--vu-neutral-600);
+  cursor: pointer;
+  font-size: 12px;
+  list-style-position: inside;
+}
+.vs-local-extra > summary:hover {
+  color: var(--vu-brand-primary);
+}
+.vs-local-extra > p {
+  color: var(--vu-neutral-500);
+  font-size: 12px;
+  margin: 8px 0;
 }
 .vs-source-picker {
   width: 100%;
@@ -3733,4 +3946,156 @@ button.vs-tile:hover {
 .ant-menu-item:focus-visible {
   outline: 3px solid var(--vu-border-focus) !important;
   outline-offset: 2px;
+}
+
+/* ── trang Hướng dẫn ───────────────────────────────────────────────────────── */
+/* Hình mang nghĩa, chữ chỉ chú thích — nên hình được cho chỗ rộng, chữ bị ép ngắn. */
+.vs-guide-art {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  display: block;
+}
+
+.vs-guide-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--line);
+  overflow: hidden;
+}
+.vs-guide-facts > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--vu-neutral-0);
+}
+.vs-guide-facts span {
+  color: var(--vu-neutral-600);
+  font-family: var(--vu-font-utility);
+  font-size: 10px;
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+}
+.vs-guide-facts strong {
+  color: var(--vu-blue-900);
+  font-size: 13px;
+}
+
+.vs-guide-roles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+.vs-guide-roles h2 {
+  margin: 0 0 8px;
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-brand);
+  font-size: 16px;
+}
+.vs-guide-roles p {
+  margin: 0 0 6px;
+  color: var(--vu-neutral-700);
+  font-size: 13px;
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-guide-muted {
+  color: var(--vu-neutral-600) !important;
+  font-size: 12px !important;
+}
+
+.vs-guide-steps {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  list-style: none;
+}
+.vs-guide-step {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  padding: 20px 22px;
+}
+.vs-guide-visual {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--vu-neutral-50);
+}
+.vs-guide-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.vs-guide-step-num {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--vu-blue-700);
+  color: var(--vu-neutral-0);
+  font-family: var(--vu-font-utility);
+  font-size: 12px;
+}
+.vs-guide-step h2 {
+  margin: 0;
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-brand);
+  font-size: 16px;
+}
+.vs-guide-lead {
+  margin: 0 0 12px;
+  color: var(--vu-neutral-700);
+  font-size: 13px;
+  line-height: var(--vu-leading-relaxed);
+}
+/* Ba cột "Bạn / Máy / Xong khi": đọc ngang là thấy ai làm gì, không phải dò trong đoạn văn. */
+.vs-guide-split {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.vs-guide-split dt {
+  margin-bottom: 3px;
+  color: var(--vu-neutral-600);
+  font-family: var(--vu-font-utility);
+  font-size: 10px;
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+}
+.vs-guide-split dd {
+  margin: 0;
+  color: var(--vu-neutral-800);
+  font-size: 12px;
+  line-height: var(--vu-leading-snug);
+}
+
+@media (max-width: 900px) {
+  .vs-guide-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vs-guide-roles,
+  .vs-guide-step { grid-template-columns: minmax(0, 1fr); }
+  .vs-guide-split { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+}
+
+/* Nhắc về VRAM: là cảnh báo nên phải nổi hơn chú thích thường, nhưng chưa tới mức một Alert. */
+.vs-local-hint {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border-left: 3px solid var(--vu-amber-700);
+  background: var(--vu-amber-50);
+  color: var(--vu-amber-700) !important;
 }

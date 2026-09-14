@@ -5,9 +5,9 @@ import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, CopyOutlined, Fi
 import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
-import { agentProviderLabel } from "@/lib/agent-providers";
 import type { AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { NO_MUSIC, type MusicCatalog, type MusicTrack } from "@/lib/music";
+import { AgentName } from "./agent-mark";
 import { MusicPicker } from "./music-picker";
 import { SourcePickerField } from "./source-picker";
 import { BASE_TEMPLATE_PATH, moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
@@ -360,7 +360,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
   const style = styles.find((s) => s.id === r.style);
   return <div className="vs-section">
     <Descriptions className="vs-facts" bordered column={1} size="small" items={[
-      { key: "agent", label: "Agent", children: agentProviderLabel(state.agent.provider) },
+      { key: "agent", label: "Agent", children: <AgentName provider={state.agent.provider} /> },
       { key: "style", label: "Style", children: style?.name || r.style },
       { key: "day", label: "Ngày", children: r.day || "—" },
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },

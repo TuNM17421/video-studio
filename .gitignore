@@ -8,6 +8,10 @@ tts-elevenlabs/cache/
 # imported-voice work area: decoded audio, Whisper models and the align venv are all per-machine
 voice/cache/
 voice/.venv/
+# model local (OmniVoice): môi trường Python ~7 GB, cùng PID/nhật ký của server — đều theo từng máy.
+# venv tự sinh .gitignore riêng bên trong, nhưng khai ở đây để không phụ thuộc vào chuyện đó.
+voice/.venv-omnivoice/
+voice/.omnivoice/
 *.wav
 *.mp3
 *.mp4

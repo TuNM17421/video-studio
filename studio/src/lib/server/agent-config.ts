@@ -1,5 +1,5 @@
 import type { AgentConfig, AgentProvider } from "../types";
-import { isAgentProvider } from "../agent-providers";
+import { AGENT_PROVIDER_OPTIONS, isAgentProvider } from "../agent-providers";
 
 function booleanEnv(name: string, value: string | undefined, fallback: boolean) {
   const normalized = value?.trim().toLowerCase();
@@ -12,7 +12,7 @@ function booleanEnv(name: string, value: string | undefined, fallback: boolean) 
 export function readAgentConfig(env: Record<string, string | undefined> = process.env): AgentConfig {
   const rawProvider = env.STUDIO_AGENT_PROVIDER?.trim().toLowerCase() || "claude";
   if (!isAgentProvider(rawProvider)) {
-    throw new Error("STUDIO_AGENT_PROVIDER chỉ nhận giá trị claude hoặc codex.");
+    throw new Error(`STUDIO_AGENT_PROVIDER chỉ nhận giá trị ${AGENT_PROVIDER_OPTIONS.map((o) => o.value).join(", ")}.`);
   }
   return {
     defaultProvider: rawProvider,

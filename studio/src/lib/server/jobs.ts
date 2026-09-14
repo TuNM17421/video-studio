@@ -107,11 +107,29 @@ export function finishJob(id: string, status: JobInfo["status"]) {
   emit(id, { type: "state" });
 }
 
+/**
+ * Dừng phải với tới cả tiến trình cháu. Sinh giọng bằng model local là node → python, và python giữ
+ * vài GB VRAM: giết mỗi node thì job báo "đã dừng" trong khi GPU vẫn bận và vẫn ghi wav.
+ *
+ * Trên Windows SIGTERM chỉ là TerminateProcess — tiến trình con không chạy được handler nào để dọn
+ * đứa cháu, nên phải nhờ `taskkill /T`. Trên macOS/Linux thì ngược lại: SIGTERM tới nơi và tool tự
+ * chuyển tín hiệu xuống python, nên không cần đụng tới process group (đổi group sẽ làm Ctrl-C ở cửa
+ * sổ chạy studio không còn lan xuống job).
+ */
+function killTree(child: ChildProcess | undefined) {
+  if (!child?.pid) return;
+  if (process.platform === "win32") {
+    spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" }).on("error", () => child.kill());
+    return;
+  }
+  child.kill("SIGTERM");
+}
+
 export function stopJob(id: string) {
   const job = registry.jobs.get(id);
   if (!job || job.status !== "running") return false;
   job.stopped = true;
-  job.child?.kill("SIGTERM");
+  killTree(job.child);
   return true;
 }
 
@@ -121,8 +139,12 @@ interface RunOptions {
   onLine?: (line: string, stream: "stdout" | "stderr") => void;
 }
 
-/** On Windows `npm` is a .cmd shim; Node can only run it through a shell, not by direct spawn. */
-const needsShell = (cmd: string) => process.platform === "win32" && cmd === "npm";
+/**
+ * On Windows a batch shim (`npm`, and any agent CLI installed through npm) can only be run through a
+ * shell: spawning one directly throws EINVAL. Matched on the extension too, so pointing CLAUDE_BIN /
+ * CODEX_BIN / ANTIGRAVITY_BIN at a `.cmd` works instead of crashing the job.
+ */
+const needsShell = (cmd: string) => process.platform === "win32" && (cmd === "npm" || /\.(cmd|bat)$/i.test(cmd));
 
 /** Run a command in the repo, attached to the video's current job (so Dừng can kill it). */
 export function run(id: string, cmd: string, args: string[], opts: RunOptions = {}) {

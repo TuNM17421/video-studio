@@ -53,6 +53,9 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     "dry-run": "Kiểm tra giọng",
     "voice-script": "Xuất lời đọc",
     "import-scan": "Kiểm tra thư mục audio",
+    "omnivoice-setup": "Cài model local",
+    "omnivoice-generate": "Sinh giọng bằng model local",
+    "align-setup": "Cài môi trường nhận diện giọng",
   };
   return <>
     <div className="job-progress" role="status">

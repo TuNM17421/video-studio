@@ -11,8 +11,14 @@ describe("Studio agent configuration", () => {
       .toEqual({ defaultProvider: "codex", selectionLocked: true });
   });
 
+  it("accepts every provider the picker offers", () => {
+    expect(readAgentConfig({ STUDIO_AGENT_PROVIDER: "antigravity" }))
+      .toEqual({ defaultProvider: "antigravity", selectionLocked: false });
+  });
+
   it("rejects invalid values instead of silently running a different agent", () => {
-    expect(() => readAgentConfig({ STUDIO_AGENT_PROVIDER: "other" })).toThrow(/claude hoặc codex/);
+    // the message lists the providers that do exist, so a typo tells you what to write instead
+    expect(() => readAgentConfig({ STUDIO_AGENT_PROVIDER: "other" })).toThrow(/claude, codex, antigravity/);
     expect(() => readAgentConfig({ STUDIO_AGENT_PROVIDER_LOCKED: "sometimes" })).toThrow(/true\/false/);
   });
 

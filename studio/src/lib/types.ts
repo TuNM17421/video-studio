@@ -2,8 +2,8 @@ import type { MusicChoice } from "./music";
 
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan";
-export type AgentProvider = "claude" | "codex";
+export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
+export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
   defaultProvider: AgentProvider;
@@ -37,7 +37,26 @@ export interface VideoRequest {
 }
 
 /** Where a video's narration comes from: the ElevenLabs API, or audio recorded/generated elsewhere. */
-export type VoiceSource = "elevenlabs" | "import";
+export type VoiceSource = "elevenlabs" | "import" | "local";
+
+/** Trạng thái môi trường OmniVoice trên máy này (tools/setup-omnivoice.mjs --check). */
+export interface OmnivoiceStatus {
+  installed: boolean;
+  bin: string | null;
+  venv: string;
+  /** `tight` = chạy được nhưng sát: dưới 8 GB VRAM, hoặc không có GPU. */
+  device: { id: "cuda" | "mps" | "cpu"; label: string; vramGb: number | null; tight: boolean };
+  modelId: string;
+  /** Trọng số model phải tải về, GB. */
+  modelGb: number;
+  /**
+   * Bước nhập soát từng file bằng Whisper, và Whisper nằm ở `voice/.venv` — một môi trường khác hẳn
+   * venv của OmniVoice. Thiếu nó thì sinh giọng xong vẫn không nhập được, nên panel phải biết trước.
+   */
+  align: boolean;
+  /** Server `omnivoice-demo`: model nằm sẵn trong RAM nên sinh giọng nhanh hơn chạy batch. */
+  server: { running: boolean; pid: number | null; port: number; url: string | null; log: string };
+}
 
 export interface VoiceSettings {
   source: VoiceSource;
