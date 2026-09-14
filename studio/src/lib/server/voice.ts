@@ -72,7 +72,9 @@ function ttsArgs(id: string, v: VoiceSettings) {
 
 export function validateVoice(v: VoiceSettings) {
   if (!(v.pause >= 0 && v.pause <= 5)) throw new HttpError(400, "Khoảng nghỉ phải trong 0–5 giây.");
-  if (v.source === "import") return;
+  // Giọng tự thu và model local không gọi API ElevenLabs: model/ngôn ngữ của ElevenLabs không liên quan,
+  // và bắt chúng hợp lệ sẽ chặn nhầm bước kiểm tra thư mục của hai nguồn đó.
+  if (v.source !== "elevenlabs") return;
   if (!/^[A-Za-z0-9]{8,40}$/.test(v.voiceId)) throw new HttpError(400, "Voice ID không hợp lệ.");
   if (!/^eleven_[a-z0-9_]+$/.test(v.model)) throw new HttpError(400, "Model không hợp lệ.");
   if (!["vi", "auto"].includes(v.language)) throw new HttpError(400, "Ngôn ngữ không hợp lệ.");
@@ -283,11 +285,31 @@ export async function generateLocal(id: string, voiceId: string) {
     fs.rmSync(importReportFile(id), { force: true });
     log(id, "system", `Model local đã sinh ${result.files}/${result.cues} câu · giọng ${result.voice} → ${result.dir}`);
     finishJob(id, "done");
+    // Thư mục vừa sinh là của chính Studio, không phải thư mục người dùng dán vào — nên tự kiểm luôn.
+    // Không có bước này thì sinh xong phải sang tab khác, dán lại đúng đường dẫn ấy rồi mới bấm kiểm tra.
+    await autoScan(id, out);
     return result;
   } catch (error) {
     finishJob(id, "error");
     if (wasStopped(id)) throw new HttpError(500, "Đã dừng.");
     throw error;
+  }
+}
+
+/**
+ * Kiểm thư mục vừa sinh, ngay sau khi sinh. Là việc làm thêm cho tiện, nên hỏng thì chỉ ghi nhật ký:
+ * thư mục wav vẫn còn nguyên đó và bước 4 vẫn có nút kiểm tra lại — đừng biến một lượt sinh thành công
+ * (hàng chục phút GPU) thành một job báo lỗi đỏ.
+ */
+async function autoScan(id: string, dir: string) {
+  if (!alignInstalled()) {
+    log(id, "system", "Chưa cài môi trường nhận diện giọng nên bỏ qua bước kiểm tra. Cài xong thì bấm Kiểm tra lại ở bước 4.");
+    return;
+  }
+  try {
+    await scanImport(id, dir, readState(id).state.voice);
+  } catch (error) {
+    log(id, "system", `Chưa tự kiểm được thư mục vừa sinh: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

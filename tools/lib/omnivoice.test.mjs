@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deviceFrom, torchArgs } from './omnivoice.mjs';
+import { batchSizeFor, deviceFrom, torchArgs } from './omnivoice.mjs';
 
 const NVIDIA_3060 = 'NVIDIA GeForce RTX 3060 Laptop GPU, 6144';
 const NVIDIA_4090 = 'NVIDIA GeForce RTX 4090, 24564';
@@ -68,4 +68,25 @@ test('chỉ CUDA mới cài torch bản cu128', () => {
     assert.ok(!torchArgs(device).some((a) => a.includes('cu128')), `${device} không được cài bản CUDA`);
     assert.ok(!torchArgs(device).includes('--extra-index-url'), `${device} dùng PyPI thường`);
   }
+});
+
+// Đây là bug đã đo được: card 6 GB, để nó tự gom batch thì cả 39 câu vào một lượt, VRAM 97 %,
+// hơn 30 phút không ra nổi một file. Chia nhỏ là thứ duy nhất cứu được.
+test('card chật thì chia batch nhỏ, card rộng mới gom nhiều', () => {
+  const card = (vramGb, tight) => ({ id: 'cuda', label: '', vramGb, tight });
+  assert.equal(batchSizeFor(card(6, true)), 2);
+  assert.equal(batchSizeFor(card(8, false)), 4);
+  assert.equal(batchSizeFor(card(12, false)), 8);
+  assert.equal(batchSizeFor(card(24, false)), 16);
+});
+
+test('không GPU hoặc không đo được VRAM thì chọn mức an toàn nhất', () => {
+  assert.equal(batchSizeFor({ id: 'cpu', vramGb: null, tight: true }), 1);
+  assert.equal(batchSizeFor({ id: 'cuda', vramGb: null, tight: false }), 4);
+  assert.equal(batchSizeFor(null), 1);
+});
+
+test('Mac Apple Silicon đi theo đúng ngưỡng chật/rộng của bộ nhớ hợp nhất', () => {
+  assert.equal(batchSizeFor(deviceFrom({ platform: 'darwin', arch: 'arm64', totalMemGb: 8 })), 2);
+  assert.equal(batchSizeFor(deviceFrom({ platform: 'darwin', arch: 'arm64', totalMemGb: 32 })), 16);
 });

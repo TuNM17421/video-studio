@@ -5,8 +5,8 @@ import { CheckCircleFilled, ExportOutlined, LeftOutlined, LockOutlined, RightOut
 import { Alert, Button, Empty, Steps, Tag } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
-import { agentProviderLabel } from "@/lib/agent-providers";
 import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
+import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
 import { PageAgentBinding } from "./page-agent-binding";
@@ -120,7 +120,7 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
       <p>{request.day || "Chưa chọn ngày"} · {style?.name || "Chưa chọn style"}</p>
     </div>
     <dl className="project-facts">
-      <div><dt>Agent</dt><dd>{agentProviderLabel(provider)}</dd></div>
+      <div><dt>Agent</dt><dd><AgentName provider={provider} /></dd></div>
       <div><dt>Trạng thái</dt><dd>{detail ? agentStatus : "Chưa tạo"}</dd></div>
       <div><dt>Số câu</dt><dd>{cues?.cues.length ?? "—"}</dd></div>
       <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>

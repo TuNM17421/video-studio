@@ -492,6 +492,26 @@ button.vs-tile:hover {
   color: var(--vu-text-muted);
   font-weight: var(--vu-font-medium);
 }
+/* Agent chưa có rào chắn kỹ thuật thì phải nói ngay chỗ chọn, không giấu trong README: cảnh báo xuống
+   hàng riêng bên dưới hàng chọn, nên hộp phải cho phép wrap. */
+.vs-page-agent {
+  flex-wrap: wrap;
+}
+.vs-agent-flag.ant-tag {
+  margin-inline: 6px 0;
+  padding-inline: 6px;
+  border-color: var(--vu-neutral-300);
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-600);
+  font-family: var(--vu-font-utility);
+  font-size: 10px;
+  font-weight: var(--vu-font-medium);
+  line-height: 16px;
+}
+.vs-agent-warning.ant-alert {
+  flex: 1 0 100%;
+  margin-top: var(--vu-space-2);
+}
 .vs-section-title,
 .vs-field-label {
   display: inline-flex;
@@ -726,6 +746,35 @@ button.vs-tile:hover {
   font-size: 11px;
   text-align: right;
   max-width: 180px;
+}
+/* Thư mục vừa sinh + hai nút của nó. Đường dẫn tuyệt đối dài hơn mọi khung ta có, nên cho nó chiếm
+   trọn một hàng và cắt bằng ellipsis; hai nút luôn xuống hàng dưới thay vì bị đẩy ra khỏi panel. */
+.vs-local-out {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  flex-wrap: wrap;
+  margin-top: 2px;
+  min-width: 0;
+}
+.vs-local-out > code {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 39 dòng câu sẽ nuốt cả bước 4, nên gấp lại — nhưng tự bung khi có câu lỗi, vì lúc đó nó là thứ
+   người dùng cần nhìn chứ không phải thứ để giấu. */
+.vs-local-map > summary {
+  color: var(--vu-neutral-600);
+  cursor: pointer;
+  font-size: 12px;
+  list-style-position: inside;
+  margin-bottom: var(--vu-space-2);
+}
+.vs-local-map > summary:hover {
+  color: var(--vu-brand-primary);
 }
 /* Server Gradio là tiện ích ngoài luồng, nên gấp lại: mở ra mới thấy, không chen vào bốn bước. */
 .vs-local-extra {

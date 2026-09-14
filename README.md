@@ -43,13 +43,15 @@ git switch main           # dựng video chính thức
 
 Cần có: **Node ≥ 20**, **Python 3** (server xem trước), **git**, ít nhất một trong ba CLI **Claude Code**,
 **Codex** hoặc **Antigravity** (`agy`, đã đăng nhập trên máy), và một tài khoản
-**ElevenLabs** (API key + voice ID) nếu tự tạo giọng.
+**ElevenLabs** (API key + voice ID) nếu tự tạo giọng — hoặc bỏ qua ElevenLabs và dùng **model chạy dưới
+máy** (xem `npm run setup:omnivoice` bên dưới).
 
 ```console
 git clone <url repo> Claude-Design && cd Claude-Design
-npm install          # esbuild, react, ffmpeg (ffmpeg-static), playwright…, link design system vào node_modules, và build dist/vk.js
-npm run setup        # tải Chromium dùng để chụp frame và render (một lần)
-npm run setup:voice  # môi trường nhận diện giọng, chỉ cần khi dùng giọng tự thu / model local (một lần)
+npm install              # esbuild, react, ffmpeg (ffmpeg-static), playwright…, link design system vào node_modules, và build dist/vk.js
+npm run setup            # tải Chromium dùng để chụp frame và render (một lần)
+npm run setup:voice      # môi trường nhận diện giọng, cần khi dùng giọng tự thu / model local (một lần)
+npm run setup:omnivoice  # model giọng chạy dưới máy (OmniVoice), chỉ cần khi muốn tự gen giọng offline
 
 cp tts-elevenlabs/.env.example tts-elevenlabs/.env
 #   điền ELEVENLABS_API_KEY và ELEVENLABS_VOICE_ID (các biến còn lại có sẵn giá trị mặc định)
@@ -69,6 +71,17 @@ npm run studio:install              # cài Video Studio (một lần)
 - `npm run setup:voice` tạo `voice/.venv` (dùng `uv` nếu có, không thì Python 3.10–3.12) và tải model
   Whisper `small` (~460 MB) về `voice/cache/whisper`. Chỉ cần nếu bạn **nhập audio tự thu hoặc do model
   local tạo**; người chỉ dùng ElevenLabs bỏ qua bước này. Xem `docs/decisions/voice-align.md`.
+- `npm run setup:omnivoice` cài **OmniVoice** — model giọng chạy dưới máy, không tốn credit ElevenLabs.
+  Nó tạo một venv **riêng** ở `voice/.venv-omnivoice` (không dùng chung với `voice/.venv` ở trên), tự chọn
+  bản torch hợp phần cứng, rồi cài gói `omnivoice` từ PyPI — **không clone repo nào**. Lần đầu tải 1–4 GB
+  thư viện, cộng ~3,3 GB trọng số model ở lượt sinh giọng đầu tiên.
+  - **Cần cả hai venv**: `setup:omnivoice` để *sinh* giọng, `setup:voice` để *nhập* giọng đó vào video
+    (Whisper soát từng tệp có đúng câu của nó không). Thiếu cái thứ hai thì sinh xong không nhập được.
+  - Xem máy có chạy nổi không: `node tools/setup-omnivoice.mjs --check` in JSON trạng thái kèm phần cứng
+    dò được. Dưới 8 GB VRAM là chạy được nhưng sát; không có GPU thì mỗi câu mất hàng phút, không hợp để
+    dựng cả video. Ép thiết bị bằng `--device cuda|mps|cpu`, cài lại từ đầu bằng `--force`.
+  - Hỗ trợ Windows (CUDA), macOS Apple Silicon (MPS) và Linux (CUDA/CPU). Mac Intel chỉ chạy CPU.
+  - Gỡ: xoá thư mục `voice/.venv-omnivoice`.
 - `tts-elevenlabs/.env` chỉ cần khi **tạo giọng bằng CLI**. Video Studio không dùng file này: key được
   nhập trên web và chỉ nằm trong RAM. Người chỉ dùng Video Studio thì bỏ qua bước `cp … .env`, và nếu máy
   đã có `.env` thì nên xoá đi (agent chạy trong repo có thể đọc được file trên đĩa). `.env` đã nằm trong
@@ -115,9 +128,14 @@ dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
    (.md/.txt), thư mục feedback và video cũ nếu có, ghi chú, phạm vi. Bấm **Tạo video**. Nút **Copy prompt**
    cho prompt tương đương để dán vào Claude Code hoặc Claude Design.
 2. **Lời & cue.** Agent viết `cues.js` (lời nguyên văn), dừng lại cho bạn đọc. Gửi góp ý hoặc **Duyệt**.
-3. **Giọng đọc.** Nhập API key ElevenLabs (chỉ giữ trong RAM của server, `Ctrl + C` là mất), Voice ID,
-   model, khoảng nghỉ → **Kiểm tra** (dry-run, miễn phí: số câu mới, số ký tự sẽ gửi) → **Tạo giọng**. Nút
-   tạo giọng bị khoá khi chưa có key hoặc chưa kiểm tra. Server tự chạy TTS; agent không bao giờ thấy key.
+3. **Giọng đọc.** Ba nguồn, chọn một trên cùng một bước:
+   - **Tạo bằng ElevenLabs** — nhập API key (chỉ giữ trong RAM của server, `Ctrl + C` là mất), Voice ID,
+     model, khoảng nghỉ → **Kiểm tra** (dry-run, miễn phí: số câu mới, số ký tự sẽ gửi) → **Tạo giọng**.
+     Nút tạo giọng bị khoá khi chưa có key hoặc chưa kiểm tra. Server tự chạy TTS; agent không thấy key.
+   - **Nhập audio có sẵn** — trỏ vào thư mục `01.wav, 02.wav…` tự thu, kiểm rồi nhập.
+   - **Model local** — cài OmniVoice ngay trong giao diện (nút *Setup OmniVoice local model*), chọn giọng
+     nhân bản từ cùng danh mục với tab ElevenLabs, sinh cả video một lượt rồi nhập — không tốn credit.
+     Xem `npm run setup:omnivoice` ở phần Setup để biết máy có chạy nổi không.
 4. **Dựng cảnh.** Agent dựng cảnh theo độ dài giọng thật và mốc từng từ, build + verify, chụp ảnh QA.
    Xem ảnh, gửi góp ý hoặc **Duyệt**.
 5. **Render.** Server render MP4 và transcript, sau đó agent viết file chương và `PROMPTS.md`.
@@ -158,6 +176,11 @@ từng bước khi được hỏi):
    node tools/voice-export.mjs vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --out projects/<id>/voice-script
    #   → doc-thu.md (bản đọc), doc-thu.txt, voice-batch.jsonl (chạy thẳng với omnivoice-infer-batch),
    #     cau/01.txt… Thu hoặc gen ra 01.wav, 02.wav … theo đúng số câu, để chung một thư mục.
+
+   # Sinh sẵn cả thư mục đó bằng model local (cần `npm run setup:omnivoice`):
+   node tools/omnivoice-generate.mjs --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --voice "Nhật Phong" --out projects/<id>/voice-script/omnivoice
+   #   Đặt tên tệp đúng số câu, bỏ qua câu `silent`, và thiếu dù một câu là báo lỗi chứ không nhận dở.
+   #   Video có nhân vật (`speaker`) thì dừng: model chỉ nhân bản được một giọng cho cả video.
    node tools/voice-import.mjs --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --from <thư mục audio> --scan
    node tools/voice-import.mjs --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/cues.js --from <thư mục audio>
    node tools/voice-timing.mjs voice/out/<id>/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id> --write-cues

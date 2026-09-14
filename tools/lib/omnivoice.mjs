@@ -70,6 +70,25 @@ export function deviceFrom({ platform, arch, nvidia = '', totalMemGb = null }) {
   return { id: 'cpu', label: 'CPU (không thấy GPU NVIDIA)', vramGb: null, tight: true };
 }
 
+/**
+ * Số câu sinh cùng một lượt.
+ *
+ * Mặc định của omnivoice-infer-batch là gom theo `--batch_duration` 1000 giây, mà mỗi mẫu tính cả
+ * ref_audio (~14 giây) nên một video 39 câu rơi gọn vào MỘT batch. Đo thật trên RTX 3060 6 GB: VRAM
+ * đứng ở 97 %, GPU 100 %, và hơn 30 phút không ra nổi một file — không phải chậm, mà là nghẹn.
+ *
+ * Nên tự chia theo sức máy. Chia nhỏ chỉ chậm hơn chút ít (model đã nằm sẵn trong VRAM giữa các batch),
+ * còn chia to thì hỏng hẳn, nên khi phân vân hãy chọn nhỏ.
+ */
+export function batchSizeFor(device) {
+  if (!device || device.id === 'cpu') return 1; // CPU đã chậm sẵn, gom nhiều chỉ tốn RAM
+  if (device.tight) return 2; // dưới 8 GB VRAM
+  if (device.vramGb === null) return 4; // không đo được thì đừng liều
+  if (device.vramGb >= 24) return 16;
+  if (device.vramGb >= 12) return 8;
+  return 4;
+}
+
 export function detectDevice() {
   const nvidia = spawnSync('nvidia-smi', ['--query-gpu=name,memory.total', '--format=csv,noheader,nounits'], { encoding: 'utf8' });
   return deviceFrom({

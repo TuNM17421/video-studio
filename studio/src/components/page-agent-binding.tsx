@@ -1,8 +1,8 @@
 "use client";
 
 import { LoadingOutlined, LockOutlined, RobotOutlined } from "@ant-design/icons";
-import { Select } from "antd";
-import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
+import { Alert, Select, Tag } from "antd";
+import { AGENT_PROVIDER_OPTIONS, EXPERIMENTAL_NOTE, agentProviderLabel, isExperimentalProvider } from "@/lib/agent-providers";
 import type { AgentProvider } from "@/lib/types";
 import { AgentMark } from "./agent-mark";
 
@@ -22,6 +22,8 @@ export function PageAgentBinding({
   onChange?: (provider: AgentProvider) => void;
 }) {
   const locked = immutable || selectionLocked;
+  const experimental = isExperimentalProvider(provider);
+  const chosen = AGENT_PROVIDER_OPTIONS.find((o) => o.value === provider);
   const description = loading
     ? "Đang tải cấu hình agent…"
     : immutable
@@ -41,18 +43,26 @@ export function PageAgentBinding({
     {loading
       ? <span className="vs-agent-locked is-loading"><LoadingOutlined spin />Đang tải…</span>
       : locked
-      ? <span className="vs-agent-locked"><LockOutlined /><AgentMark provider={provider} />{agentProviderLabel(provider)}</span>
+      ? <span className="vs-agent-locked"><LockOutlined /><AgentMark provider={provider} />{agentProviderLabel(provider)}{experimental && <Tag className="vs-agent-flag">{EXPERIMENTAL_NOTE}</Tag>}</span>
       : <Select
           className="vs-agent-select"
+          // Nhãn "Thử nghiệm" làm dòng dài hơn ô chọn — để popup tự giãn thay vì cắt mất chữ.
+          popupMatchSelectWidth={false}
           aria-label="Chọn agent dựng video"
           value={provider}
           loading={loading}
           disabled={disabled}
           onChange={onChange}
-          options={AGENT_PROVIDER_OPTIONS.map(({ value, label }) => ({
+          options={AGENT_PROVIDER_OPTIONS.map(({ value, label, experimental: flag }) => ({
             value,
-            label: <span className="vs-agent-option"><AgentMark provider={value} />{label}</span>,
+            label: <span className="vs-agent-option"><AgentMark provider={value} />{label}{flag && <Tag className="vs-agent-flag">{EXPERIMENTAL_NOTE}</Tag>}</span>,
           }))}
         />}
+    {!loading && experimental && <Alert
+      className="vs-agent-warning"
+      type="warning"
+      showIcon
+      title={chosen?.description}
+    />}
   </section>;
 }

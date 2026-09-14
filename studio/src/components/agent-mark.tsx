@@ -1,3 +1,5 @@
+import { Tag } from "antd";
+import { EXPERIMENTAL_NOTE, agentProviderLabel, isExperimentalProvider } from "@/lib/agent-providers";
 import type { AgentProvider } from "@/lib/types";
 
 /**
@@ -56,4 +58,15 @@ const MARKS: Record<AgentProvider, () => React.ReactElement> = {
 export function AgentMark({ provider }: { provider: AgentProvider }) {
   const Mark = MARKS[provider] ?? ClaudeMark;
   return <span className="vs-agent-mark"><Mark /></span>;
+}
+
+/**
+ * Tên agent kèm nhãn trạng thái. Nhãn phải đi theo tên ở MỌI chỗ hiện agent, không riêng ô chọn: nhìn
+ * thẻ tóm tắt của một video mà không thấy gì thì vẫn tưởng ba agent ngang nhau.
+ */
+export function AgentName({ provider }: { provider: AgentProvider }) {
+  return <>
+    {agentProviderLabel(provider)}
+    {isExperimentalProvider(provider) && <Tag className="vs-agent-flag">{EXPERIMENTAL_NOTE}</Tag>}
+  </>;
 }

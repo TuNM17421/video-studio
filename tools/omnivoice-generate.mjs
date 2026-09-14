@@ -8,6 +8,7 @@
  *   --voice   giọng trong voices.json; mẫu của giọng đó thành ref_audio để OmniVoice nhân bản
  *   --out     nơi đổ 01.wav, 02.wav… (mặc định projects/<id>/voice-script/omnivoice)
  *   --json    in một dòng JSON kết quả (Video Studio đọc cái này)
+ *   --batch-size  số câu mỗi lượt (mặc định: tự chọn theo VRAM)
  *
  * Vì sao không bảo người dùng tự gõ từng câu vào giao diện web: một video là 40+ câu, và tên file phải
  * khớp đúng số câu thì bước nhập mới ghép được. `omnivoice-infer-batch` nhận một file JSONL rồi tự đặt
@@ -20,7 +21,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { inferBatchBin, MODEL_ID, refAudioFor, ROOT, SETUP_HINT } from './lib/omnivoice.mjs';
+import { batchSizeFor, detectDevice, inferBatchBin, MODEL_ID, refAudioFor, ROOT, SETUP_HINT } from './lib/omnivoice.mjs';
 import { cueKey } from './lib/voice-files.mjs';
 import { readVoices, resolveVoice } from './lib/voices.mjs';
 
@@ -99,9 +100,16 @@ const env = {
   ...(ffDir ? { PATH: `${ffDir}${path.delimiter}${process.env.PATH || ''}` } : {}),
 };
 
+// Không để nó tự gom batch: mặc định `--batch_duration` 1000 giây nuốt gọn cả video vào một lượt, và
+// trên card chật thì đó là treo máy chứ không phải chậm (đo thật: 6 GB, VRAM 97 %, 30 phút không ra file).
+const device = detectDevice();
+const batchSize = Number(value('batch-size', batchSizeFor(device)));
+if (!Number.isInteger(batchSize) || batchSize < 1) fail(`--batch-size phải là số nguyên ≥ 1 (nhận được "${value('batch-size', '')}").`);
+note(`${device.label} → mỗi lượt ${batchSize} câu`);
+
 let spawnError = null;
 const code = await new Promise((resolve) => {
-  const child = spawn(bin, ['--model', MODEL_ID, '--test_list', listFile, '--res_dir', outDir], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(bin, ['--model', MODEL_ID, '--test_list', listFile, '--res_dir', outDir, '--batch_size', String(batchSize)], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   // Studio dừng job bằng cách giết cả cây tiến trình, nhưng chạy tay thì Ctrl-C chỉ tới node — python
   // giữ vài GB VRAM sẽ sống tiếp. Chuyển tín hiệu xuống rồi mới thoát.
   const forward = (sig) => { try { child.kill(sig); } catch {} };

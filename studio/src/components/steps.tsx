@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, DownloadOutlined, ExportOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, DownloadOutlined, ExportOutlined, FolderOpenOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
 import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
+import { reportMatchesDir } from "@/lib/import-report";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
 import type { DryRun, ImportReport, JobInfo, LogEntry, OmnivoiceStatus, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
@@ -300,7 +301,22 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   const generating = jobRunning("omnivoice-generate");
   const spoken = detail.cues?.cues.filter((c) => !c.silent && c.text.trim()).length ?? 0;
   // Thư mục nhập đang trỏ vào kết quả của chính model local: bước 3 đã chạy xong ít nhất một lần.
-  const generated = detail.state.voice.importDir.replace(/\\/g, "/").endsWith("/voice-script/omnivoice");
+  const outDir = detail.state.voice.importDir;
+  const generated = outDir.replace(/\\/g, "/").endsWith("/voice-script/omnivoice");
+  const scanning = jobRunning("import-scan");
+  const importing = jobRunning("voice");
+  // Báo cáo phải là của đúng thư mục này; đổi giọng rồi sinh lại thì báo cáo cũ không còn nói gì nữa.
+  const scan = detail.importReport;
+  const fresh = generated && reportMatchesDir(scan, outDir) ? scan : null;
+  // "Đã nhập" phải là đã nhập CHÍNH thư mục này — chỉ báo cáo của một lượt nhập thật mới có `out`.
+  // Dựa vào artifacts.voice là sai: video còn giọng ElevenLabs cũ cũng sẽ hiện dấu tick.
+  const imported = Boolean(fresh?.out);
+  const problems = fresh ? fresh.rows.filter((r) => r.level === "error").length : 0;
+  const warnings = fresh ? fresh.rows.filter((r) => r.level === "warn").length : 0;
+  const [force, setForce] = useState(false);
+
+  const reveal = () => act(() => post("/api/reveal", { dir: outDir }));
+  const rescan = () => act(() => post(`/api/videos/${id}/voice`, { action: "scan-import", settings }));
   const device = status?.device;
   // Máy yếu: không GPU thì chậm tới mức không dùng nổi, còn VRAM sát thì câu dài dễ tràn.
   const weak = device?.tight ?? false;
@@ -392,14 +408,22 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
         </div>
       </li>
 
-      <li className={`vs-local-step ${generated ? "is-now" : "is-wait"}`}>
-        <span className="vs-local-num">4</span>
+      <li className={`vs-local-step ${!generated ? "is-wait" : imported ? "is-done" : "is-now"}`}>
+        <span className="vs-local-num">{imported ? <CheckCircleFilled /> : 4}</span>
         <div className="vs-local-body">
           <strong>Nhập vào video</strong>
           <small>
-            Sinh xong mới chỉ là một thư mục wav, chưa phải giọng của video. Sang tab <strong>“Nhập audio có sẵn”</strong> —
-            thư mục vừa sinh đã điền sẵn ở đó — bấm kiểm tra rồi nhập. Bước Giọng đọc hoàn tất ở đó.
+            Thư mục wav chưa phải là giọng của video: mỗi câu còn phải soát đúng câu rồi ghép lại thành
+            một bản thu liền. Làm ngay tại đây — thư mục vừa sinh đã tự kiểm sau khi sinh xong.
           </small>
+
+          {generated && <div className="vs-local-out">
+            <code title={outDir}>{outDir}</code>
+            {/* Nghe thử là việc của tai, không phải của giao diện này — mở thẳng thư mục cho nhanh. */}
+            <Button size="small" icon={<FolderOpenOutlined />} disabled={busy} onClick={reveal}>Mở thư mục</Button>
+            <Button size="small" icon={<SearchOutlined />} loading={scanning} disabled={busy || !aligned} onClick={rescan}>Kiểm tra lại</Button>
+          </div>}
+
           {/* Whisper nằm ở voice/.venv, KHÁC venv của OmniVoice. Cài xong OmniVoice mà thiếu nó thì
               sinh giọng vẫn chạy ngon rồi chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút. */}
           {status && !aligned && <Alert
@@ -410,7 +434,33 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
             description="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, bản cài OmniVoice không bao gồm."
             action={<Button size="small" type="primary" loading={aligning} disabled={busy || aligning} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "align-setup" }))}>Cài Whisper</Button>}
           />}
-          {status && aligned && <small className="vs-local-log">Môi trường nhận diện giọng: đã cài.</small>}
+
+          {fresh && <p className={`vs-import-summary ${problems ? "is-error" : warnings ? "is-warn" : "is-ok"}`}>
+            <strong>{fresh.matched}/{fresh.needFile} câu có file</strong>
+            {problems > 0 && <span> · {problems} lỗi</span>}
+            {warnings > 0 && <span> · {warnings} cảnh báo</span>}
+            {problems === 0 && warnings === 0 && <span> · không có vấn đề</span>}
+            {fresh.align.used && <small>Đối chiếu nội dung bằng Whisper {fresh.align.model}</small>}
+          </p>}
+
+          {fresh && <details className="vs-local-map" open={problems > 0}>
+            <summary>Xem từng câu ({fresh.rows.length})</summary>
+            <ImportMap report={fresh} />
+          </details>}
+
+          {fresh && problems > 0 && <Checkbox className="vs-force" checked={force} onChange={(e) => setForce(e.target.checked)}>
+            Vẫn nhập dù {problems} câu có vấn đề — tôi đã nghe lại và chấp nhận
+          </Checkbox>}
+
+          {generated && <Button
+            type="primary"
+            icon={<ImportOutlined />}
+            loading={importing}
+            disabled={busy || importing || !fresh || (problems > 0 && !force)}
+            onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "import", force }))}
+          >{fresh ? `${imported ? "Nhập lại giọng" : "Nhập giọng"} · ${fresh.matched} câu` : "Kiểm tra thư mục trước"}</Button>}
+
+          {imported && <small className="vs-local-log">Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}</small>}
         </div>
       </li>
     </ol>
@@ -440,6 +490,42 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
       onConfirm={() => { setConfirmSetup(false); void act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-setup" })); }}
     />}
   </div>;
+}
+
+/**
+ * Bảng ghép: tệp nào rơi vào câu nào, và mọi thứ trông sai. Dùng chung cho tab "Nhập audio có sẵn" và
+ * bước 4 của tab model local — bước 4 mà chỉ có một dòng tổng kết thì hễ báo lỗi là lại phải sang tab
+ * kia mới biết câu nào, đúng cái thao tác đang muốn bỏ.
+ *
+ * `onPlay` chỉ có khi video đã gắn giọng: chưa có bản thu thì không nghe thử được câu nào cả.
+ */
+function ImportMap({ report, onPlay }: { report: ImportReport; onPlay?: (n: number) => void }) {
+  const play = onPlay ? "has-play" : "";
+  return <>
+    <div className="vs-map">
+      <div className={`vs-map-row is-head ${play}`}>
+        <span>Câu</span><span>Tệp</span><span>Lời</span><span>Dài</span><span>Khớp</span>{onPlay && <span className="vs-map-play-head" />}
+      </div>
+      {report.rows.map((r) => {
+        // The silent row's only note repeats what its own text column already says.
+        const notes = r.silent ? [] : r.notes;
+        const weak = r.matchRatio != null && r.matchRatio < WEAK_MATCH;
+        return <div key={r.n} className={`vs-map-row is-${r.level} ${play}`}>
+          <span className="vs-map-key mono">{r.key}</span>
+          <span className={`vs-map-file ${r.silent ? "is-none" : "mono"}`} title={r.file || undefined}>{r.file ?? (r.silent ? "không cần" : "—")}</span>
+          <span className="vs-map-text" title={r.silent ? undefined : r.text}>{r.silent ? `Khoảng dừng ${r.expectedSeconds} giây` : r.text}</span>
+          <span className="vs-map-len mono">{r.seconds != null ? seconds(r.seconds) : "—"}</span>
+          <span className={`vs-map-match mono ${weak ? "is-weak" : ""}`}>{r.matchRatio != null ? `${Math.round(r.matchRatio * 100)}%` : "—"}</span>
+          {onPlay && <span className="vs-map-play">{!r.silent && <Button type="text" size="small" aria-label={`Nghe câu ${r.key}`} icon={<PlayCircleFilled />} onClick={() => onPlay(r.n)} />}</span>}
+          {notes.length > 0 && <span className="vs-map-notes">{notes.join(" · ")}</span>}
+        </div>;
+      })}
+    </div>
+    {(report.extra.length > 0 || report.clashes.length > 0) && <ul className="vs-map-aside">
+      {report.extra.map((e) => <li key={e.file}>Thừa: <span className="mono">{e.file}</span> — {e.reason}</li>)}
+      {report.clashes.map((c) => <li key={c.file}>Câu {c.n} trùng: dùng <span className="mono">{c.kept}</span>, bỏ qua <span className="mono">{c.file}</span></li>)}
+    </ul>}
+  </>;
 }
 
 function ImportPanel({ detail, settings, setSettings, busy, act }: {
@@ -489,30 +575,8 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
       </p>}
       </div>
     </div>
-    {report?.align.note && <Alert className="feedback" type="warning" showIcon message={report.align.note} />}
-    {report && <div className="vs-map">
-      <div className={`vs-map-row is-head ${bound.length ? "has-play" : ""}`}>
-        <span>Câu</span><span>Tệp</span><span>Lời</span><span>Dài</span><span>Khớp</span>{bound.length > 0 && <span className="vs-map-play-head" />}
-      </div>
-      {report.rows.map((r) => {
-        // The silent row's only note repeats what its own text column already says.
-        const notes = r.silent ? [] : r.notes;
-        const weak = r.matchRatio != null && r.matchRatio < WEAK_MATCH;
-        return <div key={r.n} className={`vs-map-row is-${r.level} ${bound.length ? "has-play" : ""}`}>
-          <span className="vs-map-key mono">{r.key}</span>
-          <span className={`vs-map-file ${r.silent ? "is-none" : "mono"}`} title={r.file || undefined}>{r.file ?? (r.silent ? "không cần" : "—")}</span>
-          <span className="vs-map-text" title={r.silent ? undefined : r.text}>{r.silent ? `Khoảng dừng ${r.expectedSeconds} giây` : r.text}</span>
-          <span className="vs-map-len mono">{r.seconds != null ? seconds(r.seconds) : "—"}</span>
-          <span className={`vs-map-match mono ${weak ? "is-weak" : ""}`}>{r.matchRatio != null ? `${Math.round(r.matchRatio * 100)}%` : "—"}</span>
-          {bound.length > 0 && <span className="vs-map-play">{!r.silent && <Button type="text" size="small" aria-label={`Nghe câu ${r.key}`} icon={<PlayCircleFilled />} onClick={() => play(r.n)} />}</span>}
-          {notes.length > 0 && <span className="vs-map-notes">{notes.join(" · ")}</span>}
-        </div>;
-      })}
-    </div>}
-    {report && (report.extra.length > 0 || report.clashes.length > 0) && <ul className="vs-map-aside">
-      {report.extra.map((e) => <li key={e.file}>Thừa: <span className="mono">{e.file}</span> — {e.reason}</li>)}
-      {report.clashes.map((c) => <li key={c.file}>Câu {c.n} trùng: dùng <span className="mono">{c.kept}</span>, bỏ qua <span className="mono">{c.file}</span></li>)}
-    </ul>}
+    {report?.align.note && <Alert className="feedback" type="warning" showIcon title={report.align.note} />}
+    {report && <ImportMap report={report} onPlay={bound.length ? play : undefined} />}
     {detail.artifacts.voiceWav && <div className="audio-result vs-audio">
       <div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : " · chưa có mốc từng từ"}</span></div>
       <audio ref={master} controls src={fileUrl(detail.artifacts.voiceWav)} preload="none" />
