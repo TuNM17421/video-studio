@@ -18,6 +18,8 @@
 
 ## Verification
 
+- `MascotRevamp`: mọi action dùng toàn thân vector gốc trên trục đứng đã duyệt; chỉ `leanFoot` cố ý nghiêng. `emotion` độc lập với `pose`. Gậy chỉ/sách/bảng là SVG overlay cỡ đọc được ở slide. QA bằng `npm run qa:mascot`, rồi mở ảnh trong `reports/mascot-qa/`.
+
 - Run checks in proportion to the change. For video implementation, `npm run build && npm run verify` must pass.
 - Visual acceptance requires opening the generated QA stills; a successful build or render command alone is not visual QA.
 - Before declaring a final video complete, validate the rendered media, timing, audio presence, transcript, and chapters required by the workflow.

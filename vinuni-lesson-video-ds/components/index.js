@@ -57,3 +57,6 @@ export * from './figures/Countdown.jsx';
 export * from './figures/Dialogue.jsx';
 export * from './figures/Magnifier.jsx';
 export * from './figures/SourceCard.jsx';
+
+export * from './mascot/Mascot.jsx';
+export * from './mascot/MascotRevamp.jsx';

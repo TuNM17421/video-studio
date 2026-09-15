@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+  <ellipse cx="100" cy="205" rx="46" ry="8" fill="#0B2E4A" opacity="0.10"/>
+  <path d="M84 178q-4 14-2 20" stroke="#E8862B" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M116 178q4 14 2 20" stroke="#E8862B" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <!-- cánh trái giơ ngang như đang giảng -->
+  <ellipse cx="40" cy="105" rx="17" ry="30" fill="#1F6FA8" stroke="#0B3A57" stroke-width="4" transform="rotate(-70 40 105)"/>
+  <ellipse cx="100" cy="115" rx="66" ry="72" fill="#3AA6DE" stroke="#0B3A57" stroke-width="5"/>
+  <ellipse cx="158" cy="128" rx="17" ry="30" fill="#1F6FA8" stroke="#0B3A57" stroke-width="4" transform="rotate(-18 158 128)"/>
+  <ellipse cx="100" cy="142" rx="37" ry="44" fill="#FCF3DE"/>
+  <path d="M84 47q4-16 10-8q2-14 10-4q4-12 10 0" fill="none" stroke="#0B3A57" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="66" cy="108" r="9" fill="#F5A9A0" opacity="0.7"/>
+  <circle cx="134" cy="108" r="9" fill="#F5A9A0" opacity="0.7"/>
+  <circle cx="80" cy="92" r="11" fill="#12283A"/>
+  <circle cx="120" cy="92" r="11" fill="#12283A"/>
+  <circle cx="83.5" cy="88" r="3.4" fill="#fff"/>
+  <circle cx="123.5" cy="88" r="3.4" fill="#fff"/>
+  <!-- mỏ mở (đang nói) -->
+  <path d="M90 102q10 18 20 0q-10-14-20 0z" fill="#F2994A" stroke="#0B3A57" stroke-width="3"/>
+  <!-- que chỉ nhỏ trên cánh -->
+  <line x1="14" y1="70" x2="34" y2="96" stroke="#0B3A57" stroke-width="4" stroke-linecap="round"/>
+</svg>

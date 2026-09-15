@@ -1,0 +1,14 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Mascot · LEXCE" subtitle="Dáng đứng đã duyệt · cảm xúc và hành động theo frame" -->
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8" /><meta name="viewport" content="width=700" /><title>Mascot LEXCE</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>html,body{margin:0;width:700px;height:400px;overflow:hidden;background:var(--color-bg);font-family:var(--font-sans)}</style>
+</head><body><div id="root"></div><script src="../../dist/vk.js"></script><script>
+const h=VK.h;
+VK.mountCard('#root',{width:700,height:400,duration:1,render:function(){return h(VK.Fragment,null,
+  h(VK.MascotRevamp,{pose:'stand',emotion:'idle',x:55,y:17,size:320,frame:5}),
+  h(VK.MascotRevamp,{pose:'hop',emotion:'happy',x:373,y:17,size:320,frame:5}),
+  h(VK.SvgText,{x:102,y:377,size:21,weight:700},'Đứng thẳng'),
+  h(VK.SvgText,{x:421,y:377,size:21,weight:700},'Nhảy vui')
+);}});
+</script></body></html>

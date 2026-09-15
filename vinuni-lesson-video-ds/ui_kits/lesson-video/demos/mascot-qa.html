@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>LEXCE mascot QA</title>
+<style>html,body,#root{margin:0;width:1800px;height:2440px;background:#f3f8ff}</style></head>
+<body><div id="root"></div><script src="../../../dist/vk.js"></script><script>
+const h=VK.h;
+const params=new URLSearchParams(location.search);
+const kind=params.get('set')==='actions'?'actions':'emotions';
+const frame=Number(params.get('frame')||5);
+const names=kind==='actions'
+  ? ['stand','leanFoot','wave','waveRight','pointUp','read','teach','sketch','cheer','hop','think','point']
+  : VK.LEXCE_EMOTIONS;
+const labels={stand:'đứng thẳng',leanFoot:'nghiêng chân',wave:'vẫy trái',waveRight:'vẫy phải',point:'chỉ sang bên',pointUp:'chỉ lên',read:'đọc sách',sketch:'vẽ sơ đồ',teach:'giảng giải',cheer:'reo vui',clap:'vỗ tay',hop:'nhảy',think:'suy nghĩ',peek:'nhìn nghiêng'};
+VK.mountCard('#root',{width:1800,height:2440,duration:1,render:function(){return h(VK.Fragment,null,
+  h('rect',{width:1800,height:2440,fill:'#f3f8ff'}),
+  h('text',{x:80,y:90,fontSize:42,fontWeight:800,fontFamily:'Arial,sans-serif',fill:'#194585'},kind==='actions'?'LEXCE · hành động':'LEXCE · biểu cảm'),
+  names.map(function(name,i){const col=i%3,row=Math.floor(i/3),cx=60+col*570,cy=130+row*560;
+    return h(VK.Fragment,{key:name},
+      h('rect',{x:cx,y:cy,width:535,height:535,rx:30,fill:'#fff',stroke:'#d5e5fa',strokeWidth:3}),
+      h(VK.MascotRevamp,Object.assign({x:cx+75,y:cy+7,size:460,frame:frame},kind==='actions'?{pose:name,emotion:name==='cheer'?'excited':name==='think'?'thinking':'idle'}:{pose:'stand',emotion:name})),
+      h('text',{x:cx+267,y:cy+504,textAnchor:'middle',fontSize:30,fontWeight:700,fontFamily:'Arial,sans-serif',fill:'#194585'},kind==='actions'?(labels[name]||name):name));
+  })
+);}});
+</script></body></html>
