@@ -58,6 +58,17 @@ function WorkflowNavigation({ step, detail, onChange }: { step: Step; detail: Vi
   </nav>;
 }
 
+function WorkflowHealth({ detail }: { detail: VideoDetail }) {
+  const report = detail.workflow;
+  const tokens = report.usage.inputTokens + report.usage.outputTokens;
+  return <section className="vs-workflow-health" aria-label="Hiệu suất workflow">
+    <div><span>Automation</span><strong>{Math.round(report.automationRatio * 100)}%</strong><small>{report.runs.deterministic}/{report.runs.total} lượt deterministic</small></div>
+    <div><span>Agent tokens</span><strong>{tokens.toLocaleString("en-US")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt · ${report.usage.costUsd.toFixed(4)}</small></div>
+    <div><span>Feedback mở</span><strong>{report.feedback.open}</strong><small>{report.feedback.blocker} blocker · {report.feedback.major} major</small></div>
+    <div><span>Điểm tốn nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><Button type="link" href={fileUrl(report.files.plan)} target="_blank">Mở improvement plan</Button></div>
+  </section>;
+}
+
 /** First step that still needs work. */
 function nextStep(d: VideoDetail): Step {
   const s = d.state.stages;
@@ -257,6 +268,7 @@ export default function Studio() {
         }))}
       />
     </div>
+    {detail && <WorkflowHealth detail={detail} />}
     {setupError && <Alert className="feedback" type="error" showIcon title="Không tải được cấu hình Studio" description={setupError} action={<Button size="small" onClick={() => { void loadSetup(); }}>Thử lại</Button>} />}
     {error && <Alert className="feedback" type="error" showIcon closable title="Thao tác chưa hoàn tất" description={error} onClose={() => setError(null)} />}
     {loadError && <Alert className="feedback" type="error" showIcon title="Không tải được video" description={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}

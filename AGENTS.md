@@ -27,3 +27,8 @@
 - When changing `studio/`, also follow the nearest `studio/AGENTS.md`. Read the bundled Next.js documentation referenced there before editing framework code.
 - Video Studio has separate Claude Code and Codex adapters. Keep their CLI arguments, JSON event parsing, session resume handling, and permission boundaries provider-specific; never implement a provider change as a binary-name swap.
 - Treat `state.agent.provider` as immutable after video creation. Existing states without a provider belong to Claude. Do not add a normal UI or API for switching an in-progress video's provider; any future migration must be an explicit, audited admin operation.
+- The Studio harness contract is `docs/VIDEO-WORKFLOW-HARNESS.md`. Coding agents author stage files only. The runner owns build, verify, still capture, render, transcript and final gates; do not spend an agent turn re-running deterministic commands.
+- Every job and feedback round must be written to `.studio/runs.jsonl` / `.studio/feedback.jsonl`. Retry prompts must include the stage's open improvement items. Do not approve scenes while blocker/major feedback remains open.
+- Visual QA lanes are always Antigravity in read-only plan+sandbox mode, using the generated `.studio/qa-packet/`. A Claude/Codex/Antigravity choice controls authoring only; it never changes the QA provider.
+- Every run records `machine` and, for agent runs, `model` when observed or explicitly configured. Never hardcode a model guess or silently drop the field.
+- The same ledger applies outside Studio: wrap deterministic CLI gates with `tools/run-logged.mjs`, and bracket agent authoring with `tools/video-workflow.mjs run start` / `run finish`.

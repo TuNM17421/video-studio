@@ -188,6 +188,29 @@ export interface Artifacts {
   prompts: string | null;
 }
 
+export interface WorkflowFeedback {
+  id: string;
+  stage: string;
+  source: string;
+  severity: "blocker" | "major" | "minor";
+  message: string;
+  status: "open" | "planned" | "applied" | "verified" | "wontfix";
+  recurrence: number;
+  acceptance: string;
+}
+
+export interface WorkflowReport {
+  runs: { total: number; running: number; agent: number; deterministic: number; failures: number };
+  automationRatio: number;
+  usage: { inputTokens: number; cachedInputTokens: number; outputTokens: number; costUsd: number; toolCalls: number; measuredRuns: number };
+  byStage: Record<string, { runs: number; agentTokens: number; durationMs: number; failures: number }>;
+  byModel: Record<string, { runs: number; tokens: number; costUsd: number; failures: number }>;
+  byMachine: Record<string, { runs: number; durationMs: number; failures: number }>;
+  mostExpensiveStage: string | null;
+  feedback: { open: number; blocker: number; major: number; minor: number; items: WorkflowFeedback[] };
+  files: { runs: string; feedback: string; plan: string };
+}
+
 export interface VideoDetail {
   state: VideoState;
   managed: boolean;
@@ -198,6 +221,7 @@ export interface VideoDetail {
   logs: LogEntry[];
   dryRun: DryRun | null;
   importReport: ImportReport | null;
+  workflow: WorkflowReport;
 }
 
 export interface VideoSummary {

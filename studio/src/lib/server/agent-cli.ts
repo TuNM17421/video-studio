@@ -1,7 +1,8 @@
 /** CLI arguments are provider-specific; a binary swap alone is not compatible. */
-export function claudeExecArgs(sessionId: string, resume: boolean, allowed: string[], denied: string[]) {
+export function claudeExecArgs(sessionId: string, resume: boolean, allowed: string[], denied: string[], model?: string) {
   return [
     "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
+    ...(model ? ["--model", model] : []),
     ...(resume ? ["--resume", sessionId] : ["--session-id", sessionId]),
     "--allowedTools", ...allowed,
     "--disallowedTools", ...denied,
@@ -30,13 +31,14 @@ export function claudeExecArgs(sessionId: string, resume: boolean, allowed: stri
  */
 export const ANTIGRAVITY_TIMEOUT = "4h";
 
-export function antigravityExecArgs(sessionId: string | null) {
+export function antigravityExecArgs(sessionId: string | null, model?: string) {
   return [
     "--input-format", "stream-json",
     "--output-format", "stream-json",
     "--dangerously-skip-permissions",
     "--disable-slash-commands",
     "--print-timeout", ANTIGRAVITY_TIMEOUT,
+    ...(model ? ["--model", model] : []),
     ...(sessionId ? ["--conversation", sessionId] : []),
   ];
 }
@@ -46,10 +48,11 @@ export function antigravityStdin(prompt: string) {
   return `${JSON.stringify({ event: "user", message: { content: prompt } })}\n`;
 }
 
-export function codexExecArgs(sessionId: string | null) {
+export function codexExecArgs(sessionId: string | null, model?: string) {
   if (sessionId) {
     return [
       "exec", "resume", "--json",
+      ...(model ? ["-m", model] : []),
       "-c", 'approval_policy="never"',
       "-c", 'sandbox_mode="workspace-write"',
       sessionId, "-",
@@ -57,7 +60,21 @@ export function codexExecArgs(sessionId: string | null) {
   }
   return [
     "exec", "--json", "--sandbox", "workspace-write",
+    ...(model ? ["-m", model] : []),
     "-c", 'approval_policy="never"',
     "-",
+  ];
+}
+
+/** Antigravity's separate visual-QA lane: read-only plan mode with schema-bound output. */
+export function antigravityQaArgs(schema: string) {
+  return [
+    "--print",
+    "--input-format", "text",
+    "--output-format", "json",
+    "--mode", "plan",
+    "--sandbox",
+    "--json-schema", schema,
+    "--print-timeout", "10m",
   ];
 }

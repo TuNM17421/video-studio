@@ -59,6 +59,7 @@ npm run tts:check    # kiểm tra key và giọng, không tốn ký tự
 
 npm run build && npm run verify     # phải kết thúc bằng "all checks passed"
 npm run studio:install              # cài Video Studio (một lần)
+npm run doctor                      # kiểm tra môi trường, không sửa máy
 ```
 
 - `vinuni-lesson-video-ds/dist/vk.js` (bundle mà mọi `card.html` và kit video nạp) **không nằm trong git**:
@@ -90,6 +91,17 @@ npm run studio:install              # cài Video Studio (một lần)
   (cần sudo).
 - Biến môi trường tuỳ chọn khi muốn dùng bản có sẵn trên máy: `CHROME=/đường/dẫn/chrome`,
   `FFMPEG=/đường/dẫn/ffmpeg`.
+
+## Theo dõi workflow và chi phí agent
+
+Mỗi lượt Studio ghi stage, actor, máy, model (khi provider báo hoặc được cấu hình), thời gian, trạng thái,
+token và cost vào `projects/<id>/.studio/runs.jsonl`. Feedback là event riêng trong `feedback.jsonl`; cùng
+một lỗi tái diễn tăng `recurrence`, và `IMPROVEMENT-PLAN.md` được viết lại tự động để góp ý không bị trôi.
+
+- Đặt `STUDIO_MACHINE_LABEL` và model pin tương ứng (`STUDIO_CLAUDE_MODEL`, `STUDIO_CODEX_MODEL`, `STUDIO_ANTIGRAVITY_MODEL`) trong `studio/.env` nếu cần so sánh chính xác giữa các máy/model.
+- Xem báo cáo bằng `npm run workflow -- report --video <id>` hoặc thêm `--json`.
+- Khi chạy ngoài Studio, dùng `tools/run-logged.mjs` cho build/verify/render và `tools/video-workflow.mjs run start|finish` cho phần agent tự viết.
+- Coding agent chỉ author stage; runner chạy deterministic gate. Ảnh scene được giao cho Antigravity QA ở read-only plan+sandbox trước khi cho duyệt.
 
 Xem trước (giữ terminal này chạy trong lúc làm video):
 

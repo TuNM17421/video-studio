@@ -2,8 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
 import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs } from "./agent-cli";
-import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { REPO } from "./paths";
+import { runFinalGate, runSceneQa } from "./qa";
 import { readState, setStage, styleName, updateState } from "./videos";
+import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
 
 interface AgentStreamBlock {
   type?: string;
@@ -21,8 +24,14 @@ interface AgentStreamMessage {
   message?: { content?: AgentStreamBlock[] };
   total_cost_usd?: number;
   num_turns?: number;
+  usage?: {
+    input_tokens?: number;
+    cache_read_input_tokens?: number;
+    output_tokens?: number;
+  };
   is_error?: boolean;
   result?: string;
+  model?: string;
 }
 
 interface CodexStreamItem {
@@ -44,6 +53,11 @@ interface CodexStreamMessage {
   item?: CodexStreamItem;
   message?: string;
   error?: string | { message?: string };
+  usage?: {
+    input_tokens?: number;
+    cached_input_tokens?: number;
+    output_tokens?: number;
+  };
 }
 
 /** agy --output-format stream-json: one `init`, any number of `step_update`, exactly one `result`. */
@@ -88,11 +102,7 @@ const ALLOWED = [
   "Read", "Edit", "Write", "Glob", "Grep", "TodoWrite", "Task", "Agent",
   ...shellPatterns([
     "cd *", "node tools/*",
-    "npm run build", "npm run verify", "npm run build && npm run verify",
-    "node tts-elevenlabs/tts.mjs generate * --dry-run",
-    "node tts-elevenlabs/tts.mjs --help*",
     "ls *", "mkdir *", "cp *", "mv *", "wc *", "head *", "sort *",
-    "ffprobe *", "ffmpeg *", "node_modules/ffmpeg-static/ffmpeg *",
   ]),
 ];
 const DENIED = [
@@ -102,10 +112,21 @@ const DENIED = [
 ];
 
 const STAGE_TASK: Record<AgentStage, string> = {
-  cues: "Stage 1 · cues: chép/đọc kịch bản, đọc feedback và video cũ (nếu có), viết cues.js (lời nguyên văn), voice.js rỗng, pronounce.json nếu cần, rồi chạy tts --dry-run để kiểm tra. KHÔNG dựng cảnh.",
-  scenes: "Stage 3 · scenes: giọng đã được ghi và gắn (voice.js có mốc từng từ, cues.js đã có frames/speech thật). Dựng toàn bộ cảnh theo đúng thời lượng này, build + verify, chụp ảnh QA vào projects/<id>/qa/ và tự sửa lỗi thấy được.",
-  deliver: "Stage 5 · deliver: MP4 và transcript đã có. Viết file chương, PROMPTS.md, kiểm tra lần cuối (build + verify).",
+  cues: "Stage 1 · cues: đọc kịch bản và improvement plan, viết cues.js (lời nguyên văn), voice.js rỗng, pronounce.json nếu cần. KHÔNG dựng cảnh và không chạy gate.",
+  scenes: "Stage 3 · scenes: giọng đã được ghi và gắn (voice.js có mốc từng từ, cues.js đã có frames/speech thật). Chỉ dựng/sửa toàn bộ cảnh theo đúng thời lượng này. Runner sẽ build, verify, chụp ảnh và giao Antigravity QA sau khi bạn dừng.",
+  deliver: "Stage 5 · deliver: MP4 và transcript đã có. Chỉ viết file chương và PROMPTS.md. Runner chịu final gate.",
 };
+
+function feedbackContext(id: string, stage: AgentStage) {
+  const items = readFeedback(REPO, id).filter((item: { stage: string; status: string }) =>
+    item.stage === stage && ["open", "planned", "applied"].includes(item.status));
+  if (!items.length) return "Không có feedback đang mở cho stage này.";
+  return [
+    "Improvement plan đang mở:",
+    ...items.map((item: { id: string; severity: string; message: string; evidence?: string; acceptance: string }) =>
+      `- ${item.id} [${item.severity}]${item.evidence ? ` (${item.evidence})` : ""}: ${item.message} | Nghiệm thu: ${item.acceptance}`),
+  ].join("\n");
+}
 
 function stagePrompt(id: string, stage: AgentStage, base: string) {
   const { state } = readState(id);
@@ -116,16 +137,18 @@ function stagePrompt(id: string, stage: AgentStage, base: string) {
     `Yêu cầu của video: \`projects/${id}/REQUEST.md\`. Style: \`styles/${r.style}.json\` (luật của style được ưu tiên).`,
     `Việc cần làm lần này — ${STAGE_TASK[stage].replace("<id>", id)}`,
     `Preview server (dùng làm <base> khi chụp QA): ${base}/ds`,
-    "Chỉ làm stage này rồi dừng. Không chạy tts.mjs generate (trừ --dry-run), không đọc .env, không git commit/push, không /design-sync.",
+    feedbackContext(id, stage),
+    "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync.",
     "Kết thúc bằng một bản tóm tắt ngắn bằng tiếng Việt: đã làm gì, điểm cần người dùng xem, câu hỏi còn mở.",
   ].join("\n");
 }
 
-function feedbackPrompt(stage: AgentStage, message: string) {
+function feedbackPrompt(id: string, stage: AgentStage, message: string) {
   return [
     `Góp ý của người dùng cho stage "${stage}" (Video Studio):`,
     `"""${message.trim()}"""`,
-    "Sửa theo góp ý, chỉ trong phạm vi stage này. Chạy lại kiểm tra cần thiết (build + verify, chụp lại ảnh QA nếu là stage scenes), rồi dừng và tóm tắt ngắn bằng tiếng Việt.",
+    feedbackContext(id, stage),
+    "Sửa theo góp ý, chỉ trong phạm vi stage này. Runner sẽ chạy mọi gate deterministic và Antigravity QA; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt.",
   ].join("\n");
 }
 
@@ -168,7 +191,9 @@ async function runClaude(id: string, prompt: string, sessionId: string | null) {
   const nextSessionId = sessionId ?? randomUUID();
   let ok = false;
   let tools = 0;
-  const code = await run(id, process.env.CLAUDE_BIN || "claude", claudeExecArgs(nextSessionId, resume, ALLOWED, DENIED), {
+  const metrics: { inputTokens?: number; cachedInputTokens?: number; outputTokens?: number; costUsd?: number; turns?: number; toolCalls: number; model?: string } = { toolCalls: 0 };
+  const configuredModel = process.env.STUDIO_CLAUDE_MODEL?.trim() || undefined;
+  const code = await run(id, process.env.CLAUDE_BIN || "claude", claudeExecArgs(nextSessionId, resume, ALLOWED, DENIED, configuredModel), {
     env: sanitizedAgentEnv(),
     input: prompt,
     onLine(line, stream) {
@@ -177,6 +202,7 @@ async function runClaude(id: string, prompt: string, sessionId: string | null) {
       try { msg = JSON.parse(line); } catch { return; }
       if (msg.type === "system" && msg.subtype === "init" && msg.session_id) {
         saveSession(id, "claude", msg.session_id);
+        if (msg.model) metrics.model = msg.model;
       } else if (msg.type === "assistant") {
         for (const block of msg.message?.content || []) {
           if (block.type === "text" && block.text?.trim()) log(id, "agent", block.text.trim());
@@ -194,10 +220,16 @@ async function runClaude(id: string, prompt: string, sessionId: string | null) {
         ok = msg.subtype === "success" && !msg.is_error;
         const turns = typeof msg.total_cost_usd === "number" ? ` · ${msg.num_turns ?? "?"} lượt` : "";
         log(id, ok ? "result" : "error", `${ok ? "Claude Code đã dừng" : "Claude Code báo lỗi"}${turns}${msg.result ? `\n${msg.result}` : ""}`);
+        metrics.inputTokens = msg.usage?.input_tokens;
+        metrics.cachedInputTokens = msg.usage?.cache_read_input_tokens;
+        metrics.outputTokens = msg.usage?.output_tokens;
+        metrics.costUsd = msg.total_cost_usd;
+        metrics.turns = msg.num_turns;
       }
     },
   });
-  return { ok, code };
+  metrics.toolCalls = tools;
+  return { ok, code, metrics };
 }
 
 function describeCodexItem(item: CodexStreamItem) {
@@ -216,12 +248,17 @@ async function runCodex(id: string, prompt: string, sessionId: string | null) {
   let terminalEvent = false;
   let tools = 0;
   let finalText = "";
+  const configuredModel = process.env.STUDIO_CODEX_MODEL?.trim() || undefined;
+  const metrics: { inputTokens?: number; cachedInputTokens?: number; outputTokens?: number; toolCalls: number; model?: string } = {
+    toolCalls: 0,
+    model: configuredModel || "(mặc định CLI, chưa rõ)",
+  };
   const noteTool = (item: CodexStreamItem) => {
     tools++;
     log(id, "tool", describeCodexItem(item));
     setProgress(id, null, `Codex đang làm việc · ${tools} thao tác`);
   };
-  const code = await run(id, process.env.CODEX_BIN || "codex", codexExecArgs(sessionId), {
+  const code = await run(id, process.env.CODEX_BIN || "codex", codexExecArgs(sessionId, configuredModel), {
     env: sanitizedAgentEnv(),
     input: prompt,
     onLine(line, stream) {
@@ -247,6 +284,9 @@ async function runCodex(id: string, prompt: string, sessionId: string | null) {
         ok = true;
         terminalEvent = true;
         log(id, "result", `Codex đã dừng${finalText ? `\n${finalText}` : "."}`);
+        metrics.inputTokens = msg.usage?.input_tokens;
+        metrics.cachedInputTokens = msg.usage?.cached_input_tokens;
+        metrics.outputTokens = msg.usage?.output_tokens;
       } else if (msg.type === "turn.failed") {
         terminalEvent = true;
         log(id, "error", `Codex báo lỗi: ${errorText(msg.error || msg.message) || "không có chi tiết."}`);
@@ -256,7 +296,8 @@ async function runCodex(id: string, prompt: string, sessionId: string | null) {
     },
   });
   if (!ok && !terminalEvent && !wasStopped(id)) log(id, "error", `Codex kết thúc với mã ${code} nhưng không có sự kiện turn.completed.`);
-  return { ok, code };
+  metrics.toolCalls = tools;
+  return { ok, code, metrics };
 }
 
 /** agy names its own tools; `run_command` carries the command under a capitalised parameter. */
@@ -272,13 +313,18 @@ async function runAntigravity(id: string, prompt: string, sessionId: string | nu
   let terminalEvent = false;
   let tools = 0;
   let finalText = "";
+  const configuredModel = process.env.STUDIO_ANTIGRAVITY_MODEL?.trim() || undefined;
+  const metrics: { turns?: number; toolCalls: number; model?: string } = {
+    toolCalls: 0,
+    model: configuredModel || "(mặc định CLI, chưa rõ)",
+  };
   /**
    * agy streams an answer as `text_delta` fragments across the ACTIVE updates of one step, and the DONE
    * update carries only the trailing newline — reading the text off DONE alone (as a tool step is read)
    * would log whitespace and drop the message. Accumulate per step, flush when the step finishes.
    */
   const saying = new Map<number, string>();
-  const code = await run(id, process.env.ANTIGRAVITY_BIN || "agy", antigravityExecArgs(sessionId), {
+  const code = await run(id, process.env.ANTIGRAVITY_BIN || "agy", antigravityExecArgs(sessionId, configuredModel), {
     env: sanitizedAgentEnv(),
     input: antigravityStdin(prompt),
     onLine(line, stream) {
@@ -316,13 +362,15 @@ async function runAntigravity(id: string, prompt: string, sessionId: string | nu
         terminalEvent = true;
         finalText = r.response?.trim() || "";
         const turns = typeof r.num_turns === "number" ? ` · ${r.num_turns} lượt` : "";
+        metrics.turns = r.num_turns;
         if (ok) log(id, "result", `Antigravity đã dừng${turns}${finalText ? `\n${finalText}` : "."}`);
         else log(id, "error", `Antigravity báo lỗi (${r.status || "không rõ"})${turns}: ${r.error || finalText || "không có chi tiết."}`);
       }
     },
   });
   if (!ok && !terminalEvent && !wasStopped(id)) log(id, "error", `Antigravity kết thúc với mã ${code} nhưng không có sự kiện result.`);
-  return { ok, code };
+  metrics.toolCalls = tools;
+  return { ok, code, metrics };
 }
 
 /** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
@@ -330,14 +378,22 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
   const { state } = readState(id);
   const provider = state.agent.provider;
   const providerLabel = agentProviderLabel(provider);
-  const prompt = message ? feedbackPrompt(stage, message) : stagePrompt(id, stage, base);
-  startJob(id, stage);
+  const feedback = message ? recordFeedback(REPO, id, {
+    stage,
+    source: "user",
+    severity: "major",
+    message,
+    owner: "coding-agent",
+  }) : null;
+  const prompt = message ? feedbackPrompt(id, stage, message) : stagePrompt(id, stage, base);
+  startJob(id, stage, { actor: provider, mode: "agent", label: message ? `${stage} feedback` : stage });
   setStage(id, stage, "running");
   setProgress(id, null, message ? `${providerLabel} đang sửa theo góp ý…` : `${providerLabel} đang làm việc…`);
   log(id, "system", message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
 
   const runner = { codex: runCodex, antigravity: runAntigravity, claude: runClaude }[provider] ?? runClaude;
   const result = await runner(id, prompt, state.agent.sessionId);
+  recordJobMetrics(id, result.metrics);
 
   if (wasStopped(id)) {
     setStage(id, stage, "error", "Đã dừng agent.");
@@ -345,8 +401,34 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
     finishJob(id, "stopped");
     return false;
   }
-  const success = result.ok && result.code === 0;
-  setStage(id, stage, success ? (stage === "deliver" ? "done" : "review") : "error", success ? null : `${providerLabel} kết thúc với mã ${result.code}.`);
+  let success = result.ok && result.code === 0;
+  let failureMessage = `${providerLabel} kết thúc với mã ${result.code}.`;
+  if (success && feedback) updateFeedback(REPO, id, feedback.id, { status: "applied" });
+  if (success && stage === "scenes") {
+    try {
+      await runSceneQa(id, base);
+    } catch (error) {
+      success = false;
+      failureMessage = error instanceof Error ? error.message : String(error);
+      log(id, "error", failureMessage);
+    }
+  }
+  if (success && stage === "deliver") {
+    try {
+      await runFinalGate(id);
+      updateFeedbackWhere(
+        REPO,
+        id,
+        (item: { stage: string; status: string }) => item.stage === "deliver" && ["open", "planned", "applied"].includes(item.status),
+        { status: "verified", evidence: "Final gate (build + verify) đã xanh." },
+      );
+    } catch (error) {
+      success = false;
+      failureMessage = error instanceof Error ? error.message : String(error);
+      log(id, "error", failureMessage);
+    }
+  }
+  setStage(id, stage, success ? (stage === "deliver" ? "done" : "review") : "error", success ? null : failureMessage);
   finishJob(id, success ? "done" : "error");
   return success;
 }

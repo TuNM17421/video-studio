@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { antigravityExecArgs, antigravityStdin, codexExecArgs } from "./agent-cli";
+import { antigravityExecArgs, antigravityQaArgs, antigravityStdin, claudeExecArgs, codexExecArgs } from "./agent-cli";
 
 describe("Antigravity CLI adapter", () => {
   it("runs headless, unattended, past the 5-minute default timeout", () => {
@@ -22,6 +22,10 @@ describe("Antigravity CLI adapter", () => {
   it("keeps every argument free of prompt text, so a Windows .cmd shim cannot re-split it", () => {
     // measured: through cmd.exe an argv prompt arrived as 15 words with the flags dropped entirely
     for (const arg of antigravityExecArgs("conv-123")) expect(arg).not.toMatch(/\s/);
+  });
+
+  it("pins an explicit model when configured", () => {
+    expect(antigravityExecArgs(null, "gemini-3.8-pro")).toContain("gemini-3.8-pro");
   });
 
   it("sends the prompt as one newline-terminated user event", () => {
@@ -48,6 +52,27 @@ describe("Codex CLI adapter", () => {
       "-c", 'approval_policy="never"',
       "-c", 'sandbox_mode="workspace-write"',
       "thread-123", "-",
+    ]);
+  });
+
+  it("pins an explicit model when configured", () => {
+    expect(codexExecArgs(null, "gpt-5.6-sol")).toContain("gpt-5.6-sol");
+  });
+});
+
+describe("Claude CLI adapter", () => {
+  it("places the model before the tool allowlist", () => {
+    const args = claudeExecArgs("session-1", true, ["Read"], ["Bash"], "claude-sonnet-5");
+    expect(args.indexOf("--model")).toBeLessThan(args.indexOf("--allowedTools"));
+  });
+});
+
+describe("Antigravity QA adapter", () => {
+  it("uses read-only plan mode and schema-bound output", () => {
+    expect(antigravityQaArgs('{"type":"object"}')).toEqual([
+      "--print", "--input-format", "text", "--output-format", "json",
+      "--mode", "plan", "--sandbox", "--json-schema", '{"type":"object"}',
+      "--print-timeout", "10m",
     ]);
   });
 });
