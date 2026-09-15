@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { DryRun, ImportReport, OmnivoiceStatus, VoiceScript, VoiceSettings } from "../types";
+import type { DryRun, ImportReport, LocalCast, OmnivoiceStatus, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -264,10 +264,46 @@ export async function setupOmnivoice(id: string) {
 }
 
 /**
+ * Ai đọc câu nào, và bằng mẫu giọng nào.
+ *
+ * Người dẫn đi qua `--voice`; nhân vật trong video hội thoại đi qua `--speaker`, mỗi vai một cờ. Vai nào
+ * không khai thì công cụ tự lấy giọng voices.json đã gán cho nhân vật đó — nên một video hội thoại sinh
+ * được ngay mà không phải chọn gì, và chọn ở đây chỉ là để khác đi.
+ */
+function castArgs(v: VoiceSettings) {
+  const speakers = v.speakers || {};
+  return [
+    ...(speakers[""]?.trim() || v.voiceId ? ["--voice", speakers[""]?.trim() || v.voiceId] : []),
+    ...Object.entries(speakers)
+      .filter(([who, value]) => who.trim() && String(value || "").trim())
+      .flatMap(([who, value]) => ["--speaker", `${who}=${String(value).trim()}`]),
+  ];
+}
+
+/**
+ * Dàn vai của lượt sinh giọng local: miễn phí, đọc cues.js + voices.json rồi trả lời ngay, nên panel vẽ
+ * được bộ chọn giọng cho từng nhân vật trước khi tốn một giây GPU nào. Công cụ thoát khác 0 khi còn vai
+ * chưa sẵn sàng nhưng vẫn in JSON — đó là một câu trả lời hợp lệ, không phải lỗi.
+ */
+export async function omnivoiceCast(id: string, v: VoiceSettings): Promise<LocalCast> {
+  const { stdout, stderr } = await toolRun([
+    "tools/omnivoice-generate.mjs",
+    "--cues", rel(path.join(videoDir(id), "cues.js")),
+    ...castArgs(v),
+    "--cast", "--json",
+  ]);
+  try {
+    return JSON.parse(stdout) as LocalCast;
+  } catch {
+    throw new HttpError(500, stderr.trim().replace(/^✗ /m, "") || "Không đọc được dàn vai từ cues.js.");
+  }
+}
+
+/**
  * Sinh cả video bằng model local. Kết quả là một thư mục 01.wav, 02.wav… — tức là đúng thứ bước "Nhập
  * audio có sẵn" nhận, nên từ đây trở đi đường đi giống hệt giọng tự thu: kiểm thư mục rồi nhập.
  */
-export async function generateLocal(id: string, voiceId: string) {
+export async function generateLocal(id: string, v: VoiceSettings) {
   const out = path.join(voiceScriptDir(id), "omnivoice");
   startJob(id, "omnivoice-generate");
   setProgress(id, null, "Sinh giọng bằng model local…");
@@ -275,7 +311,7 @@ export async function generateLocal(id: string, voiceId: string) {
     const result = await toolJson<{ dir: string; files: number; cues: number; voice: string }>(id, [
       "tools/omnivoice-generate.mjs",
       "--cues", rel(path.join(videoDir(id), "cues.js")),
-      "--voice", voiceId,
+      ...castArgs(v),
       "--out", rel(out),
       "--json",
     ], (line) => log(id, "output", line));

@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { batchSizeFor, deviceFrom, torchArgs } from './omnivoice.mjs';
+import { batchSizeFor, castLocal, deviceFrom, looksLikeFile, torchArgs } from './omnivoice.mjs';
 
 const NVIDIA_3060 = 'NVIDIA GeForce RTX 3060 Laptop GPU, 6144';
 const NVIDIA_4090 = 'NVIDIA GeForce RTX 4090, 24564';
@@ -89,4 +89,81 @@ test('không GPU hoặc không đo được VRAM thì chọn mức an toàn nh�
 test('Mac Apple Silicon đi theo đúng ngưỡng chật/rộng của bộ nhớ hợp nhất', () => {
   assert.equal(batchSizeFor(deviceFrom({ platform: 'darwin', arch: 'arm64', totalMemGb: 8 })), 2);
   assert.equal(batchSizeFor(deviceFrom({ platform: 'darwin', arch: 'arm64', totalMemGb: 32 })), 16);
+});
+
+// ── phân vai: hai nhân vật, hai giọng ────────────────────────────────────────
+// Các test dưới đây đọc voices.json thật của repo, vì đó chính là thứ quyết định ai mượn giọng ai —
+// một bản giả sẽ kiểm đúng cái nó tự bịa ra.
+
+const HOI_THOAI = [
+  { n: 1, text: 'Chào các bạn.', speaker: 'Tú' },
+  { n: 2, text: 'Bắt đầu từ đâu?', speaker: 'Lucas', delivery: 'hoi' },
+  { n: 3, silent: 2 },
+  { n: 4, text: 'Từ vòng lặp.', speaker: 'Tú' },
+];
+
+test('mỗi nhân vật mượn đúng giọng voices.json đã gán, không phải giọng mặc định của video', () => {
+  const cast = castLocal(HOI_THOAI);
+  assert.equal(cast.dialogue, true);
+  assert.equal(cast.roles.length, 2, 'Tú nói hai câu nhưng vẫn là một vai');
+  const [tu, lucas] = cast.roles;
+  assert.equal(tu.voiceName, 'Nhật Phong');
+  assert.equal(lucas.voiceName, 'Đô Trịnh');
+  assert.notEqual(tu.voiceId, lucas.voiceId, 'hai nhân vật phải ra hai giọng khác nhau');
+  assert.deepEqual(tu.cues, [1, 4]);
+  assert.ok(cast.ok);
+});
+
+test('bí danh trong kịch bản trỏ về đúng nhân vật, kèm mặt và phía của nhân vật đó', () => {
+  // Day 04 gọi Tới là "Lucas" — thẻ hội thoại phải mang mặt của Tới, không phải một vai mới.
+  const lucas = castLocal(HOI_THOAI).roles[1];
+  assert.equal(lucas.character, 'toi');
+  assert.equal(lucas.name, 'Lucas', 'tên hiện lên là tên kịch bản gọi');
+  assert.ok(lucas.avatar, 'phải có avatar để thẻ hội thoại vẽ được');
+});
+
+test('câu khoảng lặng không sinh audio, và kiểu đọc đổi tốc độ của riêng câu đó', () => {
+  const cast = castLocal(HOI_THOAI);
+  assert.deepEqual(cast.rows.map((r) => r.n), [1, 2, 4]);
+  assert.equal(cast.rows.find((r) => r.n === 2).speed, 0.9, 'delivery "hỏi" chậm lại');
+  assert.equal(cast.rows.find((r) => r.n === 1).speed, 1, 'câu không khai delivery giữ nguyên nhịp');
+});
+
+test('đổi giọng cho riêng một vai, các vai khác giữ nguyên', () => {
+  // Gọi vai bằng tên kịch bản, bằng id nhân vật hay bằng tên nhân vật đều phải trúng.
+  for (const key of ['Lucas', 'toi', 'Tới']) {
+    const cast = castLocal(HOI_THOAI, { speakers: { [key]: 'Cẩm Hồng' } });
+    assert.equal(cast.roles[1].voiceName, 'Cẩm Hồng', `khai bằng "${key}"`);
+    assert.equal(cast.roles[1].picked, true);
+    assert.equal(cast.roles[0].voiceName, 'Nhật Phong', 'vai còn lại không bị đụng tới');
+  }
+});
+
+test('một đường dẫn file được hiểu là mẫu giọng, một cái tên thì không', () => {
+  assert.ok(looksLikeFile('D:/giong/mau.wav'));
+  assert.ok(looksLikeFile('mau.mp3'));
+  assert.ok(!looksLikeFile('Nhật Phong'), 'tên giọng không có gạch chéo và không có đuôi audio');
+  const cast = castLocal(HOI_THOAI, { speakers: { 'Tú': 'D:/giong/tu.wav' } });
+  assert.equal(cast.roles[0].source, 'file');
+  assert.equal(cast.roles[1].source, 'catalog', 'vai kia vẫn lấy mẫu từ kho media');
+});
+
+test('tên nhân vật lạ dừng lượt sinh, thay vì lặng lẽ đọc bằng người khác', () => {
+  const cast = castLocal([{ n: 1, text: 'Xin chào.', speaker: 'Bảo' }]);
+  assert.equal(cast.ok, false);
+  assert.match(cast.problems[0], /Bảo/);
+});
+
+test('giọng không có trong danh mục cũng bị chặn: model local cần một mẫu để nhân bản', () => {
+  const cast = castLocal(HOI_THOAI, { speakers: { 'Tú': 'Giọng Không Tồn Tại' } });
+  assert.equal(cast.ok, false);
+  assert.match(cast.roles[0].error, /không có giọng/);
+});
+
+test('video một người dẫn vẫn chạy như cũ: không nhân vật, giọng lấy từ --voice', () => {
+  const cast = castLocal([{ n: 1, text: 'Xin chào.' }], { voice: 'Viên' });
+  assert.equal(cast.dialogue, false);
+  assert.equal(cast.roles.length, 1);
+  assert.equal(cast.roles[0].speaker, null);
+  assert.equal(cast.roles[0].voiceName, 'Viên');
 });

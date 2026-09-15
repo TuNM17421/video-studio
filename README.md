@@ -273,9 +273,11 @@ không phân biệt nguồn.
 
 | Nguồn | Chi phí | Cần cài | Phù hợp khi |
 |---|---|---|---|
-| **ElevenLabs** | Tính theo ký tự | API key | Cần giọng ổn định, có video hội thoại nhiều giọng |
+| **ElevenLabs** | Tính theo ký tự | API key | Cần giọng ổn định nhất |
 | **Audio tự thu** | Miễn phí | `setup:voice` | Có người đọc thật |
 | **OmniVoice local** | Miễn phí | `setup:omnivoice` + `setup:voice` | Có GPU, muốn làm offline |
+
+Cả ba đều làm được video hội thoại nhiều nhân vật.
 
 ### ElevenLabs
 
@@ -312,9 +314,34 @@ node tools/omnivoice-generate.mjs --cues $VIDEO/cues.js --voice "Nhật Phong" -
 node tools/voice-import.mjs --cues $VIDEO/cues.js --from projects/<id>/voice-script/omnivoice
 ```
 
-Đặt tên tệp đúng số câu, bỏ qua câu `silent`, thiếu dù một câu là báo lỗi. Model chỉ nhân bản một giọng cho
-cả video, nên **video có nhân vật (`speaker`) không dùng được OmniVoice**. Hỗ trợ Windows (CUDA), macOS Apple
+Đặt tên tệp đúng số câu, bỏ qua câu `silent`, thiếu dù một câu là báo lỗi. Hỗ trợ Windows (CUDA), macOS Apple
 Silicon (MPS), Linux (CUDA/CPU); Mac Intel chỉ chạy CPU. Gỡ bằng cách xoá `voice/.venv-omnivoice`.
+
+**Video hội thoại.** Kịch bản khai `speaker` ở từng câu thì mỗi câu tự mang giọng của người nói câu đó —
+không phải sinh từng nhân vật rồi ghép tay, vì mỗi dòng trong file JSONL gửi cho model mang `ref_audio`
+riêng. Mặc định mỗi nhân vật mượn đúng giọng `voices.json` đã gán cho nó, tức là giống hệt bản ElevenLabs,
+nên **không phải khai gì cả**. Xem trước ai đọc bằng giọng nào (miễn phí, không đụng GPU):
+
+```bash
+node tools/omnivoice-generate.mjs --cues $VIDEO/cues.js --cast
+```
+
+**Đổi giọng cho một vai** bằng `--speaker "<nhân vật>=<giọng>"`, khai bao nhiêu lần cũng được. Giá trị là
+tên/id một giọng trong `voices.json`, **hoặc đường dẫn tới một file audio trên máy** khi giọng muốn dùng
+chưa có trong danh mục — file ở nguyên chỗ của nó, không tải lên đâu cả:
+
+```bash
+node tools/omnivoice-generate.mjs --cues $VIDEO/cues.js \
+  --speaker "Tú=Cẩm Hồng" --speaker "Lucas=D:/giong/lucas-mau.wav" --out projects/<id>/voice-script/omnivoice
+```
+
+Mẫu tự đưa vào nên dài 10–20 giây. Model cần cả **lời** của đoạn mẫu: đặt một file `.txt` cùng tên cạnh nó
+(chính xác nhất), không có thì Whisper tự nghe rồi nhớ lại cho các lần sau. Nhân vật thì vẫn phải có sẵn
+trong `voices.json` — `speaker` quyết định avatar, phía và màu của thẻ hội thoại, nên tên lạ là lỗi kịch bản
+và bị chặn ngay từ `--cast`.
+
+Muốn cả nhóm dùng chung một giọng mới thì đẩy mẫu lên kho media (`media/files/voices/<tên>.wav`,
+`npm run media`) rồi thêm một mục vào `voices.json` — từ đó nó hiện trong bộ chọn giọng như mọi giọng khác.
 
 ### Danh mục giọng, nhân vật và kiểu đọc
 

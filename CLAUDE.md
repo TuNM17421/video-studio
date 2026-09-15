@@ -98,7 +98,13 @@ còn lại vẫn trúng cache, chỉ câu ấy bị tính phí. Mẫu viết k�
 `templates/modules/dialogue.md` (thêm vào mẫu cơ bản); `npm run voices` in danh sách giọng và kiểu đọc.
 Nhân vật là lớp riêng trong `voices.json → characters`: tên, avatar (key trên kho media), phía, màu, và
 giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn giọng đặt theo người thu (Nhật Phong,
-Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng.
+Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng — cả ba nguồn giọng đều ghi,
+kể cả giọng nhập từ thư mục audio.
+Model local đọc hội thoại được: `omnivoice-generate.mjs` đặt `ref_audio` riêng cho từng dòng JSONL nên các
+nhân vật ra hai giọng trong cùng một lượt; mặc định mỗi nhân vật mượn đúng giọng `voices.json` đã gán.
+`--cast` in trước dàn vai (miễn phí), `--speaker "Tú=<giọng|đường dẫn file>"` đổi giọng một vai — nhận cả
+một file mẫu nằm trên máy, file ở nguyên chỗ đó chứ không đẩy lên R2, lời của mẫu lấy từ `.txt` cùng tên
+hoặc do Whisper nghe.
 
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),
