@@ -36,8 +36,8 @@ export interface VideoRequest {
   scope: Scope;
 }
 
-/** Where a video's narration comes from: the ElevenLabs API, or audio recorded/generated elsewhere. */
-export type VoiceSource = "elevenlabs" | "import" | "local";
+/** Where a video's narration comes from: the ElevenLabs API, OmniVoice on a Kaggle GPU kernel, OmniVoice running locally, or audio recorded/generated elsewhere. */
+export type VoiceSource = "elevenlabs" | "kaggle" | "import" | "local";
 
 /** Trạng thái môi trường OmniVoice trên máy này (tools/setup-omnivoice.mjs --check). */
 export interface OmnivoiceStatus {
@@ -66,6 +66,11 @@ export interface VoiceSettings {
   pause: number;
   /** Last folder of per-câu audio picked for an import. */
   importDir: string;
+  /** Reference WAV OmniVoice clones the voice from (absolute path on this machine). */
+  kaggleRefAudio: string;
+  /** What is actually said in kaggleRefAudio — must match it, or the clone drifts. */
+  kaggleRefText: string;
+  kaggleSpeed: number;
 }
 
 /** One câu in an import report: which file it got, and everything that looked wrong about it. */

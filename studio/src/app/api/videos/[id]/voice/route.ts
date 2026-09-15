@@ -1,13 +1,14 @@
 import type { VoiceSettings, VoiceSource } from "@/lib/types";
 import { handle } from "@/lib/server/http";
+import { hasKaggleCreds } from "@/lib/server/kaggle-creds";
 import { isRunning, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { readState, setStage, updateState } from "@/lib/server/videos";
-import { dryRun, exportScript, generateVoice, hasKey, importVoice, lastDryRun, lastImportReport, generateLocal, omnivoiceServer, omnivoiceStatus, scanImport, setupAlign, setupOmnivoice } from "@/lib/server/voice";
+import { dryRun, exportScript, generateVoice, generateVoiceKaggle, hasKey, importVoice, lastDryRun, lastImportReport, generateLocal, omnivoiceServer, omnivoiceStatus, scanImport, setupAlign, setupOmnivoice } from "@/lib/server/voice";
 
-type Action = "source" | "export-script" | "dry-run" | "generate" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-generate" | "align-setup";
+type Action = "source" | "export-script" | "dry-run" | "generate" | "generate-kaggle" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-generate" | "align-setup";
 
-const SOURCES: VoiceSource[] = ["elevenlabs", "import", "local"];
+const SOURCES: VoiceSource[] = ["elevenlabs", "kaggle", "import", "local"];
 
 function settings(body: { settings?: VoiceSettings }, current: VoiceSettings): VoiceSettings {
   const s = body.settings;
@@ -19,6 +20,9 @@ function settings(body: { settings?: VoiceSettings }, current: VoiceSettings): V
     language: s.language,
     pause: Number(s.pause),
     importDir: String(s.importDir ?? current.importDir ?? "").trim(),
+    kaggleRefAudio: String(s.kaggleRefAudio ?? current.kaggleRefAudio ?? "").trim(),
+    kaggleRefText: String(s.kaggleRefText ?? current.kaggleRefText ?? ""),
+    kaggleSpeed: Number(s.kaggleSpeed ?? current.kaggleSpeed ?? 1.0),
   };
 }
 
@@ -79,6 +83,17 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     void generateVoice(id).catch((error) => {
       log(id, "error", error instanceof Error ? error.message : String(error));
       setStage(id, "voice", "error", "Tạo giọng thất bại.");
+    });
+    return Response.json({ started: true }, { status: 202 });
+  }
+  // Push → poll → download → import → bind, all in one job; see kaggleCommand/generateVoiceKaggle for phases.
+  if (body.action === "generate-kaggle") {
+    if (!hasKaggleCreds()) throw new HttpError(400, "Nhập Kaggle username/key trước.");
+    // No separate "kiểm tra" step for this source — persist what is on screen right before starting.
+    updateState(id, (s) => { s.voice = settings(body, state.voice); });
+    void generateVoiceKaggle(id).catch((error) => {
+      log(id, "error", error instanceof Error ? error.message : String(error));
+      setStage(id, "voice", "error", "Tạo giọng bằng OmniVoice thất bại.");
     });
     return Response.json({ started: true }, { status: 202 });
   }

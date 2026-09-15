@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { DryRun, ImportReport, OmnivoiceStatus, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import { hasKaggleCreds, kaggleEnv, kaggleUsername } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
 
@@ -72,6 +73,11 @@ function ttsArgs(id: string, v: VoiceSettings) {
 
 export function validateVoice(v: VoiceSettings) {
   if (!(v.pause >= 0 && v.pause <= 5)) throw new HttpError(400, "Khoảng nghỉ phải trong 0–5 giây.");
+  if (v.source === "kaggle") {
+    if (!v.kaggleRefText.trim()) throw new HttpError(400, "Nhập đúng lời đọc trong audio mẫu.");
+    if (!(v.kaggleSpeed > 0 && v.kaggleSpeed <= 3)) throw new HttpError(400, "Tốc độ đọc phải trong (0, 3].");
+    return;
+  }
   // Giọng tự thu và model local không gọi API ElevenLabs: model/ngôn ngữ của ElevenLabs không liên quan,
   // và bắt chúng hợp lệ sẽ chặn nhầm bước kiểm tra thư mục của hai nguồn đó.
   if (v.source !== "elevenlabs") return;
@@ -313,12 +319,17 @@ async function autoScan(id: string, dir: string) {
   }
 }
 
+async function runVoiceExport(id: string) {
+  const result = await toolJson<VoiceScript>(id, ["tools/voice-export.mjs", rel(videoDir(id)), "--out", rel(voiceScriptDir(id)), "--json"]);
+  log(id, "system", `Xuất lời đọc · ${result.spoken}/${result.cues} câu → ${rel(voiceScriptDir(id))}`);
+  return result;
+}
+
 /** Write the reading script + the local-model exports so a member can record the narration elsewhere. */
 export async function exportScript(id: string) {
   startJob(id, "voice-script");
   try {
-    const result = await toolJson<VoiceScript>(id, ["tools/voice-export.mjs", rel(videoDir(id)), "--out", rel(voiceScriptDir(id)), "--json"]);
-    log(id, "system", `Xuất lời đọc · ${result.spoken}/${result.cues} câu → ${rel(voiceScriptDir(id))}`);
+    const result = await runVoiceExport(id);
     finishJob(id, "done");
     return result;
   } catch (error) {
@@ -375,6 +386,23 @@ export async function scanImport(id: string, dir: string, v: VoiceSettings) {
   }
 }
 
+/**
+ * The core of an import: match files to câu, assemble the master, bind it to the video. Throws on any
+ * failure; callers own the job lifecycle (startJob/setStage/finishJob) around this.
+ */
+async function bindImportedAudio(id: string, target: string, v: VoiceSettings, force: boolean) {
+  log(id, "system", `Nhập giọng · ${path.basename(target)} · nghỉ ${v.pause} s`);
+  const report = await toolJson<ImportReport>(id, [...importArgs(id, target, v), ...(force ? ["--force"] : [])], (line) => {
+    log(id, "output", line);
+    if (/^align \d+\/\d+/.test(line)) setProgress(id, null, `Đang nhận diện giọng · ${line.replace(/^align /, "")}`);
+  });
+  fs.writeFileSync(importReportFile(id), JSON.stringify(report));
+  if (wasStopped(id)) throw new Error("Đã dừng.");
+  setProgress(id, null, "Gắn giọng vào video…");
+  if (!(await bindVoice(id))) throw new Error("Không gắn được giọng vào video.");
+  return report;
+}
+
 /** Assemble the master from the folder and bind it to the video, exactly as the ElevenLabs path does. */
 export async function importVoice(id: string, force: boolean) {
   const { state } = readState(id);
@@ -382,28 +410,168 @@ export async function importVoice(id: string, force: boolean) {
   const target = assertImportDir(v.importDir);
   startJob(id, "voice");
   setStage(id, "voice", "running");
-  log(id, "system", `Nhập giọng · ${path.basename(target)} · nghỉ ${v.pause} s`);
-  let report: ImportReport;
   try {
-    report = await toolJson<ImportReport>(id, [...importArgs(id, target, v), ...(force ? ["--force"] : [])], (line) => {
-      log(id, "output", line);
-      if (/^align \d+\/\d+/.test(line)) setProgress(id, null, `Đang nhận diện giọng · ${line.replace(/^align /, "")}`);
-    });
+    await bindImportedAudio(id, target, v, force);
+    setStage(id, "voice", "done", null);
+    finishJob(id, "done");
+    return true;
   } catch (error) {
-    const message = error instanceof HttpError ? error.message : String(error);
+    const message = error instanceof HttpError || error instanceof Error ? error.message : String(error);
     setStage(id, "voice", "error", message);
     finishJob(id, "error");
     return false;
   }
-  fs.writeFileSync(importReportFile(id), JSON.stringify(report));
-  if (wasStopped(id)) {
-    setStage(id, "voice", "error", "Đã dừng.");
+}
+
+// ── narration cloned by OmniVoice on a Kaggle GPU kernel ──────────────────────
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const kaggleKernelDir = (id: string) => path.join(stateDir(id), "kaggle-kernel");
+const kaggleDownloadDir = (id: string) => path.join(stateDir(id), "kaggle-output");
+
+/** A single reference WAV, ~10-12s: OmniVoice clones from it, and a large one can push over Kaggle's
+ * kernel-source size limit (observed to fail around 1 MB). */
+function assertRefAudio(file: string) {
+  if (!path.isAbsolute(file)) throw new HttpError(400, "Hãy chọn audio mẫu bằng đường dẫn đầy đủ.");
+  if (!fs.existsSync(file) || !fs.statSync(file).isFile()) throw new HttpError(400, "Không tìm thấy tệp audio mẫu đó.");
+  if (!/\.wav$/i.test(file)) throw new HttpError(400, "Audio mẫu phải là tệp .wav.");
+  return file;
+}
+
+/** tools/voice-kaggle.mjs bakes `${KAGGLE_USERNAME}/<slug>` into kernel-metadata.json's `id`. */
+function kaggleKernelRef(dir: string) {
+  const meta = JSON.parse(fs.readFileSync(path.join(dir, "kernel-metadata.json"), "utf8")) as { id: string };
+  return meta.id;
+}
+
+const KAGGLE_STATUS_TERMS = ["complete", "error", "cancelacknowledged", "running", "queued"] as const;
+type KaggleStatusTerm = (typeof KAGGLE_STATUS_TERMS)[number];
+/**
+ * The kaggle CLI has no stable JSON for kernel status — it prints a free-text line naming one of these.
+ * Exported for testing: there is no `kaggle` CLI in CI to capture real output from, so this parse is
+ * verified against the documented/observed line shapes instead of a live kernel run.
+ */
+export function parseKaggleStatus(output: string): KaggleStatusTerm | null {
+  const lower = output.toLowerCase();
+  return KAGGLE_STATUS_TERMS.find((term) => lower.includes(term)) ?? null;
+}
+
+/** Prefer the run.py-written `out/` subfolder; fall back to a flat download, whichever the CLI gave us. */
+export function resolveKaggleAudioDir(downloadDir: string) {
+  const nested = path.join(downloadDir, "out");
+  const hasWav = (dir: string) => fs.existsSync(dir) && fs.readdirSync(dir).some((f) => /\.wav$/i.test(f));
+  return hasWav(nested) ? nested : downloadDir;
+}
+
+async function kaggleCommand(id: string, label: string, args: string[]) {
+  log(id, "system", label);
+  const env = kaggleEnv();
+  const secret = env.KAGGLE_KEY || "";
+  const safe = (line: string) => secret ? line.split(secret).join("•••") : line;
+  const code = await run(id, "kaggle", args, {
+    env,
+    onLine: (line, stream) => log(id, stream === "stderr" ? "error" : "output", safe(line)),
+  });
+  if (code === 127) throw new Error("Không chạy được `kaggle` CLI. Cài bằng `pip install kaggle` trên máy chạy Studio.");
+  return code;
+}
+
+const POLL_INTERVAL_MS = 20_000;
+const MAX_POLL_ATTEMPTS = 180; // ~1 giờ trần — đủ cho một kernel GPU chạy cả video; Dừng huỷ được bất cứ lúc nào.
+
+/**
+ * End to end: export the locked script, build+push an OmniVoice kernel that clones kaggleRefAudio, poll
+ * until Kaggle finishes, download the per-câu WAVs, then hand them to the same scan+import path a manual
+ * "Nhập audio có sẵn" folder goes through — so alignment, the force-on-problems gate and bindVoice are
+ * exactly the ones already proven there, not a second copy of that logic.
+ */
+export async function generateVoiceKaggle(id: string) {
+  if (!hasKaggleCreds()) throw new HttpError(400, "Nhập Kaggle username/key trước.");
+  const { state } = readState(id);
+  const v = state.voice;
+  validateVoice(v);
+  const refAudio = assertRefAudio(v.kaggleRefAudio);
+  startJob(id, "voice");
+  setStage(id, "voice", "running");
+  try {
+    log(id, "system", `OmniVoice trên Kaggle · tốc độ ${v.kaggleSpeed} · nghỉ ${v.pause} s`);
+    setProgress(id, null, "Xuất lời đọc…");
+    await runVoiceExport(id);
+
+    setProgress(id, null, "Đang chuẩn bị kernel Kaggle…");
+    const kernelDir = kaggleKernelDir(id);
+    fs.rmSync(kernelDir, { recursive: true, force: true });
+    const batch = path.join(voiceScriptDir(id), "voice-batch.jsonl");
+    const buildCode = await run(id, process.execPath, [
+      "tools/voice-kaggle.mjs",
+      "--batch", rel(batch),
+      "--ref-audio", refAudio,
+      "--ref-text", v.kaggleRefText.trim(),
+      "--out", rel(kernelDir),
+      "--speed", String(v.kaggleSpeed),
+    ], {
+      env: { ...process.env, KAGGLE_USERNAME: kaggleUsername() },
+      onLine: (line, stream) => log(id, stream === "stderr" ? "error" : "output", line),
+    });
+    if (buildCode !== 0) throw new Error("Chuẩn bị kernel OmniVoice thất bại, xem nhật ký.");
+    const ref = kaggleKernelRef(kernelDir);
+
+    setProgress(id, null, `Đẩy kernel ${ref} lên Kaggle…`);
+    if ((await kaggleCommand(id, `Đẩy kernel lên Kaggle · ${ref}`, ["kernels", "push", "-p", kernelDir, "--accelerator", "NvidiaTeslaT4"])) !== 0) {
+      throw new Error("Đẩy kernel lên Kaggle thất bại. Kiểm tra username/key và giới hạn dung lượng kernel (audio mẫu nên ngắn, ~10-12 giây).");
+    }
+
+    let terminal: KaggleStatusTerm | null = null;
+    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS && !wasStopped(id); attempt++) {
+      await sleep(POLL_INTERVAL_MS);
+      if (wasStopped(id)) break;
+      let statusText = "";
+      const env = kaggleEnv();
+      const secret = env.KAGGLE_KEY || "";
+      const statusCode = await run(id, "kaggle", ["kernels", "status", ref], {
+        env,
+        onLine: (line, stream) => {
+          const safe = secret ? line.split(secret).join("•••") : line;
+          statusText += `${safe}\n`;
+          log(id, stream === "stderr" ? "error" : "output", safe);
+        },
+      });
+      if (statusCode !== 0) throw new Error("Không đọc được trạng thái kernel Kaggle. Kiểm tra kết nối và credentials.");
+      const status = parseKaggleStatus(statusText);
+      setProgress(id, null, `Kaggle: ${status ?? "đang chờ trạng thái…"} (lượt ${attempt + 1})`);
+      if (status === "complete" || status === "error" || status === "cancelacknowledged") { terminal = status; break; }
+    }
+    if (wasStopped(id)) throw new Error("Đã dừng.");
+    if (!terminal) throw new Error(`Kernel Kaggle chạy quá lâu, chưa thấy trạng thái hoàn tất. Theo dõi trực tiếp: kaggle.com/code/${ref}.`);
+    if (terminal !== "complete") throw new Error(`Kernel Kaggle kết thúc với trạng thái "${terminal}". Xem log trên kaggle.com/code/${ref}.`);
+
+    setProgress(id, null, "Đang tải kết quả từ Kaggle…");
+    const downloadDir = kaggleDownloadDir(id);
+    fs.rmSync(downloadDir, { recursive: true, force: true });
+    if ((await kaggleCommand(id, "Tải kết quả kernel", ["kernels", "output", ref, "-p", downloadDir])) !== 0) {
+      throw new Error("Tải kết quả kernel thất bại.");
+    }
+    const audioDir = resolveKaggleAudioDir(downloadDir);
+
+    setProgress(id, null, "Đối chiếu audio với lời đã khoá…");
+    const target = assertImportDir(audioDir);
+    updateState(id, (s) => { s.voice = { ...v, importDir: target }; });
+    const report = await toolJson<ImportReport>(id, [...importArgs(id, target, v), "--scan"], (line) => {
+      if (/^align \d+\/\d+/.test(line)) setProgress(id, null, `Đang nhận diện giọng · ${line.replace(/^align /, "")}`);
+    });
+    fs.mkdirSync(stateDir(id), { recursive: true });
+    fs.writeFileSync(importReportFile(id), JSON.stringify(report));
+    if (!report.ok) {
+      throw new Error(`Kaggle sinh xong nhưng ${report.rows.filter((r) => r.level === "error").length} câu chưa dùng được — xem bảng đối chiếu rồi bấm "Vẫn nhập" nếu chấp nhận được.`);
+    }
+    await bindImportedAudio(id, target, v, false);
+    setStage(id, "voice", "done", null);
+    finishJob(id, "done");
+    return true;
+  } catch (error) {
+    const message = error instanceof HttpError || error instanceof Error ? error.message : String(error);
+    setStage(id, "voice", "error", message);
     finishJob(id, "error");
     return false;
   }
-  setProgress(id, null, "Gắn giọng vào video…");
-  const bind = await bindVoice(id);
-  setStage(id, "voice", bind ? "done" : "error", bind ? null : "Không gắn được giọng vào video.");
-  finishJob(id, bind ? "done" : "error");
-  return bind;
 }

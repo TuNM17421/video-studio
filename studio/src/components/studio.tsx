@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleFilled, ExportOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
 import { Alert, Button, Empty, Steps, Tag } from "antd";
 import { useSearchParams } from "next/navigation";
-import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
+import { api, dsUrl, fileUrl, formatFrames, useKaggleStatus, useKeyStatus, useVideo } from "@/lib/client";
 import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
@@ -12,9 +12,10 @@ import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
 import { PageAgentBinding } from "./page-agent-binding";
 import { CuesStep, RenderStep, ScenesStep, VoiceStep } from "./steps";
 
-/** Ba nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả ba là sai với hai cái kia. */
+/** Bốn nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả bốn là sai với ba cái kia. */
 const VOICE_SOURCE_LABEL: Record<VoiceSource, string> = {
   elevenlabs: "ElevenLabs",
+  kaggle: "OmniVoice (Kaggle)",
   import: "Audio có sẵn",
   local: "Model local",
 };
@@ -125,7 +126,7 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
       <div><dt>Số câu</dt><dd>{cues?.cues.length ?? "—"}</dd></div>
       <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>
       <div><dt>Nguồn giọng</dt><dd>{VOICE_SOURCE_LABEL[detail?.state.voice.source ?? "elevenlabs"]}</dd></div>
-      {/* Key chỉ có nghĩa với ElevenLabs; hai nguồn kia không đụng tới nó nên đừng bắt nhìn. */}
+      {/* Key chỉ có nghĩa với ElevenLabs; ba nguồn kia không đụng tới nó nên đừng bắt nhìn. */}
       {(detail?.state.voice.source ?? "elevenlabs") === "elevenlabs" && <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>}
     </dl>
   </aside>;
@@ -145,6 +146,7 @@ export default function Studio() {
   const [autoStep, setAutoStep] = useState(true);
   const { detail, logs, job, error: loadError, refresh } = useVideo(id);
   const { hasKey, setHasKey } = useKeyStatus();
+  const { hasKaggleCreds, setHasKaggleCreds } = useKaggleStatus();
   const editorPanel = useRef<HTMLElement>(null);
 
   const goToStep = useCallback((target: Step) => {
@@ -266,7 +268,7 @@ export default function Studio() {
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
         {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
-        {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
+        {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} hasKaggleCreds={hasKaggleCreds} setHasKaggleCreds={setHasKaggleCreds} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}
         {step === "render" && stepProps && <RenderStep {...stepProps} />}
         <WorkflowNavigation step={step} detail={detail} onChange={goToStep} />

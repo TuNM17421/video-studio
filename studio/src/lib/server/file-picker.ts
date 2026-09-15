@@ -8,13 +8,19 @@ const execFileP = promisify(execFile);
 const ZENITY = "/usr/bin/zenity";
 
 export type FilePickerKind = "file" | "directory";
-export type FilePickerPurpose = "feedback" | "video" | "voice";
+export type FilePickerPurpose = "feedback" | "video" | "voice" | "voice-ref";
+
+const TITLES: Record<FilePickerPurpose, string> = {
+  video: "Chọn video cũ",
+  voice: "Chọn thư mục audio giọng đọc",
+  "voice-ref": "Chọn audio mẫu để OmniVoice nhân giọng",
+  feedback: "Chọn feedback bản cũ",
+};
 
 export function filePickerArgs(kind: FilePickerKind, purpose: FilePickerPurpose) {
-  const title = purpose === "video" ? "Chọn video cũ" : purpose === "voice" ? "Chọn thư mục audio giọng đọc" : "Chọn feedback bản cũ";
   const args = [
     "--file-selection",
-    `--title=${title}`,
+    `--title=${TITLES[purpose]}`,
     "--modal",
     "--width=920",
     "--height=620",
@@ -23,6 +29,9 @@ export function filePickerArgs(kind: FilePickerKind, purpose: FilePickerPurpose)
   if (kind === "file" && purpose === "video") {
     args.push("--file-filter=Video | *.mp4 *.mov *.webm *.mkv *.avi");
     args.push("--file-filter=Tất cả tệp | *");
+  }
+  if (kind === "file" && purpose === "voice-ref") {
+    args.push("--file-filter=WAV | *.wav");
   }
   return args;
 }

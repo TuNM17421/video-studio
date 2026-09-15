@@ -237,6 +237,7 @@ const MODELS = [
 
 const SOURCES = [
   { value: "elevenlabs", label: "Tạo bằng ElevenLabs" },
+  { value: "kaggle", label: "OmniVoice (Kaggle)" },
   { value: "import", label: "Nhập audio có sẵn" },
   { value: "local", label: "Model local" },
 ];
@@ -644,6 +645,95 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
   </>;
 }
 
+/** Same RAM-only pattern as the ElevenLabs key: kaggle.json upload or typed username+key, never on disk. */
+function KaggleCredentials({ hasCreds, setHasCreds, busy, act }: {
+  hasCreds: boolean;
+  setHasCreds: (v: boolean) => void;
+  busy: boolean;
+  act: StepProps["act"];
+}) {
+  const [username, setUsername] = useState("");
+  const [key, setKey] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const save = () => act(async () => { await api("/api/kaggle-key", { method: "POST", json: { username, key } }); setHasCreds(true); setUsername(""); setKey(""); });
+  const upload = (file: File) => act(async () => {
+    await api("/api/kaggle-key", { method: "POST", json: { json: await file.text() } });
+    setHasCreds(true);
+  });
+
+  if (hasCreds) {
+    return <div className="vs-key-row">
+      <KeyOutlined /><Tag color="success" className="vs-key-on">Đã nhập Kaggle</Tag>
+      <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => act(async () => { await api("/api/kaggle-key", { method: "DELETE" }); setHasCreds(false); })}>Xoá</Button>
+    </div>;
+  }
+  return <div className="vs-kaggle-creds">
+    <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = ""; }} />
+    <div className="vs-key-row">
+      <Button icon={<KeyOutlined />} disabled={busy} onClick={() => fileInput.current?.click()}>Tải lên kaggle.json</Button>
+      <Input className="vs-key-field" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Kaggle username" disabled={busy} aria-label="Kaggle username" autoComplete="off" spellCheck={false} />
+      <Input.Password className="vs-key-field" value={key} onChange={(e) => setKey(e.target.value)} placeholder="Kaggle API key" disabled={busy} aria-label="Kaggle API key" autoComplete="off" />
+      <Button disabled={busy || !username.trim() || !key.trim()} onClick={save}>Dùng</Button>
+    </div>
+    <small>Lấy tại kaggle.com → Account → Create New Token: tải kaggle.json (chọn ở trên) hoặc chép username/key vào hai ô. Chỉ giữ trong RAM của server này, không ghi ra đĩa.</small>
+  </div>;
+}
+
+/**
+ * OmniVoice cloned on a Kaggle GPU kernel: one button does export → push → poll → download → import →
+ * bind. No separate "kiểm tra" step like ElevenLabs — a GPU kernel run has no per-character cost to
+ * preview, so there is nothing free to check ahead of time; the alignment table only appears if the
+ * result needs a look, exactly like a folder import that came back with problems.
+ */
+function KagglePanel({ detail, settings, setSettings, busy, act, hasKaggleCreds, setHasKaggleCreds }: {
+  detail: VideoDetail;
+  settings: VoiceSettings;
+  setSettings: (v: VoiceSettings) => void;
+  busy: boolean;
+  act: StepProps["act"];
+  hasKaggleCreds: boolean;
+  setHasKaggleCreds: (v: boolean) => void;
+}) {
+  const id = detail.state.id;
+  const [report, setReport] = useState<ImportReport | null>(detail.importReport);
+  const [force, setForce] = useState(false);
+  // The server writes a fresh report at the end of the job; pick it up once it lands.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setReport(detail.importReport); }, [detail.importReport]);
+  const ready = hasKaggleCreds && !!settings.kaggleRefAudio.trim() && !!settings.kaggleRefText.trim();
+  const problems = report?.rows.filter((r) => r.level === "error").length ?? 0;
+  const needsReview = !!report && !report.ok;
+
+  return <>
+    <KaggleCredentials hasCreds={hasKaggleCreds} setHasCreds={setHasKaggleCreds} busy={busy} act={act} />
+    <SourcePickerField label="Audio mẫu để nhân giọng" purpose="voice-ref" value={settings.kaggleRefAudio} disabled={busy} onChange={(kaggleRefAudio) => setSettings({ ...settings, kaggleRefAudio })} />
+    <Form.Item className="field" label="Lời đọc đúng trong audio mẫu">
+      <Input.TextArea value={settings.kaggleRefText} onChange={(e) => setSettings({ ...settings, kaggleRefText: e.target.value })} disabled={busy} rows={2} placeholder="Chép đúng từng chữ được đọc trong audio mẫu ở trên…" />
+    </Form.Item>
+    <div className="field-grid vs-grid-3">
+      <Form.Item className="field" label="Tốc độ đọc"><InputNumber min={0.5} max={2} step={0.1} value={settings.kaggleSpeed} onChange={(kaggleSpeed) => setSettings({ ...settings, kaggleSpeed: kaggleSpeed ?? 1.0 })} /></Form.Item>
+      <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
+    </div>
+    <Alert className="feedback" type="info" showIcon title="Cần cài `kaggle` CLI (pip install kaggle) trên máy chạy Studio. Kernel chạy trên GPU T4 miễn phí hàng tuần của Kaggle — mỗi lượt thường mất vài phút, tuỳ độ dài video." />
+    {detail.artifacts.voiceWav && <div className="audio-result vs-audio"><div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : ""}</span></div><audio controls src={fileUrl(detail.artifacts.voiceWav)} preload="none" /></div>}
+    {needsReview && report && <>
+      <ImportMap report={report} />
+      {problems > 0 && <Checkbox className="vs-force" checked={force} onChange={(e) => setForce(e.target.checked)}>
+        Vẫn nhập dù {problems} câu có vấn đề — tôi đã nghe lại và chấp nhận
+      </Checkbox>}
+      <Button type="primary" block disabled={busy || (problems > 0 && !force)} icon={problems === 0 || force ? <ImportOutlined /> : <LockOutlined />}
+        onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "import", force }))}>
+        Vẫn nhập · {report.matched} câu
+      </Button>
+    </>}
+    <Button type="primary" block disabled={!ready || busy} icon={ready ? <SoundOutlined /> : <LockOutlined />}
+      onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "generate-kaggle", settings }))}>
+      {detail.artifacts.voice ? "Tạo lại giọng bằng OmniVoice (Kaggle)" : "Tạo giọng bằng OmniVoice (Kaggle)"}
+    </Button>
+  </>;
+}
+
 /**
  * Who actually reads this video. The cast is not a setting — it comes from the script: every câu names its
  * speaker, and the dry-run (free) is the first place the real line-up can be seen and counted.
@@ -669,7 +759,12 @@ function Cast({ dry }: { dry: DryRun | null }) {
   </div>;
 }
 
-export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKey }: StepProps & { hasKey: boolean; setHasKey: (v: boolean) => void }) {
+export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKey, hasKaggleCreds, setHasKaggleCreds }: StepProps & {
+  hasKey: boolean;
+  setHasKey: (v: boolean) => void;
+  hasKaggleCreds: boolean;
+  setHasKaggleCreds: (v: boolean) => void;
+}) {
   const id = detail.state.id;
   const status = detail.state.stages.voice;
   const [settings, setSettings] = useState<VoiceSettings>(detail.state.voice);
@@ -677,7 +772,7 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSettings(detail.state.voice); }, [detail.state.voice]);
   const cuesApproved = detail.state.stages.cues === "done";
-  const runLogs = stageLogs(logs, /^Tạo giọng ·|^Nhập giọng ·|^Cài model local|^Cài Whisper|^Model local đã sinh/);
+  const runLogs = stageLogs(logs, /^Tạo giọng ·|^Nhập giọng ·|^Cài model local|^Cài Whisper|^Model local đã sinh|^OmniVoice/);
   const panel = { detail, settings, setSettings, busy, act };
   /** Remember the choice server-side, so a reload does not drop the member back onto the API tab. */
   const changeSource = (source: VoiceSettings["source"]) => {
@@ -695,6 +790,7 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
         <Form layout="vertical" requiredMark={false} component={false}>
           {settings.source === "local" ? <LocalModelPanel {...panel} />
             : settings.source === "import" ? <ImportPanel {...panel} />
+            : settings.source === "kaggle" ? <KagglePanel {...panel} hasKaggleCreds={hasKaggleCreds} setHasKaggleCreds={setHasKaggleCreds} />
             : <ElevenLabsPanel {...panel} hasKey={hasKey} setHasKey={setHasKey} />}
         </Form>
         <JobProgress job={job && ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup"].includes(job.kind) ? job : null} onStop={stop} />

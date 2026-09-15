@@ -128,10 +128,18 @@ dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
    (.md/.txt), thư mục feedback và video cũ nếu có, ghi chú, phạm vi. Bấm **Tạo video**. Nút **Copy prompt**
    cho prompt tương đương để dán vào Claude Code hoặc Claude Design.
 2. **Lời & cue.** Agent viết `cues.js` (lời nguyên văn), dừng lại cho bạn đọc. Gửi góp ý hoặc **Duyệt**.
-3. **Giọng đọc.** Ba nguồn, chọn một trên cùng một bước:
+3. **Giọng đọc.** Bốn nguồn, chọn một trên cùng một bước:
    - **Tạo bằng ElevenLabs** — nhập API key (chỉ giữ trong RAM của server, `Ctrl + C` là mất), Voice ID,
      model, khoảng nghỉ → **Kiểm tra** (dry-run, miễn phí: số câu mới, số ký tự sẽ gửi) → **Tạo giọng**.
      Nút tạo giọng bị khoá khi chưa có key hoặc chưa kiểm tra. Server tự chạy TTS; agent không thấy key.
+   - **OmniVoice (Kaggle)** — nhân giọng miễn phí trên GPU T4 của Kaggle thay vì máy của bạn. Nhập Kaggle
+     credentials (tải lên `kaggle.json` từ Account → Create New Token, hoặc gõ tay username/key — cũng chỉ
+     giữ RAM, không ghi đĩa), chọn một audio mẫu WAV ~10-12 giây, gõ đúng lời được đọc trong đó (tốc độ mặc
+     định 1.0 — đọc nhanh hơn dễ làm OmniVoice nuốt mất từ đầu câu), rồi bấm **Tạo giọng bằng OmniVoice**.
+     Studio tự xuất lời → build kernel → đẩy lên Kaggle → theo dõi tới khi chạy xong → tải WAV về → đối
+     chiếu bằng Whisper → gắn vào video, một lượt duy nhất. Máy chạy Studio cần cài `kaggle` CLI
+     (`pip install kaggle`). Nếu vài câu chưa khớp tốt, Studio dừng lại và cho xem bảng đối chiếu để bạn
+     chấp nhận hoặc sửa, giống hệt luồng nhập audio có sẵn bên dưới.
    - **Nhập audio có sẵn** — trỏ vào thư mục `01.wav, 02.wav…` tự thu, kiểm rồi nhập.
    - **Model local** — cài OmniVoice ngay trong giao diện (nút *Setup OmniVoice local model*), chọn giọng
      nhân bản từ cùng danh mục với tab ElevenLabs, sinh cả video một lượt rồi nhập — không tốn credit.
@@ -146,7 +154,8 @@ dựng; bạn duyệt hoặc gửi góp ý ở mỗi điểm dừng:
   `workspace-write` và policy không xin quyền; Antigravity chạy `--dangerously-skip-permissions` vì bản
   headless của nó không có allowlist theo từng lần gọi, và mặc định sẽ **âm thầm bỏ qua** mọi lệnh cần
   duyệt rồi vẫn thoát mã 0. Cả ba đều tuân theo `AGENTS.md` và không nhận key
-  ElevenLabs đang giữ trong RAM; không được đọc `.env`, tạo giọng tốn phí, commit/push hay `/design-sync`.
+  ElevenLabs hay Kaggle username/key đang giữ trong RAM; không được đọc `.env`, tạo giọng tốn phí,
+  commit/push hay `/design-sync`.
 - Khi phát triển Video Studio: `STUDIO_TTS_MOCK=1 npm run studio` tạo giọng im lặng thay vì gọi ElevenLabs.
 
 ## Gen video bằng Claude CLI

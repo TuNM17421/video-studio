@@ -1167,6 +1167,17 @@ button.vs-tile:hover {
 .vs-key-on .connection-dot {
   margin: 0;
 }
+.vs-kaggle-creds {
+  margin-bottom: 18px;
+}
+.vs-kaggle-creds .vs-key-row {
+  margin-bottom: 6px;
+}
+.vs-kaggle-creds > small {
+  display: block;
+  font-size: 10px;
+  color: var(--subtle);
+}
 .vs-dry {
   display: flex;
   align-items: center;
