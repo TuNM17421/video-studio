@@ -8,7 +8,9 @@
  *   --list      only report what is local, what is on R2 and what changed; upload nothing
  *   --dry-run   same report, plus exactly what a real run would upload or delete
  *   --force     re-upload every local file even when its hash already matches the manifest
- *   --prune     delete objects the manifest knows but `media/files/` no longer has
+ *   --prune     delete objects the manifest knows but `media/files/` no longer has. Refused when this
+ *               machine plainly does not hold the library (see pruneGuard in lib/media.mjs) — a fresh
+ *               clone has an empty media/files/, and there it would wipe the whole bucket.
  *
  * `media/files/<key>` maps one-to-one to the object `<key>` in the bucket, so the sample video of a style
  * lives at `media/files/styles/<style id>/sample.mp4` and is read back from `<R2_PUBLIC_BASE>/styles/…`.
@@ -25,6 +27,7 @@ import https from 'node:https';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { encodeSegment, EMPTY_SHA, objectUrl, signRequest } from './lib/r2.mjs';
+import { pruneGuard } from './lib/media.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEDIA = path.join(ROOT, 'media');
@@ -153,6 +156,17 @@ for (const key of orphans) console.log(`  thừa    ${key.padEnd(46)} ${flags.ha
 if (!entries.length && !orphans.length) console.log('  (trống — bỏ file vào media/files/ rồi chạy lại)');
 
 if (listOnly) process.exit(0);
+
+// Chặn trước cả --dry-run: biết mình đang ở nhầm máy lúc xem thử vẫn hơn lúc vừa bấm Enter. Danh sách
+// "thừa" ở trên đã in ra rồi nên không giấu gì; chỉ là không cho đi tiếp.
+const refusal = flags.has('--prune') ? pruneGuard({ local: local.length, orphans: orphans.length }) : null;
+if (refusal) {
+  fail(`Không chạy --prune: ${refusal}.
+  media/files/ là bản gốc của kho media, mà file nặng không nằm trong git — máy vừa clone về luôn rỗng.
+  Xoá trên R2 là mất hẳn, cả nhóm mất theo.
+  Nếu đúng là muốn xoá: đồng bộ đủ media/files/ trước, hoặc xoá thẳng object trong bảng điều khiển Cloudflare R2.
+  Bỏ --prune thì lệnh vẫn đẩy file mới lên bình thường.`);
+}
 
 const missing = Object.entries({ R2_ACCOUNT_ID: cfg.account, R2_BUCKET: cfg.bucket, R2_ACCESS_KEY_ID: cfg.keyId, R2_SECRET_ACCESS_KEY: cfg.secret, R2_PUBLIC_BASE: cfg.base })
   .filter(([, v]) => !v).map(([n]) => n);
