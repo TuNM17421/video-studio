@@ -235,15 +235,14 @@ function moduleSections(modules: string[]) {
 }
 
 /** What the agent must do for a quiz — cues must be marked even when the video uses no quiz music. */
-function quizSection(enabled: boolean, quiz: string) {
+function quizSection(enabled: boolean) {
   if (!enabled) return [];
   return [
     "## Quiz",
     "",
-    quiz === NO_MUSIC
-      ? "Video này có quiz nhưng không dùng nhạc quiz. Trong `cues.js`, vẫn đánh dấu `quiz: true` cho **đúng khoảng chờ người"
-      : `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng khoảng chờ người`,
-    "xem suy nghĩ** — cue `silent`, lúc đồng hồ chạy và không có lời đọc.",
+    "Video này có quiz. Trong `cues.js`, đánh dấu `quiz: true` cho **đúng khoảng chờ người xem suy nghĩ** — cue",
+    "`silent`, lúc đồng hồ chạy và không có lời đọc. Có dùng nhạc quiz hay không (và bài nào) chọn ở bước Render,",
+    "nên luôn đánh dấu dù chưa biết nhạc.",
     "",
     "**Không** đánh dấu câu đọc câu hỏi: người hỏi đang nói thì vẫn là nhạc nền, nhạc quiz chỉ vào khi câu hỏi đã",
     "dứt. Cũng **không** đánh dấu phần chữa bài — nhạc phải tắt trước khi bắt đầu giải thích.",
@@ -251,14 +250,12 @@ function quizSection(enabled: boolean, quiz: string) {
     "Các câu liền nhau cùng có `quiz: true` được gom thành một đoạn. Đặt trường này ở cuối phần khai của câu,",
     "**đừng** đặt ngay sau `n:` — `voice-timing.mjs --write-cues` ghi `frames`/`speech` vào đúng chỗ đó và sẽ xoá mất nó.",
     "",
-    quiz === NO_MUSIC
-      ? "Không có nhạc quiz; giữ nguyên khoảng suy nghĩ theo kịch bản."
-      : "Trong đoạn quiz, nhạc nền tự động tắt hẳn và nhạc quiz vào (có fade 0,5 giây hai đầu) — không phải làm gì thêm.",
+    "Nếu có nhạc quiz, trong đoạn quiz nhạc nền tự động tắt hẳn và nhạc quiz vào (fade 0,5 giây hai đầu) — không phải làm gì thêm.",
     "",
   ];
 }
 
-export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string, quizMusic: string = NO_MUSIC) {
+export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
     "",
@@ -273,7 +270,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
     ...moduleSections(r.modules),
-    ...quizSection(r.modules.includes("quiz") || quizMusic !== NO_MUSIC, quizMusic),
+    ...quizSection(r.modules.includes("quiz")),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",
