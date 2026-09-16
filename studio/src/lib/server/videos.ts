@@ -18,11 +18,13 @@ export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model
 /** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
 export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
-type LegacyVideoState = Omit<VideoState, "agent" | "music"> & {
+type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions"> & {
   agent?: Partial<VideoState["agent"]>;
   sessionId?: unknown;
   /** Before quiz music there was one track, stored as a bare id — and "bg" was the only one. */
   music?: string | Partial<MusicChoice>;
+  /** Missing before captions became optional — every video had them. */
+  captions?: unknown;
 };
 
 /** The single pre-catalog track became bg-goc, the reference bed the catalog was built around. */
@@ -50,6 +52,7 @@ export function normalizeVideoState(value: unknown): VideoState {
     request: { ...state.request, modules },
     voice: { ...DEFAULT_VOICE, ...stored.voice },
     music,
+    captions: stored.captions !== false,
   } as VideoState;
 }
 
@@ -130,7 +133,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, captions: true, lastError: null },
     managed: false,
   };
 }

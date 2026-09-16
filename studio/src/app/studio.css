@@ -1412,7 +1412,20 @@ button.vs-tile:hover {
   color: var(--subtle);
 }
 
-/* ── music picker (background + quiz, render step) ───────────────────────── */
+/* ── captions + music pickers (render step) ─────────────────────────────── */
+.vs-captions-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vu-space-3);
+  margin-bottom: 18px;
+}
+.vs-captions-picker > small {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+}
 .vs-music-picker {
   min-width: 0;
   display: grid;

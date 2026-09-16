@@ -43,6 +43,7 @@ export async function renderVideo(id: string, base: string) {
     "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
     ...(background !== NO_MUSIC ? ["--music-track", background] : []),
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
+    ...(state.captions ? [] : ["--no-captions"]),
     ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
     const m = line.match(/(\d+)\/(\d+) frames/);

@@ -48,7 +48,8 @@ style is `styles/<style>.json` (palette, showcase components, rules — they ove
    numbers/results the script does not give. Parallel forks per scene group work well.
    `npm run build && npm run verify`; QA stills to `projects/<id>/qa/` with `node tools/shoot.mjs --batch`.
 4. **render** — `node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4`
-   (+ `--base` of the preview server), QA the MP4; `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`.
+   (+ `--base` of the preview server; `--no-captions` bỏ thanh phụ đề — Studio hỏi "Phụ đề: Có/Không" ở bước
+   Render, mặc định Có), QA the MP4; `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`.
 5. **deliver** — `chapters/DayNN/<id>-chương.txt` (`MM:SS: tên chương`, one per script section),
    `projects/<id>/PROMPTS.md`, final build + verify.
 Optional: `/design-sync` pushes `vinuni-lesson-video-ds/` to the Claude Design project in
