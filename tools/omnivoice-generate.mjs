@@ -11,6 +11,8 @@
  *   --out     nơi đổ 01.wav, 02.wav… (mặc định projects/<id>/voice-script/omnivoice)
  *   --json    in một dòng JSON kết quả (Video Studio đọc cái này)
  *   --batch-size  số câu mỗi lượt (mặc định: tự chọn theo VRAM)
+ *   --ref <file>  chỉ kiểm một file mẫu giọng rồi dừng: Whisper có nghe ra lời không, mẫu có quá dài không
+ *             — Studio gọi ngay lúc người dùng chọn file, để lỗi lộ ra ở đó chứ không phải giữa lượt sinh
  *
  * Vì sao không bảo người dùng tự gõ từng câu vào giao diện web: một video là 40+ câu, và tên file phải
  * khớp đúng số câu thì bước nhập mới ghép được. `omnivoice-infer-batch` nhận một file JSONL rồi tự đặt
@@ -28,7 +30,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { batchSizeFor, castLocal, detectDevice, inferBatchBin, MODEL_ID, refStatus, resolveRefs, ROOT, SETUP_HINT } from './lib/omnivoice.mjs';
+import { batchSizeFor, castLocal, detectDevice, inferBatchBin, MODEL_ID, REF_LONG_SECONDS, refFromFile, refStatus, resolveRefs, ROOT, SETUP_HINT } from './lib/omnivoice.mjs';
 import { cueKey } from './lib/voice-files.mjs';
 
 const argv = process.argv.slice(2);
@@ -41,6 +43,22 @@ const value = (name, fallback) => {
 const values = (name) => argv.flatMap((a, i) => (a === `--${name}` && argv[i + 1] && !argv[i + 1].startsWith('--') ? [argv[i + 1]] : []));
 const fail = (m) => { console.error(`✗ ${m}`); process.exit(1); };
 const note = (m) => console.error(`  ${m}`); // stderr = tiến trình, stdout để dành cho --json
+
+// `--ref` kiểm một file mẫu ngay lúc người dùng chọn, trước khi nó kịp làm hỏng cả lượt sinh: Whisper có
+// nghe ra lời không (kết quả được nhớ lại, lượt sinh không phải nghe lần nữa), và mẫu có quá dài không.
+// Đã thấy thật: một file MP3 tám mươi giây không có tiếng nói làm lượt sinh chết mà panel không nói gì.
+if (flag('ref')) {
+  const file = value('ref', null);
+  if (!file) fail('usage: node tools/omnivoice-generate.mjs --ref <file audio> --json');
+  const abs = path.resolve(file);
+  const r = await refFromFile(abs, note);
+  const payload = r.error
+    ? { file: abs, ok: false, error: r.error }
+    : { file: r.file, ok: true, text: r.text, from: r.from, seconds: r.seconds ?? null, long: Boolean(r.seconds && r.seconds > REF_LONG_SECONDS) };
+  if (flag('json')) console.log(JSON.stringify(payload));
+  else console.log(payload.ok ? `Nghe được (${payload.from}): ${payload.text}` : `✗ ${payload.error}`);
+  process.exit(payload.ok ? 0 : 1);
+}
 
 const cuesPath = value('cues', null);
 if (!cuesPath) fail('usage: node tools/omnivoice-generate.mjs --cues <video dir>/cues.js --voice <id> --out <dir>');

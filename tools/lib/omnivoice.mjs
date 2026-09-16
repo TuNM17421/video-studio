@@ -206,7 +206,7 @@ export function castLocal(cues, { voice = '', speakers = {} } = {}) {
     // dùng tạm giọng danh mục người dùng vừa bỏ — đó là lỗi đã ăn thật trên panel.
     if (wanted === FILE_PENDING) {
       role.source = 'file';
-      role.error = 'đã chọn "giọng từ file trên máy" nhưng chưa chọn file mẫu nào.';
+      role.error = 'chưa chọn file giọng mẫu.';
       return role;
     }
     // Một file trên máy là đường ngắn nhất cho giọng chưa có trong danh mục: không phải đẩy lên đâu cả,
@@ -309,9 +309,19 @@ export function refSidecar(file) {
   return null;
 }
 
-/** Lời đã nghe được của một file mẫu, nhớ theo nội dung file — thay file là nhớ lại từ đầu. */
-const refTextCache = (file) =>
-  path.join(REFS, `${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 16)}.txt`);
+/** Khoá cache của một file mẫu, theo nội dung file — thay file là nhớ lại từ đầu. */
+const refKey = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 16);
+/** Lời đã nghe được của một file mẫu. */
+const refTextCache = (file) => path.join(REFS, `${refKey(file)}.txt`);
+/**
+ * Lần nghe đã THẤT BẠI của một file mẫu (không có tiếng nói…). Nhớ cả kết quả xấu, vì nếu không thì bước
+ * kiểm dàn vai vẫn khen "lần đầu sẽ nghe bằng Whisper" cho một file đã biết là hỏng, và lượt sinh lại
+ * chết ở đúng chỗ cũ. Một file .txt cùng tên đặt cạnh xoá được nó — lời người ghi luôn thắng.
+ */
+export const refFailCache = (file) => path.join(REFS, `${refKey(file)}.fail`);
+const refFailure = (file) => {
+  try { return fs.readFileSync(refFailCache(file), 'utf8').trim() || null; } catch { return null; }
+};
 
 /**
  * Mẫu giọng là một file trên máy — "giọng khác" mà người dùng tự đưa vào.
@@ -329,6 +339,9 @@ export async function refFromFile(file, log = () => {}) {
   if (sidecar) return { file: abs, text: sidecar.text, from: 'sidecar' };
   const cache = refTextCache(abs);
   if (fs.existsSync(cache)) return { file: abs, text: fs.readFileSync(cache, 'utf8').trim(), from: 'cache' };
+  // Đã nghe rồi và không ra lời: trả lại đúng câu đó, không đốt thêm một lượt Whisper.
+  const failed = refFailure(abs);
+  if (failed) return { error: failed };
   if (!alignPython()) {
     return { error: `chưa biết lời đọc trong ${path.basename(abs)}. Đặt một file .txt cùng tên chứa đúng lời đó, hoặc cài môi trường nhận diện giọng (npm run setup:voice) để tự nghe.` };
   }
@@ -338,9 +351,15 @@ export async function refFromFile(file, log = () => {}) {
   if (!res.ok) return { error: `không nhận diện được lời trong ${path.basename(abs)}: ${res.error}` };
   const item = res.result?.items?.[0];
   const text = String(item?.text || '').trim();
-  if (!text) return { error: `${path.basename(abs)} không nghe ra lời nào — kiểm tra lại file mẫu.` };
   fs.mkdirSync(REFS, { recursive: true });
+  if (!text) {
+    // Không nhắc tên file: với file Studio chép về thì tên là một chuỗi hash, còn vai thì đã đứng trước câu này.
+    const error = 'mẫu giọng không có tiếng nói — Whisper không nghe ra lời nào. Chọn một đoạn 10–20 giây có người đó nói.';
+    fs.writeFileSync(refFailCache(abs), `${error}\n`);
+    return { error };
+  }
   fs.writeFileSync(cache, `${text}\n`);
+  fs.rmSync(refFailCache(abs), { force: true });
   const words = item.words || [];
   return { file: abs, text, from: 'whisper', seconds: words.length ? words[words.length - 1][2] : null };
 }
@@ -387,6 +406,9 @@ export function refStatus(role) {
     const sidecar = refSidecar(role.file);
     if (sidecar) return { ready: true, note: `lời mẫu lấy từ ${path.basename(sidecar.path)}` };
     if (fs.existsSync(refTextCache(role.file))) return { ready: true, note: 'đã biết lời của mẫu này' };
+    // Đã nghe rồi và hỏng: nói thẳng ở đây, đừng khen "lần đầu sẽ nghe" rồi để lượt sinh chết ở chỗ cũ.
+    const failed = refFailure(role.file);
+    if (failed) return { ready: false, note: failed };
     return alignPython()
       ? { ready: true, note: 'lần đầu sẽ nghe lời của mẫu bằng Whisper' }
       : { ready: false, note: 'chưa biết lời của mẫu: đặt file .txt cùng tên, hoặc cài Whisper (npm run setup:voice)' };

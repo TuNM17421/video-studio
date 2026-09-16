@@ -1,11 +1,10 @@
 "use client";
 
-import { UserOutlined } from "@ant-design/icons";
-import { Select } from "antd";
+import { FileOutlined, FolderOpenOutlined, LoadingOutlined, UploadOutlined, UserOutlined, WarningFilled } from "@ant-design/icons";
+import { Button, Input, Select } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import type { LocalCast, LocalRole, VoiceCatalog, VoiceDef, VoiceSettings } from "@/lib/types";
-import { SourcePickerField } from "./source-picker";
 import { PlayButton, usePreview } from "./voice-picker";
 
 /**
@@ -47,11 +46,14 @@ export function useVoiceCatalog() {
   return catalog;
 }
 
+/** Đuôi audio model local nhận (tools/lib/voice-files.mjs), cộng .txt để chọn kèm lời của đoạn mẫu. */
+const ACCEPT = ".wav,.mp3,.m4a,.mp4,.aac,.flac,.ogg,.opus,.webm,.txt";
+
 /**
- * Ô chọn file mẫu: mở hộp thoại của máy, hoặc gõ đường dẫn tay khi không có hộp thoại. Chọn qua hộp thoại
- * thì ra nguyên đường dẫn một lần; gõ tay thì trình chọn báo từng ký tự, mà mỗi lần báo lên trên là một
- * lần hỏi lại máy chủ xem file có thật và đã biết lời của nó chưa — nên gom lại, đường dẫn đứng yên 400 ms
- * mới tính.
+ * Ô chọn file mẫu. Đường chính là hộp thoại thường của trình duyệt: trình duyệt chỉ đưa nội dung chứ không
+ * đưa đường dẫn, nên máy chủ (chạy ngay trên máy này) chép một bản vào voice/cache/refs/uploads/ rồi trả
+ * đường dẫn bản chép — xem api/voice-sample. Ai đã có file sẵn và không muốn chép thì gõ đường dẫn tay;
+ * ô đó chỉ báo lên khi rời ô hoặc Enter, vì mỗi lần báo là một lần hỏi lại máy chủ.
  */
 export function RefFileField({ value, onChange, disabled, note, error }: {
   value: string;
@@ -60,26 +62,107 @@ export function RefFileField({ value, onChange, disabled, note, error }: {
   note?: string | null;
   error?: string | null;
 }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [manual, setManual] = useState(false);
   const [text, setText] = useState(value);
+  const [busy, setBusy] = useState(false);
+  const [issue, setIssue] = useState<string | null>(null);
+  // File vừa chọn mà máy chủ nghe không ra lời: giữ tên để người dùng biết file nào bị từ chối.
+  const [rejected, setRejected] = useState<{ name: string; error: string } | null>(null);
+  // Máy chủ đã nghe được gì từ mẫu — hiện lại để người dùng biết chọn đúng đoạn.
+  const [heard, setHeard] = useState<{ text: string; seconds: number | null; long: boolean } | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setText(value); }, [value]);
-  // onChange của hàng cha đổi mỗi lần render; giữ trong ref để bộ đếm không bị đặt lại vô cớ.
-  const commit = useRef(onChange);
-  useEffect(() => { commit.current = onChange; }, [onChange]);
-  useEffect(() => {
-    const next = text.trim();
-    if (next === value) return;
-    const t = setTimeout(() => commit.current(next), 400);
-    return () => clearTimeout(t);
-  }, [text, value]);
+  const commit = () => {
+    if (text.trim() === value) return;
+    setHeard(null);
+    setRejected(null);
+    onChange(text.trim());
+  };
 
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setIssue(null);
+    setBusy(true);
+    try {
+      const form = new FormData();
+      for (const f of Array.from(files)) form.append("file", f);
+      const saved = await api<{ path: string | null; name: string; ref: { ok: boolean; text?: string; seconds?: number | null; long?: boolean; error?: string } }>(
+        "/api/voice-sample", { method: "POST", body: form },
+      );
+      if (!saved.path || !saved.ref.ok) {
+        setRejected({ name: saved.name, error: saved.ref.error || "không dùng được file này." });
+        setHeard(null);
+        return;
+      }
+      setRejected(null);
+      setHeard({ text: saved.ref.text || "", seconds: saved.ref.seconds ?? null, long: Boolean(saved.ref.long) });
+      onChange(saved.path);
+    } catch (e) {
+      setIssue(e instanceof Error ? e.message : "Không nhận được file.");
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  };
+
+  const chosen = value ? value.split(/[\\/]/).pop() || value : "";
+  const problem = issue || rejected?.error || error;
+  const meta = problem
+    ? hoaDau(problem)
+    : heard
+      ? heard.long
+        ? `Mẫu dài ${Math.round(heard.seconds ?? 0)} giây — nên cắt còn 10–20 giây, mẫu dài làm mỗi câu nặng thêm`
+        : `Nghe được: "${heard.text.length > 70 ? `${heard.text.slice(0, 70)}…` : heard.text}"`
+      : note || (chosen ? "Nhấp để đổi file" : "Nhấp để mở File Explorer");
+  // Cùng một thẻ với ba trình chọn khác của Studio (feedback, video cũ, thư mục audio): bấm cả thẻ là mở
+  // File Explorer; chưa chọn thì thẻ viền đỏ nói thẳng còn thiếu gì, chọn rồi thì viền liền và hiện tên file.
   return <div className="vs-cast-file">
-    <SourcePickerField label="File giọng mẫu" purpose="sample" value={text} onChange={setText} disabled={disabled} />
-    <small className={error ? "is-error" : undefined}>
-      {error || note || "Một đoạn 10–20 giây người đó đọc là đủ. Đặt thêm file .txt cùng tên chứa đúng lời đoạn đó thì giọng bám sát hơn; không có thì Whisper tự nghe."}
-    </small>
+    <input ref={input} type="file" accept={ACCEPT} multiple hidden onChange={(e) => void upload(e.target.files)} />
+    <button
+      type="button"
+      className={`vs-source-picker ${chosen && !rejected ? "is-selected" : ""} ${problem ? "is-invalid" : ""}`}
+      disabled={disabled || busy}
+      onClick={() => input.current?.click()}
+      aria-label={chosen ? `Đổi file giọng mẫu, đang chọn ${chosen}` : "Chọn file giọng mẫu trên máy"}
+    >
+      <span className="vs-source-picker-icon" aria-hidden="true">
+        {busy ? <LoadingOutlined spin /> : problem ? <WarningFilled /> : chosen ? <FileOutlined /> : <UploadOutlined />}
+      </span>
+      <span className="vs-source-picker-copy">
+        <strong>{busy ? "Đang nhận file và nghe thử…" : rejected ? rejected.name : chosen || "Chọn file giọng mẫu trên máy"}</strong>
+        <small title={value || undefined}>
+          {rejected
+            ? "Chọn file khác — một đoạn 10–20 giây có tiếng người đó nói"
+            : chosen ? value : "WAV, MP3, M4A, FLAC… một đoạn 10–20 giây người đó đọc; kèm file .txt cùng tên nếu có lời"}
+        </small>
+        <span className="vs-source-picker-meta">{meta}</span>
+      </span>
+      <span className="vs-source-picker-action" aria-hidden="true"><UploadOutlined /></span>
+    </button>
+    {manual
+      ? <div className="vs-source-manual">
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onPressEnter={commit}
+            disabled={disabled}
+            status={error ? "error" : undefined}
+            prefix={<FolderOpenOutlined />}
+            placeholder="C:\\giong\\mau-10-giay.wav"
+            aria-label="Đường dẫn file giọng mẫu"
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <Button type="link" size="small" onClick={() => setManual(false)}>Ẩn nhập thủ công</Button>
+        </div>
+      : <Button type="link" size="small" className="vs-cast-file-manual" disabled={disabled} onClick={() => setManual(true)}>Nhập đường dẫn thủ công</Button>}
   </div>;
 }
+
+/** "chưa chọn file giọng mẫu." → "Chưa chọn file giọng mẫu." — máy chủ viết thường vì thường ghép sau tên vai. */
+const hoaDau = (s: string) => s.charAt(0).toLocaleUpperCase("vi") + s.slice(1);
 
 /** Giọng mà voices.json gán sẵn cho vai này — cái sẽ dùng nếu không chọn gì. */
 function defaultVoiceFor(role: LocalRole, catalog: VoiceCatalog | null): VoiceDef | null {

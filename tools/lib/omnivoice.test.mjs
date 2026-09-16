@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { batchSizeFor, castLocal, deviceFrom, FILE_PENDING, looksLikeFile, torchArgs } from './omnivoice.mjs';
+import { batchSizeFor, castLocal, deviceFrom, FILE_PENDING, looksLikeFile, refFailCache, refFromFile, refStatus, torchArgs } from './omnivoice.mjs';
 
 const NVIDIA_3060 = 'NVIDIA GeForce RTX 3060 Laptop GPU, 6144';
 const NVIDIA_4090 = 'NVIDIA GeForce RTX 4090, 24564';
@@ -159,6 +159,34 @@ test('chọn "giọng từ file" mà chưa chọn file thì là lỗi chặn sin
   assert.equal(cast.ok, false, 'phải chặn lượt sinh');
   assert.ok(cast.problems.some((p) => p.includes('Tú') && /chưa chọn file/.test(p)), 'lỗi phải gọi đúng tên vai');
   assert.equal(cast.roles[1].error, null, 'vai còn lại không bị vạ lây');
+});
+
+test('mẫu đã nghe thất bại được nhớ lại: dàn vai báo ngay, không khen "lần đầu sẽ nghe" và không nghe lần nữa', async () => {
+  // Đã thấy thật: một MP3 không có tiếng nói làm lượt sinh chết, mà thẻ nhân vật vẫn xanh "lần đầu sẽ nghe
+  // lời của mẫu bằng Whisper" — vì bước kiểm dàn vai không biết lần nghe trước đã hỏng.
+  const [fs, os, path] = await Promise.all([import('node:fs'), import('node:os'), import('node:path')]);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ref-fail-'));
+  const file = path.join(dir, 'khong-co-loi.wav');
+  fs.writeFileSync(file, 'không phải wav thật, chỉ cần nội dung để băm');
+  const failCache = refFailCache(file);
+  fs.mkdirSync(path.dirname(failCache), { recursive: true });
+  const hadCache = fs.existsSync(failCache);
+  fs.writeFileSync(failCache, 'mẫu giọng không có tiếng nói — Whisper không nghe ra lời nào.\n');
+  try {
+    const role = { source: 'file', file, error: null };
+    const status = refStatus(role);
+    assert.equal(status.ready, false);
+    assert.match(status.note, /không có tiếng nói/);
+    const again = await refFromFile(file);
+    assert.match(again.error, /không có tiếng nói/, 'trả lại đúng câu đã nhớ, không chạy Whisper');
+    // Người dùng đặt .txt cùng tên cạnh file thì lời người ghi thắng cache hỏng.
+    fs.writeFileSync(path.join(dir, 'khong-co-loi.txt'), 'Lời của đoạn mẫu.');
+    assert.equal(refStatus(role).ready, true, 'có .txt cùng tên là sẵn sàng');
+    assert.equal((await refFromFile(file)).from, 'sidecar');
+  } finally {
+    if (!hadCache) fs.rmSync(failCache, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('tên nhân vật lạ dừng lượt sinh, thay vì lặng lẽ đọc bằng người khác', () => {

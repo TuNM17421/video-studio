@@ -161,7 +161,13 @@ async function toolJson<T>(id: string, args: string[], onLine?: (line: string) =
       onLine?.(line);
     },
   });
-  if (code !== 0) throw new HttpError(500, errors.join("\n").replace(/^✗ /, "") || "Không chạy được công cụ.");
+  if (code !== 0) {
+    // stderr của tool lẫn dòng tiến trình ("Nghe lời của mẫu…") với lỗi thật; lỗi bắt đầu từ dòng `✗` cuối.
+    // Chỉ giữ từ đó trở đi, bỏ dấu, để panel đọc được thẳng thay vì nhìn nguyên cả nhật ký.
+    const at = errors.map((l) => l.startsWith("✗ ")).lastIndexOf(true);
+    const message = (at >= 0 ? errors.slice(at) : errors).join("\n").replace(/^✗ /, "").trim();
+    throw new HttpError(500, message || "Không chạy được công cụ.");
+  }
   try { return JSON.parse(out) as T; } catch { throw new HttpError(500, errors.join("\n") || "Công cụ trả về dữ liệu không đọc được."); }
 }
 
@@ -183,6 +189,24 @@ function toolRun(args: string[]): Promise<{ code: number; stdout: string; stderr
 async function toolState<T>(args: string[], fallback: T): Promise<T> {
   const { stdout } = await toolRun(args);
   try { return JSON.parse(stdout) as T; } catch { return fallback; }
+}
+
+export type RefCheck =
+  | { ok: true; text: string; from: string; seconds: number | null; long: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Kiểm một file mẫu giọng ngay lúc người dùng chọn: Whisper có nghe ra lời không, mẫu có quá dài không.
+ * Chạy ở đây thay vì lúc sinh, vì lỗi "không nghe ra lời nào" giữa lượt sinh chỉ hiện trong nhật ký và
+ * trông như tiến trình tự tắt. Kết quả nghe được nhớ lại, nên lượt sinh sau không nghe lần nữa.
+ */
+export async function refCheck(file: string): Promise<RefCheck> {
+  const { stdout, stderr } = await toolRun(["tools/omnivoice-generate.mjs", "--ref", file, "--json"]);
+  try {
+    return JSON.parse(stdout) as RefCheck;
+  } catch {
+    return { ok: false, error: stderr.trim().replace(/^✗ /m, "") || "Không kiểm được file mẫu." };
+  }
 }
 
 type ServerState = OmnivoiceStatus["server"];

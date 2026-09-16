@@ -791,10 +791,32 @@ button.vs-tile:hover {
 .vs-local-extra > summary:hover {
   color: var(--vu-brand-primary);
 }
+/* Thân mục gập: mỗi ghi chú/cảnh báo một hàng, không chảy inline cạnh nhau như <small> mặc định. */
 .vs-local-extra > p {
+  margin: 8px 0 10px;
+  max-width: 78ch;
   color: var(--vu-neutral-500);
   font-size: 12px;
-  margin: 8px 0;
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-local-extra > small {
+  display: block;
+  margin-top: 10px;
+}
+.vs-local-actions > small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+/* Mục gập cuối thẻ là một dải chân, không phải một dòng chữ rơi khỏi lề: canh đúng lề trong của bốn bước
+   (18px, xem .vs-local-flow) và đổ nền nhạt để nó đọc như tiện ích bên lề luồng chính. Chỉ nhắm mục gập
+   là con trực tiếp của thẻ — mục gập "nhân bản từ file" nằm trong thân một bước không dính quy tắc này. */
+.vs-local > .vs-local-extra {
+  margin-top: 0;
+  padding: 12px 18px 14px;
+  background: var(--vu-neutral-50);
+}
+.vs-local > .vs-local-extra[open] {
+  padding-bottom: 18px;
 }
 .vs-source-picker {
   width: 100%;
@@ -3123,13 +3145,23 @@ button.vs-tile:hover {
 .vs-cast-note.is-error {
   color: var(--vu-red-700);
 }
-/* Trình chọn file nằm trong một hàng nhân vật: bỏ khoảng cách của Form.Item và hạ ô kéo-thả xuống cỡ một dòng. */
-.vs-cast-file .vs-source-field {
-  margin-bottom: 0;
-}
+/* Thẻ chọn file nằm trong một hàng nhân vật: hạ xuống cỡ hai dòng; lối nhập tay là một dòng nhỏ bên dưới.
+   `.vs-cast-file small` ở trên bắt cả <small> trong thẻ — trả nó về cỡ chữ của thẻ. */
 .vs-cast-file .vs-source-picker {
   min-height: 0;
   padding: 10px 12px;
+}
+.vs-cast-file .vs-source-picker-copy small {
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.vs-cast-file .vs-source-manual {
+  margin-top: var(--vu-space-2);
+}
+.vs-cast-file .vs-cast-file-manual {
+  justify-self: start;
+  padding-inline: 0;
 }
 /* Người dẫn của video một giọng: bộ chọn thư viện là chính, file trên máy là lối rẽ — gập lại cho gọn. */
 .vs-local-body .vs-cast-other {

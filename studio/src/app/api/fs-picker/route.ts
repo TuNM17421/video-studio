@@ -3,7 +3,7 @@ import { handle } from "@/lib/server/http";
 import { HttpError } from "@/lib/server/paths";
 
 const KINDS = new Set<FilePickerKind>(["file", "directory"]);
-const PURPOSES = new Set<FilePickerPurpose>(["feedback", "video", "voice", "sample"]);
+const PURPOSES = new Set<FilePickerPurpose>(["feedback", "video", "voice"]);
 
 export const POST = handle(async (req: Request) => {
   const body = await req.json().catch(() => null) as { kind?: unknown; purpose?: unknown } | null;
