@@ -1,0 +1,16 @@
+00:00: Sự cố 02:00 — V2 ở Nguồn nhưng Agent vẫn cầm V1
+00:17: Bản đồ bài học — 4 Module cốt lõi
+00:39: Data Pipeline là gì? — 5 trạm liên hoàn & Không có đường tắt
+01:16: Data Cascade — Lỗi nhỏ đầu nguồn phóng đại ở Agent
+01:35: Quyết định 1: ETL vs ELT — Biến đổi trước hay sau khi nạp?
+02:48: Quyết định 2: Batch vs Streaming — Xử lý theo lô hay dòng sự kiện?
+03:43: Trạm 1: Ingestion — 3 Thách thức lớn & 4 Cặp rủi ro nguồn
+04:24: Đồng bộ CDC — Bẫy Watermark & Giải pháp Cursor neo an toàn
+05:24: Tự vệ API — Backoff Jitter, Backpressure & Dead-Letter Queue (DLQ)
+06:20: Trạm 2: Transform — 5 Dạng dữ liệu bẩn & 3 Nhánh phân luồng
+07:18: Chuẩn bị cho RAG — Làm sạch Unicode, Che PII, Chunking & Metadata
+08:18: Trạm 3 & 4: Storage & Serving — 3 Câu hỏi lớn định hình hệ thống
+08:34: Kiến trúc Medallion — Bronze (Thô), Silver (Sạch) & Gold (Agent)
+08:57: 4 Loại kho dữ liệu — Warehouse, Data Lake, Lakehouse & Vector Store
+09:19: Lớp Serving & Phục vụ — Xóa Cache cũ, Upsert & Cutover an toàn
+10:21: Đúc kết hành trình V2 & Cầu nối sang Quality Gates

@@ -1,0 +1,146 @@
+00:00 - 00:03: Ở video trước, chúng ta đã thấy một sự cố đầy nghịch lý:
+00:03 - 00:07: chính sách phiên bản hai đã cập nhật ở nguồn lúc hai giờ sáng,
+00:07 - 00:12: nhưng Agent vẫn tự tin dùng phiên bản một cũ rích để trả lời nhân viên.
+00:12 - 00:16: Tại sao hệ thống chạy đúng mọi bước mà kết quả cuối cùng lại sai?
+00:17 - 00:21: Để trả lời câu hỏi đó, bài học này sẽ cùng bạn theo dấu tài liệu
+00:21 - 00:25: V2 qua bốn nội dung cốt lõi: Thứ nhất, bản chất của Data Pipeline
+00:25 - 00:30: và rủi ro Data Cascade; Thứ hai, hai quyết định kiến trúc định hình hệ thống;
+00:30 - 00:34: Thứ ba, các kỹ thuật sống còn ở trạm Ingestion và Transform;
+00:34 - 00:38: Và thứ tư, cách Lưu trữ cũng như Phục vụ dữ liệu an toàn cho Agent.
+00:40 - 00:44: Trước hết, Data Pipeline là gì? Hiểu một cách mộc mạc nhất, đây là con đường
+00:44 - 00:49: tự động giúp dữ liệu đi từ nơi sinh ra đến nơi được sử dụng. Trong hệ thống
+00:49 - 00:54: AI, pipeline gồm năm trạm liên hoàn: Nguồn dữ liệu, Thu thập Ingest, Biến đổi
+00:54 - 00:59: Transform, Lưu trữ Storage, và Lớp phục vụ Serving trước khi chuyển tới Agent.
+01:00 - 01:03: Điều cốt tử bạn cần nhớ là: Agent không có mắt thần
+01:03 - 01:07: để tự tìm kiếm dữ liệu trôi nổi bên ngoài. Nó hoàn toàn phụ
+01:07 - 01:11: thuộc vào những gì mà pipeline đã kịp chuẩn bị và đưa đến cửa.
+01:11 - 01:15: Nếu pipeline không cung cấp, Agent sẽ hoàn toàn mù tịt về tài liệu mới.
+01:16 - 01:21: Chỉ cần phiên bản hai bị kẹt lại ở một trạm nào đó, các bước phía sau vẫn âm
+01:21 - 01:26: thầm chạy tiếp bằng phiên bản một. Hiện tượng một lỗi nhỏ ở đầu nguồn tích tụ
+01:26 - 01:30: và phóng đại qua nhiều tầng được gọi là Data Cascade — khiến câu trả lời
+01:30 - 01:34: của Agent bị sai lệch nghiêm trọng mà toàn bộ hệ thống vẫn xanh đèn.
+01:36 - 01:40: Trước khi bắt tay viết code kéo dữ liệu, mọi kiến trúc sư dữ liệu đều phải trả
+01:40 - 01:45: lời hai câu hỏi lớn: Một là biến đổi dữ liệu trước hay sau khi lưu trữ?
+01:45 - 01:49: Và hai là nên xử lý theo từng đợt hay xử lý liên tục theo thời gian thực?
+01:51 - 01:54: Câu hỏi thứ nhất đưa ta đến ngã rẽ giữa ETL và ELT. Với ETL,
+01:54 - 01:58: dữ liệu được rút trích (Extract), biến đổi làm sạch (Transform),
+01:58 - 02:03: rồi mới nạp vào kho (Load). Hướng đi này là bắt buộc khi dữ liệu chứa thông
+02:03 - 02:08: tin cá nhân nhạy cảm như căn cước công dân hay số tài khoản, cần phải che giấu
+02:08 - 02:12: hoặc mã hóa ngay lập tức trước khi được phép lưu vào đĩa cứng.
+02:14 - 02:18: Ngược lại, với ELT, dữ liệu được rút trích và nạp thẳng bản thô vào kho trước,
+02:18 - 02:23: rồi sau này mới biến đổi. Nhờ chi phí lưu trữ đám mây ngày nay rất rẻ,
+02:23 - 02:25: cách làm này giữ lại nguyên vẹn bản gốc,
+02:25 - 02:29: giúp đội ngũ kỹ sư có quyền chạy lại từ đầu hoặc thử nghiệm
+02:29 - 02:33: các thuật toán AI mới mà không cần làm phiền hệ thống nguồn.
+02:34 - 02:39: Vì vậy, câu hỏi quyết định không phải ETL hay ELT công nghệ nào hiện đại hơn.
+02:39 - 02:44: Hãy tự hỏi: Tổ chức của bạn có được phép lưu trữ dữ liệu thô hay không,
+02:44 - 02:48: và trong tương lai bạn có nhu cầu xử lý lại từ bản gốc hay không?
+02:49 - 02:52: Câu hỏi thứ hai là về nhịp độ: chọn Batch hay Streaming?
+02:52 - 02:56: Xử lý theo lô, tức là Batch, gom dữ liệu lại và chạy định kỳ
+02:56 - 02:59: theo giờ hoặc theo ngày. Cách này rất rẻ, đơn giản,
+02:59 - 03:03: dễ kiểm soát lỗi và dễ chạy lại, nhưng chấp nhận có độ trễ nhất định.
+03:05 - 03:09: Ngược lại, xử lý theo dòng sự kiện, tức là Streaming, đẩy dữ liệu đi gần
+03:09 - 03:13: như ngay lập tức sau vài mili-giây. Thời gian thực nghe rất hấp dẫn,
+03:13 - 03:18: nhưng cái giá phải trả là hạ tầng đắt đỏ, vận hành phức tạp, và đặc biệt
+03:18 - 03:22: là khi có dữ liệu rác thì lỗi cũng lan truyền với tốc độ chóng mặt.
+03:23 - 03:28: Tiêu chí lựa chọn ở đây hoàn toàn phụ thuộc vào hậu quả kinh doanh. Với chính
+03:28 - 03:33: sách nghỉ phép, cập nhật chậm vài giờ không gây nguy hại; nhưng với phát hiện
+03:33 - 03:37: giao dịch lừa đảo hay cập nhật giá cổ phiếu, trễ vài giây đã là thảm họa. Hãy
+03:37 - 03:42: để hậu quả quyết định kiến trúc, đừng chạy theo công nghệ một cách mù quáng.
+03:43 - 03:48: Bây giờ, tài liệu V2 bắt đầu hành trình tại trạm đầu tiên: Ingestion,
+03:48 - 03:52: hay thu thập dữ liệu. Khâu này không chỉ đơn thuần là kết nối API,
+03:52 - 03:56: mà phải giải quyết ba bài toán kỹ thuật lớn: phân loại nguồn dữ liệu,
+03:56 - 04:01: đồng bộ tăng dần không mất dấu, và cơ chế tự vệ khi nguồn bị quá tải.
+04:02 - 04:07: Bài toán thứ nhất là nhận diện bốn loại nguồn dữ liệu và kiểu hỏng riêng biệt:
+04:07 - 04:12: Cơ sở dữ liệu có thể âm thầm đổi tên cột; API bên ngoài có thể bị nghẽn mạng
+04:12 - 04:16: hoặc giới hạn số lượt gọi; Tệp văn bản có thể lỗi font chữ tiếng Việt;
+04:16 - 04:19: Còn luồng sự kiện thì dễ bị gửi trùng lặp.
+04:19 - 04:23: Mỗi nguồn bắt buộc phải có một cảm biến theo dõi sức khỏe riêng.
+04:24 - 04:28: Bài toán thứ hai là đồng bộ dữ liệu lớn. Nếu hệ thống cứ vài tiếng
+04:28 - 04:32: lại quét lại toàn bộ hàng triệu dòng dữ liệu thì sẽ làm sập máy chủ.
+04:32 - 04:37: Thay vào đó, kỹ thuật CDC — tức bắt thay đổi dữ liệu qua log giao dịch —
+04:37 - 04:41: sẽ chỉ nhặt đúng những bản ghi vừa được thêm mới, chỉnh sửa hoặc xóa bỏ.
+04:42 - 04:47: Tuy nhiên, CDC thường dùng một mốc thời gian gọi là Watermark để đánh dấu phần
+04:47 - 04:52: dữ liệu đã đọc xong. Nếu tài liệu V2 của chúng ta đến muộn do mạng chập chờn
+04:52 - 04:57: nhưng lại mang dấu thời gian cũ hơn mốc Watermark này, hệ thống sẽ coi nó
+04:57 - 05:02: là dữ liệu quá khứ và bỏ sót vĩnh viễn mà không hề có tiếng còi báo động nào.
+05:03 - 05:07: Tương tự, khi lấy dữ liệu qua API, nếu phân trang bằng vị trí Offset
+05:07 - 05:12: thông thường, một dòng mới chèn vào đầu danh sách sẽ làm toàn bộ số
+05:12 - 05:16: trang bị xô lệch, khiến trang tiếp theo vừa đọc lặp lại dữ liệu cũ,
+05:16 - 05:20: vừa bỏ sót dữ liệu mới. Sử dụng con trỏ Cursor neo vào ID cố định
+05:20 - 05:23: của bản ghi cuối cùng sẽ giải quyết triệt để lỗi này.
+05:25 - 05:28: Bài toán thứ ba là tự vệ khi nguồn bị nghẽn. Khi API bên ngoài
+05:28 - 05:32: trả về lỗi quá tải, nếu chúng ta cứ liên tục bấm thử lại dồn dập,
+05:32 - 05:37: hành động đó sẽ tạo ra một cơn bão yêu cầu làm sập luôn máy chủ. Kỹ thuật
+05:37 - 05:42: Backoff giúp kéo dài thời gian chờ sau mỗi lần thử, kết hợp với Jitter là
+05:42 - 05:46: một khoảng trễ ngẫu nhiên nhỏ để các luồng không cùng ùa vào thử lại một lúc.
+05:48 - 05:52: Khi nguồn phát dữ liệu quá nhanh mà hệ thống phía sau chưa kịp tiêu thụ,
+05:52 - 05:56: tín hiệu Backpressure sẽ phát ra lệnh yêu cầu bên gửi phải tạm
+05:56 - 06:00: giảm tốc độ truyền, giúp các hàng đợi bộ nhớ không bị tràn vỡ.
+06:01 - 06:06: Đối với những bản ghi bị lỗi định dạng mà thử lại nhiều lần vẫn thất bại,
+06:06 - 06:10: hệ thống sẽ tự động tách chúng vào một hàng đợi riêng gọi là Dead-Letter Queue
+06:10 - 06:15: để kỹ sư điều tra nguyên nhân. Hãy nhớ: Dead-Letter Queue là nơi cách ly
+06:15 - 06:20: bệnh nhân để chữa trị, tuyệt đối không phải là thùng rác để ném bỏ dữ liệu.
+06:21 - 06:25: Vượt qua Ingestion an toàn, tài liệu V2 tiến vào trạm thứ hai:
+06:25 - 06:29: Transform. Dữ liệu thô từ nguồn không thể đưa thẳng cho Agent đọc
+06:29 - 06:33: vì nó chứa rất nhiều rác và nhiễu. Trạm này có nhiệm vụ làm sạch
+06:33 - 06:36: và chuẩn hóa dữ liệu qua ba bước công việc bắt buộc.
+06:38 - 06:41: Bước thứ nhất là rà soát năm dạng dữ liệu bẩn kinh điển:
+06:41 - 06:45: trường thông tin bị bỏ trống, giá trị đo đạc bất thường vượt ngưỡng,
+06:45 - 06:50: bản ghi bị trùng lặp, sai định dạng ngày tháng, và lỗi bảng mã hiển thị.
+06:50 - 06:54: Với AI, dữ liệu bẩn nguy hiểm ở chỗ mô hình ngôn ngữ lớn vẫn tự tin
+06:54 - 06:58: bịa ra câu trả lời rất trôi chảy, che giấu hoàn toàn lỗi bên dưới.
+07:00 - 07:04: Bước thứ hai là phân luồng xử lý: Những lỗi sai định dạng hiển nhiên
+07:04 - 07:08: thì code sẽ tự động chuẩn hóa; Những bản ghi nghi vấn thì gắn cờ cảnh báo
+07:08 - 07:13: để chuyên viên nghiệp vụ duyệt; Còn những dữ liệu độc hại hoặc sai lệch nghiêm
+07:13 - 07:17: trọng thì lập tức cách ly, tuyệt đối không cho phép đi tiếp vào hệ thống.
+07:19 - 07:23: Bước thứ ba là chuẩn bị chuyên biệt cho mô hình tìm kiếm thông tin RAG.
+07:23 - 07:27: Văn bản cần được bóc tách toàn bộ mã HTML rác, chuyển về bảng mã
+07:27 - 07:31: Unicode tiếng Việt dựng sẵn đồng nhất, và dùng thuật toán nhận diện
+07:31 - 07:35: để che toàn bộ thông tin cá nhân nhạy cảm trước khi đưa vào mô hình AI.
+07:37 - 07:41: Sau đó, tài liệu dài được cắt thành các đoạn nhỏ có nghĩa hoàn chỉnh,
+07:41 - 07:46: gọi là Semantic Chunking, tránh việc cắt đứt giữa chừng làm mất ngữ cảnh.
+07:46 - 07:50: Đặc biệt, mỗi đoạn cắt bắt buộc phải gắn kèm Metadata gồm tên văn bản,
+07:50 - 07:53: phiên bản, tác giả và ngày bắt đầu có hiệu lực —
+07:53 - 07:58: chính Metadata này sẽ giúp Agent biết V2 mới là bản đang có hiệu lực pháp lý.
+08:00 - 08:04: Nguyên tắc vàng ở trạm Transform là: Việc mở file ra sửa tay một vài dòng
+08:04 - 08:08: trước buổi demo không bao giờ tạo nên một hệ thống tin cậy.
+08:08 - 08:12: Mọi quy tắc làm sạch dữ liệu đều phải được viết thành mã nguồn và tự động hóa,
+08:12 - 08:17: để bất cứ khi nào có tài liệu mới, hệ thống đều xử lý chuẩn xác như nhau.
+08:18 - 08:23: Sau khi được làm sạch hoàn hảo, tài liệu V2 tiến vào trạm Lưu trữ và Phục vụ.
+08:23 - 08:26: Ở đây, chúng ta phải giải quyết ba câu hỏi then chốt:
+08:26 - 08:30: Tổ chức dữ liệu theo kiến trúc nào? Lưu trữ ở loại kho nào?
+08:30 - 08:33: Và làm sao để Agent luôn đọc được phiên bản mới nhất?
+08:35 - 08:39: Câu hỏi thứ nhất về tổ chức dữ liệu được giải quyết bằng kiến trúc
+08:39 - 08:43: Medallion ba lớp: Lớp Bronze lưu trữ bản thô ban đầu để phục vụ đối soát;
+08:43 - 08:47: Lớp Silver lưu dữ liệu đã được làm sạch và chuẩn hóa; Và lớp Gold
+08:47 - 08:52: là dữ liệu tinh gọn đã sẵn sàng phục vụ nghiệp vụ. Nguyên tắc bất di bất dịch
+08:52 - 08:56: là Agent tuyệt đối không được đọc dữ liệu trực tiếp từ lớp Bronze.
+08:57 - 09:01: Câu hỏi thứ hai là chọn loại kho phù hợp: Data Warehouse tối ưu
+09:01 - 09:05: cho các bảng số liệu tài chính có cấu trúc; Data Lake chứa được mọi
+09:05 - 09:10: loại tệp tài liệu thô khổng lồ; Lakehouse kết hợp sự linh hoạt của Lake
+09:10 - 09:14: với khả năng quản trị bảng của Warehouse; Còn Vector Store chuyên lưu
+09:14 - 09:18: trữ các vector nhúng ngữ nghĩa để phục vụ tìm kiếm thông minh cho Agent.
+09:20 - 09:23: Câu hỏi thứ ba là lớp Phục vụ Serving. Bạn hãy lưu ý:
+09:23 - 09:28: Dữ liệu được ghi vào kho thành công không có nghĩa là Agent đã nhìn thấy ngay!
+09:28 - 09:32: Lớp Serving đứng ở giữa phải chịu trách nhiệm xóa bỏ bộ nhớ đệm Cache
+09:32 - 09:36: phiên bản cũ, kiểm tra quyền truy cập, và bảo đảm chỉ mục Vector
+09:36 - 09:40: Index đã cập nhật dữ liệu mới nhất trong giới hạn thời gian cho phép.
+09:42 - 09:46: Khi chỉ cập nhật một vài điều khoản trong chính sách mà không thay đổi mô
+09:46 - 09:51: hình AI, hệ thống chỉ cần dùng lệnh Upsert — tức là nếu chưa có thì chèn mới,
+09:51 - 09:55: nếu đã có thì cập nhật đè lên bản ghi cũ — để tiết kiệm chi phí tính toán.
+09:57 - 10:01: Nhưng nếu bạn quyết định nâng cấp mô hình nhúng embedding mới hoặc đổi kích
+10:01 - 10:06: thước chia đoạn chunk, bạn tuyệt đối không được cập nhật chắp vá vào chỉ mục
+10:06 - 10:11: đang chạy. Thay vào đó, hãy dựng một Vector Index mới hoàn toàn song song,
+10:11 - 10:15: chạy thử nghiệm đánh giá chất lượng đạt chuẩn, rồi mới gạt công tắc chuyển
+10:15 - 10:20: toàn bộ truy vấn của người dùng sang — kỹ thuật này gọi là Cutover an toàn.
+10:21 - 10:25: Như vậy, tài liệu chính sách phiên bản hai đã vượt qua
+10:25 - 10:28: trọn vẹn hành trình năm trạm: Được Ingestion lấy đúng mốc,
+10:28 - 10:33: Transform làm sạch và gắn metadata đầy đủ, lưu trữ đúng lớp Gold và phục vụ
+10:33 - 10:38: qua một chỉ mục Index đã kiểm tra cẩn thận. Chỉ khi đi trọn con đường này,
+10:38 - 10:41: Agent mới có đủ căn cứ chuẩn xác để phục vụ người dùng.
+10:43 - 10:47: Chúng ta đã thấy rõ con đường dữ liệu đi qua và các trạm kỹ thuật
+10:47 - 10:51: trong pipeline. Nhưng ở mỗi trạm, dựa vào những tiêu chuẩn cụ thể nào
+10:51 - 10:55: để hệ thống tự động quyết định dữ liệu đạt chuẩn đi tiếp
+10:55 - 10:58: hay phải bị chặn đứng? Câu trả lời sống còn đó sẽ được giải mã
+10:58 - 11:02: trong video tiếp theo: Data Quality và Quality Gates.
