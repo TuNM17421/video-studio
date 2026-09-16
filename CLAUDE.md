@@ -83,9 +83,8 @@ quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.m
 bản — hiện có `dialogue.md` và `quiz.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
 `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
-code; chỉ năng lực cần cấu hình riêng trên form (chọn nhạc quiz) hay dữ liệu chèn vào REQUEST.md (danh sách
-nhân vật) mới cần dev. Tên file là id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem
-`templates/modules/README.md`.
+code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
+id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem `templates/modules/README.md`.
 
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
@@ -107,9 +106,10 @@ giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn gi�
 `assets/music/` lần đầu dùng. Thêm bản mới = đẩy file lên R2, thêm key vào `media/manifest.json`, thêm mục
 vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
 - **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`.
-- **Nhạc quiz** chọn ở bước Kế hoạch, vì agent phải biết lúc viết `cues.js` để đánh dấu `quiz: true`.
-  Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc đồng hồ chạy) — **không** đặt ở câu
-  đọc câu hỏi và **không** ở phần chữa bài. Người hỏi đang nói thì vẫn là nhạc nền; nhạc quiz chỉ vào khi
+- **Nhạc quiz** cũng chỉ chọn ở bước Render (ô chọn hiện khi `cues.js` có câu `quiz: true`). Bước Kế hoạch
+  chỉ có ô tick **"Video có quiz"** — đủ để REQUEST.md dặn agent đánh dấu `quiz: true` lúc viết `cues.js`,
+  dù chưa biết dùng bài nhạc nào. Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc
+  đồng hồ chạy) — **không** đặt ở câu đọc câu hỏi và **không** ở phần chữa bài. Người hỏi đang nói thì vẫn là nhạc nền; nhạc quiz chỉ vào khi
   câu hỏi đã dứt. Các câu liền nhau gom thành một đoạn; `render.mjs --quiz-track <id>` tự đọc `cues.js` để
   lấy mốc thời gian. Trong đoạn quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.

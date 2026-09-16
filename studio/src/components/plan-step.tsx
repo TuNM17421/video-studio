@@ -6,9 +6,7 @@ import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, T
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import type { AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
-import { NO_MUSIC, type MusicCatalog, type MusicTrack } from "@/lib/music";
 import { AgentName } from "./agent-mark";
-import { MusicPicker } from "./music-picker";
 import { SourcePickerField } from "./source-picker";
 import { BASE_TEMPLATE_PATH, moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
 import { StylePicker, StyleShowcase } from "./style-showcase";
@@ -35,8 +33,6 @@ export interface PlanDraft {
   agentProvider: AgentProvider;
   request: VideoRequest;
   script: { name: string; content: string } | null;
-  /** Chosen here, not at render: the agent must know while writing cues.js which câu to mark `quiz: true`. */
-  quizMusic: string;
 }
 
 export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude"): PlanDraft => ({
@@ -44,7 +40,6 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
   agentProvider,
   request: { style, modules: [], day: "Day02", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
-  quizMusic: NO_MUSIC,
 });
 
 /** The prompt a member can paste into Claude Code (or Claude Design) instead of pressing Tạo video. */
@@ -130,18 +125,14 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const [idCheck, setIdCheck] = useState<{ value: string; taken: boolean } | null>(null);
   const [checkingId, setCheckingId] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [quizTracks, setQuizTracks] = useState<MusicTrack[]>([]);
-  useEffect(() => { api<MusicCatalog>("/api/music").then((c) => setQuizTracks(c.quiz)).catch(() => setQuizTracks([])); }, []);
   const styleLabelId = useId();
   const idErrorId = useId();
   const scriptLabelId = useId();
   const scriptErrorId = useId();
   const prompt = useMemo(() => buildPrompt(draft, style, modules), [draft, style, modules]);
   const set = (patch: Partial<VideoRequest>) => setDraft((current) => ({ ...current, request: { ...current.request, ...patch } }));
-  const quizEnabled = draft.request.modules.includes("quiz");
   const setModule = (id: string, checked: boolean) => setDraft((current) => ({
     ...current,
-    quizMusic: id === "quiz" && !checked ? NO_MUSIC : current.quizMusic,
     request: {
       ...current.request,
       modules: checked
@@ -278,24 +269,6 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
           </article>;
           })}
         </div>
-        {quizEnabled && <div className="vs-module-config" aria-labelledby="vs-quiz-config-title">
-          <div className="vs-module-config-head">
-            <h4 id="vs-quiz-config-title">Cấu hình · Video có quiz</h4>
-            <p>Nhạc nền tự tắt trong đoạn quiz.</p>
-          </div>
-          <div className="vs-module-config-field">
-            <span className="vs-field-label">Nhạc khi người học suy nghĩ</span>
-            <MusicPicker
-              compact
-              tracks={quizTracks}
-              value={draft.quizMusic}
-              disabled={busy}
-              noneLabel="Không có nhạc quiz"
-              onChange={(quizMusic) => setDraft((current) => ({ ...current, quizMusic }))}
-            />
-          </div>
-        </div>
-        }
       </section>
     </div>
     <div className="vs-section">

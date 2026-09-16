@@ -167,7 +167,7 @@ duyệt hoặc gửi góp ý ở mỗi điểm dừng.
 
 | Bước | Ai làm | Nội dung |
 |---|---|---|
-| **Kế hoạch** | Bạn | Chọn style, mã video, ngày, kịch bản (`.md`/`.txt`), năng lực chọn thêm, nhạc quiz, feedback và video cũ nếu có. **Copy prompt** cho ra prompt tương đương để dán vào agent |
+| **Kế hoạch** | Bạn | Chọn style, mã video, ngày, kịch bản (`.md`/`.txt`), năng lực chọn thêm (tick "Video có quiz" nếu có), feedback và video cũ nếu có. **Copy prompt** cho ra prompt tương đương để dán vào agent |
 | **Lời & cue** | Agent | Viết `cues.js` với lời nguyên văn, dừng cho bạn đọc và duyệt |
 | **Giọng đọc** | Server | ElevenLabs (có dry-run miễn phí trước), nhập audio có sẵn, hoặc OmniVoice local — xem [Giọng đọc](#giọng-đọc) |
 | **Dựng cảnh** | Agent | Dựng cảnh theo độ dài giọng thật và mốc từng từ, build, verify, chụp ảnh QA |
@@ -356,7 +356,8 @@ chênh nhau tới 15 dB, nên gain được suy từ `lufs` về **−32 LUFS** 
 tự tải về `assets/music/` ở lần dùng đầu.
 
 - **Nhạc nền** chọn ở bước Render → `render.mjs --music-track <id>`. Nhạc lặp và cắt đúng độ dài giọng.
-- **Nhạc quiz** chọn ở bước Kế hoạch, vì agent cần biết khi viết `cues.js` để đánh dấu `quiz: true`. Cờ này
+- **Nhạc quiz** cũng chọn ở bước Render (hiện khi `cues.js` có câu `quiz: true`). Bước Kế hoạch chỉ cần tick
+  **"Video có quiz"** để agent biết đánh dấu `quiz: true` khi viết `cues.js`. Cờ này
   chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`), không đặt ở câu đọc câu hỏi hay phần chữa bài.
   Trong đoạn quiz, nhạc nền tắt hẳn, nhạc quiz vào, fade 0,5 giây hai đầu.
 - `quiz: true` phải đặt **cuối phần khai của câu** — `voice-timing --write-cues` ghi đè vùng ngay sau `n:`.

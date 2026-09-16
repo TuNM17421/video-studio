@@ -740,7 +740,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
   const runLogs = stageLogs(logs, /^Build design system/);
   const ready = detail.state.stages.scenes === "done";
   const [confirmRender, setConfirmRender] = useState(false);
-  // the bed is a finishing decision, so it is chosen here and sent with the render request
+  // both tracks are finishing decisions: they are chosen only here and sent with the render request
   const [music, setMusic] = useState(detail.state.music.background);
   const [quizMusic, setQuizMusic] = useState(detail.state.music.quiz);
   const [catalog, setCatalog] = useState<MusicCatalog>({ background: [], quiz: [] });
@@ -767,12 +767,12 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
       </li>)}</ul>}
       {ready && <div className="vs-music-section">
         <div className="vs-section-title">Nhạc nền</div>
-        <MusicPicker tracks={catalog.background} value={music} disabled={busy} noneLabel="Không có nhạc nền" onChange={setMusic} />
+        <MusicPicker tracks={catalog.background} value={music} disabled={busy} label="Chọn nhạc nền" noneLabel="Không có nhạc nền" noneHint="Video chỉ có giọng đọc." onChange={setMusic} />
         {/* Which câu the question covers was settled in cues.js; only the track is still open here. */}
         {quizCues > 0 && <>
           <div className="vs-section-title">Nhạc quiz</div>
           <p className="vs-music-note">{quizCues} câu được đánh dấu <code>quiz: true</code>. Nhạc nền tắt hẳn trong các đoạn đó.</p>
-          <MusicPicker tracks={catalog.quiz} value={quizMusic} disabled={busy} noneLabel="Không có nhạc quiz" onChange={setQuizMusic} />
+          <MusicPicker tracks={catalog.quiz} value={quizMusic} disabled={busy} label="Chọn nhạc quiz" noneLabel="Không có nhạc quiz" noneHint="Quiz vẫn hoạt động mà không cần nhạc." onChange={setQuizMusic} />
         </>}
         {quizCues === 0 && quizMusic !== NO_MUSIC && <p className="vs-music-note">
           Đã chọn nhạc quiz nhưng <code>cues.js</code> chưa câu nào đánh dấu <code>quiz: true</code> — nhạc quiz sẽ bị bỏ qua.

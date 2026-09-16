@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { NO_MUSIC } from "../music";
 import { normalizeVideoState, requestMarkdown } from "./videos";
 
 const storedState = {
@@ -35,11 +34,11 @@ describe("video agent binding migration", () => {
 });
 
 describe("quiz request contract", () => {
-  it("tells the agent to mark quiz cues even when no quiz music is selected", () => {
+  it("tells the agent to mark quiz cues and leaves the track to the render step", () => {
     const state = normalizeVideoState(storedState);
-    const markdown = requestMarkdown("d2-quiz", { ...state.request, modules: ["quiz"] }, "Codex", NO_MUSIC);
+    const markdown = requestMarkdown("d2-quiz", { ...state.request, modules: ["quiz"] }, "Codex");
     expect(markdown).toContain("## Quiz");
     expect(markdown).toContain("`quiz: true`");
-    expect(markdown).toContain("không dùng nhạc quiz");
+    expect(markdown).toContain("chọn ở bước Render");
   });
 });
