@@ -108,6 +108,13 @@ export function detectDevice() {
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 
 /**
+ * Studio lưu giá trị này cho một vai khi người dùng đã chọn "giọng từ file trên máy" nhưng chưa chọn
+ * file nào. Nó phải là một lỗi chặn lượt sinh — không được lặng lẽ rơi về giọng danh mục vừa bỏ.
+ * Giữ khớp với FROM_FILE trong studio/src/components/local-cast.tsx.
+ */
+export const FILE_PENDING = '__file__';
+
+/**
  * Giá trị người dùng đưa vào là ĐƯỜNG DẪN tới một file mẫu, hay TÊN một giọng trong danh mục?
  * Tên giọng không bao giờ mang dấu gạch chéo hay đuôi audio, nên hai thứ không lẫn vào nhau được.
  */
@@ -195,6 +202,13 @@ export function castLocal(cues, { voice = '', speakers = {} } = {}) {
     // Kịch bản gọi "Lucas", danh mục ghi "Tới", id là "toi" — gọi bằng cái nào cũng phải trúng đúng vai.
     const wanted = override([speaker, role.name, role.character, character?.name, who?.voice?.name]) || (speaker ? '' : fallback);
     role.picked = Boolean(wanted);
+    // Đã rẽ sang "giọng từ file" nhưng chưa trỏ tới file nào: vai này chưa sẵn sàng, và tuyệt đối không
+    // dùng tạm giọng danh mục người dùng vừa bỏ — đó là lỗi đã ăn thật trên panel.
+    if (wanted === FILE_PENDING) {
+      role.source = 'file';
+      role.error = 'đã chọn "giọng từ file trên máy" nhưng chưa chọn file mẫu nào.';
+      return role;
+    }
     // Một file trên máy là đường ngắn nhất cho giọng chưa có trong danh mục: không phải đẩy lên đâu cả,
     // cũng không phải thêm vào voices.json chỉ để thử một lượt.
     if (wanted && looksLikeFile(wanted)) {

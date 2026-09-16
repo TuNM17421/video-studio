@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { batchSizeFor, castLocal, deviceFrom, looksLikeFile, torchArgs } from './omnivoice.mjs';
+import { batchSizeFor, castLocal, deviceFrom, FILE_PENDING, looksLikeFile, torchArgs } from './omnivoice.mjs';
 
 const NVIDIA_3060 = 'NVIDIA GeForce RTX 3060 Laptop GPU, 6144';
 const NVIDIA_4090 = 'NVIDIA GeForce RTX 4090, 24564';
@@ -146,6 +146,19 @@ test('một đường dẫn file được hiểu là mẫu giọng, một cái t
   const cast = castLocal(HOI_THOAI, { speakers: { 'Tú': 'D:/giong/tu.wav' } });
   assert.equal(cast.roles[0].source, 'file');
   assert.equal(cast.roles[1].source, 'catalog', 'vai kia vẫn lấy mẫu từ kho media');
+});
+
+test('chọn "giọng từ file" mà chưa chọn file thì là lỗi chặn sinh, không lặng lẽ rơi về giọng vừa bỏ', () => {
+  // Panel từng để lọt: Tú chọn Cẩm Hồng rồi đổi sang "giọng từ file", bỏ trống ô — lượt sinh vẫn đọc bằng Cẩm Hồng.
+  const cast = castLocal(HOI_THOAI, { speakers: { 'Tú': FILE_PENDING } });
+  const tu = cast.roles[0];
+  assert.equal(tu.source, 'file');
+  assert.equal(tu.picked, true);
+  assert.equal(tu.voiceId, null, 'không được mang giọng nào của danh mục');
+  assert.match(tu.error, /chưa chọn file/);
+  assert.equal(cast.ok, false, 'phải chặn lượt sinh');
+  assert.ok(cast.problems.some((p) => p.includes('Tú') && /chưa chọn file/.test(p)), 'lỗi phải gọi đúng tên vai');
+  assert.equal(cast.roles[1].error, null, 'vai còn lại không bị vạ lây');
 });
 
 test('tên nhân vật lạ dừng lượt sinh, thay vì lặng lẽ đọc bằng người khác', () => {

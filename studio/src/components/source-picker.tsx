@@ -11,7 +11,8 @@ import { api } from "@/lib/client";
  * video, and the folder of per-câu narration audio. It opens the desktop file dialog, falls back to a
  * typed path when there is no dialog to open, and keeps saying whether what is selected actually exists.
  */
-export type SourcePurpose = "feedback" | "video" | "voice";
+/** `sample` = một file audio làm mẫu giọng để model local nhân bản (khác `voice` = cả thư mục audio theo câu). */
+export type SourcePurpose = "feedback" | "video" | "voice" | "sample";
 export type SourceCheck = { exists: boolean; dir?: boolean; files?: number; name?: string; size?: number };
 type PickerResult = { cancelled: true } | ({ cancelled: false; path: string } & Omit<SourceCheck, "exists">);
 
@@ -59,25 +60,31 @@ export function SourcePickerField({ label, purpose, value, onChange, disabled }:
   }, [value]);
   // A folder of per-câu audio is the only shape the import understands, so a file is wrong here.
   const notAFolder = purpose === "voice" && check?.exists === true && check.dir === false;
-  const invalid = !!value.trim() && (check?.exists === false || notAFolder);
+  // And a voice sample is one audio file, so a folder is wrong there.
+  const notAFile = purpose === "sample" && check?.exists === true && check.dir === true;
+  const invalid = !!value.trim() && (check?.exists === false || notAFolder || notAFile);
   const selectedName = check?.name || sourceName(value);
   const selectedMeta = checking
     ? "Đang kiểm tra đường dẫn…"
     : notAFolder
       ? "Đây là một tệp, cần một thư mục"
+      : notAFile
+      ? "Đây là một thư mục, cần một tệp audio"
       : invalid
         ? "Không tìm thấy nguồn"
         : check?.exists
           ? check.dir ? `${check.files ?? 0} mục trong thư mục` : sourceSize(check.size)
           : "Đường dẫn trên máy";
-  const idleTitle = purpose === "video" ? "Chọn video trên máy" : purpose === "voice" ? "Chọn thư mục audio trên máy" : "Chọn feedback trên máy";
+  const idleTitle = purpose === "video" ? "Chọn video trên máy" : purpose === "voice" ? "Chọn thư mục audio trên máy" : purpose === "sample" ? "Chọn file giọng mẫu trên máy" : "Chọn feedback trên máy";
   const idleHint = purpose === "video"
     ? "Tệp MP4, MOV, WEBM, MKV hoặc thư mục nguồn"
     : purpose === "voice"
       ? "Thư mục chứa 01.wav, 02.wav … mỗi câu một tệp"
-      : "Tệp ghi chú, ảnh hoặc thư mục của bản trước";
+      : purpose === "sample"
+        ? "Tệp WAV, MP3, M4A, FLAC… một đoạn 10–20 giây người đó đọc"
+        : "Tệp ghi chú, ảnh hoặc thư mục của bản trước";
   const help = issue || invalid
-    ? <span id={messageId} className="vs-validation-message is-error" role="alert"><WarningFilled />{issue || (notAFolder ? "Hãy chọn thư mục chứa các tệp audio, không phải một tệp lẻ." : "Không tìm thấy tệp hoặc thư mục. Chọn lại nguồn hoặc sửa đường dẫn đầy đủ.")}</span>
+    ? <span id={messageId} className="vs-validation-message is-error" role="alert"><WarningFilled />{issue || (notAFolder ? "Hãy chọn thư mục chứa các tệp audio, không phải một tệp lẻ." : notAFile ? "Hãy chọn một tệp audio, không phải thư mục." : "Không tìm thấy tệp hoặc thư mục. Chọn lại nguồn hoặc sửa đường dẫn đầy đủ.")}</span>
     : undefined;
 
   function updatePath(next: string) {
@@ -107,8 +114,8 @@ export function SourcePickerField({ label, purpose, value, onChange, disabled }:
   }
 
   const items: MenuProps["items"] = [
-    ...(purpose === "voice" ? [] : [{ key: "file", icon: <FileOutlined />, label: purpose === "video" ? "Chọn một tệp video" : "Chọn một tệp" }]),
-    { key: "directory", icon: <FolderOpenOutlined />, label: "Chọn một thư mục" },
+    ...(purpose === "voice" ? [] : [{ key: "file", icon: <FileOutlined />, label: purpose === "video" ? "Chọn một tệp video" : purpose === "sample" ? "Chọn một tệp audio" : "Chọn một tệp" }]),
+    ...(purpose === "sample" ? [] : [{ key: "directory", icon: <FolderOpenOutlined />, label: "Chọn một thư mục" }]),
     { type: "divider" as const },
     { key: "manual", icon: <EditOutlined />, label: "Nhập đường dẫn thủ công" },
   ];
@@ -147,7 +154,7 @@ export function SourcePickerField({ label, purpose, value, onChange, disabled }:
         <span className="vs-source-picker-copy">
           <strong>{picking ? "Đang mở trình chọn…" : value ? selectedName : idleTitle}</strong>
           <small title={value || undefined}>{value || idleHint}</small>
-          <span className="vs-source-picker-meta">{value ? selectedMeta : purpose === "voice" ? "Nhấp để chọn thư mục" : "Nhấp để chọn tệp hoặc thư mục"}</span>
+          <span className="vs-source-picker-meta">{value ? selectedMeta : purpose === "voice" ? "Nhấp để chọn thư mục" : purpose === "sample" ? "Nhấp để chọn tệp" : "Nhấp để chọn tệp hoặc thư mục"}</span>
         </span>
         <span className="vs-source-picker-action" aria-hidden="true"><DownOutlined /></span>
       </button>
@@ -163,7 +170,7 @@ export function SourcePickerField({ label, purpose, value, onChange, disabled }:
         aria-describedby={help ? messageId : undefined}
         data-validation-pending={checking || undefined}
         onChange={(event) => updatePath(event.target.value)}
-        placeholder={purpose === "voice" ? "/home/…/thư-mục-audio" : "/home/…/tệp-hoặc-thư-mục"}
+        placeholder={purpose === "voice" ? "/home/…/thư-mục-audio" : purpose === "sample" ? "/home/…/mau-giong.wav" : "/home/…/tệp-hoặc-thư-mục"}
         spellCheck={false}
         autoComplete="off"
         allowClear

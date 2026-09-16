@@ -1,10 +1,11 @@
 "use client";
 
-import { FolderOpenOutlined, UserOutlined } from "@ant-design/icons";
-import { Input, Select } from "antd";
-import { useEffect, useState } from "react";
+import { UserOutlined } from "@ant-design/icons";
+import { Select } from "antd";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import type { LocalCast, LocalRole, VoiceCatalog, VoiceDef, VoiceSettings } from "@/lib/types";
+import { SourcePickerField } from "./source-picker";
 import { PlayButton, usePreview } from "./voice-picker";
 
 /**
@@ -27,6 +28,12 @@ export const isRefFile = (value: string) => {
   return Boolean(v) && (/[\\/]/.test(v) || AUDIO.test(v));
 };
 
+/**
+ * Được LƯU vào settings khi vai đã rẽ sang "giọng từ file" mà chưa chọn file nào. Trước đây trạng thái
+ * này chỉ nằm trong bộ nhớ của ô chọn, nên settings vẫn giữ giọng danh mục vừa bỏ và lượt sinh lặng lẽ
+ * đọc bằng giọng đó. Giữ khớp với FILE_PENDING trong tools/lib/omnivoice.mjs — máy chủ coi nó là một vai
+ * chưa sẵn sàng và chặn lượt sinh.
+ */
 const FROM_FILE = "__file__";
 const FROM_CATALOG = "";
 
@@ -41,8 +48,10 @@ export function useVoiceCatalog() {
 }
 
 /**
- * Ô đường dẫn file mẫu. Gõ tới đâu chưa tính tới đó: chỉ khi rời ô (hoặc Enter) mới báo lên trên, vì mỗi
- * lần báo là một lần hỏi lại máy chủ xem file có thật và đã biết lời của nó chưa.
+ * Ô chọn file mẫu: mở hộp thoại của máy, hoặc gõ đường dẫn tay khi không có hộp thoại. Chọn qua hộp thoại
+ * thì ra nguyên đường dẫn một lần; gõ tay thì trình chọn báo từng ký tự, mà mỗi lần báo lên trên là một
+ * lần hỏi lại máy chủ xem file có thật và đã biết lời của nó chưa — nên gom lại, đường dẫn đứng yên 400 ms
+ * mới tính.
  */
 export function RefFileField({ value, onChange, disabled, note, error }: {
   value: string;
@@ -54,22 +63,18 @@ export function RefFileField({ value, onChange, disabled, note, error }: {
   const [text, setText] = useState(value);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setText(value); }, [value]);
-  const commit = () => { if (text.trim() !== value) onChange(text.trim()); };
+  // onChange của hàng cha đổi mỗi lần render; giữ trong ref để bộ đếm không bị đặt lại vô cớ.
+  const commit = useRef(onChange);
+  useEffect(() => { commit.current = onChange; }, [onChange]);
+  useEffect(() => {
+    const next = text.trim();
+    if (next === value) return;
+    const t = setTimeout(() => commit.current(next), 400);
+    return () => clearTimeout(t);
+  }, [text, value]);
 
   return <div className="vs-cast-file">
-    <Input
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
-      onPressEnter={commit}
-      disabled={disabled}
-      status={error ? "error" : undefined}
-      prefix={<FolderOpenOutlined />}
-      placeholder="C:\\giong\\mau-10-giay.wav"
-      aria-label="Đường dẫn file giọng mẫu"
-      spellCheck={false}
-      autoComplete="off"
-    />
+    <SourcePickerField label="File giọng mẫu" purpose="sample" value={text} onChange={setText} disabled={disabled} />
     <small className={error ? "is-error" : undefined}>
       {error || note || "Một đoạn 10–20 giây người đó đọc là đủ. Đặt thêm file .txt cùng tên chứa đúng lời đoạn đó thì giọng bám sát hơn; không có thì Whisper tự nghe."}
     </small>
@@ -92,10 +97,9 @@ function CastRow({ role, catalog, value, onChange, disabled, preview }: {
   disabled?: boolean;
   preview: ReturnType<typeof usePreview>;
 }) {
-  // Vừa bấm "Giọng từ file" thì chưa có đường dẫn nào để lưu — ô nhập phải mở ra trước, nên trạng thái
-  // này nằm ở đây chứ không phải trong settings. Có đường dẫn thật rồi thì chính nó nói lên điều đó.
-  const [picking, setPicking] = useState(false);
-  const fromFile = isRefFile(value) || picking;
+  // Vừa bấm "Giọng từ file" thì chưa có đường dẫn nào — nhưng vẫn phải LƯU (FROM_FILE) để settings không
+  // còn giữ giọng danh mục vừa bỏ; có đường dẫn thật rồi thì chính nó thay chỗ.
+  const fromFile = isRefFile(value) || value === FROM_FILE;
   const fallback = defaultVoiceFor(role, catalog);
   const chosen = catalog?.voices.find((v) => v.id === value || v.name === value) || null;
   // Nghe thử bao giờ cũng là giọng vai này SẼ đọc, kể cả khi đó là giọng mặc định chưa ai đụng vào.
@@ -116,9 +120,8 @@ function CastRow({ role, catalog, value, onChange, disabled, preview }: {
       <Select
         value={fromFile ? FROM_FILE : value || FROM_CATALOG}
         onChange={(next) => {
-          setPicking(next === FROM_FILE);
-          if (next !== FROM_FILE) onChange(next === FROM_CATALOG ? "" : next);
-          else if (isRefFile(value)) onChange(value);
+          if (next === FROM_FILE) onChange(isRefFile(value) ? value : FROM_FILE);
+          else onChange(next === FROM_CATALOG ? "" : next);
         }}
         disabled={disabled}
         aria-label={`Giọng cho ${role.name}`}
@@ -133,11 +136,12 @@ function CastRow({ role, catalog, value, onChange, disabled, preview }: {
     </span>
     {fromFile && <RefFileField
       value={isRefFile(value) ? value.trim() : ""}
-      onChange={onChange}
+      // Xoá đường dẫn thì vẫn đang ở chế độ "từ file" (chưa chọn), không nhảy về giọng mặc định.
+      onChange={(next) => onChange(next.trim() ? next : FROM_FILE)}
       disabled={disabled}
-      // Chưa gõ đường dẫn nào thì nhận xét của máy chủ còn nói về giọng cũ — đừng dán nó vào ô này.
       note={isRefFile(value) ? hint : null}
-      error={isRefFile(value) ? problem : null}
+      // Máy chủ đã biết vai này đang chờ file (FROM_FILE được lưu), nên lỗi nó báo là về đúng trạng thái này.
+      error={problem}
     />}
     {!fromFile && (problem || hint) && <small className={`vs-cast-note ${problem ? "is-error" : ""}`}>{problem || hint}</small>}
   </li>;

@@ -8,10 +8,13 @@ const execFileP = promisify(execFile);
 const ZENITY = "/usr/bin/zenity";
 
 export type FilePickerKind = "file" | "directory";
-export type FilePickerPurpose = "feedback" | "video" | "voice";
+export type FilePickerPurpose = "feedback" | "video" | "voice" | "sample";
+
+/** Cùng danh sách AUDIO_EXT trong tools/lib/voice-files.mjs — đuôi mà model local nhận làm mẫu giọng. */
+const AUDIO_GLOB = "*.wav *.mp3 *.m4a *.mp4 *.aac *.flac *.ogg *.opus *.webm";
 
 export function filePickerArgs(kind: FilePickerKind, purpose: FilePickerPurpose) {
-  const title = purpose === "video" ? "Chọn video cũ" : purpose === "voice" ? "Chọn thư mục audio giọng đọc" : "Chọn feedback bản cũ";
+  const title = purpose === "video" ? "Chọn video cũ" : purpose === "voice" ? "Chọn thư mục audio giọng đọc" : purpose === "sample" ? "Chọn file giọng mẫu" : "Chọn feedback bản cũ";
   const args = [
     "--file-selection",
     `--title=${title}`,
@@ -22,6 +25,10 @@ export function filePickerArgs(kind: FilePickerKind, purpose: FilePickerPurpose)
   if (kind === "directory") args.push("--directory");
   if (kind === "file" && purpose === "video") {
     args.push("--file-filter=Video | *.mp4 *.mov *.webm *.mkv *.avi");
+    args.push("--file-filter=Tất cả tệp | *");
+  }
+  if (kind === "file" && purpose === "sample") {
+    args.push(`--file-filter=Audio | ${AUDIO_GLOB}`);
     args.push("--file-filter=Tất cả tệp | *");
   }
   return args;

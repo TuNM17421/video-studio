@@ -3123,6 +3123,14 @@ button.vs-tile:hover {
 .vs-cast-note.is-error {
   color: var(--vu-red-700);
 }
+/* Trình chọn file nằm trong một hàng nhân vật: bỏ khoảng cách của Form.Item và hạ ô kéo-thả xuống cỡ một dòng. */
+.vs-cast-file .vs-source-field {
+  margin-bottom: 0;
+}
+.vs-cast-file .vs-source-picker {
+  min-height: 0;
+  padding: 10px 12px;
+}
 /* Người dẫn của video một giọng: bộ chọn thư viện là chính, file trên máy là lối rẽ — gập lại cho gọn. */
 .vs-local-body .vs-cast-other {
   margin-top: var(--vu-space-2);
