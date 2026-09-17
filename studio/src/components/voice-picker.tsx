@@ -14,7 +14,7 @@ const OTHER = "__other__";
  * whole point of a picker. The samples are pre-recorded files on the media bucket, so listening costs no
  * ElevenLabs credit.
  */
-function usePreview() {
+export function usePreview() {
   const [current, setCurrent] = useState<{ id: string; url: string } | null>(null);
   const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -46,7 +46,7 @@ function usePreview() {
   };
 }
 
-function PlayButton({ voice, state, onClick }: { voice: VoiceDef; state: { playing: boolean; loading: boolean; failed: boolean }; onClick: () => void }) {
+export function PlayButton({ voice, state, onClick }: { voice: VoiceDef; state: { playing: boolean; loading: boolean; failed: boolean }; onClick: () => void }) {
   if (!voice.sample) return <Tooltip title="Chưa có file mẫu trên kho media"><span className="vs-voice-play is-empty" aria-hidden="true"><SoundOutlined /></span></Tooltip>;
   const label = `${state.playing ? "Dừng" : "Nghe thử"} giọng ${voice.name}`;
   return <Tooltip title={state.failed ? "Không tải được mẫu — kiểm tra mạng" : label}>

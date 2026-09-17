@@ -66,6 +66,42 @@ export interface VoiceSettings {
   pause: number;
   /** Last folder of per-câu audio picked for an import. */
   importDir: string;
+  /**
+   * Model local: giọng cho riêng một vai, khi không muốn dùng giọng voices.json đã gán sẵn cho nhân vật.
+   * Khoá là tên người nói viết trong cues.js (`""` = người dẫn của video một giọng), giá trị là tên/id một
+   * giọng trong danh mục hoặc đường dẫn tới một file audio trên máy để nhân bản. Thiếu khoá = theo mặc định.
+   */
+  speakers: Record<string, string>;
+}
+
+/** Một vai trong lượt sinh giọng local: ai đọc, bằng giọng nào, mẫu đã sẵn sàng chưa. */
+export interface LocalRole {
+  /** Tên viết trong cues.js; null với video một người dẫn. */
+  speaker: string | null;
+  name: string;
+  character: string | null;
+  avatar: string | null;
+  side: string;
+  tone: string;
+  source: "catalog" | "file";
+  voiceId: string | null;
+  voiceName: string | null;
+  file: string | null;
+  /** Người dùng đã tự chọn giọng cho vai này, thay vì để mặc định của voices.json. */
+  picked: boolean;
+  cues: number;
+  ready: boolean;
+  note: string | null;
+  error: string | null;
+}
+
+export interface LocalCast {
+  dialogue: boolean;
+  cues: number;
+  spoken: number;
+  ok: boolean;
+  roles: LocalRole[];
+  problems: string[];
 }
 
 /** One câu in an import report: which file it got, and everything that looked wrong about it. */

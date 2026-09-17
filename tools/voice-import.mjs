@@ -32,6 +32,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, FPS, sha256 } from './lib/voice-audio.mjs';
 import { cueKey, isAudioFile, matchAudioFolder } from './lib/voice-files.mjs';
 import { mapWords, MODEL_CACHE, runAlign, SETUP_HINT, venvPython } from './lib/voice-align.mjs';
+import { castSpeaker } from './lib/voices.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SAMPLE_RATE = 24000;
@@ -71,9 +72,28 @@ const CUES = (mod.CUES || []).map((c, i) => ({
   text: (c.text || '').trim(),
   silent: c.silent || 0,
   pauseAfter: c.pauseAfter,
+  speaker: String(c.speaker || '').trim(),
   authoredFrames: c.end != null ? c.end - c.start : null,
 }));
 if (!CUES.length) fail(`${cuesFile} không export CUES`);
+
+/**
+ * Ai nói câu nào. Thẻ hội thoại lấy avatar, phía và màu từ voice.cues.json chứ không từ danh sách viết
+ * tay trong cảnh, và bản ElevenLabs ghi sẵn những thứ đó — giọng nhập vào phải ghi y hệt, nếu không thì
+ * cùng một kịch bản hội thoại lại mất mặt nhân vật chỉ vì đổi nguồn giọng (tự thu hay model local).
+ *
+ * Tên lạ không dừng cả lượt quét: nó thành lỗi của đúng những câu mang tên đó, hiện ngay trong bảng
+ * ghép cùng với các vấn đề khác — sửa một lần rồi quét lại, thay vì mỗi lần chỉ thấy một lỗi.
+ */
+const CAST = new Map();
+for (const c of CUES) {
+  if (!c.speaker || CAST.has(c.speaker)) continue;
+  try {
+    CAST.set(c.speaker, { who: castSpeaker(c.speaker) });
+  } catch (error) {
+    CAST.set(c.speaker, { error: error instanceof Error ? error.message : String(error) });
+  }
+}
 const key = cueKey(CUES);
 const syllables = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 const secs = (v) => `${v.toFixed(1).replace('.', ',')}s`;
@@ -117,6 +137,9 @@ for (const c of CUES) {
   const row = { n: c.n, key: key(c.n), file: file || null, silent: Boolean(c.silent), text: c.text, expectedSeconds: +expectedSeconds(c).toFixed(1), level: 'ok', notes: [] };
   rows.push(row);
   if (c.silent) { row.level = 'ok'; row.notes.push(`khoảng dừng ${c.silent}s, không cần file`); continue; }
+  const cast = c.speaker ? CAST.get(c.speaker) : null;
+  if (cast?.error) { row.level = 'error'; row.notes.push(cast.error.split('\n')[0]); }
+  else if (cast?.who) row.speaker = cast.who.name;
   if (!file) { row.level = 'error'; row.notes.push('thiếu file audio'); missing.push(c.n); continue; }
   if (path.basename(file, path.extname(file)) !== row.key) row.notes.push(`tên không theo quy ước ${row.key}${path.extname(file)}`);
   try {
@@ -223,7 +246,14 @@ const built = assemble({
     silent: c.silent,
     pauseAfter: c.pauseAfter,
     authoredFrames: c.authoredFrames,
-    extra: { source: byCue.get(c.n) || null },
+    // `speaker` đi thẳng vào voice.js qua voice-timing.mjs, và cảnh dựng thẻ hội thoại từ đó — giống
+    // hệt đường ElevenLabs, nên một video hội thoại đổi sang giọng tự thu hay model local không mất mặt ai.
+    extra: {
+      source: byCue.get(c.n) || null,
+      ...(CAST.get(c.speaker)?.who
+        ? (({ name, avatar, side, tone }) => ({ speaker: name, avatar, side, tone }))(CAST.get(c.speaker).who)
+        : {}),
+    },
   })),
   sampleRate: SAMPLE_RATE,
   pause,

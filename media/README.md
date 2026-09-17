@@ -27,6 +27,11 @@ Các tuỳ chọn khác: `--list` (chỉ báo cáo), `--force` (đẩy lại t�
 object không còn trong `media/files/`). File không đổi nội dung sẽ bị bỏ qua nhờ so sánh SHA-256, nên
 chạy lại bao nhiêu lần cũng rẻ.
 
+`--prune` chỉ đúng trên máy đang giữ **bản gốc** của kho media. File nặng không nằm trong git, nên máy vừa
+clone về có `media/files/` rỗng — ở đó "xoá những gì không còn trong thư mục" nghĩa là xoá sạch kho của cả
+nhóm, mất hẳn. Vì vậy lệnh tự từ chối khi thư mục rỗng, hoặc khi số object sắp xoá nhiều hơn số file đang
+giữ dưới máy. Các tuỳ chọn còn lại không đổi.
+
 ## Quy ước tên cho video mẫu của style
 Studio tự nhận `styles/<mã style>/sample.<đuôi>` làm video (hoặc audio) mẫu của style đó — bỏ file vào
 đúng tên này là xong, không phải sửa `styles/*.json`. Muốn tên khác thì đặt `"sampleVideo": "<key>"`
