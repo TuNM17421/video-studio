@@ -1,0 +1,7 @@
+00:00: Đặt vấn đề & Bản chất Ingestion — Quản trị kiểu hỏng của 4 nguồn dữ liệu
+01:02: Đồng bộ tăng dần an toàn — Bẫy phân trang Offset vs Cursor & CDC
+02:17: Tự vệ hệ thống — Rate Limit 429, Backoff, Jitter, Backpressure & DLQ
+03:39: Quản lý tệp & Phiên bản — Content Hash, Logical Version & Bẫy tên file
+04:11: Trạm Transform — 5 Dạng dữ liệu bẩn & 3 Nhánh phân luồng xử lý
+04:59: Transform cho Agent & RAG — Clean Text, PII Redaction, Semantic Chunking & Rich Metadata
+06:15: Đúc kết nguyên tắc Idempotent & Cầu nối sang D10-03 Quality Gates

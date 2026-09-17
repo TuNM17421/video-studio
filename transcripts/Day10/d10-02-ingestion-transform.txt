@@ -1,0 +1,93 @@
+00:00 - 00:04: Ở bài học trước, chúng ta đã thấy toàn bộ đường đi của dữ liệu
+00:04 - 00:08: từ nguồn đến Agent. Thế nhưng, điều gì sẽ xảy ra nếu ngay từ trạm đầu tiên —
+00:08 - 00:13: trạm Ingestion — dữ liệu đã bị kéo sai hoặc bỏ sót mà hệ thống vẫn báo xanh?
+00:14 - 00:19: Thu thập dữ liệu, hay Ingestion, không đơn thuần là mở được cổng kết nối.
+00:19 - 00:24: Bản chất của Ingestion đáng tin cậy là bạn phải biết trước mỗi loại nguồn dữ
+00:24 - 00:28: liệu có thể đổ vỡ theo những cách kỳ lạ nào để thiết kế cơ chế tự vệ phù hợp.
+00:30 - 00:34: Trong thực tế, dữ liệu đến từ bốn nguồn chính: Cơ sở dữ liệu thường gặp sự cố
+00:34 - 00:39: nghẽn kết nối, truy vấn nặng bị timeout hoặc schema bất ngờ đổi cột; Giao diện
+00:39 - 00:44: lập trình ứng dụng API thì liên tục giới hạn tần suất gọi; còn Tệp tin và Hàng
+00:44 - 00:49: đợi sự kiện lại hay gặp lỗi sai bảng mã, dữ liệu trùng lặp hoặc dồn ứ cục bộ.
+00:51 - 00:55: Vì mỗi nguồn mang một bản chất riêng, bạn không thể dùng một thước đo duy nhất
+00:55 - 00:59: cho tất cả. Mỗi nguồn dữ liệu bắt buộc phải có một chỉ số sức khỏe
+00:59 - 01:01: và một quy trình kiểm tra chuyên biệt.
+01:03 - 01:07: Khi kéo dữ liệu, quét toàn bộ từ đầu đến cuối chỉ phù hợp với các bảng
+01:07 - 01:11: danh mục nhỏ vài trăm dòng. Khi dữ liệu lên tới hàng triệu bản ghi,
+01:11 - 01:16: chúng ta bắt buộc phải dùng cơ chế đồng bộ tăng dần (Incremental Sync),
+01:16 - 01:19: nghĩa là chỉ kéo phần dữ liệu mới được thêm hoặc sửa đổi.
+01:21 - 01:25: Tuy nhiên, đồng bộ tăng dần tiềm ẩn một cái bẫy chết người nếu bạn phân trang
+01:25 - 01:30: bằng vị trí Offset. Khi có bản ghi mới được chèn vào đầu danh sách trong lúc
+01:30 - 01:35: bạn đang đọc, toàn bộ các trang phía sau sẽ bị lệch vị trí, khiến hệ thống đọc
+01:35 - 01:39: lặp bản ghi cũ và bỏ sót mất bản ghi mới mà không hề có ngoại lệ nào báo ra.
+01:41 - 01:46: Giải pháp an toàn là dùng con trỏ Cursor neo vào một mốc ổn định tăng dần đều,
+01:46 - 01:49: chẳng hạn như mốc thời gian cập nhật hoặc khóa chính định danh.
+01:49 - 01:53: Với Cursor, dù nguồn có chèn thêm bao nhiêu bản ghi mới
+01:53 - 01:57: thì đường ống vẫn đọc chính xác tiếp từ bản ghi cuối cùng đã xác nhận.
+01:59 - 02:03: Với các cơ sở dữ liệu quan trọng, kỹ thuật tối ưu nhất là Change Data Capture
+02:03 - 02:08: (hay CDC). Thay vì liên tục truy vấn vào bảng nghiệp vụ, CDC đọc trực tiếp
+02:08 - 02:13: từ nhật ký giao dịch của cơ sở dữ liệu để nắm bắt trọn vẹn mọi thao tác thêm,
+02:13 - 02:17: sửa và cả thao tác xóa mà không gây áp lực lên hệ thống.
+02:18 - 02:22: Khi kéo dữ liệu qua API của bên thứ ba, bạn chắc chắn sẽ gặp mã lỗi
+02:22 - 02:26: bốn trăm hai mươi chín: giới hạn tần suất. Sai lầm phổ biến nhất
+02:26 - 02:30: của người mới là lập tức thử lại ngay sau khi thất bại, vô tình biến
+02:30 - 02:35: các worker thành một cơn bão lỗi tự đánh sập kết nối của chính mình.
+02:36 - 02:39: Quy tắc tự vệ đầu tiên là Exponential Backoff —
+02:39 - 02:43: kéo dài thời gian chờ theo cấp số nhân giữa các lần thử lại,
+02:43 - 02:47: từ một giây, hai giây lên bốn giây, đồng thời ưu tiên tuyệt đối
+02:47 - 02:51: khoảng thời gian chờ do nhà cung cấp trả về trong tiêu đề Retry-After.
+02:52 - 02:57: Bên cạnh đó, bạn phải bổ sung một khoảng ngẫu nhiên nhỏ gọi là Jitter.
+02:57 - 03:01: Jitter giúp phân tán thời điểm thức dậy của hàng loạt worker khác nhau, đảm
+03:01 - 03:06: bảo chúng không cùng đồng thanh dội request vào máy chủ tại cùng một tích tắc.
+03:08 - 03:12: Khi nguồn đẩy dữ liệu nhanh hơn tốc độ xử lý của đường ống, hàng đợi sẽ dồn
+03:12 - 03:17: ứ lại. Lúc này, hệ thống phải có cơ chế áp lực ngược (Backpressure) để báo
+03:17 - 03:21: cho bên gửi giảm nhịp độ, thay vì tiếp tục nhồi nhét cho đến khi tràn bộ nhớ.
+03:23 - 03:26: Và điều quan trọng nhất: những bản ghi lỗi sau nhiều
+03:26 - 03:29: lần thử lại không bao giờ được phép bốc hơi âm thầm.
+03:29 - 03:33: Chúng phải được chuyển vào hàng đợi tử thần — Dead-Letter Queue (DLQ) —
+03:33 - 03:38: kèm theo đầy đủ dấu vết lỗi và thời gian để kỹ sư kiểm tra và chạy lại sau.
+03:39 - 03:43: Với các nguồn tài liệu dạng tệp tin như PDF hay tài liệu nội bộ,
+03:43 - 03:46: bạn cần quản lý song song hai loại dấu vết:
+03:46 - 03:50: giá trị băm nội dung (Content Hash) để biết nội dung thật có đổi hay không, và
+03:50 - 03:55: phiên bản nghiệp vụ (Logical Version) để biết đó là bản nào trong quy trình.
+03:56 - 04:01: Bởi vì hai tệp mang tên hoàn toàn khác nhau vẫn có thể cùng chứa một nội dung
+04:01 - 04:06: cũ rích, và ngược lại, hai tệp cùng tên vẫn có thể chứa nội dung đã sửa đổi.
+04:06 - 04:10: Nếu chỉ dựa vào tên file, đường ống của bạn sẽ bị đánh lừa ngay tức khắc.
+04:12 - 04:17: Khi dữ liệu đã được kéo về an toàn, chúng ta bước vào trạm thứ hai: Transform.
+04:17 - 04:21: Nhiệm vụ của Transform là biến dữ liệu thô hỗn loạn thành dữ liệu chuẩn mực
+04:21 - 04:26: bằng những quy tắc code có thể lặp lại mà không phụ thuộc vào con người.
+04:27 - 04:31: Trong thực tế, dữ liệu bẩn luôn xuất hiện dưới năm dạng điển hình:
+04:31 - 04:34: Thiếu dữ liệu bắt buộc, Bất thường vượt ngưỡng thực tế,
+04:34 - 04:38: Trùng lặp bản ghi, Sai lệch định dạng, và Lỗi vỡ bảng mã tiếng Việt.
+04:40 - 04:45: Trước năm dạng lỗi đó, một đường ống chuyên nghiệp sẽ phân luồng xử lý theo
+04:45 - 04:49: ba nhánh rõ ràng: Những lỗi đơn giản như khoảng trắng thừa hay bảng mã Unicode
+04:49 - 04:54: sẽ được Sửa tự động; Những dữ liệu nghi vấn sẽ được Gắn cờ để kiểm tra;
+04:54 - 04:58: Còn những bản ghi mất khóa chính hoặc rỗng ruột bắt buộc phải bị Cách ly.
+05:00 - 05:03: Hãy lưu ý một điểm rất quan trọng: dữ liệu chuẩn bị cho Agent
+05:03 - 05:07: và mô hình ngôn ngữ lớn đòi hỏi khắt khe hơn rất nhiều so
+05:07 - 05:10: với dữ liệu đổ vào bảng điều khiển báo cáo truyền thống.
+05:12 - 05:16: Bước đầu tiên là làm sạch rác ngữ nghĩa. Bạn phải bóc tách toàn bộ thẻ HTML,
+05:16 - 05:19: định dạng thừa, chân trang và thanh điều hướng lặp lại,
+05:19 - 05:23: để lại văn bản thuần túy chứa trọn vẹn tri thức hữu ích.
+05:24 - 05:28: Bước thứ hai là rà soát và che giấu thông tin định danh cá nhân — PII.
+05:28 - 05:33: Bằng cách dùng biểu thức chính quy hoặc mô hình nhận diện thực thể,
+05:33 - 05:35: các số căn cước công dân, số thẻ ngân hàng
+05:35 - 05:39: và email cá nhân phải được che chắn trước khi đưa vào kho vector.
+05:40 - 05:45: Bước thứ ba là Semantic Chunking — chia nhỏ tài liệu theo ranh giới ngữ nghĩa.
+05:45 - 05:49: Thay vì cắt phăng tài liệu theo số ký tự cứng nhắc khiến câu
+05:49 - 05:52: từ bị gãy đôi, chúng ta cắt theo cấu trúc tiêu đề,
+05:52 - 05:57: đoạn văn hoặc điều khoản để mỗi mảnh dữ liệu đều mang một ý niệm trọn vẹn.
+05:58 - 06:01: Bước thứ tư là làm giàu siêu dữ liệu — Rich Metadata.
+06:01 - 06:06: Mỗi đoạn văn bản sau khi cắt phải được gắn chặt với tên tài liệu nguồn,
+06:06 - 06:10: đường dẫn gốc, phiên bản, ngày hiệu lực và quyền hạn truy cập,
+06:10 - 06:14: giúp Agent có đủ căn cứ để trích dẫn chính xác nguồn gốc khi trả lời.
+06:15 - 06:20: Một nguyên tắc vàng bạn phải khắc ghi: Sửa tay dữ liệu trên file Excel
+06:20 - 06:25: trước giờ trình diễn không phải là Transform! Mọi quy tắc biến đổi bắt buộc
+06:25 - 06:29: phải được viết thành code tự động để đảm bảo tính lặp lại (Idempotency) —
+06:29 - 06:33: dù chạy một lần hay mười lần đều cho ra cùng một kết quả sạch.
+06:34 - 06:39: Với bất kỳ bản ghi nào đi vào hệ thống, một kỹ sư dữ liệu giỏi luôn phải tự
+06:39 - 06:43: tin trả lời ba câu hỏi: Nó đến từ nguồn nào? Đã trải qua những phép biến
+06:43 - 06:48: đổi nào? Và nếu bị loại bỏ thì hiện đang nằm ở hàng đợi kiểm tra nào?
+06:49 - 06:52: Khi dữ liệu đã được kéo về an toàn và làm sạch chuẩn mực,
+06:52 - 06:57: làm sao để hệ thống tự động kiểm duyệt xem dữ liệu đó có thực sự đạt
+06:57 - 07:01: chuẩn nghiệp vụ hay chưa? Câu trả lời nằm ở cổng kiểm soát chất lượng —
+07:01 - 07:04: Quality Gates — nội dung trọng tâm của video tiếp theo.
