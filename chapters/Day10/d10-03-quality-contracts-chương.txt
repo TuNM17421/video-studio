@@ -1,0 +1,7 @@
+00:00: Đặt vấn đề & Nghịch lý Quality — Hợp lệ schema kỹ thuật vs Đúng thực tế nghiệp vụ
+00:41: Bộ tiêu chuẩn 6 khía cạnh cốt lõi của chất lượng dữ liệu doanh nghiệp
+02:23: Khám sức khỏe dữ liệu tự động với Data Profiling & Phát hiện dị biệt Anomaly
+03:26: 4 Vị trí cắm Quality Gate trên Pipeline & Cơ chế tự vệ Fail-Fast / Quarantined
+05:44: Hợp đồng dữ liệu (Data Contract) & Triết lý Shift-Left chặn lỗi từ gốc nguồn
+06:49: Debug triệu chứng Agent — Truy vết ngược chuỗi nhân quả & Triệt tiêu Ghost Vectors
+08:38: Đúc kết nguyên tắc cốt lõi & Cầu nối sang D10-04 RAG Evaluation

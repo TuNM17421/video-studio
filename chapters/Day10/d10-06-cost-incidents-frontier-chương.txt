@@ -1,0 +1,20 @@
+00:00: Nghịch lý đường ống xanh & Hóa đơn thực tế của Pipeline
+00:37: Bản đồ 7 tầng chi phí Pipeline theo chuẩn FinOps
+01:17: Full Refresh vs Incremental Sync: Độ dốc chi phí O(N) vs O(delta)
+01:53: Tam giác đánh đổi kinh điển: Độ trễ, Chi phí & Độ phức tạp
+02:28: Bài toán kinh tế Re-indexing: Raw Data Versioning & Shadow Index
+03:05: Triết lý TCO: Tổng chi phí trên mỗi câu trả lời đáng tin cậy
+03:34: Case Study Public Health England (PHE 2020): Lỗi nạp dữ liệu sót 15.841 ca
+04:09: 3 Bài học kỹ thuật sống còn: Giới hạn tệp, Đối soát bản ghi & Anomaly Alert
+04:44: Nguyên tắc vàng: Nguồn nói đến đâu, Kết luận đến đó (Post-mortem khách quan)
+05:15: Case Study Zillow Offers (2021): Thất bại đa tầng, không chỉ là lỗi pipeline
+05:46: Phân loại nguyên nhân gốc rễ: Data Pipeline vs AI Model vs Rủi ro vận hành
+06:17: Bẫy trích dẫn vòng tròn (Circular Citation) & Huyền thoại con số 80%
+06:47: Bộ 5 câu hỏi vàng thẩm định con số (Metric Validation Checklist)
+07:20: Radar Frontier 2026: Thang đo 5 trạng thái trưởng thành công nghệ
+07:50: Agentic Data Pipeline: Phân biệt AI-Assisted vs Autonomous Self-Healing
+08:23: Giao thức MCP cho Data Warehouse: 3 Chốt chặn Auth, RBAC & Audit Trail
+08:55: Cảnh báo bảo mật: Rủi ro Indirect Prompt Injection qua dữ liệu Database
+09:28: Data Curation cho AI: Case Study FineWeb-Edu (Chất lượng thắng Số lượng)
+09:57: Kafka Diskless Topics: Đề xuất kiến trúc KIP vs Sẵn sàng Production
+10:30: Bộ khung 4 tiêu chí thẩm định (Evidence, Status, Risk, Value) & Tổng kết Day 10

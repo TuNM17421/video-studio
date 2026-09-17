@@ -1,0 +1,10 @@
+00:00: Vì sao cần Data Observability? — Biến Silent Failure thành Loud Alert
+00:30: Khung tiêu chuẩn 5 Trụ cột quan sát dữ liệu & Hệ sinh thái công cụ 2026
+01:02: Bộ 4 Thước đo thời kỳ Agent & Freshness SLI
+03:25: Phát hiện dị biệt: Rule-Based vs Machine Learning & Z-Score vs MAD
+04:42: Phân rã STL, Bẫy Cold-Start & Đo độ trôi phân phối với PSI vs KL Divergence
+05:58: Schema Drift & Chiến lược Triage cảnh báo chống Alert Fatigue
+07:10: Data Lineage (Table vs Column Level) & Chuẩn mở OpenLineage / Marquez
+08:24: Bán kính ảnh hưởng (Blast Radius) & Cảnh báo phân tầng
+10:14: Khung pháp lý Việt Nam (Luật 60, PDPL 91, Nghị định 356 & 147) & Quốc tế
+11:46: Chiến lược Retention, Right-to-be-Forgotten trên Vector DB & Đúc kết Module 2

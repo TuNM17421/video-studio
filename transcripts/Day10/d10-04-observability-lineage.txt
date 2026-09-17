@@ -1,0 +1,232 @@
+00:00 - 00:03: Ở bài học trước, chúng ta đã thiết lập các trạm kiểm
+00:03 - 00:06: định chất lượng để ngăn chặn dữ liệu bẩn ngay tại chỗ.
+00:06 - 00:10: Thế nhưng trong thực tế vận hành, dữ liệu vẫn có thể
+00:10 - 00:13: suy thoái và biến động âm thầm theo thời gian mà không
+00:13 - 00:17: hề gây sập hệ thống hay báo lỗi đỏ. Câu hỏi sống
+00:17 - 00:20: còn đặt ra là: Làm sao chúng ta biết dữ liệu đã
+00:20 - 00:23: hỏng trước khi người dùng phát hiện và phàn nàn? Đó chính
+00:23 - 00:27: là sứ mệnh của Data Observability, tức khả năng quan sát và
+00:27 - 00:30: chẩn đoán toàn diện sức khỏe của đường ống dữ liệu.
+00:30 - 00:34: Được khởi xướng bởi Barr Moses, nhà đồng sáng lập Monte Carlo,
+00:34 - 00:37: bộ khung tiêu chuẩn năm trụ cột quan sát dữ liệu bao
+00:37 - 00:41: gồm: Thứ nhất là Độ tươi mới (Freshness) đo nhịp cập nhật
+00:41 - 00:45: dữ liệu. Thứ hai là Chất lượng (Quality) đo tỷ lệ giá
+00:45 - 00:48: trị rỗng hoặc giá trị duy nhất. Thứ ba là Khối lượng
+00:48 - 00:52: (Volume) đo số lượng dòng bản ghi. Thứ tư là Cấu trúc
+00:52 - 00:55: (Schema) theo dõi các thay đổi ngoài kế hoạch của bảng và
+00:55 - 00:59: cột. Và thứ năm là Dòng chảy dữ liệu (Lineage) truy vết
+00:59 - 01:02: bản đồ phụ thuộc giữa đầu nguồn và hạ nguồn.
+01:02 - 01:06: Khi áp dụng cho kho tri thức nuôi Agent và hệ thống
+01:06 - 01:10: RAG, chúng ta cần bổ sung bốn chỉ số đặc thù của
+01:10 - 01:14: thời kỳ AI: Thứ nhất là Tỷ lệ bao phủ embedding (Embedding
+01:14 - 01:17: coverage), đo phần trăm tài liệu đã có vector hợp lệ. Thứ
+01:17 - 01:21: hai là Tính nhất quán phiên bản index (Index version consistency), đảm
+01:21 - 01:25: bảo toàn bộ vector được tạo bởi cùng một mô hình embedding
+01:25 - 01:29: hiện hành, tránh việc trộn lẫn nhiều mô hình khác nhau. Thứ
+01:29 - 01:32: ba là Độ cũ khi truy xuất (Retrieval staleness), đo tuổi thọ
+01:32 - 01:36: tối đa của các đoạn văn bản được Agent truy xuất trong
+01:36 - 01:40: hai mươi tư giờ qua. Và thứ tư là Tỷ lệ mâu
+01:40 - 01:43: thuẫn (Contradiction rate), đo số lượng các cặp tài liệu có nội
+01:43 - 01:47: dung trái ngược nhau cùng tồn tại trong kho tri thức.
+01:47 - 01:50: Chỉ số cam kết mức dịch vụ về độ tươi mới (Freshness
+01:50 - 01:54: SLI) đo lường độ trễ từ lúc dữ liệu phát sinh đến
+01:54 - 01:57: khi sẵn sàng phục vụ. Tuy nhiên, có ba cạm bẫy kỹ
+01:57 - 02:00: thuật bạn bắt buộc phải hiểu rõ: Thứ nhất, quy tắc kiểm
+02:00 - 02:03: tra cố định sẽ báo động giả khi hệ thống có khoảng
+02:03 - 02:06: lặng hợp lệ, ví dụ như cuối tuần không có dữ liệu
+02:06 - 02:09: mới. Thứ hai, đúng giờ không đồng nghĩa với đúng nội dung,
+02:09 - 02:13: một bảng dữ liệu cập nhật rất đúng giờ nhưng bên trong
+02:13 - 02:16: toàn dữ liệu rỗng hoặc rác vẫn khiến Agent trả lời tự
+02:16 - 02:19: tin nhưng sai lệch. Thứ ba là lỗi lệch đồng hồ và
+02:19 - 02:22: múi giờ giữa các hệ thống tạo ra các cảnh báo giả
+02:22 - 02:25: mạo.
+02:25 - 02:29: Hệ sinh thái công cụ quan sát dữ liệu hiện nay đã
+02:29 - 02:33: định hình rõ nét: Monte Carlo chuyển dịch mạnh mẽ sang định
+02:33 - 02:37: hướng xây dựng lòng tin cho Agent; Elementary là giải pháp mã
+02:37 - 02:41: nguồn mở vận hành trực tiếp bên trong dbt; Soda 4.0 chuyển
+02:41 - 02:45: đổi toàn diện sang cú pháp ưu tiên hợp đồng dữ liệu
+02:45 - 02:48: Data-Contracts-first; và dbt test cung cấp các tầng kiểm tra logic tích
+02:48 - 02:52: hợp sẵn ngay trong đường ống biến đổi dữ liệu mà không
+02:52 - 02:56: cần cài đặt thêm công cụ bên ngoài.
+02:56 - 02:59: Kho tri thức nuôi Agent bị hỏng không hề ném ra ngoại
+02:59 - 03:03: lệ kỹ thuật, Agent vẫn trả lời rất trôi chảy nhưng kết
+03:03 - 03:06: quả hoàn toàn sai, đó chính là sự cố âm thầm (silent
+03:06 - 03:09: failure). Toàn bộ các trụ cột và thước đo quan sát dữ
+03:09 - 03:12: liệu tồn tại chỉ để thực hiện một sứ mệnh duy nhất:
+03:12 - 03:15: bắt buộc đường ống dữ liệu phải khai báo khi xuất hiện
+03:15 - 03:19: bất thường, chuyển hóa một lỗi hỏng vốn im lặng thành một
+03:19 - 03:22: cảnh báo ồn ào và rõ ràng trước khi nó kịp chạm
+03:22 - 03:25: tới người dùng.
+03:25 - 03:28: Để phát hiện bất thường trong dữ liệu, chúng ta có hai
+03:28 - 03:32: trường phái chính. Trường phái dựa trên quy tắc (Rule-based) rất rõ
+03:32 - 03:35: ràng, dễ giải thích và hoàn hảo cho các ràng buộc bất
+03:35 - 03:39: biến, ví dụ như số đoạn văn bản không bao giờ được
+03:39 - 03:42: phép là số âm; nhưng nó hoàn toàn mù trước các mẫu
+03:42 - 03:46: lỗi mới chưa từng gặp. Ngược lại, trường phái Thống kê và
+03:46 - 03:49: Machine Learning có thể tự học theo quy luật mùa vụ, nhưng
+03:49 - 03:52: lại khó giải thích điểm số cho người trực ca và hoàn
+03:52 - 03:56: toàn bất lực trong giai đoạn khởi đầu lạnh (cold-start) khi chưa
+03:56 - 03:59: có đủ dữ liệu lịch sử. Vì vậy, giải pháp tối ưu
+03:59 - 04:03: luôn là mô hình lai (Hybrid), dùng quy tắc cứng cho các
+04:03 - 04:06: ràng buộc kỹ thuật và dùng thống kê cho các chỉ số
+04:06 - 04:09: biến thiên theo chu kỳ.
+04:09 - 04:13: Khi dữ liệu có phân phối chuẩn, chỉ số Z-Score đo khoảng
+04:13 - 04:17: cách từ điểm dữ liệu đến giá trị trung bình theo độ
+04:17 - 04:20: lệch chuẩn. Nhưng Z-Score dễ bị gãy bởi hiệu ứng che mờ
+04:20 - 04:24: (masking effect), khi một lượng lớn dữ liệu lỗi xuất hiện cùng
+04:24 - 04:27: lúc, chính chúng sẽ thổi phồng độ lệch chuẩn và tự che
+04:27 - 04:31: giấu bản thân. Để khắc phục, chúng ta sử dụng chỉ số
+04:31 - 04:35: MAD (Median Absolute Deviation), lấy trung vị làm tâm thay cho giá
+04:35 - 04:38: trị trung bình, giúp hệ thống thống kê bền vững và không
+04:38 - 04:42: bị các điểm dị biệt làm sai lệch.
+04:42 - 04:45: Để phân biệt lưu lượng nạp tài liệu giảm vì hôm nay
+04:45 - 04:49: là ngày nghỉ hay vì đường ống bị nghẽn, kỹ thuật phân
+04:49 - 04:52: rã STL tách chuỗi thời gian thành ba thành phần: Xu hướng
+04:52 - 04:56: dài hạn (Trend), Tính mùa vụ chu kỳ (Seasonal) và Phần dư
+04:56 - 05:00: bất thường (Residual). Bất thường sẽ được phát hiện chính xác trên
+05:00 - 05:03: phần dư sau khi đã triệt tiêu yếu tố mùa vụ. Dẫu
+05:03 - 05:07: vậy, mọi giải pháp thống kê đều gặp thách thức khởi đầu
+05:07 - 05:10: lạnh, nếu kho dữ liệu của Agent mới vận hành dưới hai
+05:10 - 05:14: tuần, bạn chưa thể có đủ lịch sử tin cậy để ước
+05:14 - 05:17: lượng độ lệch chuẩn hay tính chu kỳ theo tuần.
+05:17 - 05:21: Để phát hiện phân phối vector embedding hoặc đặc trưng dữ liệu
+05:21 - 05:25: đầu vào đã bị dịch chuyển bao xa so với tập mốc
+05:25 - 05:28: ban đầu, chúng ta sử dụng chỉ số ổn định quần thể
+05:28 - 05:32: (PSI). Bản chất của PSI là phép phân kỳ Jeffreys, tức tổng
+05:32 - 05:36: đối xứng hai chiều của khoảng cách KL Divergence, giúp kết quả
+05:36 - 05:39: không bị thay đổi khi bạn hoán đổi vị trí giữa tập
+05:39 - 05:43: hiện tại và tập mốc. Đáng chú ý, ngành tài chính thường
+05:43 - 05:47: đặt ngưỡng cảnh báo lớn hơn 0.25, trong khi các công cụ
+05:47 - 05:51: AI lại khuyến nghị ngưỡng 0.2. Sự bất đồng này chứng minh
+05:51 - 05:54: không có một ngưỡng thần thánh phổ quát nào, bạn bắt buộc
+05:54 - 05:58: phải tự đo đạc trên chính hệ thống của mình.
+05:58 - 06:01: Có bốn dạng biến đổi cấu trúc bảng: Cột bị xóa, Cột
+06:01 - 06:04: bị đổi tên, Cột bị đổi kiểu dữ liệu, và Cột được
+06:04 - 06:07: thêm mới. Khi một cột bị xóa hoặc đổi tên, các đoạn
+06:07 - 06:10: mã hạ nguồn tham chiếu tới nó sẽ báo lỗi ngay lập
+06:10 - 06:13: tức, rất ồn ào và dễ khắc phục. Nhưng khi một cột
+06:13 - 06:16: mới được âm thầm thêm vào, không có đoạn mã nào gọi
+06:16 - 06:20: tới nó, đường ống vẫn báo chạy thành công mỹ mãn. Đây
+06:20 - 06:23: là dạng trôi schema nguy hiểm nhất đối với Agent, vì một
+06:23 - 06:26: trường thông tin nội bộ nhạy cảm có thể lặng lẽ trôi
+06:26 - 06:29: vào kho tri thức và bất ngờ lộ ra trong câu trả
+06:29 - 06:32: lời của Agent mà không có bất kỳ bộ luật nào phát
+06:32 - 06:35: hiện được.
+06:35 - 06:38: Một hệ thống phát hiện mà không ai tin còn tồi tệ
+06:38 - 06:41: hơn một hệ thống không có cảnh báo. Nếu đặt ngưỡng kiểm
+06:41 - 06:45: tra quá nhạy, báo động giả sẽ tràn ngập, khiến đội ngũ
+06:45 - 06:48: vận hành bị kiệt sức (Alert Fatigue) và hình thành thói quen
+06:48 - 06:51: phớt lờ kênh thông báo. Đến khi sự cố thật sự xảy
+06:51 - 06:54: ra, lỗi sẽ trôi thẳng vào Agent mà không ai can thiệp.
+06:54 - 06:58: Ngược lại, nếu nới lỏng ngưỡng quá mức, lỗi sẽ lọt lưới
+06:58 - 07:01: âm thầm. Để kiểm soát rủi ro mà không bị ngập trong
+07:01 - 07:04: cảnh báo, chúng ta cần một công cụ định vị chính xác
+07:04 - 07:07: phạm vi ảnh hưởng của từng sự cố, đó chính là Data
+07:07 - 07:10: Lineage.
+07:10 - 07:14: Data Lineage là bản đồ đồ thị cho phép truy vấn chính
+07:14 - 07:18: xác dòng chảy dữ liệu qua toàn bộ hệ thống: nguồn nào
+07:18 - 07:21: nuôi bước chuyển đổi nào, và bước chuyển đổi nào nuôi bảng
+07:21 - 07:25: dữ liệu hay chỉ mục vector nào. Có hai cấp độ chính:
+07:25 - 07:28: Lineage cấp bảng (Table-level lineage) dễ tính toán, cho biết mối quan
+07:28 - 07:32: hệ phụ thuộc giữa các công việc; và Lineage cấp cột (Column-level
+07:32 - 07:35: lineage) khó hơn nhiều, nhưng cho biết chính xác một trường dữ
+07:35 - 07:39: liệu cụ thể ở đầu nguồn sẽ chảy vào những thuộc tính
+07:39 - 07:43: nào ở hạ nguồn. Thay vì phải mở log lần mò năm
+07:43 - 07:46: tầng thủ công, Lineage biến việc điều tra thành một câu truy
+07:46 - 07:50: vấn tự động trong tích tắc.
+07:50 - 07:53: Để chuẩn hóa cách thu thập bản đồ dòng chảy dữ liệu,
+07:53 - 07:57: cộng đồng mã nguồn mở đã phát triển tiêu chuẩn OpenLineage thuộc
+07:57 - 08:01: tổ chức Linux Foundation AI. Mô hình hướng đối tượng của OpenLineage
+08:01 - 08:05: gồm năm thực thể cốt lõi: Dataset (tập dữ liệu), Job (tác
+08:05 - 08:09: vụ xử lý), Run (phiên thực thi cụ thể), RunEvent (sự kiện
+08:09 - 08:12: trạng thái), và Facets (các gói siêu dữ liệu mở rộng). Giao
+08:12 - 08:16: diện đồ thị Marquez cho phép trực quan hóa toàn bộ đường
+08:16 - 08:20: ống, và hiện đã được tích hợp sẵn dưới dạng provider chính
+08:20 - 08:24: thức ngay trong Apache Airflow.
+08:24 - 08:27: Mặc dù rất lý tưởng, việc thu thập Lineage cấp cột trong
+08:27 - 08:30: thực tế vẫn là bài toán chưa ai giải quyết trọn vẹn.
+08:30 - 08:34: Các câu lệnh SQL sử dụng dấu sao để lấy toàn bộ
+08:34 - 08:37: các cột đòi hỏi phải có lược đồ sống để mở rộng,
+08:37 - 08:40: các phép nối bảng trùng tên cột gây mập mờ tham chiếu,
+08:40 - 08:43: và các hàm tùy biến động (UDF) bắt buộc phải khai báo
+08:43 - 08:47: thủ công. Do đó, độ chính xác phân tích cú pháp hiện
+08:47 - 08:50: chỉ đạt khoảng 85 đến 90%. Mức độ này hoàn toàn đủ
+08:50 - 08:53: để hỗ trợ kỹ sư đánh giá tác động sự cố, nhưng
+08:53 - 08:57: chưa đủ độ tin cậy để tự động hóa việc xóa dữ
+08:57 - 09:00: liệu mà không có con người kiểm duyệt.
+09:00 - 09:03: Khi một nguồn dữ liệu gặp sự cố, khái niệm Blast Radius
+09:03 - 09:07: mô tả tổng toàn bộ bề mặt hạ nguồn và Agent sẽ
+09:07 - 09:10: bị tổn thương. Bằng cách kết hợp đồ thị Lineage với lịch
+09:10 - 09:13: sử truy vấn, chúng ta có thể lượng hóa chính xác mức
+09:13 - 09:17: độ thiệt hại nghiệp vụ: Ví dụ, nếu cột khu vực khách
+09:17 - 09:20: hàng bị đổi từ kiểu chuỗi sang kiểu liệt kê (enum), khung
+09:20 - 09:23: nhìn tổng hợp doanh thu sẽ lập tức bị vỡ phép nối,
+09:23 - 09:27: khiến Agent trả lời sai về khu vực có doanh thu cao
+09:27 - 09:30: nhất. Hoặc nếu trường mô tả sản phẩm bị cắt ngắn độ
+09:30 - 09:34: dài ở nguồn, các đoạn nhúng vector cũ sẽ không được cập
+09:34 - 09:37: nhật lại, khiến Agent tiếp tục tự tin trích dẫn những thông
+09:37 - 09:40: số kỹ thuật đã lỗi thời.
+09:40 - 09:44: Kiến trúc quản trị dữ liệu hiện đại phân tách rõ hai
+09:44 - 09:48: tầng công cụ: Tầng dưới cùng nằm sát định dạng bảng lưu
+09:48 - 09:52: trữ (như Iceberg hay Delta Lake) là Table Catalog, tiêu biểu là
+09:52 - 09:55: Apache Polaris vừa trở thành dự án cấp cao của Apache, và
+09:55 - 09:59: Unity Catalog mã nguồn mở do Databricks đóng góp. Tầng phía trên
+09:59 - 10:03: là Metadata và Discovery Catalog, dẫn đầu bởi DataHub và OpenMetadata, đóng
+10:03 - 10:07: vai trò thu thập siêu dữ liệu từ mọi nguồn, cung cấp
+10:07 - 10:10: từ điển thuật ngữ nghiệp vụ và giao diện trực quan hóa
+10:10 - 10:14: Data Lineage.
+10:14 - 10:18: Khi vận hành đường ống dữ liệu và nuôi Agent AI tại
+10:18 - 10:22: Việt Nam, các kỹ sư phải tuân thủ nghiêm ngặt khung pháp
+10:22 - 10:26: lý hoàn chỉnh gồm ba tầng: Tầng một là Luật An ninh
+10:26 - 10:30: mạng cùng Nghị định 147 về yêu cầu nội địa hóa hạ
+10:30 - 10:34: tầng dữ liệu internet. Tầng hai là Luật Dữ liệu số 60/2024/QH15,
+10:34 - 10:38: có hiệu lực từ ngày mùng 1 tháng 7 năm 2025, quản
+10:38 - 10:42: lý toàn diện mọi dữ liệu số và phân loại thành dữ
+10:42 - 10:46: liệu quan trọng hoặc dữ liệu cốt lõi. Tầng ba là Luật
+10:46 - 10:50: Bảo vệ dữ liệu cá nhân PDPL 91/2025/QH15 đi kèm Nghị định
+10:50 - 10:54: hướng dẫn 356/2025/NĐ-CP, tập trung vào quyền đồng ý tường minh của
+10:54 - 10:58: chủ thể dữ liệu.
+10:58 - 11:01: Các quy định pháp luật tạo ra những ràng buộc kỹ thuật
+11:01 - 11:05: trực tiếp lên chính kiến trúc pipeline bạn xây dựng. Với Dữ
+11:05 - 11:08: liệu cốt lõi liên quan từ một triệu công dân trở lên,
+11:08 - 11:11: bạn bắt buộc phải có chấp thuận bằng văn bản trước từ
+11:11 - 11:15: Bộ Công an hoặc Bộ Quốc phòng trước khi chuyển dữ liệu
+11:15 - 11:18: ra nước ngoài. Với Dữ liệu quan trọng từ một trăm nghìn
+11:18 - 11:22: đến dưới một triệu công dân, bạn phải nộp hồ sơ đánh
+11:22 - 11:25: giá tác động trước 15 ngày. Nếu đường ống của bạn đẩy
+11:25 - 11:29: dữ liệu người dùng ra các dịch vụ nước ngoài, ví dụ
+11:29 - 11:32: như gọi API của mô hình ngôn ngữ lớn hoặc nạp vào
+11:32 - 11:36: máy chủ Vector Database đặt tại nước ngoài, bạn bắt buộc phải
+11:36 - 11:39: thực hiện hồ sơ đánh giá tác động chuyển dữ liệu (TIA).
+11:39 - 11:43: Mức chế tài xử phạt có thể lên tới 5% tổng doanh
+11:43 - 11:46: thu hoặc xử lý hình sự tới 7 năm tù.
+11:46 - 11:50: Nếu Agent của bạn phục vụ người dùng tại thị trường quốc
+11:50 - 11:53: tế, bạn cần lưu ý Điều 50 của Đạo luật EU AI
+11:53 - 11:57: Act, có hiệu lực từ tháng 8 năm 2026, yêu cầu bắt
+11:57 - 12:01: buộc phải đánh dấu mọi nội dung do AI tạo ra dưới
+12:01 - 12:04: dạng mà máy có thể đọc được (machine-readable). Đặc biệt, hãy cẩn
+12:04 - 12:08: thận với bẫy thông tin lỗi thời: Thỏa thuận AI Omnibus vào
+12:08 - 12:12: giữa năm 2026 đã chính thức dời lịch áp dụng Điều 10
+12:12 - 12:15: về quản trị dữ liệu cho các hệ thống có mức độ
+12:15 - 12:19: rủi ro cao sang cuối năm 2027.
+12:19 - 12:22: Báo cáo thực thi quyền được xóa dữ liệu của Ủy ban
+12:22 - 12:26: Bảo vệ Dữ liệu Châu Âu (EDPB) chỉ ra hai thách thức
+12:26 - 12:29: lớn nhất mà các kỹ sư dữ liệu thường xuyên vi phạm:
+12:29 - 12:33: Đó là khó khăn trong việc xóa dữ liệu khỏi các bản
+12:33 - 12:36: sao lưu dự phòng (backup), và việc xóa giả lập thay vì
+12:36 - 12:40: xóa thật. Đối với hệ thống RAG, khi bạn thực hiện một
+12:40 - 12:44: lệnh DELETE thành công trên cơ sở dữ liệu nguồn, các vector
+12:44 - 12:47: nhúng tương ứng trong Vector Database vẫn có thể âm thầm sót
+12:47 - 12:51: lại, tạo thành hiện tượng vector ma (Ghost Vectors). Lệnh xóa thành
+12:51 - 12:54: công ở nguồn hoàn toàn không đồng nghĩa với việc tri thức
+12:54 - 12:58: đó đã biến mất khỏi đầu óc của Agent.
+12:58 - 13:01: Khép lại Module 2, chúng ta đã nắm vững trọn vẹn bức
+13:01 - 13:05: tranh: từ việc kiểm định chất lượng với 6 tiêu chuẩn và
+13:05 - 13:08: Quality Gates, đến giám sát phát hiện bất thường với 5 trụ
+13:08 - 13:12: cột Observability, truy vết nguyên nhân bằng Data Lineage và bảo vệ
+13:12 - 13:15: hệ thống bằng các rào chắn pháp lý nghiêm ngặt. Ở Module
+13:15 - 13:18: tiếp theo, chúng ta sẽ bước sang khâu vận hành tự động
+13:18 - 13:22: hóa: Khi sự cố dữ liệu đã được phát hiện, hệ thống
+13:22 - 13:25: điều phối Orchestration và cơ chế phân luồng Alerting sẽ phản ứng
+13:25 - 13:29: ra sao để tự động phục hồi và tối ưu chi phí
+13:29 - 13:32: hạ tầng?

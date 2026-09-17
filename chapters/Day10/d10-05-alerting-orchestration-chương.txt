@@ -1,0 +1,13 @@
+00:00: Tín hiệu kỹ thuật vs Cảnh báo hành động (Actionable Alert)
+00:33: Chuỗi 5 mắt xích: Signal ➔ Impact ➔ Priority ➔ Owner ➔ Action
+01:08: Cam kết nghiệp vụ SLO & Ngân sách dung sai lỗi (Error Budget)
+01:44: Phân tầng cảnh báo (P1/P2/P3) & Bẫy kiệt sức Alert Fatigue
+02:55: Bản chất Incident Runbook: Tác chiến chuẩn hóa khi sự cố lúc 2h sáng
+03:27: Quy trình ứng cứu sự cố 6 bước (Identify, Mitigate, Resolve & Learn)
+04:31: 3 Chiến lược phòng vệ cho Agent & 3 Cấp xử lý Stop/Quarantine/Log
+05:43: Orchestration là gì? & Đồ thị có hướng không chu trình (DAG)
+06:47: Bản đồ công cụ Orchestration 2026 & 3 Kiểu kích hoạt Trigger
+07:54: Quy trình 5 chặng đồng bộ tri thức cho AI Agent & Atomic Cutover
+08:25: Tự phục hồi: Timeout, Retry & Giãn cách lũy tiến Exponential Backoff
+08:55: Tính lũy thừa Idempotency: Upsert Natural Key vs Shadow Indexing
+10:00: Chiến lược Backfill dữ liệu có kiểm soát & Đúc kết Module 3

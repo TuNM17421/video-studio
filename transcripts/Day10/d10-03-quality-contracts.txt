@@ -1,0 +1,157 @@
+00:00 - 00:03: Ở bài học trước, chúng ta đã biến dữ liệu thô thành
+00:03 - 00:06: các tài liệu sạch và chia đoạn ngữ nghĩa sẵn sàng cho
+00:06 - 00:09: AI. Thế nhưng, nếu một con số tiền lương là số dương,
+00:09 - 00:12: nằm đúng cột và vượt qua mọi kiểm tra kỹ thuật, nhưng
+00:12 - 00:16: người nhập gõ nhầm thêm một số không, liệu dữ liệu đó
+00:16 - 00:19: có thực sự đạt chất lượng?
+00:19 - 00:22: Câu trả lời dứt khoát là không. Đây chính là nghịch lý
+00:22 - 00:25: kinh điển trong kỹ nghệ dữ liệu: Hợp lệ theo schema kỹ
+00:25 - 00:28: thuật chỉ chứng minh dữ liệu có đúng hình dạng cấu trúc,
+00:28 - 00:31: hoàn toàn không chứng minh nó đúng với thực tế nghiệp vụ.
+00:31 - 00:35: Dữ liệu đạt chất lượng không phải là dữ liệu không báo
+00:35 - 00:38: lỗi đỏ, mà là dữ liệu đủ độ tin cậy để Agent
+00:38 - 00:41: hành động.
+00:41 - 00:44: Để đánh giá chất lượng một cách toàn diện thay vì cảm
+00:44 - 00:48: tính, ngành kỹ nghệ dữ liệu sử dụng bộ tiêu chuẩn sáu
+00:48 - 00:51: khía cạnh cốt lõi. Hãy đặt sáu câu hỏi này lên cùng
+00:51 - 00:55: tài liệu Chính sách nghỉ phép phiên bản hai để thấy rõ
+00:55 - 00:58: tác động của chúng đối với Agent.
+00:58 - 01:02: Khía cạnh thứ nhất là Tính đầy đủ (Completeness): tài liệu có
+01:02 - 01:06: bị thiếu trường bắt buộc nào không, ví dụ như ngày hiệu
+01:06 - 01:09: lực? Nếu thiếu, Agent sẽ mất ngữ cảnh và trả lời thiếu
+01:09 - 01:13: sót. Khía cạnh thứ hai là Tính chính xác (Accuracy): ngày hiệu
+01:13 - 01:17: lực ghi trên văn bản có đúng với chính sách đã được
+01:17 - 01:20: phê duyệt ngoài đời thực hay không? Nếu sai, Agent vẫn trích
+01:20 - 01:24: dẫn rất tự tin nhưng đưa ra thông tin sai lệch.
+01:24 - 01:28: Khía cạnh thứ ba là Tính nhất quán (Consistency): nếu phòng nhân
+01:28 - 01:31: sự lưu tài liệu phiên bản hai nhưng cổng thông tin nội
+01:31 - 01:34: bộ vẫn lưu phiên bản một, dữ liệu đã bị bất nhất,
+01:34 - 01:38: khiến Agent trả lời trái ngược nhau tùy vào nguồn nó truy
+01:38 - 01:41: xuất. Khía cạnh thứ tư là Tính kịp thời (Timeliness): tài liệu
+01:41 - 01:45: mới có đến được kho lưu trữ của Agent đúng hạn hay
+01:45 - 01:48: không? Một tài liệu đúng thực tế nhưng cập nhật trễ vẫn
+01:48 - 01:51: khiến Agent hành động trên một cơ sở tri thức đã lỗi
+01:51 - 01:55: thời.
+01:55 - 01:58: Khía cạnh thứ năm là Tính hợp lệ (Validity): các trường như
+01:58 - 02:02: mã nhân viên, định dạng ngày tháng có đúng quy chuẩn hay
+02:02 - 02:05: không? Nếu sai, pipeline sẽ bị vỡ định dạng hoặc sập ở
+02:05 - 02:09: bước chuyển đổi. Và khía cạnh thứ sáu là Tính duy nhất
+02:09 - 02:12: (Uniqueness): cùng một tài liệu có bị nhân bản nhiều lần hay
+02:12 - 02:16: không? Sự trùng lặp sẽ khiến tầng truy xuất nạp lại cùng
+02:16 - 02:19: một nội dung nhiều lần, làm lãng phí cửa sổ ngữ cảnh
+02:19 - 02:23: quý giá của mô hình ngôn ngữ lớn.
+02:23 - 02:26: Một điểm mấu chốt bạn cần ghi nhớ: Năm khía cạnh gồm
+02:26 - 02:29: Đầy đủ, Nhất quán, Kịp thời, Hợp lệ và Duy nhất hoàn
+02:29 - 02:32: toàn có thể tự động hóa bằng các thuật toán kiểm tra
+02:32 - 02:36: mã nguồn. Riêng Độ chính xác thực tế thì không thể tự
+02:36 - 02:39: đoán từ con số, mà bắt buộc phải có một nguồn đối
+02:39 - 02:42: chiếu hồ sơ đáng tin cậy.
+02:42 - 02:46: Trước khi vội vàng viết bất kỳ bài kiểm tra hay quy
+02:46 - 02:50: tắc nào, bước đầu tiên bắt buộc phải là Khảo sát dữ
+02:50 - 02:53: liệu, hay Data Profiling. Profiling là việc đo đạc dữ liệu thực
+02:53 - 02:57: tế: tỷ lệ giá trị rỗng, giá trị lớn nhất, nhỏ nhất,
+02:57 - 03:01: số lượng phân biệt và phân bố xác suất của từng cột.
+03:01 - 03:04: Nếu bạn viết quy tắc kiểm tra theo cảm tính mà không
+03:04 - 03:08: đo dữ liệu thật — ví dụ đoán rằng trạng thái chỉ
+03:08 - 03:11: có năm giá trị — thì đường ống sẽ sập ngay khi
+03:11 - 03:15: gặp giá trị thứ sáu hợp lệ trong thực tế. Các công
+03:15 - 03:18: cụ hiện đại như Great Expectations hay PyDeequ cho phép biến kiểm
+03:18 - 03:22: thử chất lượng thành mã nguồn (Quality-as-Code), tự động khảo sát dữ
+03:22 - 03:26: liệu và đề xuất các ràng buộc chuẩn xác.
+03:26 - 03:29: Khi đã có các bài kiểm thử chất lượng, câu hỏi tiếp
+03:29 - 03:33: theo là: Chúng ta nên đặt các chốt kiểm soát, tức Quality
+03:33 - 03:37: Gates, ở những vị trí nào trên đường ống dữ liệu để
+03:37 - 03:40: vừa tối ưu chi phí, vừa bảo vệ tuyệt đối cho Agent?
+03:40 - 03:44: Trong một hệ thống chuẩn mực, có bốn vị trí đặt chốt
+03:44 - 03:47: kiểm soát hiển thị trên màn hình: Vị trí một là Cổng
+03:47 - 03:50: thu thập (Ingestion Boundary), kiểm tra schema thô và loại bỏ bản
+03:50 - 03:54: ghi rác ngay ở cửa ngõ. Vị trí hai là Sau biến
+03:54 - 03:57: đổi (Post-Transform), kiểm tra dữ liệu sau khi đã làm sạch và
+03:57 - 04:00: nối bảng. Vị trí ba là Trước nhúng (Pre-Embed), kiểm tra trùng
+04:00 - 04:04: lặp và mâu thuẫn trước khi gọi mô hình embedding đắt đỏ.
+04:04 - 04:07: Và vị trí bốn là Trước phục vụ (Pre-Serve), bảo đảm Agent
+04:07 - 04:10: không bao giờ truy vấn vào dữ liệu đang bị đánh dấu
+04:10 - 04:14: lỗi.
+04:14 - 04:17: Việc lựa chọn vị trí đặt cổng là bài toán cân bằng
+04:17 - 04:20: kinh tế: Cổng càng sớm thì chi phí khắc phục càng rẻ
+04:20 - 04:24: vì chưa tốn năng lượng tính toán để xử lý và nhúng
+04:24 - 04:27: vector, nhưng lại có ít ngữ cảnh để phát hiện lỗi logic
+04:27 - 04:30: sâu. Ngược lại, cổng càng muộn thì càng tốn kém, nhưng lại
+04:30 - 04:33: bắt được những lỗi tinh vi mà chỉ khi có đủ toàn
+04:33 - 04:37: bộ ngữ cảnh liên kết mới lộ diện.
+04:37 - 04:40: Dù đặt ở đâu, mục đích tối thượng của Quality Gate là
+04:40 - 04:43: biến lỗi âm thầm (Silent Failure) thành lỗi rõ ràng (Loud Failure)
+04:43 - 04:47: có chủ đích. Thay vì để một tài liệu rác lọt vào
+04:47 - 04:50: Vector Store khiến Agent trả lời sai với người dùng mà không
+04:50 - 04:54: ai hay biết, đường ống sẽ chủ động dừng lại và cảnh
+04:54 - 04:57: báo ngay cho đội ngũ kỹ thuật.
+04:57 - 05:01: Khi một bài kiểm tra chất lượng bị thất bại, hệ thống
+05:01 - 05:04: nên dừng lại hay chạy tiếp? Câu trả lời phụ thuộc vào
+05:04 - 05:08: bài toán nghiệp vụ của bạn qua hai chiến lược: Đóng an
+05:08 - 05:12: toàn (Fail-Closed) hoặc Mở linh hoạt (Fail-Open).
+05:12 - 05:15: Với chiến lược Fail-Closed, khi phát hiện lỗi, đường ống sẽ lập
+05:15 - 05:19: tức dừng cập nhật chỉ mục, Agent tiếp tục dùng dữ liệu
+05:19 - 05:22: cũ nhưng an toàn. Chiến lược này bắt buộc áp dụng khi
+05:22 - 05:26: trả lời thông tin cũ vẫn ít rủi ro hơn trả lời
+05:26 - 05:29: sai, ví dụ như chính sách pháp lý hoặc y tế. Ngược
+05:29 - 05:33: lại, với Fail-Open, hệ thống ghi nhận cảnh báo rồi vẫn cho
+05:33 - 05:36: dữ liệu mới đi tiếp; điều này phù hợp khi dữ liệu
+05:36 - 05:40: cũ gây hại lớn hơn dữ liệu đáng ngờ, chẳng hạn như
+05:40 - 05:44: bảng giá chứng khoán hay lượng hàng tồn kho thời gian thực.
+05:44 - 05:47: Để các bên cung cấp và tiêu thụ dữ liệu không đổ
+05:47 - 05:51: lỗi cho nhau khi xảy ra sự cố, chúng ta thiết lập
+05:51 - 05:54: Hợp đồng dữ liệu (Data Contract). Data Contract không phải là tài
+05:54 - 05:57: liệu ghi chú trên giấy, mà là một bản cam kết kỹ
+05:57 - 06:01: thuật chặt chẽ gồm bốn thành phần cốt lõi.
+06:01 - 06:04: Thành phần thứ nhất là Cấu trúc (Schema), định rõ các trường,
+06:04 - 06:08: kiểu dữ liệu và thuộc tính bắt buộc. Thành phần thứ hai
+06:08 - 06:11: là Ngữ nghĩa (Semantics), làm rõ ý nghĩa của từng chỉ số
+06:11 - 06:15: nghiệp vụ. Thành phần thứ ba là Cam kết dịch vụ (SLA),
+06:15 - 06:18: ấn định độ trễ tối đa và tần suất làm mới. Và
+06:18 - 06:22: thành phần thứ tư là Trách nhiệm (Ownership), chỉ định đích danh
+06:22 - 06:25: đội ngũ chịu trách nhiệm khi hợp đồng bị vi phạm. Chuẩn
+06:25 - 06:28: mở quốc tế phổ biến hiện nay là ODCS do Linux Foundation
+06:28 - 06:32: quản trị.
+06:32 - 06:35: Triết lý cốt lõi của Data Contract là Dịch chuyển về bên
+06:35 - 06:39: trái, tức Shift-Left. Thay vì phát hiện lỗi ở hạ nguồn sau
+06:39 - 06:42: khi Agent đã trả lời sai với khách hàng, chúng ta buộc
+06:42 - 06:45: việc kiểm tra phải diễn ra ngay tại ranh giới tạo dữ
+06:45 - 06:49: liệu của bên cung cấp.
+06:49 - 06:52: Tuy nhiên, trong thực tế vận hành, vẫn sẽ có những ngày
+06:52 - 06:55: Agent của bạn trả lời sai lệch hoàn toàn. Sai lầm phổ
+06:55 - 06:57: biến nhất của các kỹ sư mới là ngay lập tức mở
+06:57 - 07:00: code ra để sửa prompt hoặc thay đổi mô hình theo cảm
+07:00 - 07:03: tính.
+07:03 - 07:06: Một kỹ sư AI chuyên nghiệp sẽ thực hiện quy trình điều
+07:06 - 07:10: tra năm tầng từ ngọn về gốc: Tầng một là Đầu ra
+07:10 - 07:13: (Output), xác định rõ câu trả lời sai như thế nào và
+07:13 - 07:16: độ tự tin ra sao. Tầng hai là Truy xuất (Retrieval), kiểm
+07:16 - 07:19: tra chính xác những đoạn văn bản nào đã được đưa vào
+07:19 - 07:22: ngữ cảnh. Tầng ba là Kho tri thức (Corpus), kiểm tra xem
+07:22 - 07:25: các đoạn đó có bị mâu thuẫn hay đã có phiên bản
+07:25 - 07:29: mới thay thế chưa.
+07:29 - 07:32: Tầng bốn là Đường ống (Pipeline), kiểm tra nhật ký xem tác
+07:32 - 07:35: vụ đồng bộ lần cuối có bị lỗi âm thầm hay không.
+07:35 - 07:39: Và tầng năm là Nguồn gốc (Source), xác minh xem cơ sở
+07:39 - 07:42: dữ liệu gốc của doanh nghiệp có bị sai lệch ngay từ
+07:42 - 07:46: đầu vào hay không. Việc lần ngược năm tầng này giúp bạn
+07:46 - 07:49: khoanh vùng chính xác điểm gãy của dữ liệu.
+07:49 - 07:53: Đặc biệt, trong tầng kho tri thức của Agent, bạn cần cảnh
+07:53 - 07:56: giác với hiện tượng Vector ma, hay Ghost Vectors. Khi bạn xóa
+07:56 - 08:00: một tài liệu trong Vector Database, hệ thống thường chỉ thực hiện
+08:00 - 08:04: xóa mềm (Soft-delete). Dữ liệu số thực thô vẫn nằm nguyên trên
+08:04 - 08:07: đĩa vật lý, khiến kẻ tấn công có thể trích xuất lại
+08:07 - 08:11: hoặc khiến các thuật toán tìm kiếm lân cận vẫn vô tình
+08:11 - 08:15: kéo lên thông tin đã bị thu hồi.
+08:15 - 08:19: Để giải quyết hiện tượng cùng một câu hỏi nhưng Agent truy
+08:19 - 08:22: vấn ra hai con số khác nhau khi chuyển văn bản thành
+08:22 - 08:26: mã SQL, các hệ thống tiên tiến sử dụng Tầng ngữ nghĩa
+08:26 - 08:30: (Semantic Layer). Semantic Layer đóng vai trò một từ điển định nghĩa
+08:30 - 08:34: duy nhất về mặt logic, ngăn chặn việc Agent tự ý nối
+08:34 - 08:38: bảng hay tính toán sai công thức nghiệp vụ.
+08:38 - 08:42: Tóm lại, chất lượng dữ liệu không tự nhiên sinh ra, mà
+08:42 - 08:45: phải được kiến tạo qua các bộ hợp đồng chặt chẽ và
+08:45 - 08:49: hệ thống chốt kiểm soát tự động. Nhưng làm thế nào để
+08:49 - 08:53: chúng ta theo dõi sức khỏe của toàn bộ đường ống và
+08:53 - 08:57: biết dữ liệu bị hỏng trước khi người dùng kịp phát hiện?
+08:57 - 09:01: Hẹn gặp lại các bạn ở Video D10-04: Data Observability và Lineage!

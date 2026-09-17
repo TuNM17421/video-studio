@@ -1,0 +1,132 @@
+00:00 - 00:03: Chào mừng các bạn đến với video cuối cùng của Ngày 10:
+00:03 - 00:07: Thực hành Lab 10, Bảng kiểm vận hành và Cầu nối sang
+00:07 - 00:10: Ngày 13. Suốt các bài học vừa qua, chúng ta đã đi
+00:10 - 00:14: qua toàn bộ hành trình từ bản chất Data Pipeline, kỹ thuật
+00:14 - 00:18: Ingestion, Quality Gates, Observability, cho đến điều phối tự phục hồi và
+00:18 - 00:21: tối ưu chi phí. Giờ là lúc biến mọi lý thuyết thành
+00:21 - 00:25: kỹ năng thực chiến trên bàn tay bạn.
+00:25 - 00:29: Thách thức lớn nhất khi đưa pipeline vào phục vụ thực tế
+00:29 - 00:32: là nghịch lý Pipeline Xanh. Một job nạp dữ liệu có thể
+00:32 - 00:36: hoàn thành mỹ mãn với mã trạng thái thành công, nhưng bên
+00:36 - 00:39: trong dữ liệu lại bị cắt cụt, sai định dạng hoặc trôi
+00:39 - 00:43: dạt phân phối. Khi BI hỏng thì dashboard vỡ, nhưng khi Agent
+00:43 - 00:46: nhận dữ liệu hỏng, nó vẫn tự tin trả lời sai mà
+00:46 - 00:50: không hề ném ra bất kỳ exception nào.
+00:50 - 00:53: Để bảo vệ hệ thống trước khi ship vào môi trường thực
+00:53 - 00:57: tế, bạn cần tuân thủ bảng kiểm 7 chốt an toàn. Thứ
+00:57 - 01:01: nhất, Freshness SLI phải đo trực tiếp trên artifact then chốt với
+01:01 - 01:05: ngân sách lỗi rõ ràng, thay vì một ngưỡng tĩnh vô hồn.
+01:05 - 01:09: Thứ hai, Quality Gate phải đặt nghiêm ngặt trước khi ghi vào
+01:09 - 01:13: kho Gold, luôn tuân thủ nguyên tắc fail-closed: nghi ngờ là chặn
+01:13 - 01:17: lại ngay. Thứ ba, mọi lần chạy lại phải đảm bảo tính
+01:17 - 01:20: lũy thừa idempotent, không nhân đôi tác dụng phụ.
+01:20 - 01:24: Thứ tư, Schema Drift phải được phát hiện tự động để chặn
+01:24 - 01:28: đứng việc thêm cột nhạy cảm hoặc đổi kiểu âm thầm. Thứ
+01:28 - 01:32: năm, Lineage nguồn gốc dữ liệu phải được lưu vết đầy đủ
+01:32 - 01:35: từ nguồn đến đích để khoanh vùng bán kính ảnh hưởng. Thứ
+01:35 - 01:39: sáu, Incident Runbook 6 bước phải được diễn tập sẵn sàng, phân
+01:39 - 01:43: định rõ kỹ sư phụ trách. Và thứ bảy, đường dẫn xóa
+01:43 - 01:47: dữ liệu phải được kiểm thử thực tế: xóa dòng nguồn chưa
+01:47 - 01:50: đủ, phải triệt tiêu cả index và embedding phái sinh.
+01:50 - 01:54: Nghiên cứu Ghost Vectors đăng tải năm 2026 đã chỉ ra rằng:
+01:54 - 01:58: cơ chế xóa mềm trên cấu trúc đồ thị HNSW của Vector
+01:58 - 02:01: Database chỉ đánh dấu ẩn nút logic, trong khi vector dữ liệu
+02:01 - 02:05: thô vẫn nguyên vẹn trên đĩa và có thể bị khôi phục
+02:05 - 02:09: lại. Đây là bài toán kỹ thuật sống còn mà các kỹ
+02:09 - 02:12: sư dữ liệu AI cần nhận thức rõ để thực hiện re-indexing
+02:12 - 02:16: định kỳ và thanh tẩy triệt để.
+02:16 - 02:20: Bước vào Lab 10, nhiệm vụ của bạn là xây dựng một
+02:20 - 02:24: pipeline hoàn chỉnh để nạp kho tài liệu corpus cho chính Agent
+02:24 - 02:27: RAG của Ngày 8 và Multi-Agent của Ngày 9. Pipeline phải thực
+02:27 - 02:31: hiện tuần tự: Ingest nguồn, làm sạch văn bản, kiểm định chất
+02:31 - 02:35: lượng, chia đoạn semantic chunking, sinh vector embedding và nạp an toàn
+02:35 - 02:39: vào Vector Store.
+02:39 - 02:42: Điểm độc đáo của Lab 10 là sau khi dựng pipeline thành
+02:42 - 02:46: công, bạn sẽ đóng vai kẻ phá bĩnh, chủ động corrupt dữ
+02:46 - 02:49: liệu bằng ba kịch bản thực tế: xóa trường thông tin bắt
+02:49 - 02:52: buộc, làm dữ liệu bị cũ quá hạn, và âm thầm thay
+02:52 - 02:56: đổi cấu trúc schema. Sau đó, bạn quan sát trực tiếp xem
+02:56 - 02:59: Quality Gate có bắt được lỗi hay dữ liệu bẩn lọt xuống
+02:59 - 03:03: khiến Agent trả lời sai lệch.
+03:03 - 03:07: Về mặt công nghệ, bài lab yêu cầu sử dụng chuẩn API
+03:07 - 03:11: mới nhất của Great Expectations phiên bản 1.x. Quy trình chuẩn bắt
+03:11 - 03:15: đầu từ hàm get context, thêm nguồn dữ liệu add pandas, và
+03:15 - 03:20: thực thi batch validate trên các tập expectation quy định. Tuyệt đối
+03:20 - 03:24: không dùng cú pháp cũ của bản tiền 1.0 vì sẽ gây
+03:24 - 03:28: lỗi dừng chương trình trên Python 3.10 đến 3.13.
+03:28 - 03:31: Trong quá trình xử lý, script pipeline của bạn bắt buộc phải
+03:31 - 03:35: có tính lũy thừa idempotent. Dù bạn chạy lại một lần hay
+03:35 - 03:38: mười lần trên cùng một tập dữ liệu đầu vào, trạng thái
+03:38 - 03:42: cuối cùng trong Vector Store phải hoàn toàn nhất quán, không sinh
+03:42 - 03:45: ra các bản ghi trùng lặp và không làm phình dung lượng
+03:45 - 03:48: lưu trữ.
+03:48 - 03:52: Để hoàn thành Lab 10, bạn cần nộp đủ 4 bằng chứng
+03:52 - 03:56: kỹ thuật: Thứ nhất là mã nguồn pipeline có tính lũy thừa;
+03:56 - 03:59: Thứ hai là báo cáo chất lượng dữ liệu Great Expectations và
+03:59 - 04:03: log giám sát độ mới; Thứ ba là bảng so sánh trực
+04:03 - 04:07: quan câu trả lời của Agent trước và sau khi dữ liệu
+04:07 - 04:10: bị corrupt; Và thứ tư là bản ghi sự cố Incident Record
+04:10 - 04:14: mô tả chi tiết nguyên nhân gốc và biện pháp phòng vệ.
+04:14 - 04:17: Khi lập bảng so sánh trước và sau, nguyên tắc đạo đức
+04:17 - 04:21: nghề nghiệp tối thượng là giữ nguyên bộ tiêu chí đo lường
+04:21 - 04:24: ban đầu. Nếu một chỉ số không được cải thiện sau khi
+04:24 - 04:28: sửa lỗi, hãy dũng cảm phân tích giới hạn của hệ thống,
+04:28 - 04:31: tuyệt đối không được tự ý đổi sang một chỉ số khác
+04:31 - 04:35: chỉ vì con số đó trông đẹp hơn trong báo cáo.
+04:35 - 04:38: Bản ghi sự cố trong bài nộp phải chuẩn hóa theo cấu
+04:38 - 04:41: trúc 5 phần: Triệu chứng người dùng quan sát thấy; Tín hiệu
+04:41 - 04:45: kỹ thuật nào đã phát hiện ra lỗi; Phân tích nguyên nhân
+04:45 - 04:48: gốc rễ ở tầng kiến trúc; Hành động khoanh vùng cách ly
+04:48 - 04:52: tức thì; Và các cam kết kỹ thuật để ngăn chặn sự
+04:52 - 04:55: cố tái diễn trong tương lai.
+04:55 - 04:58: Khép lại toàn bộ bài giảng Ngày 10, hãy khắc sâu 4
+04:58 - 05:02: đúc kết sống còn: Thứ nhất, lỗi trên hệ thống phân tích
+05:02 - 05:05: BI chỉ làm vỡ dashboard, nhưng dữ liệu hỏng nạp vào AI
+05:05 - 05:08: Agent sẽ tạo ra những câu trả lời sai đầy tự tin
+05:08 - 05:12: mà không hề có ngoại lệ nào được báo động. Thứ hai,
+05:12 - 05:15: Quality Gate bắt buộc phải đứng trước kho Gold và luôn hành
+05:15 - 05:19: xử theo cơ chế fail-closed.
+05:19 - 05:22: Thứ ba, độ mới dữ liệu cần cam kết SLO và ngân
+05:22 - 05:25: sách dung sai lỗi; sự kết hợp giữa phát hiện trôi dạt
+05:25 - 05:28: schema, đồ thị phả hệ lineage và kịch bản runbook chuẩn sẽ
+05:28 - 05:31: biến sự cố mơ hồ thành kỷ luật tác chiến chuyên nghiệp.
+05:31 - 05:34: Và thứ tư, xóa bản ghi ở cơ sở dữ liệu quan
+05:34 - 05:37: hệ không đồng nghĩa với việc xóa bỏ an toàn trên Vector
+05:37 - 05:40: Store.
+05:40 - 05:43: Ngày hôm nay, chúng ta đã làm chủ nửa đầu của bức
+05:43 - 05:47: tranh: Quan sát dữ liệu trước khi nạp vào Agent. Nhưng khi
+05:47 - 05:50: Agent bắt đầu vận hành, làm sao ta biết được nó suy
+05:50 - 05:54: luận ra sao trong từng mili-giây? Đó chính là nội dung của
+05:54 - 05:57: Ngày 13: Quan sát Agent thông qua Trace và Span, kết nối
+05:57 - 06:01: toàn diện hai nửa của hệ thống.
+06:01 - 06:04: Trong công cụ giám sát LLM Observability, một Trace đại diện cho
+06:04 - 06:08: toàn bộ một lượt chạy từ câu hỏi người dùng đến câu
+06:08 - 06:12: trả lời cuối cùng. Bên trong đó, mỗi bước hành động cụ
+06:12 - 06:15: thể như tìm kiếm retrieval, gọi công cụ tool call, hay một
+06:15 - 06:19: lần mô hình sinh văn bản đều được đóng gói thành một
+06:19 - 06:22: Span độc lập với đầy đủ tem thời gian.
+06:22 - 06:25: Mỗi Span sẽ ghi lại song song hai góc nhìn: Về mặt
+06:25 - 06:29: nội dung, nó lưu prompt gửi đi, các đoạn chunk được nạp
+06:29 - 06:32: vào context, tên tool và kết quả thực thi; Về mặt vận
+06:32 - 06:35: hành, nó đo lường chính xác số token tiêu thụ, độ trễ
+06:35 - 06:38: từng bước và chi phí tiền mặt quy đổi. Đây là chìa
+06:38 - 06:41: khóa để chỉ ra bước nào đang làm Agent bị chậm, đắt
+06:41 - 06:44: hoặc sai lệch.
+06:44 - 06:48: Ở đầu ra, hệ thống sẽ đo lường độ trung thực Faithfulness
+06:48 - 06:51: bằng cách so khớp câu trả lời với chính các chunk được
+06:51 - 06:55: nạp vào context để phát hiện ảo giác ngay tại chỗ. Đồng
+06:55 - 06:58: thời, sức khỏe Vector Store được giám sát liên tục theo thời
+06:58 - 07:02: gian thực để đảm bảo phiên bản index luôn đồng bộ và
+07:02 - 07:05: không bị trôi dạt ngữ nghĩa.
+07:05 - 07:08: Khi kết hợp dữ liệu Ngày 10 và quan sát Ngày 13,
+07:08 - 07:12: bạn sở hữu một vòng lặp truy vết khép kín duy nhất:
+07:12 - 07:15: Khi Agent đưa ra câu trả lời sai, kỹ sư có thể
+07:15 - 07:19: lần ngược từ câu trả lời về đoạn chunk được lấy, truy
+07:19 - 07:22: ra phiên bản index, xác định chính xác lần chạy pipeline và
+07:22 - 07:25: chạm tới đúng dòng dữ liệu gốc ban đầu.
+07:25 - 07:29: Hành trình Ngày 10 đến đây đã hoàn tất với đầy đủ
+07:29 - 07:32: vũ khí tư duy và kỹ thuật thực chiến. Chúc các bạn
+07:32 - 07:35: chinh phục xuất sắc bài Lab 10, xây dựng nên những đường
+07:35 - 07:39: ống dữ liệu kiên cường, và tự tin bước tiếp vào thế
+07:39 - 07:42: giới vận hành Agent chuyên sâu. Hẹn gặp lại các bạn trong
+07:42 - 07:45: những thử thách phía trước!

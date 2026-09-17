@@ -1,0 +1,20 @@
+00:00: Sứ mệnh cuối cùng: Từ bài giảng lý thuyết đến thực hành trên tay bạn
+00:25: Nghịch lý: Job pipeline chạy xanh chưa chắc dữ liệu nạp vào Agent đã đúng
+00:50: Checklist 7 chốt kiểm định trước khi ship: Freshness SLO, Quality Gate & Idempotency
+01:20: Checklist 7 chốt kiểm định: Schema Drift, Lineage, Incident Runbook & Erasure Path
+01:50: Bài toán chưa giải: Hiểm họa Ghost Vectors trong cấu trúc đồ thị HNSW
+02:16: Nhiệm vụ Lab 10: Xây dựng chuỗi 6 mắt xích pipeline nạp corpus cho Agent
+02:39: Thử thách: Cố ý làm hỏng dữ liệu (Fault Injection) để thử lửa hệ thống phòng thủ
+03:03: Chuẩn hóa công cụ: Tuyệt đối dùng đúng API Great Expectations GX 1.x
+03:28: Bảo đảm tính lũy thừa (Idempotency): Rerun an toàn không sinh vector trùng lặp
+03:48: Hồ sơ nghiệm thu Lab 10: Bộ 4 bằng chứng kỹ thuật khách quan cần nộp
+04:14: Liêm chính trong đo lường dữ liệu: Tuyệt đối không đổi metric sau khi xem kết quả
+04:35: Cấu trúc bản ghi sự cố Incident Record 5 thành phần chuẩn mực SRE
+04:55: Bốn đúc kết sống còn Day 10 (Phần 1): Silent Failure & Quality Gate Fail-Closed
+05:19: Bốn đúc kết sống còn Day 10 (Phần 2): Kỷ luật Observability & Ghost Vectors
+05:40: Cầu nối sang Ngày 13: Mở rộng từ quan sát dữ liệu sang quan sát Agent
+06:01: Cấu trúc Trace và Span trong LLM Observability: Đơn vị cơ bản để debug
+06:22: Hai góc nhìn toàn diện trong mỗi Span: Ngữ nghĩa nội dung và Telemetry vận hành
+06:44: Đo lường đầu ra thời gian thực: Độ trung thực Faithfulness và Sức khỏe Vector Store
+07:05: Một vòng lặp khép kín duy nhất: Lần từ câu trả lời sai về đúng dòng dữ liệu gốc
+07:25: Sẵn sàng thực chiến: Chúc mừng hoàn thành Day 10 và hiệu triệu bắt tay vào Lab 10
