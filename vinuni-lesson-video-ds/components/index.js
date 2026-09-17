@@ -55,5 +55,6 @@ export * from './context/ContextTray.jsx';
 export * from './context/FilingCabinet.jsx';
 export * from './figures/Countdown.jsx';
 export * from './figures/Dialogue.jsx';
+export * from './mascot/Griffin.jsx';
 export * from './figures/Magnifier.jsx';
 export * from './figures/SourceCard.jsx';

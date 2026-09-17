@@ -1,0 +1,42 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Mascot · Griffin VinUni" subtitle="Griffin (dáng đứng/ngồi, bong bóng cảm xúc, đạo cụ trên đầu, nhảy) · GriffinBadge (gương mặt trong khung tròn)" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Mascot</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 300px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var moods = ['neutral', 'happy', 'wink', 'thinking', 'surprised', 'sad', 'angry'];
+  VK.mountCard('#root', {
+    width: 1400, height: 600, duration: 240,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.Griffin, { x: 190, y: 560, h: 400, frame: f, hops: [60, 150],
+          mood: [{ at: 0, name: 'happy' }, { at: 100, name: 'thinking' }, { at: 180, name: 'surprised' }],
+          prop: [{ at: 100, name: 'question' }, { at: 180, name: 'lightbulb' }] }),
+        h(VK.Griffin, { x: 600, y: 560, h: 340, pose: 'sit', frame: f, motion: 'float', mood: 'wink', prop: 'hat' }),
+        h(VK.Griffin, { x: 910, y: 560, h: 190, pose: 'front', frame: f }),
+        h(VK.Griffin, { x: 1200, y: 560, h: 190, pose: 'left', frame: f }),
+        h(VK.Griffin, { x: 1050, y: 560, h: 190, pose: 'right', frame: f }),
+        h(VK.Griffin, { x: 1330, y: 560, h: 190, pose: 'back', frame: f }),
+        moods.map(function (m, i) {
+          return h(VK.GriffinBadge, { key: m, x: 880 + i * 80, y: 120, r: 34, mood: m, tone: i === 6 ? 'red' : 'accent' });
+        }),
+        h(VK.SvgText, { x: 1120, y: 205, size: 19, weight: 600, color: C.textMuted }, 'GriffinBadge · 7 cảm xúc'),
+        h(VK.SvgText, { x: 1120, y: 300, size: 19, weight: 600, color: C.textMuted }, 'front · left · right · back (ảnh nhỏ)')
+      );
+    }
+  });
+</script>
+</body>
+</html>

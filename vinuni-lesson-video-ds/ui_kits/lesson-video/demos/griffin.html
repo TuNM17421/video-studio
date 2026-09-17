@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Griffin — linh vật VinUni</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { background: var(--color-bg); font-family: var(--font-sans); padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { font-size: 14px; color: #4a4a4a; margin: 0 0 18px; max-width: 900px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h1>Griffin — linh vật (bản 1)</h1>
+<p>Một cảnh dẫn dắt mẫu ở khung 1920×1080: Griffin bật vào và nhảy chào, bong bóng cảm xúc đổi từ vui
+sang suy nghĩ rồi ngạc nhiên, đạo cụ trên đầu đổi từ dấu hỏi sang bóng đèn. Ở video thật các mốc
+<code>at</code> lấy từ <code>spokenAt(n, phrase)</code>; trang này đặt tay. Cuối cảnh là
+<code>DialogueCard</code> dùng <code>griffinAsset('face_happy')</code> làm avatar.</p>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  function say(text, from, per) {
+    return text.split(/\s+/).map(function (w, i) { return { text: w, frame: from + i * (per || 6) }; });
+  }
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: 420,
+    render: function (f) {
+      var a = function (at) { return VK.appear(f, at, 18); };
+      return h(VK.Fragment, null,
+        h(VK.SvgText, { x: 960, y: 110, size: 22, weight: 700, color: C.red, opacity: a(0) }, 'NGÀY 02 · LÀM VIỆC VỚI AI'),
+        h(VK.SvgText, { x: 700, y: 330, size: 54, weight: 800, color: C.text, opacity: a(10) }, 'Viết yêu cầu thế nào'),
+        h(VK.SvgText, { x: 700, y: 400, size: 54, weight: 800, color: C.red, opacity: a(16) }, 'để AI hiểu đúng?'),
+        h(VK.Card, { x: 260, y: 500, w: 880, h: 120, lines: ['Nói rõ bối cảnh', 'AI không biết điều bạn chưa kể'], label: 'Ý 1', opacity: a(150) * (1 - VK.fade(f, 270, 16)) }),
+        h(VK.Card, { x: 260, y: 650, w: 880, h: 120, lines: ['Nêu kết quả mong muốn', 'định dạng, độ dài, người đọc'], label: 'Ý 2', opacity: a(200) * (1 - VK.fade(f, 270, 16)), active: VK.pulse(f, 200) }),
+        h(VK.Griffin, {
+          x: 1540, y: 900, h: 470, frame: f, enter: 4, hops: [30],
+          mood: [{ at: 0, name: 'happy' }, { at: 90, name: 'thinking' }, { at: 200, name: 'surprised' }],
+          prop: [{ at: 90, name: 'question' }, { at: 200, name: 'lightbulb' }],
+          opacity: 1 - VK.fade(f, 270, 16),
+        }),
+        f > 280 && h(VK.GriffinBadge, { x: 400, y: 640, r: 90, mood: 'wink', frame: f, enter: 282 }),
+        f > 280 && h(VK.DialogueCard, {
+          x: 820, y: 560, w: 820, side: 'right', speaker: 'Griffin', tone: 'accent', frame: f,
+          avatar: VK.griffinAsset('face_happy'),
+          words: say('Cùng thử viết lại một yêu cầu ngay bây giờ nhé!', 296),
+        })
+      );
+    }
+  });
+</script>
+</body>
+</html>

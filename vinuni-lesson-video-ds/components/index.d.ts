@@ -32,6 +32,7 @@ export * from './data/VectorColumn';
 export * from './figures/Figures';
 export * from './figures/Magnifier';
 export * from './figures/SourceCard';
+export * from './mascot/Griffin';
 export * from './flow/Flow';
 export * from './icons/Icons';
 export * from './icons/LineIcon';
