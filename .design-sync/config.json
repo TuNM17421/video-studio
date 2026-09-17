@@ -41,6 +41,7 @@
     "DatabaseIcon": "components/icons/Icons.prompt.md",
     "DayMap": "components/roadmap/DayMap.prompt.md",
     "DecisionNode": "components/system/DecisionNode.prompt.md",
+    "Countdown": "components/figures/Countdown.prompt.md",
     "DialogueCard": "components/figures/Dialogue.prompt.md",
     "DocumentIcon": "components/icons/Icons.prompt.md",
     "DocumentSheet": "components/figures/Figures.prompt.md",
