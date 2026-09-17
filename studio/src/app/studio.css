@@ -4211,3 +4211,313 @@ button.vs-tile:hover {
   background: var(--vu-amber-50);
   color: var(--vu-amber-700) !important;
 }
+
+/* ── ảnh và khung xem trước ở chế độ tối ──────────────────────────────────────
+   Ảnh chụp component, ảnh QA và khung xem trước cảnh đều là nền trắng đã bake vào
+   pixel (hoặc là chính khung hình thật của MP4) — CSS không đổi được, và cũng
+   KHÔNG NÊN đổi: đó là màu thật của video. Chỉ hạ sáng một nhịp cho đỡ chói trên
+   nền tối, và trả lại đủ sáng khi người dùng rê chuột vào để xem kỹ. */
+:root[data-theme="dark"] img[src*="/styles/previews/"],
+:root[data-theme="dark"] .vs-qa img,
+:root[data-theme="dark"] iframe {
+  filter: brightness(0.9);
+  transition: filter var(--vu-duration-normal) var(--vu-ease-standard);
+}
+:root[data-theme="dark"] img[src*="/styles/previews/"]:hover,
+:root[data-theme="dark"] .vs-qa img:hover,
+:root[data-theme="dark"] iframe:hover {
+  filter: none;
+}
+
+/* ── Đóng gói kịch bản (beta) ─────────────────────────────────────────────────
+   Trang cho xem agent đi tìm tài liệu: bên trái khai chủ đề, bên phải là flow
+   từng lần nó gọi WebSearch / WebFetch. Tách khỏi luồng tạo video, nên mọi lớp
+   ở đây đều mang tiền tố vs-scout- và không lớp nào dùng chung với bước sản xuất. */
+.vs-nav-beta {
+  padding: 1px 6px;
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-100);
+  color: var(--vu-blue-800);
+  font-size: 9px;
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-wide);
+  text-transform: uppercase;
+}
+.vs-scout-beta {
+  align-self: center;
+  padding: 3px 10px;
+  border: 1px solid var(--vu-blue-300);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-50);
+  color: var(--vu-blue-800);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-wide);
+  white-space: nowrap;
+}
+.vs-scout-caveats {
+  display: grid;
+  gap: 4px;
+  margin: var(--vu-space-2) 0 0;
+  padding-inline-start: var(--vu-space-4);
+  line-height: var(--vu-leading-snug);
+}
+.vs-scout-layout {
+  grid-template-columns: 380px minmax(0, 1fr);
+}
+.vs-scout-field {
+  display: grid;
+  gap: 5px;
+  margin-bottom: var(--vu-space-4);
+}
+.vs-scout-field small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-snug);
+}
+
+/* Bộ công cụ được cấp. Đây là nội dung chính của trang beta chứ không phải trang trí:
+   câu hỏi "agent được cầm những gì" phải trả lời được bằng mắt, không phải đọc code. */
+.vs-scout-tools {
+  margin-top: var(--vu-space-5);
+  padding-top: var(--vu-space-4);
+  border-top: 1px solid var(--line);
+}
+.vs-scout-tools h3 {
+  margin: 0 0 var(--vu-space-3);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-semibold);
+  color: var(--vu-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--vu-tracking-caps);
+}
+.vs-scout-tools ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Cột thẻ rộng theo thẻ dài nhất: để cứng một con số thì thẻ dài hơn sẽ tràn sang đè lên phần chữ. */
+.vs-scout-tools li {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--vu-space-2);
+  font-size: var(--vu-text-2xs);
+  color: var(--vu-text-muted);
+  line-height: var(--vu-leading-snug);
+}
+.vs-scout-tool {
+  padding: 1px 7px;
+  border: 1px solid var(--vu-border-default);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-secondary);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  white-space: nowrap;
+}
+.vs-scout-tool.is-on {
+  border-color: var(--vu-blue-300);
+  background: var(--vu-blue-50);
+  color: var(--vu-blue-800);
+}
+.vs-scout-tool.is-off {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+  color: var(--vu-red-700);
+  text-decoration: line-through;
+}
+
+/* ── flow ── */
+.vs-scout-flow-panel .vs-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vu-space-4);
+}
+.vs-scout-flow {
+  display: grid;
+  gap: 2px;
+  max-height: 460px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-scout-row {
+  display: grid;
+  grid-template-columns: 22px 58px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--vu-space-2);
+  padding: 5px 6px;
+  border-radius: var(--vu-radius-sm);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-snug);
+}
+.vs-scout-row.is-search { background: var(--vu-blue-50); }
+.vs-scout-row.is-error { background: var(--vu-red-50); }
+.vs-scout-row.is-done { background: var(--vu-green-50); }
+.vs-scout-icon {
+  display: grid;
+  place-items: center;
+  color: var(--vu-neutral-500);
+  font-size: 12px;
+}
+.vs-scout-row.is-search .vs-scout-icon { color: var(--vu-brand-primary); }
+.vs-scout-row.is-fetch .vs-scout-icon { color: var(--vu-lesson-data); }
+.vs-scout-row.is-error .vs-scout-icon { color: var(--vu-text-danger); }
+.vs-scout-row.is-done .vs-scout-icon { color: var(--vu-green-700); }
+.vs-scout-time {
+  color: var(--vu-neutral-400);
+  font-size: var(--vu-text-2xs);
+}
+.vs-scout-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--vu-space-2);
+  min-width: 0;
+}
+.vs-scout-verb {
+  font-weight: var(--vu-font-semibold);
+  color: var(--vu-text-primary);
+  white-space: nowrap;
+}
+.vs-scout-query {
+  color: var(--vu-blue-800);
+  font-style: italic;
+}
+.vs-scout-body a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vs-scout-body code {
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  overflow-wrap: anywhere;
+}
+.vs-scout-body small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+}
+.vs-scout-say,
+.vs-scout-error {
+  flex-basis: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vs-scout-say { color: var(--vu-text-secondary); }
+.vs-scout-error { color: var(--vu-text-danger); }
+.vs-scout-running,
+.vs-scout-deliverable {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  margin: 0;
+  font-size: var(--vu-text-xs);
+  color: var(--vu-text-muted);
+}
+
+/* ── soát trích dẫn ── */
+.vs-scout-check {
+  padding: var(--vu-space-4);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--vu-radius-sm);
+}
+.vs-scout-check.is-ok { border-left-color: var(--vu-green-700); background: var(--vu-green-50); }
+.vs-scout-check.is-warn { border-left-color: var(--vu-amber-700); background: var(--vu-amber-50); }
+.vs-scout-check h3,
+.vs-scout-sources h3 {
+  margin: 0 0 var(--vu-space-2);
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-semibold);
+  color: var(--vu-text-primary);
+}
+.vs-scout-check-line {
+  margin: 0;
+  font-size: var(--vu-text-xs);
+  color: var(--vu-text-secondary);
+}
+.vs-scout-problems {
+  display: grid;
+  gap: 5px;
+  margin: var(--vu-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--vu-text-2xs);
+  color: var(--vu-text-secondary);
+}
+.vs-scout-problems q {
+  display: block;
+  margin-top: 2px;
+  color: var(--vu-text-muted);
+  overflow-wrap: anywhere;
+}
+.vs-scout-check-run {
+  margin: var(--vu-space-3) 0 0;
+  font-size: var(--vu-text-2xs);
+  color: var(--vu-text-muted);
+}
+.vs-scout-check-run code {
+  font-family: var(--vu-font-utility);
+  overflow-wrap: anywhere;
+}
+
+/* ── hồ sơ nguồn ── */
+.vs-scout-sources ul {
+  display: grid;
+  gap: var(--vu-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-scout-source {
+  padding: var(--vu-space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--vu-radius-sm);
+  background: var(--surface);
+}
+.vs-scout-source.is-chua-kiem-chung { border-left: 3px solid var(--vu-amber-700); }
+.vs-scout-source-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-scout-sid {
+  padding: 0 5px;
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-sidebar-accent);
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-2xs);
+}
+.vs-scout-source-head .ant-tag { margin: 0; }
+.vs-scout-source-meta,
+.vs-scout-why {
+  margin: 5px 0 0;
+  font-size: var(--vu-text-2xs);
+  color: var(--vu-text-muted);
+  line-height: var(--vu-leading-snug);
+}
+.vs-scout-quotes {
+  display: grid;
+  gap: 5px;
+  margin: var(--vu-space-2) 0 0;
+  padding: 0 0 0 var(--vu-space-3);
+  border-left: 2px solid var(--vu-lesson-rail);
+  list-style: none;
+  font-size: var(--vu-text-2xs);
+  color: var(--vu-text-secondary);
+  line-height: var(--vu-leading-snug);
+}
+.vs-scout-quotes q { overflow-wrap: anywhere; }
+
+@media (max-width: 1100px) {
+  .vs-scout-layout { grid-template-columns: minmax(0, 1fr); }
+}

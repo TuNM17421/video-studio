@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { BookOutlined, KeyOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { BookOutlined, FileSearchOutlined, KeyOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { Badge, Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
 import { StudioTour } from "./tour";
 
-type Page = "new" | "library" | "videos" | "guide";
+type Page = "new" | "library" | "videos" | "guide" | "scout";
 export type LibrarySection = "styles" | "components" | "characters" | "mascot" | "videos";
 
 /** The library's sections are sidebar children, not tabs on the page. */
@@ -26,6 +26,7 @@ const SIDEBAR_STORAGE_KEY = "video-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "video-studio:sidebar-change";
 const DESKTOP_SIDEBAR_QUERY = "(min-width: 681px)";
 const PAGE_ROUTES: Record<string, string> = {
+  scout: "/dong-goi-kich-ban",
   new: "/",
   videos: "/videos",
   library: librarySectionPath("styles"),
@@ -81,6 +82,9 @@ export function Shell({ page, section, hasKey, children }: { page: Page; section
     if (event.detail > 0) event.currentTarget.blur();
   };
   const navigation = [
+    // Beta: agent tự tìm tài liệu rồi viết kịch bản. Chưa nối vào luồng tạo video, nên ghi rõ "Beta" — đứng
+    // đầu danh sách nhưng đừng để ai tưởng đây là đường chính thức.
+    { key: "scout", icon: <FileSearchOutlined />, label: <Link href="/dong-goi-kich-ban" title="Đóng gói kịch bản · beta">Đóng gói kịch bản <span className="vs-nav-beta">beta</span></Link> },
     { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới" data-tour="nav.new">Video mới</Link> },
     { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video" data-tour="nav.videos">Các video</Link> },
     { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn" data-tour="nav.guide">Hướng dẫn</Link> },
