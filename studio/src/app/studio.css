@@ -508,7 +508,7 @@ button.vs-tile:hover {
   font-weight: var(--vu-font-medium);
   line-height: 16px;
 }
-.vs-agent-warning.ant-alert {
+.vs-agent-warning {
   flex: 1 0 100%;
   margin-top: var(--vu-space-2);
 }
@@ -635,7 +635,7 @@ button.vs-tile:hover {
 }
 
 /* Cảnh báo máy yếu nằm ngay dưới tiêu đề, trước khi người dùng kịp bấm cài. */
-.vs-local-warning.ant-alert {
+.vs-local-warning {
   margin: 14px 18px 0;
 }
 
@@ -2682,7 +2682,7 @@ button.vs-tile:hover {
   border: 0;
   background: transparent;
 }
-.vs-script-field .ant-upload-drag {
+.vs-script-field .vs-drop .ant-upload-drag {
   min-height: var(--vu-capability-card-min-height);
   border-color: var(--vu-blue-300);
   background: var(--vu-blue-50);
@@ -3205,21 +3205,11 @@ button.vs-tile:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.vs-workflow.ant-steps .vs-workflow-item-content {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--subtle);
-  font-size: var(--vu-text-2xs);
-  line-height: var(--vu-leading-snug);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .vs-workflow.ant-steps .ant-steps-item-rail {
   height: 1px;
   background: var(--vu-blue-100);
 }
 .vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-icon,
-.vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-content,
 .vs-workflow.ant-steps .ant-steps-item-wait .ant-steps-item-rail {
   opacity: var(--vu-emphasis-future);
 }
@@ -3254,6 +3244,9 @@ button.vs-tile:hover {
 .feedback.ant-alert .ant-alert-message {
   font-family: var(--vs-font-display);
   font-weight: var(--vu-font-bold);
+}
+.vs-production-state {
+  margin: 0 0 18px;
 }
 .step-empty.ant-empty {
   padding: 42px 24px;
@@ -3705,10 +3698,6 @@ button.vs-tile:hover {
     text-align: center;
     text-overflow: clip;
     white-space: normal;
-  }
-
-  .vs-workflow.ant-steps .vs-workflow-item-content {
-    display: none;
   }
 
   .vs-workflow.ant-steps .vs-workflow-item-icon {

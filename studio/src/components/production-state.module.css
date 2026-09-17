@@ -1,0 +1,90 @@
+.state {
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  border: 1px solid var(--vu-border-subtle);
+  border-left-width: 4px;
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-neutral-50);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--vu-neutral-500);
+}
+
+.copy {
+  min-width: 0;
+}
+
+.copy strong {
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-brand);
+  font-size: 14px;
+}
+
+.copy p {
+  margin: 4px 0 0;
+  color: var(--vu-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  align-self: center;
+  margin-left: 10px;
+}
+
+.running {
+  border-left-color: var(--vu-brand-primary);
+  background: var(--vu-brand-info-surface);
+}
+
+.running .dot {
+  background: var(--vu-brand-primary);
+}
+
+.review {
+  border-left-color: var(--vu-amber-700);
+  background: var(--vu-amber-50);
+}
+
+.review .dot {
+  background: var(--vu-amber-700);
+}
+
+.done {
+  border-left-color: var(--vu-green-700);
+  background: var(--vu-green-50);
+}
+
+.done .dot {
+  background: var(--vu-green-700);
+}
+
+.error {
+  border-left-color: var(--vu-brand-secondary);
+  background: var(--vu-red-50);
+}
+
+.error .dot {
+  background: var(--vu-brand-secondary);
+}
+
+@media (max-width: 680px) {
+  .state {
+    grid-template-columns: 10px minmax(0, 1fr);
+  }
+
+  .action {
+    grid-column: 2;
+    justify-self: start;
+    margin-left: 0;
+  }
+}
