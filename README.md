@@ -171,7 +171,7 @@ duyệt hoặc gửi góp ý ở mỗi điểm dừng.
 | **Lời & cue** | Agent | Viết `cues.js` với lời nguyên văn, dừng cho bạn đọc và duyệt |
 | **Giọng đọc** | Server | ElevenLabs (có dry-run miễn phí trước), nhập audio có sẵn, hoặc OmniVoice local — xem [Giọng đọc](#giọng-đọc) |
 | **Dựng cảnh** | Agent | Dựng cảnh theo độ dài giọng thật và mốc từng từ, build, verify, chụp ảnh QA |
-| **Render MP4** | Server | Chọn nhạc nền, render MP4 và transcript |
+| **Render MP4** | Server | Chọn có/không phụ đề, nhạc nền, nhạc quiz; render MP4 và transcript |
 | **Bàn giao** | Agent | Viết file chương và `PROMPTS.md` |
 
 Trạng thái mỗi video lưu ở `projects/<id>/.studio/` (không lên git), nên đóng Studio rồi mở lại vẫn tiếp tục
@@ -233,8 +233,11 @@ node tools/shoot.mjs --batch projects/<id>/qa/jobs.json     # chụp các frame 
 
 ```bash
 node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 \
-  [--music-track bg-02] [--quiz-track <id>] [--base http://127.0.0.1:3100/ds]
+  [--music-track bg-02] [--quiz-track <id>] [--no-captions] [--base http://127.0.0.1:3100/ds]
 ```
+
+Mặc định video có thanh phụ đề xanh chữ trắng ở cuối khung hình; `--no-captions` bỏ nó khỏi mọi frame
+(tương đương `?captions=0` của player). Trên Studio đây là lựa chọn **Phụ đề: Có / Không** ở bước Render.
 
 Render dừng và báo lỗi nếu độ dài giọng khác độ dài hình. Sau khi render, kiểm tra MP4: thời lượng, vài frame
 trích từ file, âm lượng.

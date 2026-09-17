@@ -98,7 +98,7 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
 
 ## Stage 4 · render (not the agent in studio mode)
 ```console
-node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base>
+node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base> [--no-captions]
 node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/<Day>/<id>.txt
 ```
 

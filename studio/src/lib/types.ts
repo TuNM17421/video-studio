@@ -157,10 +157,12 @@ export interface VideoState {
   stages: Record<StageId, StageStatus>;
   voice: VoiceSettings;
   /**
-   * Track ids from music.json, never part of TTS. `background` is picked on the render step; `quiz` is
-   * picked with the script, because it only plays over the cues marked `quiz: true` in cues.js.
+   * Track ids from music.json, never part of TTS. Both are picked on the render step; `quiz` only plays
+   * over the cues marked `quiz: true` in cues.js.
    */
   music: MusicChoice;
+  /** Burn the navy subtitle bar into the MP4 (render step; off = render.mjs --no-captions). */
+  captions: boolean;
   lastError: string | null;
 }
 

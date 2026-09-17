@@ -31,6 +31,11 @@ describe("video agent binding migration", () => {
     expect(state.request.modules).toContain("quiz");
     expect(state.music.quiz).toBe("quiz-timer");
   });
+
+  it("keeps captions on for states saved before captions were optional", () => {
+    expect(normalizeVideoState(storedState).captions).toBe(true);
+    expect(normalizeVideoState({ ...storedState, captions: false }).captions).toBe(false);
+  });
 });
 
 describe("quiz request contract", () => {

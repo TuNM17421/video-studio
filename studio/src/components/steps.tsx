@@ -826,10 +826,11 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
   // both tracks are finishing decisions: they are chosen only here and sent with the render request
   const [music, setMusic] = useState(detail.state.music.background);
   const [quizMusic, setQuizMusic] = useState(detail.state.music.quiz);
+  const [captions, setCaptions] = useState(detail.state.captions);
   const [catalog, setCatalog] = useState<MusicCatalog>({ background: [], quiz: [] });
   const quizCues = detail.cues?.cues.filter((c) => c.quiz).length ?? 0;
   useEffect(() => { api<MusicCatalog>("/api/music").then(setCatalog).catch(() => {}); }, []);
-  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic }));
+  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic, captions }));
   const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
   return <>
     <div className="vs-step-body">
@@ -849,6 +850,17 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         {path ? <Button type="link" href={fileUrl(path)} target="_blank">{path}</Button> : <small>chưa có</small>}
       </li>)}</ul>}
       {ready && <div className="vs-music-section">
+        <div className="vs-section-title">Phụ đề</div>
+        <div className="vs-captions-picker">
+          <Segmented
+            aria-label="Phụ đề trong video"
+            value={captions ? "on" : "off"}
+            disabled={busy}
+            onChange={(v) => setCaptions(v === "on")}
+            options={[{ value: "on", label: "Có" }, { value: "off", label: "Không" }]}
+          />
+          <small>{captions ? "Thanh phụ đề xanh, chữ trắng ở cuối khung hình." : "Video không có phụ đề."}</small>
+        </div>
         <div className="vs-section-title">Nhạc nền</div>
         <MusicPicker tracks={catalog.background} value={music} disabled={busy} label="Chọn nhạc nền" noneLabel="Không có nhạc nền" noneHint="Video chỉ có giọng đọc." onChange={setMusic} />
         {/* Which câu the question covers was settled in cues.js; only the track is still open here. */}

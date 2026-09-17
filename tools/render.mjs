@@ -6,7 +6,10 @@
  *   node tools/render.mjs --scene n2-00-gioi-thieu-ngay-2 --out video.mp4 [--audio voice.wav]
  *        [--music-track bg-02] [--quiz-track quiz-timer] [--workers 4] [--from 0] [--to N] [--crf 18]
  *        [--base http://127.0.0.1:8765] [--keep-frames dir] [--frame-timeout 15000]
- *        [--music-db -3] [--quiz-db -2]
+ *        [--music-db -3] [--quiz-db -2] [--no-captions]
+ *
+ * --no-captions leaves the navy subtitle bar out of every frame (the player's ?captions=0); the
+ * captions are still in cues.js and in the transcript.
  *
  * --music-db / --quiz-db nudge a catalog track's target level for this render only (negative = quieter);
  * how far under the narration music belongs is a call about one video, not a property of the track.
@@ -150,7 +153,7 @@ if (hasQuiz) console.log(`♪ nhạc quiz trên ${windows.length} đoạn: ${win
 
 // ── capture ───────────────────────────────────────────────────────────────────
 const base = String(args.base || 'http://127.0.0.1:8765').replace(/\/$/, '');
-const url = `${base}/ui_kits/lesson-video/index.html?scene=${encodeURIComponent(args.scene)}&frame=0`;
+const url = `${base}/ui_kits/lesson-video/index.html?scene=${encodeURIComponent(args.scene)}&frame=0${args['no-captions'] ? '&captions=0' : ''}`;
 const workers = Math.max(1, Number(args.workers || Math.min(6, Math.max(2, os.cpus().length - 2))));
 const framesDir = path.resolve(args['keep-frames'] || fs.mkdtempSync(path.join(os.tmpdir(), 'vk-render-')));
 fs.mkdirSync(framesDir, { recursive: true });

@@ -52,6 +52,7 @@ export const POST = handle(async (req: Request) => {
     voice: { ...newVoice(), ...(body.voiceId ? { voiceId: String(body.voiceId) } : {}) },
     // Both tracks are chosen at render; the plan only says whether the video has a quiz.
     music: { ...SILENT },
+    captions: true,
     lastError: null,
   };
   writeState(state);
