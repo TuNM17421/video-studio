@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, DownloadOutlined, ExportOutlined, FolderOpenOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
-import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
+import { Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import { reportMatchesDir } from "@/lib/import-report";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
@@ -11,6 +11,7 @@ import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs
 import { ConfirmDialog } from "./confirm-dialog";
 import { isRefFile, LocalCastPicker, RefFileField } from "./local-cast";
 import { MusicPicker } from "./music-picker";
+import { ProductionState } from "./production-state";
 import { SourcePickerField } from "./source-picker";
 import { VoicePicker } from "./voice-picker";
 
@@ -213,7 +214,7 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       <div className="vs-step-status"><StageBadge status={status} />{count > 0 && <span className="quiet-label">{count} CÂU · {formatFrames(detail.cues?.duration)} ƯỚC TÍNH</span>}</div>
       <JobProgress job={job?.kind === "cues" ? job : null} onStop={stop} />
       {status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy agent</Button></Empty>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
+      {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
       <AgentSummary logs={runLogs} />
       <CueList detail={detail} />
       {status === "done" && <ScriptExport detail={detail} busy={busy} act={act} />}
@@ -368,11 +369,10 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   // Mất trạng thái thì panel rỗng trông như hỏng hẳn, và mất luôn nút Cài — phải còn đường thử lại.
   if (failed && !status) {
     return <div className="vs-local">
-      <Alert
-        type="error"
-        showIcon
+      <ProductionState
+        status="error"
         title="Không đọc được trạng thái model local"
-        description="Máy chủ Studio không trả lời. Kiểm tra cửa sổ đang chạy `npm run studio` rồi thử lại."
+        detail="Máy chủ Studio không trả lời. Kiểm tra cửa sổ đang chạy `npm run studio` rồi thử lại."
         action={<Button size="small" onClick={() => void refresh()}>Thử lại</Button>}
       />
     </div>;
@@ -387,12 +387,11 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
       {status && <Tag className="vs-badge" color={installed ? "success" : "default"}>{installed ? "Đã cài" : "Chưa cài"}</Tag>}
     </header>
 
-    {status && weak && <Alert
+    {status && weak && <ProductionState
       className="vs-local-warning"
-      type={device?.id === "cpu" ? "error" : "warning"}
-      showIcon
+      status={device?.id === "cpu" ? "error" : "review"}
       title={device?.id === "cpu" ? "Máy này không đủ sức chạy model local" : "Máy này chạy được nhưng sát sức"}
-      description={weakText}
+      detail={weakText}
     />}
 
     <ol className="vs-local-flow">
@@ -498,12 +497,11 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
 
           {/* Whisper nằm ở voice/.venv, KHÁC venv của OmniVoice. Cài xong OmniVoice mà thiếu nó thì
               sinh giọng vẫn chạy ngon rồi chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút. */}
-          {status && !aligned && <Alert
+          {status && !aligned && <ProductionState
             className="vs-local-warning"
-            type="warning"
-            showIcon
+            status="review"
             title="Còn thiếu môi trường nhận diện giọng"
-            description="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, bản cài OmniVoice không bao gồm."
+            detail="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, bản cài OmniVoice không bao gồm."
             action={<Button size="small" type="primary" loading={aligning} disabled={busy || aligning} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "align-setup" }))}>Cài Whisper</Button>}
           />}
 
@@ -658,7 +656,7 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
       </p>}
       </div>
     </div>
-    {report?.align.note && <Alert className="feedback" type="warning" showIcon title={report.align.note} />}
+    {report?.align.note && <ProductionState className="vs-production-state" status="review" title={report.align.note} detail={null} />}
     {report && <ImportMap report={report} onPlay={bound.length ? play : undefined} />}
     {detail.artifacts.voiceWav && <div className="audio-result vs-audio">
       <div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : " · chưa có mốc từng từ"}</span></div>
@@ -781,7 +779,7 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
             : <ElevenLabsPanel {...panel} hasKey={hasKey} setHasKey={setHasKey} />}
         </Form>
         <JobProgress job={job && ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup"].includes(job.kind) ? job : null} onStop={stop} />
-        {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
+        {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
         <AgentLog logs={runLogs} open={status === "running"} />
       </>}
     </div>
@@ -800,7 +798,7 @@ export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       <JobProgress job={job?.kind === "scenes" ? job : null} onStop={stop} />
       {!voiced && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tạo giọng đọc trước" />}
       {voiced && status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Bắt đầu dựng cảnh</Button></Empty>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
+      {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
       <AgentSummary logs={runLogs} />
       {detail.qa.length > 0 && <QaGallery paths={detail.qa} />}
       {(status === "review" || status === "done") && detail.state.stages.render !== "running" && <FeedbackBox disabled={busy} placeholder="Ví dụ: cảnh 12 đổi Gate sang StopGate; cảnh 20 chữ bị tràn khung…" onSend={(message) => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes", message }))} />}
@@ -843,7 +841,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         <div><span>Giọng</span><strong>{detail.state.voice.model}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
+      {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
       {ready && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
         {path ? <CheckCircleFilled className="is-ok" /> : <span className="vs-dot" />}
         <span>{label}</span>

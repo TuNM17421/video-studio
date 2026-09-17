@@ -2,25 +2,16 @@
 
 import { useState } from "react";
 import { CheckCircleFilled, LeftOutlined, RightOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Checkbox, Input, Segmented, Select, Switch, Tag } from "antd";
+import { App, Button, Checkbox, Input, Segmented, Select, Switch, Tag } from "antd";
 import { AGENT_PROVIDER_OPTIONS } from "@/lib/agent-providers";
+import type { StageStatus } from "@/lib/types";
+import { ProductionState } from "@/components/production-state";
 import styles from "./design-system.module.css";
-
-const STATUS_COPY = {
-  idle: { label: "Chưa chạy", detail: "Cổng đang chờ đầu vào." },
-  running: { label: "Đang chạy", detail: "Agent đang xử lý tác vụ hiện tại." },
-  review: { label: "Chờ duyệt", detail: "Kết quả đã sẵn sàng để người dựng kiểm tra." },
-  done: { label: "Hoàn tất", detail: "Cổng đã được duyệt và khóa kết quả." },
-  error: { label: "Cần xử lý", detail: "Tác vụ dừng; mở nhật ký để sửa nguyên nhân." },
-} as const;
-
-type Status = keyof typeof STATUS_COPY;
 
 export function DesignSystemPlayground() {
   const { message } = App.useApp();
-  const [status, setStatus] = useState<Status>("review");
+  const [status, setStatus] = useState<StageStatus>("review");
   const [motionRun, setMotionRun] = useState(0);
-  const current = STATUS_COPY[status];
 
   return <div className={styles.playground}>
     <article className={styles.componentPanel}>
@@ -50,17 +41,14 @@ export function DesignSystemPlayground() {
 
     <article className={styles.componentPanel}>
       <header><span>Production states</span><Tag>5 trạng thái</Tag></header>
-      <Segmented block value={status} onChange={(value) => setStatus(value as Status)} options={[
+      <Segmented block value={status} onChange={(value) => setStatus(value as StageStatus)} options={[
         { value: "idle", label: "Chờ" },
         { value: "running", label: "Chạy" },
         { value: "review", label: "Duyệt" },
         { value: "done", label: "Xong" },
         { value: "error", label: "Lỗi" },
       ]} />
-      <div className={`${styles.statusReadout} ${styles[`status_${status}`]}`}>
-        <span aria-hidden="true" /><div><strong>{current.label}</strong><p>{current.detail}</p></div>
-      </div>
-      <Alert showIcon type={status === "error" ? "error" : status === "done" ? "success" : status === "review" ? "warning" : "info"} title={current.label} description={current.detail} />
+      <ProductionState className={styles.productionState} status={status} />
     </article>
 
     <article className={`${styles.componentPanel} ${styles.motionPanel}`}>
