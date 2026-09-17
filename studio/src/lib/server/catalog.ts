@@ -34,7 +34,7 @@ export function listVoices(): VoiceCatalog {
   const raw = JSON.parse(fs.readFileSync(CATALOG, "utf8")) as { sampleText?: string; voices?: VoiceFile[]; characters?: CharacterDef[] };
   return {
     sampleText: raw.sampleText || "",
-    characters: raw.characters || [],
+    characters: (raw.characters || []).map((c) => ({ ...c, avatarUrl: c.avatar ? mediaAsset(c.avatar)?.url ?? null : null })),
     voices: (raw.voices || []).map((v) => ({
       ...v,
       sample: v.sample ? mediaAsset(v.sample) : null,

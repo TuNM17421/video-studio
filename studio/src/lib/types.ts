@@ -257,10 +257,15 @@ export interface CharacterDef {
   /** Voice id it borrows. */
   voice: string;
   /** Media key of the face. */
-  avatar?: string;
+  avatar?: string | null;
+  /** The face resolved against the media manifest; null when there is none or it was never pushed. */
+  avatarUrl?: string | null;
   side?: "left" | "right";
+  /** A hue name from the video design system's DialogueCard (accent, strong, red…), not a Studio color. */
   tone?: string;
   summary?: string;
+  /** Other names a script may write in `speaker` for this character. */
+  aliases?: string[];
 }
 
 export interface VoiceCatalog {

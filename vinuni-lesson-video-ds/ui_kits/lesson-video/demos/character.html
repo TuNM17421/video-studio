@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>DialogueCard — xem thử một nhân vật</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Một thẻ thoại đứng yên cho một nhân vật, dựng từ query — Video Studio nhúng trang này vào mục
+  // Thư viện · Nhân vật:  ?name=Tới&tone=accent&side=left&avatar=<url>&text=<câu mẫu>
+  var h = VK.h;
+  var q = new URLSearchParams(location.search);
+  var side = q.get('side') === 'right' ? 'right' : 'left';
+  var words = (q.get('text') || 'Xin chào, mình là người dẫn.')
+    .split(/\s+/).filter(Boolean).map(function (w) { return { text: w, frame: 0 }; });
+  var W = 640, CARD = 470, INSET = 84;
+  VK.mountCard('#root', {
+    width: W, height: 270, duration: 1, frame: 0,
+    render: function () {
+      return h(VK.DialogueCard, {
+        x: side === 'left' ? INSET : W - INSET - CARD, y: 50, w: CARD, side: side,
+        speaker: q.get('name') || '', tone: q.get('tone') || 'accent', avatar: q.get('avatar') || null,
+        words: words, frame: 10000,
+      });
+    }
+  });
+</script>
+</body>
+</html>

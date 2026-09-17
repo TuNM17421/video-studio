@@ -156,7 +156,7 @@ npm run studio           # http://127.0.0.1:3100 — chỉ nghe trên máy này
 |---|---|---|
 | Video mới | `/` | Chọn style, nhập kịch bản, bật năng lực, tạo video |
 | Các video | `/videos` | Mở lại video đang làm dở |
-| Thư viện | `/library` | Xem style, toàn bộ component (tài liệu `.prompt.md`) và video mẫu |
+| Thư viện | `/library` | Xem style, toàn bộ component (tài liệu `.prompt.md`), nhân vật (`voices.json → characters`, kèm thẻ thoại xem thử và nghe thử giọng) và video mẫu |
 | Design system | `/design-system` | Token giao diện của chính Studio |
 | Hướng dẫn | `/guide` | Hướng dẫn dùng Studio |
 
