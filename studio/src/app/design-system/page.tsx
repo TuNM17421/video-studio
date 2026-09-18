@@ -40,7 +40,7 @@ export default function DesignSystemPage() {
           <dl className={styles.heroFacts}>
             <div><dt>UI engine</dt><dd>Ant Design 6</dd></div>
             <div><dt>Grid</dt><dd>4 px</dd></div>
-            <div><dt>Theme</dt><dd>Light</dd></div>
+            <div><dt>Theme</dt><dd>Sáng / Tối</dd></div>
           </dl>
         </div>
         <div className={styles.heroSignal}>
