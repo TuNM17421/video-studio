@@ -146,10 +146,12 @@
   max-width: calc(100% - 8px);
   overflow: hidden;
   padding: 2px 4px;
-  border: 1px solid var(--vu-blue-100);
+  /* Ba màu đứng yên: nhãn này nằm đè lên ảnh preview nướng sẵn nền sáng, nên nó phải giữ nguyên ở chế
+     độ tối. Dùng thang màu bình thường thì chữ lật thành sáng mà nền vẫn trắng — không đọc được. */
+  border: 1px solid var(--vu-media-chip-border);
   border-radius: 3px;
-  background: rgb(255 255 255 / 92%);
-  color: var(--vu-blue-900);
+  background: color-mix(in srgb, var(--vu-media-chip-surface) 92%, transparent);
+  color: var(--vu-media-chip-text);
   font-family: var(--vu-font-utility);
   font-size: var(--vu-text-2xs);
   font-weight: var(--vu-font-medium);
@@ -682,7 +684,7 @@ button.vs-tile:hover {
 .vs-local-step.is-now .vs-local-num {
   border-color: var(--vu-blue-700);
   background: var(--vu-blue-700);
-  color: #fff;
+  color: var(--vu-text-inverse);
 }
 .vs-local-step.is-done .vs-local-num {
   border-color: var(--vu-green-700);
@@ -1534,7 +1536,7 @@ button.vs-tile:hover {
 }
 .vs-qa-mode button[aria-pressed="true"] {
   background: var(--vu-blue-800);
-  color: white;
+  color: var(--vu-text-inverse);
 }
 .vs-qa-filter {
   display: flex;
@@ -2077,7 +2079,7 @@ button.vs-tile:hover {
   justify-content: space-between;
   gap: 18px;
   background: var(--vu-lesson-ink);
-  color: white;
+  color: var(--vu-text-inverse);
   font-family: var(--vs-font-display);
   font-size: 10px;
   font-weight: var(--vu-font-bold);
@@ -2147,7 +2149,7 @@ button.vs-tile:hover {
   place-items: center;
   border: 1px solid var(--vu-blue-200);
   border-radius: 4px;
-  background: white;
+  background: var(--vu-surface-card);
   font-family: var(--vs-font-utility);
 }
 .vs-showcase-details[open] .vs-details-action::after {
@@ -2513,6 +2515,16 @@ button.vs-tile:hover {
 .vs-key-status .ant-badge {
   margin-left: auto;
 }
+/* Nút chọn giao diện đứng ngay trên mục ElevenLabs, cùng dáng một sidebar-item; giá trị đang chọn nằm
+   bên phải như chấm trạng thái của mục kia. */
+.vs-theme-toggle {
+  cursor: pointer;
+}
+.vs-theme-value {
+  margin-left: auto;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+}
 
 @media (min-width: 681px) {
   .sidebar.ant-layout-sider.ant-layout-sider-collapsed {
@@ -2601,6 +2613,7 @@ button.vs-tile:hover {
   .sidebar.ant-layout-sider-collapsed .sidebar-bottom {
     width: var(--vu-shell-sidebar-collapsed-width);
   }
+  .sidebar.ant-layout-sider-collapsed .vs-theme-toggle,
   .sidebar.ant-layout-sider-collapsed .vs-key-status {
     position: relative;
     width: var(--vu-shell-sidebar-rail-item);
@@ -3771,6 +3784,24 @@ button.vs-tile:hover {
   .vs-sidebar-menu.ant-menu .ant-menu-item-icon {
     font-size: 15px;
   }
+
+
+/* ── ảnh và khung xem trước ở chế độ tối ──────────────────────────────────────
+   Ảnh chụp component, ảnh QA và khung xem trước cảnh đều là nền trắng đã bake vào
+   pixel (hoặc là chính khung hình thật của MP4) — CSS không đổi được, và cũng
+   KHÔNG NÊN đổi: đó là màu thật của video. Chỉ hạ sáng một nhịp cho đỡ chói trên
+   nền tối, và trả lại đủ sáng khi người dùng rê chuột vào để xem kỹ. */
+:root[data-theme="dark"] img[src*="/styles/previews/"],
+:root[data-theme="dark"] .vs-qa img,
+:root[data-theme="dark"] iframe {
+  filter: brightness(0.9);
+  transition: filter var(--vu-duration-normal) var(--vu-ease-standard);
+}
+:root[data-theme="dark"] img[src*="/styles/previews/"]:hover,
+:root[data-theme="dark"] .vs-qa img:hover,
+:root[data-theme="dark"] iframe:hover {
+  filter: none;
+}
 
   .vs-sidebar-menu.ant-menu .ant-menu-title-content {
     min-width: 0;

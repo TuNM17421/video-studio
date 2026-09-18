@@ -462,12 +462,11 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
               thanh tiến trình biến mất mà không nói gì — đã thấy thật với một file mẫu không có tiếng nói. */}
           {job?.kind === "omnivoice-generate" && job.status === "error" && settingsChangedAt > 0 && job.startedAt >= settingsChangedAt && (() => {
             const last = [...detail.logs].reverse().find((l) => l.kind === "error");
-            return <Alert
-              className="feedback"
-              type="error"
-              showIcon
+            return <ProductionState
+              className="vs-production-state"
+              status="error"
               title="Sinh giọng thất bại"
-              description={last ? last.text.split(/\r?\n/).filter(Boolean).map((line, i) => <div key={i}>{line}</div>) : "Xem nhật ký bên dưới."}
+              detail={last ? last.text.split(/\r?\n/).filter(Boolean).map((line, i) => <div key={i}>{line}</div>) : "Xem nhật ký bên dưới."}
             />;
           })()}
           {!voiceReady && installed && <small className="vs-local-log vs-local-hint">{cast?.problems.length ? cast.problems[0].split(/\r?\n/)[0] : "Chọn một giọng ở bước 2 trước."}</small>}
