@@ -22,18 +22,36 @@ const OPENERS = new Set([
   'và', 'hoặc', 'hay', 'rồi', 'nhưng', 'mà', 'để', 'khi', 'nếu', 'thì', 'dù', 'rằng', 'như', 'dựa',
   'trước', 'cho', 'với', 'trong', 'bằng', 'từ', 'vì', 'của', 'theo', 'nhờ', 'là',
 ]);
-/** Words that lean on the next one — a page must not end right after them. */
+/**
+ * Words that lean on the next one — a page must not end right after them. Includes words that are also
+ * openers (cho, từ): a page may start with "cho biết", "từ dữ liệu", but never end on the bare "cho" / "từ"
+ * (the noun "từ", as in "từng từ", is caught too — rarer than the preposition, and the cost of a split
+ * elsewhere is small). 'bên' binds what follows ("bên trong", "bên ngoài").
+ */
 const LEANERS = new Set([
   'sẽ', 'đã', 'đang', 'được', 'bị', 'cần', 'những', 'các', 'một', 'mỗi', 'hai', 'ba', 'bốn', 'năm',
   'sáu', 'rất', 'không', 'chưa', 'hãy', 'nên', 'phải', 'cách', 'việc', 'người', 'bài', 'đằng', 'thật',
+  'bên', 'cho', 'từ',
 ]);
+/**
+ * Compound nouns whose first syllable is spelled like an opener: 'từ' in "từ ngữ" is the noun "word", not the
+ * preposition "from", so it does not open a phrase and a page gets no reward for ending right before it.
+ */
+const COMPOUNDS = new Set(['từ ngữ', 'từ khoá', 'từ khóa', 'từ vựng', 'từ điển']);
+/**
+ * Pairs that read as one unit: a page must not end between them. "học từ" is a verb and its source —
+ * "…tạo sinh học | từ dữ liệu" reads as "sinh học". A pair rather than 'học' among the leaners, which would
+ * also glue "buổi học", "phải học" to whatever follows them.
+ */
+const GLUED = new Set(['học từ']);
 
 /** Cost of ending a page between words[i] and words[i + 1] (negative = a good place). */
 function breakCost(words, i) {
   if (PUNCTUATION_END.test(words[i])) return -900;
   let cost = 0;
-  if (OPENERS.has(bare(words[i + 1]))) cost -= 500;
-  if (LEANERS.has(bare(words[i]))) cost += 600;
+  const next = bare(words[i + 1]);
+  if (OPENERS.has(next) && !COMPOUNDS.has(`${next} ${bare(words[i + 2] ?? '')}`)) cost -= 500;
+  if (LEANERS.has(bare(words[i])) || GLUED.has(`${bare(words[i])} ${next}`)) cost += 600;
   return cost;
 }
 

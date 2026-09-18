@@ -548,6 +548,9 @@ button.vs-tile:hover {
 .vs-validation-message.is-ok {
   color: var(--vu-green-700);
 }
+.vs-validation-message.is-warn {
+  color: var(--vu-amber-700);
+}
 .field input[aria-invalid="true"],
 .field input[aria-invalid="true"]:hover,
 .field input[aria-invalid="true"]:focus {

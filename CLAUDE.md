@@ -50,6 +50,8 @@ style is `styles/<style>.json` (palette, showcase components, rules — they ove
 4. **render** — `node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4`
    (+ `--base` of the preview server; `--no-captions` bỏ thanh phụ đề — Studio hỏi "Phụ đề: Có/Không" ở bước
    Render, mặc định Có), QA the MP4; `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`.
+   Bản mix có giọng được đưa về −16 LUFS qua limiter (giọng ElevenLabs gốc chỉ ~−21 LUFS); `--loudness <LUFS>`
+   đổi mức, `--no-loudnorm` bỏ bước này.
 5. **deliver** — `chapters/DayNN/<id>-chương.txt` (`MM:SS: tên chương`, one per script section),
    `projects/<id>/PROMPTS.md`, final build + verify.
 Optional: `/design-sync` pushes `vinuni-lesson-video-ds/` to the Claude Design project in
@@ -118,7 +120,8 @@ vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
   dù chưa biết dùng bài nhạc nào. Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc
   đồng hồ chạy) — **không** đặt ở câu đọc câu hỏi và **không** ở phần chữa bài. Người hỏi đang nói thì vẫn là nhạc nền; nhạc quiz chỉ vào khi
   câu hỏi đã dứt. Các câu liền nhau gom thành một đoạn; `render.mjs --quiz-track <id>` tự đọc `cues.js` để
-  lấy mốc thời gian. Trong đoạn quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu.
+  lấy mốc thời gian. Trong đoạn quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu. Câu có lời
+  mà mang cờ thì `npm run verify` báo problem, còn `render.mjs` bỏ câu đó khỏi đoạn nhạc quiz.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
 ## Media nặng (`media/`, Cloudflare R2)
