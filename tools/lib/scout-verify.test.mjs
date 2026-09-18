@@ -90,3 +90,17 @@ test('đọc không được file nguồn thì trượt, không im lặng cho qu
   assert.equal(r.ok, false);
   assert.equal(r.quotes.ok, 0);
 });
+
+test('lượt từ slide: câu chỉ dựa trên slide là đủ nguồn', () => {
+  const r = check({ cues: { 1: ['slide:2'], 2: ['slide:3', 'slide:4'] } });
+  assert.deepEqual(r.cues.map((c) => [c.n, c.level, c.slides]), [[1, 'ok', [2]], [2, 'ok', [3, 4]]]);
+});
+
+test('lượt từ slide: gắn thêm "slide:" không bù được nguồn web còn thiếu', () => {
+  // Câu đã dùng kết quả research (có s1) thì vẫn phải đủ số nguồn web, dù cũng dựa trên slide.
+  const r = check({ cues: { 1: ['slide:3', 's1'] } });
+  const row = r.cues.find((c) => c.n === 1);
+  assert.equal(row.level, 'warn');
+  assert.deepEqual(row.slides, [3]);
+  assert.deepEqual(row.sources, ['s1']);
+});

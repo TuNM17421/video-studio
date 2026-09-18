@@ -3,10 +3,11 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { Dossier, ScoutEvent, ScoutInput, ScoutRun, SourceCheck } from "../scout";
-import { slugify } from "../scout";
+import type { Dossier, ItemFinding, NodeState, ResearchItem, ScoutEvent, ScoutInput, ScoutRun, ScoutStage, SlideDeck, SourceCheck } from "../scout";
+import { cleanItems, parseExtraction, parseFinding, SCRIPT_NODE, slugify, todoStates } from "../scout";
 import { claudeExecArgs } from "./agent-cli";
 import { exists, REPO } from "./paths";
+import { pdfPageCount, pptxSlides, slidesMarkdown } from "./slides";
 
 const execFileP = promisify(execFile);
 
@@ -18,7 +19,7 @@ const execFileP = promisify(execFile);
 export const SCOUT_ROOT = path.join(REPO, "scout");
 
 /**
- * Bộ công cụ của lượt chạy này — và đây là chỗ duy nhất trong cả Studio mở WebSearch/WebFetch.
+ * Bộ công cụ của bước research — và đây là chỗ duy nhất trong cả Studio mở WebSearch/WebFetch.
  *
  * `agent.ts` chặn cả hai cho mọi stage của luồng dựng video; danh sách dưới đây không đụng tới danh sách
  * đó, nó là một lượt gọi `claude` riêng với quyền riêng. Không có Bash/PowerShell: agent chỉ tìm, đọc
@@ -30,8 +31,16 @@ const DENIED = [
   "Bash", "PowerShell", "Edit", "NotebookEdit", "Task", "Agent",
   "DesignSync", "RemoteTrigger", "CronCreate", "SendMessage",
 ];
+/** Bước bóc tách slide chỉ đọc slide và ghi danh sách mục — chưa cần web, và không nên có. */
+const EXTRACT_ALLOWED = ["Read", "Write", "Glob", "TodoWrite"];
+const EXTRACT_DENIED = [...DENIED, "WebSearch", "WebFetch"];
 
-type LiveRun = ScoutRun & { child?: ChildProcess; stopped?: boolean };
+type LiveRun = ScoutRun & {
+  child?: ChildProcess;
+  stopped?: boolean;
+  /** Nút agent đang làm theo TodoWrite gần nhất — mọi sự kiện sau đó được gắn vào nó. */
+  active: string | null;
+};
 
 interface Registry {
   run: LiveRun | null;
@@ -63,24 +72,66 @@ function push(run: LiveRun, event: ScoutEvent) {
 }
 
 /**
- * Bản đọc được của lượt chạy hiện tại. Dựng từng trường một chứ không bóc phần thừa ra: `child` là một
+ * Bản đọc được của một lượt. Dựng từng trường một chứ không bóc phần thừa ra: `child` là một
  * ChildProcess, lọt vào `Response.json` là hỏng cả lượt trả về, nên danh sách trường phải là danh sách
  * cho phép chứ không phải danh sách loại trừ.
  */
-export function currentScout(): ScoutRun | null {
-  const run = registry.run;
-  if (!run) return null;
+function snapshot(run: LiveRun): ScoutRun {
   return {
     slug: run.slug,
     input: run.input,
+    mode: run.mode,
+    stage: run.stage,
     status: run.status,
     startedAt: run.startedAt,
     dir: run.dir,
     events: run.events,
+    deck: run.deck,
+    extraction: run.extraction,
+    items: run.items,
+    itemStates: run.itemStates,
+    findings: run.findings,
     dossier: run.dossier,
     check: run.check,
     script: run.script,
   };
+}
+
+/**
+ * Ghi trạng thái lượt chạy xuống `run.json`. Lượt từ slide dừng lại chờ người dùng duyệt — có thể qua cả
+ * một lần khởi động lại Studio — nên danh sách mục không được chỉ sống trong bộ nhớ.
+ */
+function persist(run: LiveRun) {
+  try {
+    fs.writeFileSync(path.join(REPO, run.dir, "run.json"), JSON.stringify(snapshot(run)));
+  } catch {
+    // Không ghi được thì lượt vẫn chạy tiếp; chỉ mất khả năng dựng lại sau khi khởi động lại.
+  }
+}
+
+/** Lượt gần nhất trên đĩa, khi bộ nhớ trống (Studio vừa khởi động lại). Lượt đang chạy dở thì đã chết theo. */
+function restoreLatest(): LiveRun | null {
+  if (!exists(SCOUT_ROOT)) return null;
+  let latest: { file: string; mtime: number } | null = null;
+  for (const name of fs.readdirSync(SCOUT_ROOT)) {
+    const file = path.join(SCOUT_ROOT, name, "run.json");
+    try {
+      const mtime = fs.statSync(file).mtimeMs;
+      if (!latest || mtime > latest.mtime) latest = { file, mtime };
+    } catch {}
+  }
+  if (!latest) return null;
+  try {
+    const run = JSON.parse(fs.readFileSync(latest.file, "utf8")) as ScoutRun;
+    return { ...run, status: run.status === "running" ? "stopped" : run.status, active: null };
+  } catch {
+    return null;
+  }
+}
+
+export function currentScout(): ScoutRun | null {
+  registry.run ??= restoreLatest();
+  return registry.run ? snapshot(registry.run) : null;
 }
 
 export function scoutRunning() {
@@ -112,14 +163,16 @@ const insideRun = (file: string, dir: string) => {
   return at === -1 ? normalized.split("/").slice(-2).join("/") : normalized.slice(at + marker.length);
 };
 
+// ── lời dặn agent ────────────────────────────────────────────────────────────────
+
 /**
- * Việc cần làm, viết cho agent.
+ * Lượt từ một chủ đề gõ tay: một agent vừa tìm vừa viết.
  *
  * Hai ràng buộc đáng tiền nhất nằm ở bước 2 và 4: **tải trang về đĩa trước khi trích**, và **trích nguyên
  * văn**. Công cụ tìm kiếm của agent không để lại gì soát được, nên nếu không bắt ghi toàn văn xuống thì
  * `tools/scout-verify.mjs` chẳng có gì để đối chiếu và cả tính năng này chỉ còn là lời hứa.
  */
-function prompt(input: ScoutInput, dir: string) {
+function topicPrompt(input: ScoutInput, dir: string) {
   return [
     `Bạn đang chạy trong Video Studio, tính năng "Đóng gói kịch bản" (beta). Trả lời bằng tiếng Việt.`,
     ``,
@@ -134,15 +187,7 @@ function prompt(input: ScoutInput, dir: string) {
     `   \`${dir}/sources/<id>.md\` (id là s1, s2, …). Bước này bắt buộc — trích đoạn nào không nằm trong file`,
     `   đã tải sẽ bị \`tools/scout-verify.mjs\` đánh trượt.`,
     `3. **Viết hồ sơ nguồn** \`${dir}/nguon.json\`:`,
-    `   {"topic": "...", "createdAt": "<ISO>", "sources": [{"id":"s1","url":"...","title":"...",`,
-    `   "publisher":"...","published":"YYYY-MM-DD hoặc null nếu trang không ghi","fetchedAt":"<ISO>",`,
-    `   "file":"sources/s1.md","trust":"cao|vua|chua-kiem-chung","why":"vì sao tin được","quotes":["..."]}],`,
-    `   "cues": {"1": ["s1","s2"], "2": ["s1"]}}`,
-    `   - \`quotes\` là **trích nguyên văn** từ chính file đã tải, mỗi đoạn trên 40 ký tự. Chép, đừng diễn đạt lại.`,
-    `   - \`published\` là null khi trang thật sự không ghi ngày. Đừng đoán — trang không ghi ngày là một`,
-    `     thông tin người duyệt cần biết.`,
-    `   - \`trust\` tự đánh giá thật, kèm \`why\`. Một trang không rõ tác giả thì là "chua-kiem-chung",`,
-    `     dù nội dung nghe hợp lý.`,
+    ...DOSSIER_SCHEMA,
     `4. **Viết kịch bản** \`${dir}/kich-ban.md\` theo đúng mẫu \`templates/kich-ban-co-ban.md\` (đọc file đó`,
     `   trước). Khoảng ${input.cues} câu, mỗi câu một mục \`### Câu N\`.`,
     `   - **Mỗi câu phải có ít nhất ${input.minSources} nguồn độc lập** trong \`cues\` của nguon.json.`,
@@ -150,15 +195,140 @@ function prompt(input: ScoutInput, dir: string) {
     `   - Không có con số, tên riêng hay kết quả nào mà nguồn không nói. Không đủ nguồn cho một ý thì bỏ ý`,
     `     đó đi, đừng viết cho đủ số câu.`,
     ``,
-    `## Mâu thuẫn thì nói ra`,
-    ``,
-    `Hai nguồn nói khác nhau thì **đừng chọn bừa một bên**. Ghi cả hai vào hồ sơ, đặt \`trust\` cho đúng, và`,
-    `viết câu theo cách trung thực với tình trạng đó — hoặc bỏ ý đó khỏi kịch bản.`,
+    ...CONFLICTS,
     ``,
     `Xong thì dừng và tóm tắt ngắn: tìm được mấy nguồn, bỏ nguồn nào và vì sao, ý nào không đủ nguồn nên`,
     `đã bỏ, và chỗ nào bạn thấy người duyệt nên xem kỹ.`,
   ].join("\n");
 }
+
+const DOSSIER_SCHEMA = [
+  `   {"topic": "...", "createdAt": "<ISO>", "sources": [{"id":"s1","url":"...","title":"...",`,
+  `   "publisher":"...","published":"YYYY-MM-DD hoặc null nếu trang không ghi","fetchedAt":"<ISO>",`,
+  `   "file":"sources/s1.md","trust":"cao|vua|chua-kiem-chung","why":"vì sao tin được","quotes":["..."]}],`,
+  `   "cues": {"1": ["s1","s2"], "2": ["s1"]}}`,
+  `   - \`quotes\` là **trích nguyên văn** từ chính file đã tải, mỗi đoạn trên 40 ký tự. Chép, đừng diễn đạt lại.`,
+  `   - \`published\` là null khi trang thật sự không ghi ngày. Đừng đoán — trang không ghi ngày là một`,
+  `     thông tin người duyệt cần biết.`,
+  `   - \`trust\` tự đánh giá thật, kèm \`why\`. Một trang không rõ tác giả thì là "chua-kiem-chung",`,
+  `     dù nội dung nghe hợp lý.`,
+];
+
+const CONFLICTS = [
+  `## Mâu thuẫn thì nói ra`,
+  ``,
+  `Hai nguồn nói khác nhau thì **đừng chọn bừa một bên**. Ghi cả hai vào hồ sơ, đặt \`trust\` cho đúng, và`,
+  `viết câu theo cách trung thực với tình trạng đó — hoặc bỏ ý đó khỏi kịch bản.`,
+];
+
+/** Cách đọc slide gốc, tuỳ định dạng — PDF thì Read đọc thẳng nhưng tối đa 20 trang mỗi lần. */
+function deckLines(deck: SlideDeck, dir: string) {
+  if (deck.format === "pptx") {
+    return [
+      `Slide của giảng viên: \`${dir}/${deck.file}\` (PPTX, ${deck.slides ?? "?"} slide). Chữ và ghi chú của từng`,
+      `slide đã được bóc sẵn vào \`${dir}/${deck.text}\` — đọc file đó (Read không mở được PPTX). Hình và sơ đồ`,
+      `trong PPTX không đi theo; slide nào chỉ có hình thì ghi rõ là không đọc được nội dung.`,
+    ];
+  }
+  const pages = deck.slides ? `${deck.slides} trang` : "chưa rõ số trang";
+  return [
+    `Slide của giảng viên: \`${dir}/${deck.file}\` (PDF, ${pages}). Đọc bằng Read, **mỗi lần tối đa 20 trang**`,
+    `qua tham số \`pages\` ("1-20", "21-40", …)${deck.slides ? "" : " cho tới khi hết trang"}. Đọc cả chữ trong hình và sơ đồ.`,
+  ];
+}
+
+/** Bước 1 của lượt từ slide: đọc slide, chọn chỗ cần research. Không có web. */
+function extractPrompt(deck: SlideDeck, dir: string) {
+  return [
+    `Bạn đang chạy trong Video Studio, tính năng "Đóng gói kịch bản" (beta), bước **bóc tách slide**. Trả lời`,
+    `bằng tiếng Việt. Bước này không tìm web — chỉ đọc slide và lập danh sách.`,
+    ``,
+    ...deckLines(deck, dir),
+    `Thư mục làm việc: \`${dir}/\` — **chỉ ghi file trong đó**.`,
+    ``,
+    `## Việc cần làm`,
+    ``,
+    `1. **Đọc hết slide** và lập dàn ý: mỗi slide một mục — số slide, tiêu đề, các ý chính (chép sát lời slide,`,
+    `   không thêm ý của bạn).`,
+    `2. **Chọn những chỗ cần research trên web** trước khi dựng thành video:`,
+    `   - "so-lieu": số liệu, năm, tỉ lệ, xếp hạng — có thể đã cũ hoặc slide không ghi nguồn;`,
+    `   - "khang-dinh": khẳng định gán cho một nghiên cứu, tổ chức, người, hoặc nghe như sự thật mà không có nguồn;`,
+    `   - "cap-nhat": chỗ nói "mới nhất", "hiện nay", "gần đây", tên sản phẩm, phiên bản — dễ đã lỗi thời;`,
+    `   - "dinh-nghia": khái niệm nên có một định nghĩa chuẩn có nguồn;`,
+    `   - "vi-du": ý trừu tượng cần một ví dụ thật để minh hoạ.`,
+    `   Không đưa vào: kiến thức phổ thông, nhận định riêng của giảng viên, bài tập, lời dẫn. Gộp các chỗ trùng`,
+    `   nhau. Thường 3–12 mục, ít hơn cũng được nếu slide ít chỗ cần kiểm — đừng đặt ra cho đủ số.`,
+    `3. **Ghi \`${dir}/muc-research.json\`** (JSON hợp lệ, UTF-8):`,
+    `   {"title": "tên bài giảng", "slides": <số slide>,`,
+    `    "outline": [{"slide": 1, "heading": "...", "points": ["..."]}],`,
+    `    "items": [{"id": "m1", "slides": [3], "title": "tên ngắn, dưới 60 ký tự",`,
+    `      "claim": "slide nói gì / cần kiểm điều gì — chép sát lời slide nếu là một khẳng định trên slide",`,
+    `      "kind": "so-lieu|khang-dinh|cap-nhat|dinh-nghia|vi-du", "why": "vì sao cần research",`,
+    `      "queries": ["từ khoá tìm 1", "từ khoá tìm 2"]}]}`,
+    ``,
+    `Người dùng sẽ duyệt danh sách này trước khi research, nên viết \`title\` và \`why\` cho người đọc hiểu ngay.`,
+    `Xong thì dừng và tóm tắt ngắn: bao nhiêu slide, bao nhiêu mục, mục nào quan trọng nhất.`,
+  ].join("\n");
+}
+
+/** Bước 2: research lần lượt từng mục người dùng đã duyệt, rồi viết kịch bản theo mạch của slide. */
+function researchPrompt(run: LiveRun) {
+  const { dir, input, deck, items } = run;
+  const list = items.length
+    ? items.map((it) => {
+        const where = it.slides.length ? `slide ${it.slides.join(", ")}` : "cả bài";
+        const hints = it.queries.length ? `; gợi ý tìm: ${it.queries.join(" / ")}` : "";
+        return `- **${it.id}** · [${it.kind}] ${it.title} — ${where}: ${it.claim}${it.why ? ` (vì: ${it.why}${hints})` : hints ? ` (${hints.slice(2)})` : ""}`;
+      })
+    : ["- (không có mục nào — người dùng chọn viết kịch bản chỉ từ slide, không research)"];
+  return [
+    `Bạn đang chạy trong Video Studio, tính năng "Đóng gói kịch bản" (beta), bước **research và viết kịch bản**`,
+    `từ slide của giảng viên. Trả lời bằng tiếng Việt.`,
+    ``,
+    ...(deck ? deckLines(deck, dir) : []),
+    `Dàn ý đã bóc ở bước trước nằm trong \`${dir}/muc-research.json\` (mục \`outline\`) — dùng nó; chỉ mở lại`,
+    `slide gốc khi cần xem kỹ một slide.`,
+    `Thư mục làm việc: \`${dir}/\` — **chỉ ghi file trong đó**, không sửa gì khác trong repo.`,
+    ``,
+    `## Các mục người dùng đã duyệt — làm lần lượt, đúng thứ tự`,
+    ``,
+    ...list,
+    ``,
+    `## Việc cần làm`,
+    ``,
+    `1. **Ngay đầu tiên, lập danh sách việc bằng TodoWrite**: mỗi mục một việc, nội dung **bắt đầu đúng bằng mã`,
+    `   mục** ("m1 · <tên>"), cuối cùng là việc "Viết kịch bản". Chuyển việc sang in_progress khi bắt đầu và`,
+    `   completed khi xong, mỗi lần một việc — Studio đọc đúng danh sách này để hiện bạn đang làm mục nào.`,
+    `2. **Research từng mục**: WebSearch vài lượt; với mỗi nguồn định dùng, WebFetch rồi **Write toàn văn** vào`,
+    `   \`${dir}/sources/<id>.md\` (s1, s2, … đánh số chung cho cả lượt, không trùng). Ưu tiên nguồn gốc (tài`,
+    `   liệu chính thức, bài có tác giả và ngày đăng, nghiên cứu) hơn bài tổng hợp lại.`,
+    `3. **Kết luận từng mục** ngay khi xong mục đó → \`${dir}/items/<mã>.json\`:`,
+    `   {"id": "m1", "verdict": "xac-nhan|dieu-chinh|mau-thuan|khong-du-nguon", "finding": "kết luận 1–3 câu",`,
+    `    "sources": ["s1", "s2"]}`,
+    `   - xac-nhan: nguồn khớp với slide. dieu-chinh: nguồn cho thông tin mới hơn hoặc khác slide — ghi rõ khác gì.`,
+    `   - mau-thuan: các nguồn nói khác nhau. khong-du-nguon: không tìm được ${input.minSources} nguồn độc lập.`,
+    `4. **Hồ sơ nguồn** \`${dir}/nguon.json\`:`,
+    ...DOSSIER_SCHEMA,
+    `   - Trong \`cues\`, câu dựa trên nội dung của chính slide ghi \`"slide:<số>"\` (vd \`"slide:3"\`); câu dùng`,
+    `     kết quả research ghi id nguồn. Một câu có thể có cả hai.`,
+    `5. **Kịch bản** \`${dir}/kich-ban.md\` theo đúng mẫu \`templates/kich-ban-co-ban.md\` (đọc file đó trước),`,
+    `   khoảng ${input.cues} câu, mỗi câu một mục \`### Câu N\`:`,
+    `   - Đi theo mạch của slide và giảng lại nội dung của giảng viên — không đổi chủ đề, không thêm phần mà`,
+    `     slide không có.`,
+    `   - Chỗ có mục research thì dùng kết luận đã soát: dieu-chinh → dùng thông tin đúng; mau-thuan hoặc`,
+    `     khong-du-nguon → không khẳng định, nói trung thực tình trạng đó hoặc bỏ ý.`,
+    `   - Câu dùng số liệu hay khẳng định lấy từ research phải có ít nhất ${input.minSources} nguồn độc lập trong`,
+    `     \`cues\` (khác tổ chức xuất bản, không phải hai trang chép lại một thông cáo).`,
+    `   - Không có con số, tên riêng hay kết quả nào mà slide hoặc nguồn không nói.`,
+    ``,
+    ...CONFLICTS,
+    ``,
+    `Xong thì dừng và tóm tắt ngắn: mục nào khớp slide, mục nào slide cần sửa, mục nào không đủ nguồn, và chỗ`,
+    `người duyệt nên xem kỹ.`,
+  ].join("\n");
+}
+
+// ── chạy agent ───────────────────────────────────────────────────────────────────
 
 interface StreamBlock {
   type?: string;
@@ -189,54 +359,54 @@ function toolEvent(name: string, input: Record<string, unknown>, dir: string): S
   return { t, kind: "tool", name, detail: "" };
 }
 
-/** Đọc lại hồ sơ và kịch bản agent vừa ghi, rồi soát bằng đúng CLI mà người dùng chạy tay được. */
-async function collect(dir: string, minSources: number) {
-  const abs = path.join(REPO, dir);
-  let dossier: Dossier | null = null;
-  try {
-    const file = path.join(abs, "nguon.json");
-    if (exists(file)) dossier = JSON.parse(fs.readFileSync(file, "utf8")) as Dossier;
-  } catch {
-    dossier = null;
+/** Đổi trạng thái vài nút rồi báo trang một lần. */
+function setStates(run: LiveRun, changes: Record<string, NodeState>) {
+  let changed = false;
+  for (const [node, state] of Object.entries(changes)) {
+    if (!(node in run.itemStates) || run.itemStates[node] === state) continue;
+    run.itemStates[node] = state;
+    changed = true;
   }
-  let check: SourceCheck | null = null;
-  try {
-    // Mã thoát khác 0 nghĩa là "chưa đạt", không phải "chạy hỏng" — báo cáo vẫn nằm ở stdout.
-    const { stdout } = await execFileP(process.execPath, ["tools/scout-verify.mjs", dir, "--json", "--min", String(minSources)], { cwd: REPO, maxBuffer: 8 * 1024 * 1024 })
-      .catch((error: { stdout?: string }) => ({ stdout: error.stdout ?? "" }));
-    if (stdout.trim()) check = JSON.parse(stdout) as SourceCheck;
-  } catch {
-    check = null;
-  }
-  const script = exists(path.join(abs, "kich-ban.md")) ? `${dir}/kich-ban.md` : null;
-  return { dossier, check, script };
+  if (changed) push(run, { t: Date.now(), kind: "progress", stage: run.stage, states: { ...run.itemStates } });
 }
 
 /**
- * Chạy một lượt. Trả về ngay; tiến trình chạy nền và các sự kiện đi ra qua `subscribeScout`.
- *
- * Mỗi lúc chỉ một lượt: đây là trang beta để xem agent làm việc, không phải hàng đợi.
+ * Tiến độ theo từng mục. TodoWrite của agent là nguồn chính; file nó ghi là nguồn phụ — một agent quên
+ * cập nhật danh sách việc nhưng đã ghi `items/m2.json` thì mục đó vẫn là xong.
  */
-export function startScout(input: ScoutInput) {
-  if (scoutRunning()) throw new Error("Đang có một lượt chạy. Chờ xong hoặc bấm Dừng.");
+function track(run: LiveRun, name: string, input: Record<string, unknown>) {
+  if (run.stage !== "research" || run.mode !== "slide") return;
+  if (name === "TodoWrite") {
+    const { states, active } = todoStates(input.todos, run.items.map((it) => it.id));
+    run.active = active;
+    setStates(run, states);
+    return;
+  }
+  if (name === "Write") {
+    const file = insideRun(String(input.file_path ?? ""), path.basename(run.dir));
+    const item = /^items\/(m\d+)\.json$/.exec(file)?.[1];
+    if (item) setStates(run, { [item]: "done" });
+    if (file === "kich-ban.md") {
+      run.active = SCRIPT_NODE;
+      setStates(run, { [SCRIPT_NODE]: "active" });
+    }
+  }
+}
 
-  const slug = slugify(input.topic);
-  const dir = `scout/${slug}`;
-  fs.mkdirSync(path.join(REPO, dir, "sources"), { recursive: true });
-
-  // `self` là cái mọi closure bên dưới bám vào. `registry.run` chỉ nói "lượt nào đang hiển thị" và có
-  // thể đã trỏ đi chỗ khác vào lúc tiến trình này đóng lại.
-  const self: LiveRun = {
-    slug, input, status: "running", startedAt: Date.now(), dir,
-    events: [], dossier: null, check: null, script: null,
-  };
-  registry.run = self;
-  push(self, { t: Date.now(), kind: "start", topic: input.topic, dir });
+/**
+ * Chạy một agent cho một giai đoạn của lượt. Trả về ngay; `finish` chạy khi tiến trình đóng lại, với
+ * `ok` là agent tự báo thành công và không bị Dừng.
+ */
+function runAgent(self: LiveRun, stage: ScoutStage, text: string, allowed: string[], denied: string[], finish: (ok: boolean, summary: string) => Promise<void>) {
+  self.stage = stage;
+  self.status = "running";
+  self.active = null;
+  self.stopped = false;
 
   const bin = process.env.CLAUDE_BIN || "claude";
   // Cùng lý do với jobs.ts: trên Windows một CLI cài qua npm là .cmd, spawn thẳng sẽ EINVAL.
   const shell = process.platform === "win32" && /\.(cmd|bat)$/i.test(bin);
-  const child = spawn(bin, claudeExecArgs(randomUUID(), false, ALLOWED, DENIED), {
+  const child = spawn(bin, claudeExecArgs(randomUUID(), false, allowed, denied), {
     cwd: REPO,
     env: process.env,
     stdio: ["pipe", "pipe", "pipe"],
@@ -244,6 +414,7 @@ export function startScout(input: ScoutInput) {
   });
   self.child = child;
 
+  const tag = (event: ScoutEvent): ScoutEvent => ({ ...event, stage, ...(self.active ? { item: self.active } : {}) });
   let ok = false;
   let summary = "";
   let buf = "";
@@ -257,13 +428,17 @@ export function startScout(input: ScoutInput) {
       try { msg = JSON.parse(line) as StreamMessage; } catch { continue; }
       if (msg.type === "assistant") {
         for (const block of msg.message?.content || []) {
-          if (block.type === "text" && block.text?.trim()) push(self, { t: Date.now(), kind: "say", text: block.text.trim() });
-          if (block.type === "tool_use" && block.name) push(self, toolEvent(block.name, block.input || {}, dir));
+          if (block.type === "text" && block.text?.trim()) push(self, tag({ t: Date.now(), kind: "say", text: block.text.trim() }));
+          if (block.type === "tool_use" && block.name) {
+            // Cập nhật mục đang làm trước, để chính lời gọi TodoWrite chuyển mục đã thuộc về mục mới.
+            track(self, block.name, block.input || {});
+            push(self, tag(toolEvent(block.name, block.input || {}, self.dir)));
+          }
         }
       } else if (msg.type === "user") {
         for (const block of msg.message?.content || []) {
           if (block.type === "tool_result" && block.is_error) {
-            push(self, { t: Date.now(), kind: "error", text: short(typeof block.content === "string" ? block.content : JSON.stringify(block.content), 300) });
+            push(self, tag({ t: Date.now(), kind: "error", text: short(typeof block.content === "string" ? block.content : JSON.stringify(block.content), 300) }));
           }
         }
       } else if (msg.type === "result") {
@@ -273,31 +448,178 @@ export function startScout(input: ScoutInput) {
     }
   });
   child.stderr.on("data", (chunk: Buffer) => {
-    const text = chunk.toString().trim();
-    if (text) push(self, { t: Date.now(), kind: "error", text: short(text, 300) });
+    const out = chunk.toString().trim();
+    if (out) push(self, tag({ t: Date.now(), kind: "error", text: short(out, 300) }));
   });
   child.on("error", (error) => {
-    push(self, { t: Date.now(), kind: "error", text: `${bin}: ${error.message}` });
+    push(self, tag({ t: Date.now(), kind: "error", text: `${bin}: ${error.message}` }));
   });
   child.on("close", () => {
-    void (async () => {
-      const stopped = Boolean(self.stopped);
-      // Lượt bị dừng giữa chừng vẫn có thể đã ghi được vài nguồn — đọc lại hết, đừng vứt đi.
-      const { dossier, check, script } = await collect(dir, input.minSources);
-      self.status = stopped ? "stopped" : ok ? "done" : "error";
-      self.child = undefined;
-      self.dossier = dossier;
-      self.check = check;
-      self.script = script;
-      push(self, {
-        t: Date.now(),
-        kind: "done",
-        ok: ok && !stopped,
-        summary: stopped ? "Đã dừng lượt chạy." : summary || (ok ? "Agent đã dừng." : "Agent kết thúc mà không báo thành công."),
-      });
-    })();
+    self.child = undefined;
+    self.active = null;
+    void finish(ok && !self.stopped, summary).then(() => persist(self));
   });
-  child.stdin.end(prompt(input, dir));
+  child.stdin.end(text);
+}
 
+const readJson = (file: string): unknown => {
+  try { return exists(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : null; } catch { return null; }
+};
+
+/** Đọc lại hồ sơ, kịch bản và kết luận từng mục agent vừa ghi, rồi soát bằng đúng CLI người dùng chạy tay được. */
+async function collect(run: LiveRun) {
+  const abs = path.join(REPO, run.dir);
+  const dossier = readJson(path.join(abs, "nguon.json")) as Dossier | null;
+  let check: SourceCheck | null = null;
+  try {
+    // Mã thoát khác 0 nghĩa là "chưa đạt", không phải "chạy hỏng" — báo cáo vẫn nằm ở stdout.
+    const { stdout } = await execFileP(process.execPath, ["tools/scout-verify.mjs", run.dir, "--json", "--min", String(run.input.minSources)], { cwd: REPO, maxBuffer: 8 * 1024 * 1024 })
+      .catch((error: { stdout?: string }) => ({ stdout: error.stdout ?? "" }));
+    if (stdout.trim()) check = JSON.parse(stdout) as SourceCheck;
+  } catch {
+    check = null;
+  }
+  const findings: Record<string, ItemFinding> = {};
+  for (const it of run.items) {
+    const finding = parseFinding(readJson(path.join(abs, "items", `${it.id}.json`)), it.id);
+    if (finding) findings[it.id] = finding;
+  }
+  const script = exists(path.join(abs, "kich-ban.md")) ? `${run.dir}/kich-ban.md` : null;
+  return { dossier, check, findings, script };
+}
+
+/** Kết thúc bước research — dùng chung cho lượt chủ đề và lượt từ slide. */
+function finishResearch(self: LiveRun) {
+  return async (ok: boolean, summary: string) => {
+    // Lượt bị dừng giữa chừng vẫn có thể đã ghi được vài nguồn — đọc lại hết, đừng vứt đi.
+    const { dossier, check, findings, script } = await collect(self);
+    self.dossier = dossier;
+    self.check = check;
+    self.findings = findings;
+    self.script = script;
+    // Mục đã có kết luận là xong, dù agent quên đánh dấu trong TodoWrite; mục còn "đang làm" khi lượt đã
+    // đóng thì không còn đang làm nữa.
+    for (const node of Object.keys(self.itemStates)) {
+      self.itemStates[node] = findings[node] || (node === SCRIPT_NODE && script) ? "done" : self.itemStates[node] === "done" ? "done" : "pending";
+    }
+    self.status = self.stopped ? "stopped" : ok ? "done" : "error";
+    push(self, {
+      t: Date.now(),
+      kind: "done",
+      stage: "research",
+      ok,
+      summary: self.stopped ? "Đã dừng lượt chạy." : summary || (ok ? "Agent đã dừng." : "Agent kết thúc mà không báo thành công."),
+    });
+  };
+}
+
+function newRun(input: ScoutInput, mode: ScoutRun["mode"], dir: string, slug: string): LiveRun {
+  return {
+    slug, input, mode, stage: mode === "slide" ? "extract" : "research", status: "running", startedAt: Date.now(), dir,
+    events: [], deck: null, extraction: null, items: [], itemStates: {}, findings: {},
+    dossier: null, check: null, script: null, active: null,
+  };
+}
+
+/** `scout/<slug>`, thêm hậu tố khi đã có — slide cùng tên nộp lại không được trộn nguồn với lượt trước. */
+function freshDir(base: string) {
+  let slug = base;
+  for (let i = 2; exists(path.join(SCOUT_ROOT, slug)); i++) slug = `${base}-${i}`;
+  return slug;
+}
+
+/**
+ * Lượt từ một chủ đề gõ tay: một agent tìm tài liệu rồi viết luôn. Trả về ngay; tiến trình chạy nền và
+ * các sự kiện đi ra qua `subscribeScout`.
+ *
+ * Mỗi lúc chỉ một lượt: đây là trang beta để xem agent làm việc, không phải hàng đợi.
+ */
+export function startScout(input: ScoutInput) {
+  if (scoutRunning()) throw new Error("Đang có một lượt chạy. Chờ xong hoặc bấm Dừng.");
+  const slug = slugify(input.topic);
+  const dir = `scout/${slug}`;
+  fs.mkdirSync(path.join(REPO, dir, "sources"), { recursive: true });
+
+  // `self` là cái mọi closure bên dưới bám vào. `registry.run` chỉ nói "lượt nào đang hiển thị" và có
+  // thể đã trỏ đi chỗ khác vào lúc tiến trình này đóng lại.
+  const self = newRun(input, "topic", dir, slug);
+  registry.run = self;
+  push(self, { t: Date.now(), kind: "start", stage: "research", topic: input.topic, dir });
+  runAgent(self, "research", topicPrompt(input, dir), ALLOWED, DENIED, finishResearch(self));
+  persist(self);
+  return currentScout()!;
+}
+
+/**
+ * Lượt từ slide, bước 1: lưu slide, bóc chữ nếu là PPTX, rồi cho một agent (không web) đọc slide và lập
+ * danh sách mục cần research. Xong thì lượt dừng ở trạng thái `review` chờ người dùng duyệt.
+ */
+export function startSlideScout(input: ScoutInput, upload: { name: string; bytes: Uint8Array }) {
+  if (scoutRunning()) throw new Error("Đang có một lượt chạy. Chờ xong hoặc bấm Dừng.");
+  const ext = path.extname(upload.name).slice(1).toLowerCase();
+  if (ext !== "pdf" && ext !== "pptx") throw new Error("Chỉ nhận slide .pdf hoặc .pptx.");
+
+  // Đọc và kiểm file trước khi tạo gì trên đĩa: một file hỏng không được để lại thư mục rác.
+  const parsed = ext === "pptx" ? pptxSlides(upload.bytes) : null;
+  const pages = ext === "pdf" ? pdfPageCount(upload.bytes) : null;
+
+  const slug = freshDir(slugify(input.topic));
+  const dir = `scout/${slug}`;
+  const abs = path.join(REPO, dir);
+  fs.mkdirSync(path.join(abs, "sources"), { recursive: true });
+  const file = `slide.${ext}`;
+  fs.writeFileSync(path.join(abs, file), upload.bytes);
+  let text: string | null = null;
+  if (parsed) {
+    text = "slide.md";
+    fs.writeFileSync(path.join(abs, text), slidesMarkdown(input.topic, parsed));
+  }
+  const deck: SlideDeck = { name: upload.name, format: ext, file, text, slides: parsed ? parsed.length : pages, bytes: upload.bytes.length };
+
+  const self = newRun(input, "slide", dir, slug);
+  self.deck = deck;
+  registry.run = self;
+  push(self, { t: Date.now(), kind: "start", stage: "extract", topic: input.topic, dir });
+  runAgent(self, "extract", extractPrompt(deck, dir), EXTRACT_ALLOWED, EXTRACT_DENIED, async (ok, summary) => {
+    const extraction = parseExtraction(readJson(path.join(abs, "muc-research.json")), deck.slides);
+    if (ok && extraction) {
+      self.extraction = extraction;
+      self.status = "review";
+      push(self, { t: Date.now(), kind: "review", stage: "extract", items: extraction.items.length });
+      return;
+    }
+    self.status = self.stopped ? "stopped" : "error";
+    push(self, {
+      t: Date.now(),
+      kind: "done",
+      stage: "extract",
+      ok: false,
+      summary: self.stopped
+        ? "Đã dừng lượt chạy."
+        : ok ? "Agent đọc xong nhưng không ghi được muc-research.json dùng được." : summary || "Agent kết thúc mà không báo thành công.",
+    });
+  });
+  persist(self);
+  return currentScout()!;
+}
+
+/**
+ * Lượt từ slide, bước 2: người dùng đã duyệt (sửa, bỏ, thêm) danh sách mục. Một agent research lần lượt
+ * từng mục rồi viết kịch bản.
+ */
+export function confirmScout(rawItems: unknown) {
+  const self = registry.run;
+  if (!self || self.mode !== "slide" || self.status !== "review") throw new Error("Không có lượt nào đang chờ duyệt.");
+  // Chỉ giữ mục được chọn và đánh lại mã liền nhau, để TodoWrite và items/<mã>.json của agent khớp đúng.
+  const items: ResearchItem[] = cleanItems(rawItems)
+    .filter((it) => it.selected)
+    .map((it, i) => ({ ...it, id: `m${i + 1}` }));
+  self.items = items;
+  self.itemStates = Object.fromEntries([...items.map((it) => [it.id, "pending" as NodeState]), [SCRIPT_NODE, "pending" as NodeState]]);
+  self.findings = {};
+  fs.mkdirSync(path.join(REPO, self.dir, "items"), { recursive: true });
+  push(self, { t: Date.now(), kind: "progress", stage: "research", states: { ...self.itemStates } });
+  runAgent(self, "research", researchPrompt(self), ALLOWED, DENIED, finishResearch(self));
+  persist(self);
   return currentScout()!;
 }

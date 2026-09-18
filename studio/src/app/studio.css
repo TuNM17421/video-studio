@@ -4262,8 +4262,26 @@ button.vs-tile:hover {
   padding-inline-start: var(--vu-space-4);
   line-height: var(--vu-leading-snug);
 }
+/* Một cột: workflow cần cả bề ngang để các nút đọc được mà không phải thu nhỏ — đầu vào thành một khối
+ * ba phần nằm ngang ở trên (nguồn · thiết lập và nút chạy · quyền của agent). */
 .vs-scout-layout {
-  grid-template-columns: 380px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+}
+.vs-scout-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--vu-space-6);
+}
+.vs-scout-input-source,
+.vs-scout-input-run { display: grid; gap: var(--vu-space-3); }
+.vs-scout-input .vs-scout-tools { margin-top: 0; padding-top: 0; border-top: 0; }
+@media (max-width: 1280px) {
+  .vs-scout-input { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .vs-scout-input .vs-scout-tools { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  .vs-scout-input { grid-template-columns: minmax(0, 1fr); }
 }
 .vs-scout-field {
   display: grid;
@@ -4517,6 +4535,152 @@ button.vs-tile:hover {
   line-height: var(--vu-leading-snug);
 }
 .vs-scout-quotes q { overflow-wrap: anywhere; }
+
+/* ── Đóng gói kịch bản · workflow (React Flow) ───────────────────────────────────
+ * Biến --xy-* là cửa React Flow mở cho việc đổi màu; trỏ hết về token để canvas tự theo chế độ tối
+ * như phần còn lại của trang, không phải khai một bảng màu thứ hai. */
+.vs-scout-canvas {
+  height: 460px;
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-subtle);
+  overflow: hidden;
+}
+.vs-scout-canvas .react-flow {
+  --xy-background-color: transparent;
+  --xy-background-pattern-color: var(--vu-border-default);
+  --xy-edge-stroke: var(--vu-border-strong);
+  --xy-edge-stroke-width: 1.5;
+  --xy-edge-stroke-selected: var(--vu-brand-primary);
+  --xy-controls-button-background-color: var(--vu-surface-card);
+  --xy-controls-button-background-color-hover: var(--vu-overlay-hover);
+  --xy-controls-button-color: var(--vu-text-secondary);
+  --xy-controls-button-color-hover: var(--vu-text-primary);
+  --xy-controls-button-border-color: var(--vu-border-subtle);
+  --xy-controls-box-shadow: var(--vu-shadow-xs);
+  --xy-attribution-background-color: transparent;
+  --xy-node-border-radius: var(--vu-radius-md);
+}
+.vs-scout-canvas .react-flow__attribution a { color: var(--vu-text-muted); }
+.vs-scout-canvas .react-flow__edge.is-active path,
+.vs-scout-canvas .react-flow__edge.is-done path { stroke: var(--vu-brand-primary); }
+.vs-scout-canvas .react-flow__edge.is-skipped path { stroke-dasharray: 4 4; }
+.vs-scout-canvas .react-flow__handle {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--vu-border-strong);
+  background: var(--vu-surface-card);
+}
+.vs-flow-node {
+  display: grid;
+  gap: 3px;
+  width: 210px;
+  padding: 10px 12px;
+  border: 1px solid var(--vu-border-default);
+  border-left: 4px solid var(--vu-neutral-300);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  box-shadow: var(--vu-shadow-xs);
+  color: var(--vu-text-primary);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-snug);
+  cursor: pointer;
+}
+.vs-flow-node.is-selected { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; }
+.vs-flow-node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+}
+.vs-flow-node-icon { color: var(--vu-text-secondary); font-size: 13px; }
+.vs-flow-node-state { display: inline-flex; align-items: center; gap: 4px; font-weight: var(--vu-font-semibold); }
+.vs-flow-node-badge {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-secondary);
+  font-weight: var(--vu-font-semibold);
+  white-space: nowrap;
+}
+.vs-flow-node-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-weight: var(--vu-font-semibold);
+}
+.vs-flow-node-sub { color: var(--vu-text-secondary); font-size: var(--vu-text-2xs); }
+.vs-flow-node-meta { color: var(--vu-text-muted); font-size: var(--vu-text-2xs); }
+.vs-flow-node.is-active {
+  border-left-color: var(--vu-brand-primary);
+  box-shadow: 0 0 0 3px var(--vu-blue-100);
+}
+.vs-flow-node.is-active .vs-flow-node-state { color: var(--vu-brand-primary); }
+.vs-flow-node.is-done { border-left-color: var(--vu-green-700); }
+.vs-flow-node.is-done .vs-flow-node-state { color: var(--vu-green-700); }
+.vs-flow-node.is-warn { border-left-color: var(--vu-amber-700); }
+.vs-flow-node.is-warn .vs-flow-node-state,
+.vs-flow-node.is-warn .vs-flow-node-badge { color: var(--vu-amber-700); }
+.vs-flow-node.is-error { border-left-color: var(--vu-text-danger); }
+.vs-flow-node.is-error .vs-flow-node-state { color: var(--vu-text-danger); }
+.vs-flow-node.is-pending .vs-flow-node-title { color: var(--vu-text-secondary); }
+.vs-flow-node.is-skipped { border-style: dashed; border-left-style: solid; opacity: 0.6; }
+
+.vs-scout-detail {
+  display: grid;
+  gap: var(--vu-space-3);
+  padding: var(--vu-space-3) var(--vu-space-4);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+}
+.vs-scout-detail-head { display: flex; align-items: center; justify-content: space-between; gap: var(--vu-space-3); }
+.vs-scout-detail-head h3 { margin: 0; font-family: var(--vu-font-brand); font-size: var(--vu-text-sm); }
+.vs-scout-node { display: grid; gap: var(--vu-space-3); }
+.vs-scout-node-lede,
+.vs-scout-node-note { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-scout-node-lede .ant-tag { margin-right: 6px; }
+.vs-scout-empty { margin: 0; font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-scout-finding {
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-left: 3px solid var(--vu-green-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-green-50);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-scout-finding p { margin: 2px 0 0; color: var(--vu-text-secondary); }
+.vs-scout-finding.is-dieu-chinh { border-left-color: var(--vu-brand-primary); background: var(--vu-blue-50); }
+.vs-scout-finding.is-mau-thuan,
+.vs-scout-finding.is-khong-du-nguon { border-left-color: var(--vu-amber-700); background: var(--vu-amber-50); }
+
+/* ── Đóng gói kịch bản · duyệt mục cần research ─────────────────────────────────── */
+.vs-scout-review { display: grid; gap: var(--vu-space-4); }
+.vs-scout-review-lede { margin: 0; font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-scout-outline ol { margin: 0; padding-left: var(--vu-space-5); font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); }
+.vs-scout-outline ol > li + li { margin-top: var(--vu-space-2); }
+.vs-scout-outline ul { margin: 2px 0 0; padding-left: var(--vu-space-4); color: var(--vu-text-secondary); }
+.vs-scout-items { display: grid; gap: var(--vu-space-2); margin: 0; padding: 0; list-style: none; }
+.vs-scout-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--vu-space-3);
+  padding: var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+}
+.vs-scout-item.is-off { opacity: 0.55; }
+.vs-scout-item-body { display: grid; gap: var(--vu-space-2); }
+.vs-scout-item-head { display: flex; align-items: center; gap: var(--vu-space-2); }
+.vs-scout-item-head .ant-btn { margin-left: auto; }
+.vs-scout-item-slides { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-scout-item-why { margin: 0; font-size: var(--vu-text-2xs); line-height: var(--vu-leading-snug); color: var(--vu-text-muted); }
+.vs-scout-review-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--vu-space-2); }
 
 @media (max-width: 1100px) {
   .vs-scout-layout { grid-template-columns: minmax(0, 1fr); }

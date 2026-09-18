@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ScoutEvent } from "../scout";
 import { REPO } from "./paths";
-import { currentScout, SCOUT_ROOT, startScout, stopScout, subscribeScout } from "./scout";
+import { confirmScout, currentScout, SCOUT_ROOT, startScout, startSlideScout, stopScout, subscribeScout } from "./scout";
 
 /**
  * Bộ chạy này gọi ra một tiến trình thật, nên nó được thử bằng một CLI giả: một script in đúng mấy dòng
@@ -14,11 +14,14 @@ import { currentScout, SCOUT_ROOT, startScout, stopScout, subscribeScout } from 
  */
 const temporary: string[] = [];
 
-function stub(lines: unknown[], { hang = false } = {}) {
+function stub(lines: unknown[], { hang = false, files = {} as Record<string, string> } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "scout-stub-"));
   temporary.push(root);
   const script = path.join(root, "stub.mjs");
   fs.writeFileSync(script, [
+    // `files` giả những gì agent thật ghi xuống đĩa (muc-research.json, items/m1.json…).
+    `import fs from "node:fs"; import path from "node:path";`,
+    `for (const [file, body] of Object.entries(${JSON.stringify(files)})) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, body); }`,
     `const lines = ${JSON.stringify(lines)};`,
     `for (const line of lines) console.log(JSON.stringify(line));`,
     // `hang` giả một lượt còn đang chạy, để thử nút Dừng.
@@ -42,9 +45,13 @@ const success = { type: "result", subtype: "success", is_error: false, result: "
 
 /** Chờ sự kiện `done` của lượt đang chạy — mọi phần trạng thái chỉ chốt lại sau khi tiến trình đóng. */
 function done() {
-  return new Promise<ScoutEvent & { kind: "done" }>((resolve) => {
+  return waitFor("done") as Promise<ScoutEvent & { kind: "done" }>;
+}
+
+function waitFor(kind: ScoutEvent["kind"]) {
+  return new Promise<ScoutEvent>((resolve) => {
     const off = subscribeScout((event) => {
-      if (event.kind !== "done") return;
+      if (event.kind !== kind) return;
       off();
       resolve(event);
     });
@@ -132,5 +139,70 @@ describe("lượt tìm tài liệu", () => {
     expect(() => startScout({ topic: "chen ngang", minSources: 2, cues: 6 })).toThrow(/đang có một lượt chạy/i);
     stopScout();
     await done();
+  });
+});
+
+describe("lượt từ slide", () => {
+  const slug = "bai-giang-thu";
+  const file = (rel: string) => path.join(REPO, "scout", slug, rel);
+  const extraction = {
+    title: "Bài giảng thử", slides: 2,
+    outline: [{ slide: 1, heading: "Mở đầu", points: ["Năm 2023 có 100 triệu người dùng"] }],
+    items: [
+      { id: "m1", slides: [1], title: "Số người dùng", claim: "100 triệu người dùng năm 2023", kind: "so-lieu", why: "số liệu có thể đã cũ", queries: ["số người dùng 2024"] },
+      { id: "m2", slides: [2], title: "Định nghĩa mô hình", claim: "mô hình là…", kind: "dinh-nghia", why: "", queries: [] },
+    ],
+  };
+
+  it("bóc tách xong thì dừng chờ duyệt, xác nhận thì research đúng những mục đã chọn", async () => {
+    process.env.CLAUDE_BIN = stub([success], { files: { [file("muc-research.json")]: JSON.stringify(extraction) } });
+    const started = startSlideScout({ topic: "Bài giảng thử", minSources: 2, cues: 6 }, { name: "bai.pdf", bytes: new TextEncoder().encode("%PDF-1.4 /Type /Page /Type /Page") });
+    dirs.push(path.join(REPO, started.dir));
+    expect(started.dir).toBe(`scout/${slug}`);
+    await waitFor("review");
+
+    const review = currentScout()!;
+    expect(review.status).toBe("review");
+    expect(review.deck).toMatchObject({ format: "pdf", slides: 2, file: "slide.pdf" });
+    expect(fs.existsSync(file("slide.pdf"))).toBe(true);
+    expect(review.extraction!.items.map((it) => it.id)).toEqual(["m1", "m2"]);
+
+    // Người dùng chỉ giữ mục thứ hai: nó phải thành m1 để khớp TodoWrite và items/m1.json của agent.
+    process.env.CLAUDE_BIN = stub([
+      say([tool("TodoWrite", { todos: [{ content: "m1 · Định nghĩa mô hình", status: "in_progress" }, { content: "Viết kịch bản", status: "pending" }] })]),
+      say([tool("WebSearch", { query: "định nghĩa mô hình" })]),
+      say([tool("Write", { file_path: `C:\repo\scout\${slug}\items\m1.json` })]),
+      say([tool("TodoWrite", { todos: [{ content: "m1 · Định nghĩa mô hình", status: "completed" }, { content: "Viết kịch bản", status: "in_progress" }] })]),
+      success,
+    ], { files: { [file("items/m1.json")]: JSON.stringify({ id: "m1", verdict: "xac-nhan", finding: "Khớp slide.", sources: ["s1"] }) } });
+    const confirmed = confirmScout(review.extraction!.items.map((it, i) => ({ ...it, selected: i === 1 })));
+    expect(confirmed.items.map((it) => [it.id, it.title])).toEqual([["m1", "Định nghĩa mô hình"]]);
+    const event = await done();
+
+    expect(event.ok).toBe(true);
+    const current = currentScout()!;
+    expect(current.status).toBe("done");
+    expect(current.itemStates.m1).toBe("done");
+    expect(current.findings.m1).toMatchObject({ verdict: "xac-nhan" });
+    // Lượt tìm xảy ra khi agent đang ở m1 thì thuộc về nút m1.
+    expect(current.events.find((e) => e.kind === "search")).toMatchObject({ stage: "research", item: "m1" });
+    // Không có kịch bản thì nút viết kịch bản không được tính là xong.
+    expect(current.itemStates.script).toBe("pending");
+  });
+
+  it("agent không ghi được danh sách mục thì lượt là lỗi, không dừng chờ duyệt", async () => {
+    process.env.CLAUDE_BIN = stub([success], { files: { [file("muc-research.json")]: "không phải JSON" } });
+    const started = startSlideScout({ topic: "Bài giảng thử", minSources: 2, cues: 6 }, { name: "bai.pdf", bytes: new TextEncoder().encode("%PDF-1.4") });
+    dirs.push(path.join(REPO, started.dir));
+    const event = await done();
+    expect(event.ok).toBe(false);
+    expect(currentScout()!.status).toBe("error");
+    expect(() => confirmScout([])).toThrow(/chờ duyệt/);
+  });
+
+  it("file không phải PDF hay PPTX thật thì từ chối trước khi tạo thư mục", () => {
+    expect(() => startSlideScout({ topic: "Hỏng", minSources: 2, cues: 6 }, { name: "hong.pdf", bytes: new TextEncoder().encode("PK") })).toThrow(/không phải PDF/);
+    expect(() => startSlideScout({ topic: "Hỏng", minSources: 2, cues: 6 }, { name: "hong.docx", bytes: new Uint8Array(1) })).toThrow(/\.pdf hoặc \.pptx/);
+    expect(fs.existsSync(path.join(REPO, "scout", "hong"))).toBe(false);
   });
 });

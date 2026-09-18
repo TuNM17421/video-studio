@@ -22,6 +22,9 @@ export const norm = (s) => String(s ?? '').normalize('NFC').replace(/\s+/g, ' ')
  */
 export const MIN_QUOTE_CHARS = 40;
 
+/** `"slide:3"` trong `cues` — câu dựa trên slide số 3 của giảng viên (lượt chạy từ slide). */
+const SLIDE_REF = /^slide:(\d+)$/;
+
 /**
  * @param {object} args
  * @param {object} args.dossier            nội dung nguon.json
@@ -83,21 +86,26 @@ export function checkDossier({ dossier, readSource, minSources, cueNumbers }) {
 
   const cues = numbers.map((n) => {
     const listed = Array.isArray(map[String(n)]) ? map[String(n)] : [];
-    const known = listed.filter((id) => byId.has(id));
-    const unknown = listed.filter((id) => !byId.has(id));
+    // Lượt từ slide: "slide:3" nghĩa là câu giảng lại nội dung của chính giảng viên. Đó là một nguồn đủ
+    // cho câu ấy, nhưng không được đếm vào số nguồn web — câu nào đã dùng kết quả research thì vẫn phải
+    // có đủ nguồn độc lập, không thì gắn thêm "slide:" là qua mặt được luật.
+    const slides = listed.map((id) => SLIDE_REF.exec(String(id))?.[1]).filter(Boolean).map(Number);
+    const web = listed.filter((id) => !SLIDE_REF.test(String(id)));
+    const known = web.filter((id) => byId.has(id));
+    const unknown = web.filter((id) => !byId.has(id));
     let level = 'ok';
     let note = null;
     if (unknown.length) {
       level = 'error';
       note = `nguồn không có trong hồ sơ: ${unknown.join(', ')}`;
-    } else if (known.length === 0) {
+    } else if (known.length === 0 && slides.length === 0) {
       level = 'error';
       note = 'chưa gắn nguồn nào';
-    } else if (known.length < minSources) {
+    } else if (known.length > 0 && known.length < minSources) {
       level = 'warn';
       note = `mới có ${known.length}/${minSources} nguồn`;
     }
-    return { n, sources: known, level, note };
+    return slides.length ? { n, sources: known, slides, level, note } : { n, sources: known, level, note };
   });
 
   const badCues = cues.filter((c) => c.level === 'error').length;
