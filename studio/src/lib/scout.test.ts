@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { cleanItems, parseExtraction, parseFinding, SCRIPT_NODE, todoStates } from "./scout";
+import {
+  cleanItems, currentStep, parseAssessments, parseCandidates, parseExtraction, parseFinding, parsePlan, parseQuotes, SCRIPT_NODE,
+  stepOfFile, stepsDone, todoStates,
+} from "./scout";
 
 describe("làm sạch danh sách mục", () => {
   it("đánh lại mã liền nhau và bỏ mục không có tên", () => {
@@ -58,5 +61,35 @@ describe("tiến độ theo TodoWrite", () => {
 
   it("đầu vào không phải danh sách thì không có gì", () => {
     expect(todoStates(undefined, ids)).toEqual({ states: {}, active: null });
+  });
+});
+
+describe("bảy bước của một mục", () => {
+  it("suy ra bước tìm và tải từ bước sau chúng", () => {
+    expect(stepsDone({ "ke-hoach": true, loc: true })).toEqual(["ke-hoach", "tim", "loc"]);
+    expect(stepsDone({ trich: true })).toEqual(["tai", "trich"]);
+    expect(currentStep(["ke-hoach", "tim", "loc"])).toBe("tai");
+    expect(currentStep(stepsDone({ "ke-hoach": true, loc: true, trich: true, "danh-gia": true, "ket-luan": true }))).toBeNull();
+  });
+
+  it("nhận file bước theo tên, bỏ file lạ", () => {
+    expect(stepOfFile("loc-nguon.json")).toBe("loc");
+    expect(stepOfFile("ghi-chu.json")).toBeNull();
+  });
+
+  it("đọc được cả mảng trần lẫn mảng bọc trong khoá", () => {
+    expect(parseCandidates([{ url: "https://a.org", keep: true }])).toHaveLength(1);
+    expect(parseCandidates({ candidates: [{ url: "https://a.org" }, { title: "không có url" }] })).toEqual([{ url: "https://a.org", title: "", keep: false, why: "" }]);
+    expect(parsePlan({ questions: [], queries: [] })).toBeNull();
+    expect(parsePlan(["x"])).toBeNull();
+  });
+
+  it("giữ nguyên văn trích đoạn, chỉ gộp khoảng trắng", () => {
+    const long = "Một đoạn   trích\nnguyên văn dài hơn bốn mươi ký tự để còn soát được.";
+    expect(parseQuotes({ quotes: [{ source: "s1", quote: long }] })[0].quote).toBe("Một đoạn trích nguyên văn dài hơn bốn mươi ký tự để còn soát được.");
+  });
+
+  it("đánh giá có giá trị lạ thì về mức thận trọng", () => {
+    expect(parseAssessments([{ source: "s1", trust: "tuyet-doi", stance: "?" }])[0]).toMatchObject({ trust: "chua-kiem-chung", stance: "mot-phan" });
   });
 });

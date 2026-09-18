@@ -8,8 +8,8 @@ import {
 import { Alert, Button, Checkbox, Collapse, Empty, Input, InputNumber, Segmented, Select, Tag, Upload } from "antd";
 import { api, fileUrl } from "@/lib/client";
 import {
-  countEvents, KIND_LABEL, SCRIPT_NODE, TRUST_LABEL, VERDICT_LABEL,
-  type ItemKind, type ResearchItem, type ScoutEvent, type ScoutInput, type ScoutRun, type ScoutStatus,
+  countEvents, currentStep, KIND_LABEL, RESEARCH_STEPS, SCRIPT_NODE, STANCE_LABEL, TRUST_LABEL, VERDICT_LABEL,
+  type ItemKind, type ResearchItem, type ScoutEvent, type ScoutInput, type ScoutRun, type ScoutStatus, type StepKey,
 } from "@/lib/scout";
 import { ScoutWorkflow } from "./scout-workflow";
 import { Shell } from "./shell";
@@ -117,6 +117,24 @@ function Check({ run, heading = true }: { run: ScoutRun; heading?: boolean }) {
     </ul>}
     {weak.length > 0 && <ul className="vs-scout-problems">
       {weak.map((c) => <li key={c.n}>Câu {c.n} — {c.note}</li>)}
+    </ul>}
+    {check.slide && <ul className="vs-scout-slide-checks">
+      <li className={check.slide.independence.length ? "is-warn" : "is-ok"}>
+        <strong>Nguồn độc lập</strong>
+        {check.slide.independence.length ? `${check.slide.independence.length} câu có đủ số nguồn nhưng chưa đủ nơi xuất bản khác nhau` : "mỗi câu dùng research đến từ đủ nơi xuất bản khác nhau"}
+      </li>
+      <li className={check.slide.recency.length ? "is-warn" : "is-ok"}>
+        <strong>Nguồn đủ mới</strong>
+        {check.slide.recency.length ? check.slide.recency.map((x) => `${x.item} (mới nhất: ${x.newest ?? "không ghi ngày"})`).join(", ") : "mục \"có thể đã cũ\" đều có nguồn trong 12 tháng"}
+      </li>
+      <li className={check.slide.coverage.missing.length ? "is-warn" : "is-ok"}>
+        <strong>Phủ slide</strong>
+        {check.slide.coverage.covered}/{check.slide.coverage.slides} slide có câu dựa vào{check.slide.coverage.missing.length ? ` · thiếu slide ${check.slide.coverage.missing.join(", ")}` : ""}
+      </li>
+      <li className={check.slide.findings.length ? "is-warn" : "is-ok"}>
+        <strong>Kết luận khớp nguồn</strong>
+        {check.slide.findings.length ? check.slide.findings.map((f) => `${f.item}: ${f.problems.join("; ")}`).join(" · ") : "mọi kết luận dựa trên nguồn đã tải và có trích đoạn soát được"}
+      </li>
     </ul>}
     <p className="vs-scout-check-run">
       Chạy lại bất cứ lúc nào: <code>node tools/scout-verify.mjs {run.dir} --min {check.minSources}</code>
@@ -227,19 +245,101 @@ function NodeDetail({ run, events, node }: { run: ScoutRun; events: ScoutEvent[]
   const id = node.replace(/^item:/, "");
   const item = run.items.find((it) => it.id === id);
   if (!item) return null;
-  const finding = run.findings[id];
   return <div className="vs-scout-node">
     <p className="vs-scout-node-lede">
       <Tag className="vs-badge">{KIND_LABEL[item.kind]}</Tag>
       <span className="mono">{item.slides.length ? `slide ${item.slides.join(", ")}` : "cả bài"}</span> · {item.claim}
     </p>
-    {finding && <div className={`vs-scout-finding is-${finding.verdict}`}>
-      <strong>{VERDICT_LABEL[finding.verdict]}</strong>
-      <p>{finding.finding}</p>
-    </div>}
-    {finding && <Dossier run={run} only={finding.sources} />}
-    <EventList events={events.filter((e) => e.item === id)} empty="Agent chưa tới mục này." />
+    <ItemSteps run={run} events={events} id={id} />
   </div>;
+}
+
+/**
+ * Bảy bước research của một mục, mỗi bước kèm đúng thứ agent đã ghi cho bước đó — để người duyệt thấy
+ * agent tìm gì, bỏ nguồn nào vì sao, trích đoạn nào, đánh giá ra sao trước khi đi tới kết luận.
+ */
+function ItemSteps({ run, events, id }: { run: ScoutRun; events: ScoutEvent[]; id: string }) {
+  const r = run.research[id];
+  const done = run.itemSteps[id] ?? [];
+  const running = run.status === "running" && run.itemStates[id] === "active";
+  const now = running ? currentStep(done) : null;
+  const mine = events.filter((e) => e.item === id);
+  const byId = new Map((run.dossier?.sources ?? []).map((s) => [s.id, s]));
+  const failed = new Set((run.check?.quotes.problems ?? []).map((p) => p.quote));
+  const codeIssues = [
+    ...(run.check?.slide?.findings.find((f) => f.item === id)?.problems ?? []),
+    ...(run.check?.slide?.recency.filter((x) => x.item === id).map((x) => `không nguồn nào đăng trong 12 tháng (mới nhất: ${x.newest ?? "không ghi ngày"})`) ?? []),
+  ];
+
+  const body = (key: StepKey): React.ReactNode => {
+    switch (key) {
+      case "ke-hoach":
+        return r?.plan && <>
+          {r.plan.questions.length > 0 && <ol className="vs-scout-plan">{r.plan.questions.map((q, i) => <li key={i}>{q}</li>)}</ol>}
+          {r.plan.queries.length > 0 && <p className="vs-scout-queries">{r.plan.queries.map((q, i) => <code key={i}>{q}</code>)}</p>}
+        </>;
+      case "tim": {
+        const searches = mine.filter((e) => e.kind === "search");
+        return searches.length > 0 && <p className="vs-scout-queries">{searches.map((e, i) => <code key={i}>{e.kind === "search" ? e.query : ""}</code>)}</p>;
+      }
+      case "loc":
+        return r && r.candidates.length > 0 && <ul className="vs-scout-cands">
+          {r.candidates.map((c, i) => <li key={i} className={c.keep ? "is-keep" : "is-drop"}>
+            <span aria-label={c.keep ? "giữ" : "loại"}>{c.keep ? "Giữ" : "Loại"}</span>
+            <a href={c.url} target="_blank" rel="noreferrer">{c.title || host(c.url)}</a>
+            <small className="mono">{host(c.url)}</small>
+            {c.why && <small>{c.why}</small>}
+          </li>)}
+        </ul>;
+      case "tai": {
+        const fetched = mine.filter((e) => e.kind === "fetch" || (e.kind === "save" && e.file.startsWith("sources/")));
+        return fetched.length > 0 && <EventList events={fetched} empty="" />;
+      }
+      case "trich":
+        return r && r.quotes.length > 0 && <ul className="vs-scout-quotes">
+          {r.quotes.map((q, i) => <li key={i}>
+            <span className="vs-scout-sid mono">{q.source}</span> <q>{q.quote}</q>
+            {failed.has(q.quote) && <Tag color="error">không có trong trang đã tải</Tag>}
+          </li>)}
+        </ul>;
+      case "danh-gia":
+        return r && r.assessments.length > 0 && <ul className="vs-scout-assess">
+          {r.assessments.map((a, i) => <li key={i}>
+            <span className="vs-scout-sid mono">{a.source}</span>
+            <strong>{byId.get(a.source)?.publisher || byId.get(a.source)?.title || ""}</strong>
+            <Tag className="vs-badge">{TRUST_LABEL[a.trust]}</Tag>
+            <Tag className={`vs-badge is-${a.stance}`}>{STANCE_LABEL[a.stance]}</Tag>
+            {a.why && <small>{a.why}</small>}
+          </li>)}
+        </ul>;
+      case "ket-luan":
+        return r?.finding && <div className={`vs-scout-finding is-${r.finding.verdict}`}>
+          <strong>{VERDICT_LABEL[r.finding.verdict]}</strong>
+          <p>{r.finding.finding}</p>
+          {r.finding.sources.length > 0 && <p className="mono">nguồn: {r.finding.sources.join(", ")}</p>}
+        </div>;
+    }
+  };
+
+  return <>
+    <ol className="vs-scout-steps">
+      {RESEARCH_STEPS.map((st, i) => {
+        const state = done.includes(st.key) ? "done" : st.key === now ? "active" : "pending";
+        const content = body(st.key);
+        return <li key={st.key} className={`vs-scout-step is-${state}`}>
+          <span className="vs-scout-step-dot" aria-hidden="true">{state === "done" ? <CheckCircleFilled /> : state === "active" ? <LoadingOutlined spin /> : i + 1}</span>
+          <div className="vs-scout-step-body">
+            <strong>{st.label}</strong>
+            {content || <small className="vs-scout-empty">{state === "pending" ? "chưa tới" : state === "active" ? "đang làm…" : "agent không ghi gì cho bước này"}</small>}
+          </div>
+        </li>;
+      })}
+    </ol>
+    {codeIssues.length > 0 && <div className="vs-scout-check is-warn">
+      <h3>Studio soát mục này</h3>
+      <ul className="vs-scout-problems">{codeIssues.map((p, i) => <li key={i}>{p}</li>)}</ul>
+    </div>}
+  </>;
 }
 
 /** Nút mặc định của khung chi tiết: nút đang làm, không thì bước cuối đã có kết quả. */
@@ -306,6 +406,15 @@ export default function Scout() {
       setEvents((list) => [...list.slice(-700), event]);
       if (event.kind === "start") setStatus("running");
       if (event.kind === "progress") setRun((r) => (r ? { ...r, stage: event.stage ?? r.stage, itemStates: event.states } : r));
+      if (event.kind === "research" && event.item) {
+        const item = event.item;
+        setRun((r) => (r ? {
+          ...r,
+          research: { ...r.research, [item]: event.research },
+          itemSteps: { ...r.itemSteps, [item]: event.steps },
+          findings: event.research.finding ? { ...r.findings, [item]: event.research.finding } : r.findings,
+        } : r));
+      }
       // Danh sách mục, hồ sơ và báo cáo soát chỉ có sau khi một bước khép lại, nên phải hỏi lại máy chủ.
       if (event.kind === "review" || event.kind === "done") void load();
     };

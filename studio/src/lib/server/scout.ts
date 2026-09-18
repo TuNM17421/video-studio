@@ -3,8 +3,11 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { Dossier, ItemFinding, NodeState, ResearchItem, ScoutEvent, ScoutInput, ScoutRun, ScoutStage, SlideDeck, SourceCheck } from "../scout";
-import { cleanItems, parseExtraction, parseFinding, SCRIPT_NODE, slugify, todoStates } from "../scout";
+import type { Dossier, ItemResearch, NodeState, ResearchItem, ScoutEvent, ScoutInput, ScoutRun, ScoutStage, SlideDeck, SourceCheck, StepKey } from "../scout";
+import {
+  cleanItems, parseAssessments, parseCandidates, parseExtraction, parseFinding, parsePlan, parseQuotes, SCRIPT_NODE, slugify,
+  stepOfFile, stepsDone, todoStates,
+} from "../scout";
 import { claudeExecArgs } from "./agent-cli";
 import { exists, REPO } from "./paths";
 import { pdfPageCount, pptxSlides, slidesMarkdown } from "./slides";
@@ -91,6 +94,8 @@ function snapshot(run: LiveRun): ScoutRun {
     items: run.items,
     itemStates: run.itemStates,
     findings: run.findings,
+    itemSteps: run.itemSteps,
+    research: run.research,
     dossier: run.dossier,
     check: run.check,
     script: run.script,
@@ -123,7 +128,14 @@ function restoreLatest(): LiveRun | null {
   if (!latest) return null;
   try {
     const run = JSON.parse(fs.readFileSync(latest.file, "utf8")) as ScoutRun;
-    return { ...run, status: run.status === "running" ? "stopped" : run.status, active: null };
+    return {
+      ...run,
+      // run.json của bản trước chưa có hai trường này.
+      itemSteps: run.itemSteps ?? {},
+      research: run.research ?? {},
+      status: run.status === "running" ? "stopped" : run.status,
+      active: null,
+    };
   } catch {
     return null;
   }
@@ -299,19 +311,33 @@ function researchPrompt(run: LiveRun) {
     `1. **Ngay đầu tiên, lập danh sách việc bằng TodoWrite**: mỗi mục một việc, nội dung **bắt đầu đúng bằng mã`,
     `   mục** ("m1 · <tên>"), cuối cùng là việc "Viết kịch bản". Chuyển việc sang in_progress khi bắt đầu và`,
     `   completed khi xong, mỗi lần một việc — Studio đọc đúng danh sách này để hiện bạn đang làm mục nào.`,
-    `2. **Research từng mục**: WebSearch vài lượt; với mỗi nguồn định dùng, WebFetch rồi **Write toàn văn** vào`,
-    `   \`${dir}/sources/<id>.md\` (s1, s2, … đánh số chung cho cả lượt, không trùng). Ưu tiên nguồn gốc (tài`,
-    `   liệu chính thức, bài có tác giả và ngày đăng, nghiên cứu) hơn bài tổng hợp lại.`,
-    `3. **Kết luận từng mục** ngay khi xong mục đó → \`${dir}/items/<mã>.json\`:`,
-    `   {"id": "m1", "verdict": "xac-nhan|dieu-chinh|mau-thuan|khong-du-nguon", "finding": "kết luận 1–3 câu",`,
-    `    "sources": ["s1", "s2"]}`,
-    `   - xac-nhan: nguồn khớp với slide. dieu-chinh: nguồn cho thông tin mới hơn hoặc khác slide — ghi rõ khác gì.`,
-    `   - mau-thuan: các nguồn nói khác nhau. khong-du-nguon: không tìm được ${input.minSources} nguồn độc lập.`,
-    `4. **Hồ sơ nguồn** \`${dir}/nguon.json\`:`,
+    `2. **Research từng mục qua đúng 7 bước**, xong bước nào ghi file của bước đó vào \`${dir}/items/<mã>/\` ngay —`,
+    `   Studio hiện tiến độ từng bước từ chính các file này, và người duyệt đọc lại chúng để biết bạn đã làm gì:`,
+    `   1. **Lập kế hoạch** → \`ke-hoach.json\`: {"questions": ["câu hỏi cần trả lời"], "queries": ["truy vấn"]}.`,
+    `      2–4 câu hỏi cụ thể; truy vấn cả tiếng Việt lẫn tiếng Anh khi chủ đề có tài liệu tiếng Anh tốt hơn.`,
+    `   2. **Tìm kiếm**: WebSearch theo từng truy vấn trong kế hoạch.`,
+    `   3. **Lọc nguồn** → \`loc-nguon.json\`: {"candidates": [{"url": "...", "title": "...", "keep": true|false,`,
+    `      "why": "vì sao giữ / loại"}]} — mọi kết quả đáng cân nhắc, kể cả cái bị loại. Ưu tiên nguồn gốc (tài liệu`,
+    `      chính thức, bài có tác giả và ngày đăng, nghiên cứu); loại bài chép lại, trang không rõ ai viết.`,
+    `   4. **Tải và lưu**: với mỗi nguồn giữ lại, WebFetch rồi **Write toàn văn** vào \`${dir}/sources/<id>.md\``,
+    `      (s1, s2, … đánh số chung cho cả lượt, không trùng giữa các mục).`,
+    `   5. **Trích dẫn** → \`trich-dan.json\`: {"quotes": [{"source": "s1", "quote": "chép nguyên văn từ file đã tải,`,
+    `      trên 40 ký tự"}]} — những đoạn trả lời đúng câu hỏi của kế hoạch.`,
+    `   6. **Đánh giá và đối chiếu** → \`danh-gia.json\`: {"assessments": [{"source": "s1", "trust":`,
+    `      "cao|vua|chua-kiem-chung", "stance": "ung-ho|mot-phan|trai-nguoc", "why": "ai viết, khi nào, có độc lập`,
+    `      với nguồn khác không, khớp hay khác slide ở đâu"}]} — mỗi nguồn đã tải một dòng.`,
+    `   7. **Kết luận** → \`ket-luan.json\`: {"id": "m1", "verdict": "xac-nhan|dieu-chinh|mau-thuan|khong-du-nguon",`,
+    `      "finding": "kết luận 1–3 câu", "sources": ["s1", "s2"]}.`,
+    `      - xac-nhan: nguồn khớp với slide. dieu-chinh: nguồn cho thông tin mới hơn hoặc khác slide — ghi rõ khác gì.`,
+    `      - mau-thuan: các nguồn nói khác nhau. khong-du-nguon: không có ${input.minSources} nguồn độc lập.`,
+    `      - \`sources\` chỉ gồm nguồn đã tải và có trích đoạn trong \`trich-dan.json\` — Studio soát đúng điều này.`,
+    `   Mục "cap-nhat" (có thể đã cũ) cần ít nhất một nguồn đăng trong 12 tháng gần đây; không có thì nói rõ trong`,
+    `   kết luận. Nguồn độc lập nghĩa là khác tổ chức xuất bản — hai trang cùng một báo chỉ là một nguồn.`,
+    `3. **Hồ sơ nguồn** \`${dir}/nguon.json\`:`,
     ...DOSSIER_SCHEMA,
     `   - Trong \`cues\`, câu dựa trên nội dung của chính slide ghi \`"slide:<số>"\` (vd \`"slide:3"\`); câu dùng`,
     `     kết quả research ghi id nguồn. Một câu có thể có cả hai.`,
-    `5. **Kịch bản** \`${dir}/kich-ban.md\` theo đúng mẫu \`templates/kich-ban-co-ban.md\` (đọc file đó trước),`,
+    `4. **Kịch bản** \`${dir}/kich-ban.md\` theo đúng mẫu \`templates/kich-ban-co-ban.md\` (đọc file đó trước),`,
     `   khoảng ${input.cues} câu, mỗi câu một mục \`### Câu N\`:`,
     `   - Đi theo mạch của slide và giảng lại nội dung của giảng viên — không đổi chủ đề, không thêm phần mà`,
     `     slide không có.`,
@@ -320,6 +346,8 @@ function researchPrompt(run: LiveRun) {
     `   - Câu dùng số liệu hay khẳng định lấy từ research phải có ít nhất ${input.minSources} nguồn độc lập trong`,
     `     \`cues\` (khác tổ chức xuất bản, không phải hai trang chép lại một thông cáo).`,
     `   - Không có con số, tên riêng hay kết quả nào mà slide hoặc nguồn không nói.`,
+    `   - Mỗi slide có nội dung trong dàn ý phải được ít nhất một câu dựa vào (\`"slide:<số>"\` trong \`cues\`) —`,
+    `     Studio soát độ phủ này; slide nào cố ý bỏ thì nói lý do trong phần tóm tắt.`,
     ``,
     ...CONFLICTS,
     ``,
@@ -332,6 +360,8 @@ function researchPrompt(run: LiveRun) {
 
 interface StreamBlock {
   type?: string;
+  id?: string;
+  tool_use_id?: string;
   text?: string;
   name?: string;
   input?: Record<string, unknown>;
@@ -384,13 +414,52 @@ function track(run: LiveRun, name: string, input: Record<string, unknown>) {
   }
   if (name === "Write") {
     const file = insideRun(String(input.file_path ?? ""), path.basename(run.dir));
-    const item = /^items\/(m\d+)\.json$/.exec(file)?.[1];
-    if (item) setStates(run, { [item]: "done" });
     if (file === "kich-ban.md") {
       run.active = SCRIPT_NODE;
       setStates(run, { [SCRIPT_NODE]: "active" });
     }
   }
+}
+
+const readJson = (file: string): unknown => {
+  try { return exists(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : null; } catch { return null; }
+};
+
+/** Đọc lại mọi file agent đã ghi cho một mục, suy ra các bước đã xong. */
+function loadItem(run: LiveRun, id: string): { research: ItemResearch; steps: StepKey[] } {
+  const dir = path.join(REPO, run.dir, "items", id);
+  const read = (file: string) => readJson(path.join(dir, file));
+  const has = (file: string) => exists(path.join(dir, file));
+  const research: ItemResearch = {
+    plan: parsePlan(read("ke-hoach.json")),
+    candidates: parseCandidates(read("loc-nguon.json")),
+    quotes: parseQuotes(read("trich-dan.json")),
+    assessments: parseAssessments(read("danh-gia.json")),
+    finding: parseFinding(read("ket-luan.json"), id),
+  };
+  const steps = stepsDone({
+    "ke-hoach": has("ke-hoach.json"), loc: has("loc-nguon.json"), trich: has("trich-dan.json"),
+    "danh-gia": has("danh-gia.json"), "ket-luan": has("ket-luan.json"),
+  });
+  run.research[id] = research;
+  run.itemSteps[id] = steps;
+  if (research.finding) run.findings[id] = research.finding;
+  return { research, steps };
+}
+
+/**
+ * Một lời gọi công cụ đã chạy xong (có `tool_result`). Chỉ ở đây file vừa ghi mới chắc chắn đã nằm trên
+ * đĩa — lúc agent gọi Write thì chưa. Ghi xong một file bước của mục nào thì đọc lại mục đó và báo trang.
+ */
+function toolDone(run: LiveRun, name: string, input: Record<string, unknown>) {
+  if (name !== "Write" || run.mode !== "slide" || run.stage !== "research") return;
+  const file = insideRun(String(input.file_path ?? ""), path.basename(run.dir));
+  const match = /^items\/(m\d+)\/([a-z-]+\.json)$/.exec(file);
+  if (!match || !stepOfFile(match[2]) || !run.items.some((it) => it.id === match[1])) return;
+  const id = match[1];
+  const { research, steps } = loadItem(run, id);
+  push(run, { t: Date.now(), kind: "research", stage: "research", item: id, research, steps });
+  if (steps.includes("ket-luan")) setStates(run, { [id]: "done" });
 }
 
 /**
@@ -415,6 +484,8 @@ function runAgent(self: LiveRun, stage: ScoutStage, text: string, allowed: strin
   self.child = child;
 
   const tag = (event: ScoutEvent): ScoutEvent => ({ ...event, stage, ...(self.active ? { item: self.active } : {}) });
+  /** id của lời gọi công cụ → tên và đầu vào, chờ `tool_result` của nó. */
+  const pending = new Map<string, { name: string; input: Record<string, unknown> }>();
   let ok = false;
   let summary = "";
   let buf = "";
@@ -433,12 +504,18 @@ function runAgent(self: LiveRun, stage: ScoutStage, text: string, allowed: strin
             // Cập nhật mục đang làm trước, để chính lời gọi TodoWrite chuyển mục đã thuộc về mục mới.
             track(self, block.name, block.input || {});
             push(self, tag(toolEvent(block.name, block.input || {}, self.dir)));
+            if (block.id) pending.set(block.id, { name: block.name, input: block.input || {} });
           }
         }
       } else if (msg.type === "user") {
         for (const block of msg.message?.content || []) {
-          if (block.type === "tool_result" && block.is_error) {
+          if (block.type !== "tool_result") continue;
+          const call = block.tool_use_id ? pending.get(block.tool_use_id) : undefined;
+          if (block.tool_use_id) pending.delete(block.tool_use_id);
+          if (block.is_error) {
             push(self, tag({ t: Date.now(), kind: "error", text: short(typeof block.content === "string" ? block.content : JSON.stringify(block.content), 300) }));
+          } else if (call) {
+            toolDone(self, call.name, call.input);
           }
         }
       } else if (msg.type === "result") {
@@ -462,10 +539,6 @@ function runAgent(self: LiveRun, stage: ScoutStage, text: string, allowed: strin
   child.stdin.end(text);
 }
 
-const readJson = (file: string): unknown => {
-  try { return exists(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : null; } catch { return null; }
-};
-
 /** Đọc lại hồ sơ, kịch bản và kết luận từng mục agent vừa ghi, rồi soát bằng đúng CLI người dùng chạy tay được. */
 async function collect(run: LiveRun) {
   const abs = path.join(REPO, run.dir);
@@ -479,24 +552,20 @@ async function collect(run: LiveRun) {
   } catch {
     check = null;
   }
-  const findings: Record<string, ItemFinding> = {};
-  for (const it of run.items) {
-    const finding = parseFinding(readJson(path.join(abs, "items", `${it.id}.json`)), it.id);
-    if (finding) findings[it.id] = finding;
-  }
+  for (const it of run.items) loadItem(run, it.id);
   const script = exists(path.join(abs, "kich-ban.md")) ? `${run.dir}/kich-ban.md` : null;
-  return { dossier, check, findings, script };
+  return { dossier, check, script };
 }
 
 /** Kết thúc bước research — dùng chung cho lượt chủ đề và lượt từ slide. */
 function finishResearch(self: LiveRun) {
   return async (ok: boolean, summary: string) => {
     // Lượt bị dừng giữa chừng vẫn có thể đã ghi được vài nguồn — đọc lại hết, đừng vứt đi.
-    const { dossier, check, findings, script } = await collect(self);
+    const { dossier, check, script } = await collect(self);
     self.dossier = dossier;
     self.check = check;
-    self.findings = findings;
     self.script = script;
+    const findings = self.findings;
     // Mục đã có kết luận là xong, dù agent quên đánh dấu trong TodoWrite; mục còn "đang làm" khi lượt đã
     // đóng thì không còn đang làm nữa.
     for (const node of Object.keys(self.itemStates)) {
@@ -516,7 +585,7 @@ function finishResearch(self: LiveRun) {
 function newRun(input: ScoutInput, mode: ScoutRun["mode"], dir: string, slug: string): LiveRun {
   return {
     slug, input, mode, stage: mode === "slide" ? "extract" : "research", status: "running", startedAt: Date.now(), dir,
-    events: [], deck: null, extraction: null, items: [], itemStates: {}, findings: {},
+    events: [], deck: null, extraction: null, items: [], itemStates: {}, findings: {}, itemSteps: {}, research: {},
     dossier: null, check: null, script: null, active: null,
   };
 }
@@ -617,7 +686,9 @@ export function confirmScout(rawItems: unknown) {
   self.items = items;
   self.itemStates = Object.fromEntries([...items.map((it) => [it.id, "pending" as NodeState]), [SCRIPT_NODE, "pending" as NodeState]]);
   self.findings = {};
-  fs.mkdirSync(path.join(REPO, self.dir, "items"), { recursive: true });
+  self.itemSteps = Object.fromEntries(items.map((it) => [it.id, [] as StepKey[]]));
+  self.research = {};
+  for (const it of items) fs.mkdirSync(path.join(REPO, self.dir, "items", it.id), { recursive: true });
   push(self, { t: Date.now(), kind: "progress", stage: "research", states: { ...self.itemStates } });
   runAgent(self, "research", researchPrompt(self), ALLOWED, DENIED, finishResearch(self));
   persist(self);

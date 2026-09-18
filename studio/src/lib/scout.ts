@@ -77,6 +77,19 @@ export interface SourceCheck {
   quotes: { total: number; ok: number; problems: QuoteProblem[] };
   /** Rỗng khi kịch bản chưa được viết. */
   cues: CueSourceRow[];
+  /**
+   * Các bước soát của lượt từ slide — đều chạy cục bộ trên file agent đã ghi. Vắng mặt ở lượt chủ đề.
+   * - independence: câu dùng research mà nguồn chỉ đến từ ít nơi xuất bản (hai trang cùng một báo là một).
+   * - recency: mục "có thể đã cũ" mà không nguồn nào đăng trong 12 tháng trước lượt chạy.
+   * - coverage: slide có nội dung trong dàn ý mà không câu nào dựa vào.
+   * - findings: kết luận một mục dựa trên nguồn không có, chưa tải, hoặc chưa có trích đoạn soát được.
+   */
+  slide?: {
+    independence: { n: number; sources: number; publishers: string[] }[];
+    recency: { item: string; title: string; newest: string | null; undated: number }[];
+    coverage: { slides: number; covered: number; missing: number[] };
+    findings: { item: string; problems: string[] }[];
+  };
   ok: boolean;
   problems: string[];
 }
@@ -162,6 +175,44 @@ export interface ItemFinding {
   sources: string[];
 }
 
+/**
+ * Bảy bước research của một mục. Bước nào có `file` thì agent phải ghi file đó vào `items/<mã>/` khi xong
+ * bước — đó vừa là tín hiệu tiến độ, vừa là thứ người duyệt đọc lại được: truy vấn nào, nguồn nào bị loại
+ * vì sao, trích đoạn nào, đánh giá ra sao. Hai bước không có file (tìm, tải) được đo bằng chính lời gọi
+ * WebSearch / WebFetch.
+ */
+export const RESEARCH_STEPS = [
+  { key: "ke-hoach", label: "Lập kế hoạch", file: "ke-hoach.json" },
+  { key: "tim", label: "Tìm kiếm", file: null },
+  { key: "loc", label: "Lọc nguồn", file: "loc-nguon.json" },
+  { key: "tai", label: "Tải & lưu", file: null },
+  { key: "trich", label: "Trích dẫn", file: "trich-dan.json" },
+  { key: "danh-gia", label: "Đánh giá & đối chiếu", file: "danh-gia.json" },
+  { key: "ket-luan", label: "Kết luận", file: "ket-luan.json" },
+] as const;
+export type StepKey = (typeof RESEARCH_STEPS)[number]["key"];
+
+/** `ke-hoach.json` */
+export interface ResearchPlan { questions: string[]; queries: string[] }
+/** Một kết quả tìm kiếm và quyết định giữ/loại của agent (`loc-nguon.json`). */
+export interface Candidate { url: string; title: string; keep: boolean; why: string }
+/** `trich-dan.json` */
+export interface ItemQuote { source: string; quote: string }
+/** Nguồn có ủng hộ điều slide nói không. */
+export type Stance = "ung-ho" | "mot-phan" | "trai-nguoc";
+export const STANCE_LABEL: Record<Stance, string> = { "ung-ho": "Ủng hộ", "mot-phan": "Một phần", "trai-nguoc": "Trái ngược" };
+/** `danh-gia.json` — một dòng mỗi nguồn đã tải. */
+export interface Assessment { source: string; trust: SourceTrust; stance: Stance; why: string }
+
+/** Mọi thứ agent đã ghi cho một mục, đọc lại từ đĩa. */
+export interface ItemResearch {
+  plan: ResearchPlan | null;
+  candidates: Candidate[];
+  quotes: ItemQuote[];
+  assessments: Assessment[];
+  finding: ItemFinding | null;
+}
+
 /** Trạng thái một nút của workflow. */
 export type NodeState = "pending" | "active" | "done";
 
@@ -185,7 +236,8 @@ export type ScoutEvent = { stage?: ScoutStage; item?: string } & (
   | { t: number; kind: "save"; file: string }
   | { t: number; kind: "tool"; name: string; detail: string }
   | { t: number; kind: "error"; text: string }
-  | { t: number; kind: "progress"; states: Record<string, NodeState> }
+  | { t: number; kind: "progress"; states: Record<string, NodeState>; steps?: Record<string, StepKey[]> }
+  | { t: number; kind: "research"; research: ItemResearch; steps: StepKey[] }
   | { t: number; kind: "review"; items: number }
   | { t: number; kind: "done"; ok: boolean; summary: string }
 );
@@ -210,6 +262,10 @@ export interface ScoutRun {
   /** Mã mục (và `SCRIPT_NODE`) → trạng thái. */
   itemStates: Record<string, NodeState>;
   findings: Record<string, ItemFinding>;
+  /** Mã mục → các bước đã xong. */
+  itemSteps: Record<string, StepKey[]>;
+  /** Mã mục → những gì agent đã ghi cho mục đó. */
+  research: Record<string, ItemResearch>;
   dossier: Dossier | null;
   check: SourceCheck | null;
   /** Kịch bản đã viết xong chưa, và đường dẫn của nó. */
@@ -362,4 +418,66 @@ export function todoStates(todos: unknown, ids: string[]) {
     if (state === "active") active = node;
   }
   return { states, active };
+}
+
+// ── bảy bước của một mục ─────────────────────────────────────────────────────────
+
+const TRUSTS: SourceTrust[] = ["cao", "vua", "chua-kiem-chung"];
+const STANCES = Object.keys(STANCE_LABEL) as Stance[];
+/** Agent có khi ghi thẳng một mảng, có khi bọc trong một khoá — nhận cả hai. */
+const listOf = (raw: unknown, key: string): unknown[] =>
+  Array.isArray(raw) ? raw : raw && typeof raw === "object" && Array.isArray((raw as Record<string, unknown>)[key]) ? (raw as Record<string, unknown[]>)[key] : [];
+const record = (v: unknown) => (v && typeof v === "object" ? (v as Record<string, unknown>) : {});
+
+export function parsePlan(raw: unknown): ResearchPlan | null {
+  // Kế hoạch có hai phần tách biệt; một mảng trần thì không biết là câu hỏi hay truy vấn.
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const questions = listOf(raw, "questions").map((q) => text(q, 300)).filter(Boolean).slice(0, 8);
+  const queries = listOf(raw, "queries").map((q) => text(q, 160)).filter(Boolean).slice(0, 12);
+  return questions.length || queries.length ? { questions, queries } : null;
+}
+
+export function parseCandidates(raw: unknown): Candidate[] {
+  return listOf(raw, "candidates").map(record).flatMap((c) => {
+    const url = text(c.url, 500);
+    return url ? [{ url, title: text(c.title, 200), keep: c.keep === true, why: text(c.why, 300) }] : [];
+  }).slice(0, 40);
+}
+
+export function parseQuotes(raw: unknown): ItemQuote[] {
+  // Trích đoạn giữ nguyên văn — chỉ gộp khoảng trắng, không cắt, vì scout-verify so từng ký tự của nó.
+  return listOf(raw, "quotes").map(record).flatMap((q) => {
+    const quote = String(q.quote ?? "").replace(/\s+/g, " ").trim();
+    return quote && q.source ? [{ source: text(q.source, 20), quote }] : [];
+  }).slice(0, 40);
+}
+
+export function parseAssessments(raw: unknown): Assessment[] {
+  return listOf(raw, "assessments").map(record).flatMap((a) => (a.source ? [{
+    source: text(a.source, 20),
+    trust: TRUSTS.includes(a.trust as SourceTrust) ? (a.trust as SourceTrust) : "chua-kiem-chung",
+    stance: STANCES.includes(a.stance as Stance) ? (a.stance as Stance) : "mot-phan",
+    why: text(a.why, 400),
+  }] : [])).slice(0, 20);
+}
+
+/**
+ * File nào của một mục đã có → các bước đã xong, theo đúng thứ tự. Hai bước không có file được suy ra từ
+ * bước sau nó: đã lọc nguồn thì đã tìm xong, đã ghi trích dẫn thì đã tải xong.
+ */
+export function stepsDone(files: Partial<Record<StepKey, boolean>>): StepKey[] {
+  const done = new Set<StepKey>(RESEARCH_STEPS.filter((s) => s.file && files[s.key]).map((s) => s.key));
+  if (done.has("loc")) done.add("tim");
+  if (done.has("trich")) done.add("tai");
+  return RESEARCH_STEPS.map((s) => s.key).filter((k) => done.has(k));
+}
+
+/** Bước đang làm: bước đầu tiên chưa xong; `null` khi đã đủ bảy. */
+export function currentStep(done: StepKey[]): StepKey | null {
+  return RESEARCH_STEPS.find((s) => !done.includes(s.key))?.key ?? null;
+}
+
+/** Tên file trong `items/<mã>/` → bước của nó. */
+export function stepOfFile(file: string): StepKey | null {
+  return RESEARCH_STEPS.find((s) => s.file === file)?.key ?? null;
 }

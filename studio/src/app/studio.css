@@ -4657,6 +4657,81 @@ button.vs-tile:hover {
 .vs-scout-finding.is-mau-thuan,
 .vs-scout-finding.is-khong-du-nguon { border-left-color: var(--vu-amber-700); background: var(--vu-amber-50); }
 
+/* Bảy bước research của một mục: thanh nhỏ trong nút, dòng thời gian trong khung chi tiết. */
+.vs-flow-steps { display: flex; gap: 3px; margin: 3px 0 1px; }
+.vs-flow-step { flex: 1; height: 4px; border-radius: 2px; background: var(--vu-neutral-200); }
+.vs-flow-step.is-done { background: var(--vu-green-700); }
+.vs-flow-step.is-active { background: var(--vu-brand-primary); }
+.vs-scout-steps { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.vs-scout-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: var(--vu-space-3);
+  padding-bottom: var(--vu-space-3);
+}
+/* đường nối giữa các bước */
+.vs-scout-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  bottom: 0;
+  left: 11px;
+  width: 2px;
+  background: var(--vu-border-subtle);
+}
+.vs-scout-step.is-done:not(:last-child)::before { background: var(--vu-green-700); }
+.vs-scout-step-dot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--vu-border-default);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-surface-card);
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-scout-step.is-done .vs-scout-step-dot { border-color: var(--vu-green-700); color: var(--vu-green-700); }
+.vs-scout-step.is-active .vs-scout-step-dot { border-color: var(--vu-brand-primary); color: var(--vu-brand-primary); }
+.vs-scout-step-body { display: grid; gap: var(--vu-space-2); min-width: 0; padding-top: 2px; font-size: var(--vu-text-xs); }
+.vs-scout-step.is-pending .vs-scout-step-body > strong { color: var(--vu-text-muted); }
+.vs-scout-plan { margin: 0; padding-left: var(--vu-space-5); color: var(--vu-text-secondary); line-height: var(--vu-leading-normal); }
+.vs-scout-queries { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+.vs-scout-queries code {
+  padding: 1px 6px;
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  font-size: var(--vu-text-2xs);
+}
+.vs-scout-cands,
+.vs-scout-assess { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.vs-scout-cands li,
+.vs-scout-assess li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--vu-space-2);
+  padding: 4px 8px;
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+}
+.vs-scout-cands li > span { font-weight: var(--vu-font-semibold); }
+.vs-scout-cands li.is-keep > span { color: var(--vu-green-700); }
+.vs-scout-cands li.is-drop { opacity: 0.7; }
+.vs-scout-cands li.is-drop > span { color: var(--vu-text-muted); }
+.vs-scout-cands small,
+.vs-scout-assess small { flex-basis: 100%; color: var(--vu-text-muted); font-size: var(--vu-text-2xs); }
+.vs-scout-cands small.mono { flex-basis: auto; }
+.vs-scout-assess .ant-tag { margin: 0; }
+.vs-badge.is-trai-nguoc { color: var(--vu-text-danger); }
+.vs-badge.is-mot-phan { color: var(--vu-amber-700); }
+.vs-scout-slide-checks { display: grid; gap: 4px; margin: var(--vu-space-2) 0 0; padding: 0; list-style: none; font-size: var(--vu-text-xs); }
+.vs-scout-slide-checks li { padding-left: var(--vu-space-3); border-left: 3px solid var(--vu-green-700); color: var(--vu-text-secondary); }
+.vs-scout-slide-checks li.is-warn { border-left-color: var(--vu-amber-700); }
+.vs-scout-slide-checks strong { margin-right: var(--vu-space-2); color: var(--vu-text-primary); }
+
 /* ── Đóng gói kịch bản · duyệt mục cần research ─────────────────────────────────── */
 .vs-scout-review { display: grid; gap: var(--vu-space-4); }
 .vs-scout-review-lede { margin: 0; font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }

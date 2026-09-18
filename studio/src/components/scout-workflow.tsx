@@ -7,7 +7,7 @@ import {
   SafetyCertificateOutlined, SearchOutlined, WarningFilled,
 } from "@ant-design/icons";
 import { Background, Controls, Handle, Position, ReactFlow, type Edge, type Node, type NodeChange, type NodeProps } from "@xyflow/react";
-import { KIND_LABEL, SCRIPT_NODE, VERDICT_LABEL, type NodeState, type ScoutEvent, type ScoutRun } from "@/lib/scout";
+import { currentStep, KIND_LABEL, RESEARCH_STEPS, SCRIPT_NODE, VERDICT_LABEL, type NodeState, type ScoutEvent, type ScoutRun } from "@/lib/scout";
 
 /**
  * Workflow của một lượt "Đóng gói kịch bản", dựng như n8n: mỗi bước là một nút, mỗi mục research là một
@@ -24,6 +24,8 @@ interface StepData extends Record<string, unknown> {
   badge?: string;
   tone: Tone;
   icon: ReactNode;
+  /** Bảy bước research của một mục — chỉ nút mục có. */
+  steps?: ("done" | "active" | "pending")[];
 }
 
 const TONE_LABEL: Record<Tone, string> = {
@@ -48,6 +50,7 @@ function StepNode({ data, selected }: NodeProps<Node<StepData>>) {
     </div>
     <strong className="vs-flow-node-title">{data.title}</strong>
     {data.subtitle && <span className="vs-flow-node-sub">{data.subtitle}</span>}
+    {data.steps && <span className="vs-flow-steps" aria-hidden="true">{data.steps.map((s, i) => <span key={i} className={`vs-flow-step is-${s}`} />)}</span>}
     {data.meta && <span className="vs-flow-node-meta mono">{data.meta}</span>}
     <Handle type="source" position={Position.Right} isConnectable={false} />
   </div>;
@@ -55,7 +58,7 @@ function StepNode({ data, selected }: NodeProps<Node<StepData>>) {
 
 const NODE_TYPES = { step: StepNode };
 const COLUMN = 250;
-const ROW = 116;
+const ROW = 128;
 
 /** Đếm theo nút: agent làm mục nào thì mọi lượt tìm/đọc/ghi lúc đó thuộc về mục ấy; `null` = đếm hết. */
 function tally(events: ScoutEvent[], item: string | null) {
@@ -125,10 +128,18 @@ export function buildGraph(run: ScoutRun, events: ScoutEvent[]) {
     items.forEach((it, i) => {
       const finding = run.findings[it.id];
       const base = nodeTone(run, run.itemStates[it.id]);
-      const tone: Tone = base === "done" && finding && (finding.verdict === "mau-thuan" || finding.verdict === "khong-du-nguon") ? "warn" : base;
+      // Vàng khi chính agent kết luận chưa chắc, hoặc khi bước soát bằng code bắt được vấn đề ở mục này.
+      const flagged = Boolean(run.check?.slide?.recency.some((x) => x.item === it.id) || run.check?.slide?.findings.some((x) => x.item === it.id));
+      const tone: Tone = base === "done" && (flagged || (finding && (finding.verdict === "mau-thuan" || finding.verdict === "khong-du-nguon"))) ? "warn" : base;
+      // Bước đang làm chỉ sáng khi agent thật sự đang ở mục này; mục chờ thì chỉ hiện các bước đã xong.
+      const done = run.itemSteps[it.id] ?? [];
+      const now = tone === "active" ? currentStep(done) : null;
+      const steps = RESEARCH_STEPS.map((st) => (done.includes(st.key) ? "done" : st.key === now ? "active" : "pending") as "done" | "active" | "pending");
+      const nowLabel = now ? RESEARCH_STEPS.find((st) => st.key === now)!.label : null;
       add(`item:${it.id}`, col, (i - (items.length - 1) / 2) * ROW, {
         title: it.title,
-        subtitle: `${KIND_LABEL[it.kind]}${it.slides.length ? ` · slide ${it.slides.join(", ")}` : ""}`,
+        subtitle: nowLabel ? `${nowLabel} · bước ${done.length + 1}/7` : `${KIND_LABEL[it.kind]}${it.slides.length ? ` · slide ${it.slides.join(", ")}` : ""}`,
+        steps,
         meta: tally(events, it.id),
         badge: finding ? VERDICT_LABEL[finding.verdict] : it.id,
         tone,

@@ -104,3 +104,67 @@ test('lượt từ slide: gắn thêm "slide:" không bù được nguồn web c
   assert.deepEqual(row.slides, [3]);
   assert.deepEqual(row.sources, ['s1']);
 });
+
+// ── bốn bước soát của lượt từ slide ─────────────────────────────────────────────
+
+const slideCheck = (over = {}, slide = {}) => check(over, {
+  cueNumbers: [1, 2],
+  slide: {
+    outline: [{ slide: 1, heading: 'Mở đầu', points: ['a'] }, { slide: 2, heading: 'Số liệu', points: ['b'] }],
+    items: [{ id: 'm1', title: 'Số người dùng', kind: 'so-lieu' }],
+    conclusions: { m1: { verdict: 'xac-nhan', sources: ['s1', 's2'] } },
+    ...slide,
+  },
+});
+
+test('lượt từ slide đầy đủ thì đạt cả bốn bước soát', () => {
+  const r = slideCheck({ cues: { 1: ['slide:1'], 2: ['slide:2', 's1', 's2'] } });
+  assert.equal(r.ok, true, r.problems.join(' · '));
+  assert.deepEqual(r.slide.coverage, { slides: 2, covered: 2, missing: [] });
+});
+
+test('hai trang cùng một tên miền chỉ là một nơi xuất bản', () => {
+  const same = dossier().sources.map((s) => ({ ...s, url: `https://news.example.vn/${s.id}`, publisher: '' }));
+  const r = slideCheck({ sources: same, cues: { 1: ['slide:1'], 2: ['slide:2', 's1', 's2'] } });
+  assert.equal(r.slide.independence.length, 1);
+  assert.equal(r.cues.find((c) => c.n === 2).level, 'warn');
+  assert.equal(r.ok, false);
+});
+
+test('khác tên miền nhưng cùng nhà xuất bản cũng chỉ là một nơi', () => {
+  const google = [
+    { ...dossier().sources[0], url: 'https://ai.google.dev/docs', publisher: 'Google' },
+    { ...dossier().sources[1], url: 'https://blog.google/ai', publisher: 'google' },
+  ];
+  const r = slideCheck({ sources: google, cues: { 1: ['slide:1'], 2: ['slide:2', 's1', 's2'] } });
+  assert.equal(r.slide.independence.length, 1);
+});
+
+test('mục "có thể đã cũ" cần một nguồn trong 12 tháng trước lượt chạy', () => {
+  const items = [{ id: 'm1', title: 'Mô hình mới nhất', kind: 'cap-nhat' }];
+  // hồ sơ tạo 2026-09-17; s1 đăng 2024-05-01, s2 không ghi ngày
+  const old = slideCheck({ cues: { 1: ['slide:1'], 2: ['slide:2', 's1', 's2'] } }, { items });
+  assert.deepEqual(old.slide.recency, [{ item: 'm1', title: 'Mô hình mới nhất', newest: '2024-05-01', undated: 1 }]);
+  const fresh = dossier().sources.map((s, i) => (i === 0 ? { ...s, published: '2026-06-01' } : s));
+  const ok = slideCheck({ sources: fresh, cues: { 1: ['slide:1'], 2: ['slide:2', 's1', 's2'] } }, { items });
+  assert.deepEqual(ok.slide.recency, []);
+});
+
+test('slide có nội dung mà không câu nào dựa vào thì bị báo', () => {
+  const r = slideCheck({ cues: { 1: ['slide:1'], 2: ['s1', 's2'] } });
+  assert.deepEqual(r.slide.coverage.missing, [2]);
+  assert.equal(r.ok, false);
+});
+
+test('kết luận dựa trên nguồn chưa tải hoặc không có trích đoạn soát được thì trượt', () => {
+  const unfetched = dossier().sources.map((s, i) => (i === 1 ? { ...s, file: null } : s));
+  const r = slideCheck({ sources: unfetched, cues: { 1: ['slide:1'], 2: ['slide:2', 's1'] } }, { conclusions: { m1: { verdict: 'xac-nhan', sources: ['s1', 's2', 's9'] } } });
+  const f = r.slide.findings.find((x) => x.item === 'm1');
+  assert.ok(f.problems.some((p) => /s2 chưa tải/.test(p)));
+  assert.ok(f.problems.some((p) => /s9 không có trong hồ sơ/.test(p)));
+});
+
+test('mục đã duyệt mà chưa có kết luận thì bị báo', () => {
+  const r = slideCheck({ cues: { 1: ['slide:1'], 2: ['slide:2', 's1', 's2'] } }, { conclusions: {} });
+  assert.deepEqual(r.slide.findings, [{ item: 'm1', problems: ['chưa có kết luận'] }]);
+});

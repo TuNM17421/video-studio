@@ -40,7 +40,9 @@ function stub(lines: unknown[], { hang = false, files = {} as Record<string, str
 }
 
 const say = (blocks: unknown[]) => ({ type: "assistant", message: { content: blocks } });
-const tool = (name: string, input: Record<string, unknown>) => ({ type: "tool_use", name, input });
+const tool = (name: string, input: Record<string, unknown>, id?: string) => ({ type: "tool_use", name, input, ...(id ? { id } : {}) });
+/** Kết quả của một lời gọi công cụ — chỉ sau tin này Studio mới đọc file vừa ghi. */
+const result = (id: string) => ({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, content: "ok" }] } });
 const success = { type: "result", subtype: "success", is_error: false, result: "Đã xong." };
 
 /** Chờ sự kiện `done` của lượt đang chạy — mọi phần trạng thái chỉ chốt lại sau khi tiến trình đóng. */
@@ -168,13 +170,25 @@ describe("lượt từ slide", () => {
     expect(review.extraction!.items.map((it) => it.id)).toEqual(["m1", "m2"]);
 
     // Người dùng chỉ giữ mục thứ hai: nó phải thành m1 để khớp TodoWrite và items/m1.json của agent.
+    const step = (name: string) => `C:/repo/scout/${slug}/items/m1/${name}`;
     process.env.CLAUDE_BIN = stub([
       say([tool("TodoWrite", { todos: [{ content: "m1 · Định nghĩa mô hình", status: "in_progress" }, { content: "Viết kịch bản", status: "pending" }] })]),
+      say([tool("Write", { file_path: step("ke-hoach.json") }, "w1")]),
+      result("w1"),
       say([tool("WebSearch", { query: "định nghĩa mô hình" })]),
-      say([tool("Write", { file_path: `C:\repo\scout\${slug}\items\m1.json` })]),
+      say([tool("Write", { file_path: step("loc-nguon.json") }, "w2")]),
+      result("w2"),
+      say([tool("Write", { file_path: step("ket-luan.json") }, "w3")]),
+      result("w3"),
       say([tool("TodoWrite", { todos: [{ content: "m1 · Định nghĩa mô hình", status: "completed" }, { content: "Viết kịch bản", status: "in_progress" }] })]),
       success,
-    ], { files: { [file("items/m1.json")]: JSON.stringify({ id: "m1", verdict: "xac-nhan", finding: "Khớp slide.", sources: ["s1"] }) } });
+    ], {
+      files: {
+        [file("items/m1/ke-hoach.json")]: JSON.stringify({ questions: ["Định nghĩa chuẩn là gì?"], queries: ["large language model definition"] }),
+        [file("items/m1/loc-nguon.json")]: JSON.stringify({ candidates: [{ url: "https://a.org/x", title: "A", keep: true, why: "tài liệu gốc" }, { url: "https://b.com/y", title: "B", keep: false, why: "chép lại" }] }),
+        [file("items/m1/ket-luan.json")]: JSON.stringify({ id: "m1", verdict: "xac-nhan", finding: "Khớp slide.", sources: ["s1"] }),
+      },
+    });
     const confirmed = confirmScout(review.extraction!.items.map((it, i) => ({ ...it, selected: i === 1 })));
     expect(confirmed.items.map((it) => [it.id, it.title])).toEqual([["m1", "Định nghĩa mô hình"]]);
     const event = await done();
@@ -184,6 +198,12 @@ describe("lượt từ slide", () => {
     expect(current.status).toBe("done");
     expect(current.itemStates.m1).toBe("done");
     expect(current.findings.m1).toMatchObject({ verdict: "xac-nhan" });
+    // Bước nào có file thì xong; "tìm kiếm" suy ra từ việc đã lọc nguồn. Trích dẫn, đánh giá chưa có file.
+    expect(current.itemSteps.m1).toEqual(["ke-hoach", "tim", "loc", "ket-luan"]);
+    expect(current.research.m1.plan?.queries).toEqual(["large language model definition"]);
+    expect(current.research.m1.candidates.map((c) => c.keep)).toEqual([true, false]);
+    // Mỗi file bước ghi xong là một sự kiện cho trang, gắn đúng mục.
+    expect(current.events.filter((e) => e.kind === "research").map((e) => e.item)).toEqual(["m1", "m1", "m1"]);
     // Lượt tìm xảy ra khi agent đang ở m1 thì thuộc về nút m1.
     expect(current.events.find((e) => e.kind === "search")).toMatchObject({ stage: "research", item: "m1" });
     // Không có kịch bản thì nút viết kịch bản không được tính là xong.
