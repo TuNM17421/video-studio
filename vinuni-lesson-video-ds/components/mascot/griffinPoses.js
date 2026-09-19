@@ -2,7 +2,7 @@
 // Each pose picture is assets/mascot/griffin/<pose>-<mood>.png, 820 px tall (crest on the top edge,
 // feet on the bottom edge). w = its width · hx = head centre as a share of it · moods = the ones drawn,
 // the first being the default when a scene asks for one the pose does not have · walk = steps on its own.
-// Props: w/h = picture size · k = size against the other props · worn = sits on the head.
+// Props: w/h = picture size · k = size against the other props.
 export const PIC_H = 820;
 
 export const MOOD_LABELS = {
@@ -33,7 +33,4 @@ export const PROPS = {
   question: {"label": "Dấu hỏi", "file": "question_mark", "w": 52, "h": 86, "k": 1.3},
   exclamation: {"label": "Dấu chấm than", "file": "exclamation", "w": 29, "h": 85, "k": 1.3},
   sparkle: {"label": "Lấp lánh", "file": "sparkle", "w": 66, "h": 76},
-  book: {"label": "Sách", "file": "book", "w": 56, "h": 93},
-  laptop: {"label": "Laptop", "file": "laptop", "w": 129, "h": 85},
-  hat: {"label": "Mũ tốt nghiệp", "file": "graduation_hat", "w": 152, "h": 98, "worn": true},
 };

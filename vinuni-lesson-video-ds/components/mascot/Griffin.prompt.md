@@ -32,7 +32,7 @@ tối đa một Griffin.
   cánh chào đón), `cheer` (hai cánh giơ, vui), `rest` (ngồi nghỉ), `walk-left` / `walk-right` (đi chéo —
   tự nhún nhịp bước; tự dịch `x` bằng `interpolate` để đi vào khung).
 - `mood`: `neutral` `happy` `wink` `surprised` `thinking` (nhìn lên) `sad` `stern` (`angry` = `stern`).
-- `prop` (bay chéo phía trên bên phải đầu, ngang mào — `flip` thì sang trái): `lightbulb` `question` `exclamation` `sparkle` `book` `laptop`; `hat` thì đội lên đầu.
+- `prop` (bay chéo phía trên bên phải đầu, ngang mào — `flip` thì sang trái): `lightbulb` `question` `exclamation` `sparkle`.
 - Chuyển động: `enter` (bật vào), `motion` `idle` / `float` / `none`, `hops`, `tilt`, `flip`.
 
 `pose`, `mood`, `prop` nhận một tên hoặc danh sách `{ at, name }`. Đặt `at` bằng `spokenAt(n, phrase)`.

@@ -6,7 +6,7 @@
     "(0–1, để đặt đạo cụ), walk = tự nhún nhịp bước, moods = biểu cảm → ảnh. Biểu cảm ĐẦU TIÊN là ảnh gốc để",
     "căn các ảnh khác và là ảnh mặc định khi cảnh gọi một biểu cảm tư thế chưa có.",
     "Thêm biểu cảm = thêm một dòng vào moods rồi chạy lại script.",
-    "props: file = ảnh trong 08_accessories_props, k = hệ số cỡ so với đạo cụ khác, worn = đội lên đầu,",
+    "props: file = ảnh trong 08_accessories_props, k = hệ số cỡ so với đạo cụ khác,",
     "dot = vẽ thêm dấu chấm dưới thân (đường kính theo bề ngang thân) — bộ gốc vẽ ! và ? thiếu dấu chấm."
   ],
   "moods": {
@@ -146,19 +146,6 @@
     "sparkle": {
       "label": "Lấp lánh",
       "file": "sparkle"
-    },
-    "book": {
-      "label": "Sách",
-      "file": "book"
-    },
-    "laptop": {
-      "label": "Laptop",
-      "file": "laptop"
-    },
-    "hat": {
-      "label": "Mũ tốt nghiệp",
-      "file": "graduation_hat",
-      "worn": true
     }
   }
 }

@@ -9,7 +9,7 @@ import styles from "./library.module.css";
 type MascotTable = {
   moods: Record<string, string>;
   poses: Record<string, { label: string; group: string; w: number; hx: number; moods: string[]; walk?: boolean }>;
-  props: Record<string, { label: string; file: string; w: number; h: number; k?: number; worn?: boolean }>;
+  props: Record<string, { label: string; file: string; w: number; h: number; k?: number }>;
 };
 
 type Motion = "idle" | "float" | "none";
@@ -116,7 +116,7 @@ export function MascotLibrary() {
               className={styles.mascotSelect}
               value={prop}
               onChange={setProp}
-              options={[{ value: "", label: "Không có" }, ...Object.entries(table.props).map(([id, p]) => ({ value: id, label: p.worn ? `${p.label} (đội lên đầu)` : p.label }))]}
+              options={[{ value: "", label: "Không có" }, ...Object.entries(table.props).map(([id, p]) => ({ value: id, label: p.label }))]}
             />
           </fieldset>
           <fieldset className={styles.mascotField}>

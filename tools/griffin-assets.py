@@ -159,7 +159,7 @@ for name, prop in CONFIG['props'].items():
         im = Image.alpha_composite(canvas, dot.resize(canvas.size, Image.LANCZOS))
     im.save(f"{OUT}/{prop['file']}.png", optimize=True)
     props[name] = {'label': prop['label'], 'file': prop['file'], 'w': im.width, 'h': im.height,
-                   **{k: prop[k] for k in ('k', 'worn') if k in prop}}
+                   **({'k': prop['k']} if 'k' in prop else {})}
 
 # The tables the component reads (griffinPoses.js) and the Studio reads (poses.json) — generated, so adding
 # a mood or a prop never means editing Griffin.jsx or the Studio.
@@ -176,7 +176,7 @@ with open(TABLE, 'w', encoding='utf-8') as fh:
         '// Each pose picture is assets/mascot/griffin/<pose>-<mood>.png, ' + str(OUT_H) + ' px tall (crest on the top edge,\n'
         '// feet on the bottom edge). w = its width · hx = head centre as a share of it · moods = the ones drawn,\n'
         '// the first being the default when a scene asks for one the pose does not have · walk = steps on its own.\n'
-        '// Props: w/h = picture size · k = size against the other props · worn = sits on the head.\n'
+        '// Props: w/h = picture size · k = size against the other props.\n'
         f'export const PIC_H = {OUT_H};\n\n'
         f'export const MOOD_LABELS = {js_table(CONFIG["moods"])};\n\n'
         f'export const POSES = {js_table(poses)};\n\n'

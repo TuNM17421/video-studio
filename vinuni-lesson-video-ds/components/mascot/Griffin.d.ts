@@ -7,7 +7,7 @@ export type GriffinGesture = 'wave' | 'welcome' | 'cheer' | 'rest' | 'walk-left'
 export type GriffinPose = GriffinSetPose | GriffinGesture;
 /** `angry` is accepted as an alias of `stern`. */
 export type GriffinMood = 'neutral' | 'happy' | 'wink' | 'surprised' | 'thinking' | 'sad' | 'stern' | 'angry';
-export type GriffinProp = 'lightbulb' | 'question' | 'exclamation' | 'sparkle' | 'book' | 'laptop' | 'hat';
+export type GriffinProp = 'lightbulb' | 'question' | 'exclamation' | 'sparkle';
 
 /** A name that takes over at scene frame `at`. */
 export interface GriffinStep<T extends string> {
@@ -40,7 +40,7 @@ export interface GriffinProps {
   hops?: readonly number[];
   /** Constant lean in degrees. */
   tilt?: number;
-  /** Object floating beside the crest, on the side the head faces (`hat` is worn) — one prop, or steps on beats (each arrival twinkles once). */
+  /** Object floating beside the crest, on the side the head faces — one prop, or steps on beats (each arrival twinkles once). */
   prop?: GriffinProp | readonly GriffinStep<GriffinProp>[] | null;
   /** URL folder of the pictures. Default: assets/mascot/griffin/ next to dist/vk.js. */
   base?: string;

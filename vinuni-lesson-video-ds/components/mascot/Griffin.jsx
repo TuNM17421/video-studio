@@ -138,11 +138,10 @@ export function Griffin({
   const angle = tilt + sway;
   const lift = hop.dy + bob;
 
-  // head and crest in frame coordinates (ignores the small breathing scale)
+  // head centre and crest top in frame coordinates (ignores the small breathing scale)
   const hxFrac = flip ? 1 - P.hx : P.hx;
   const headX = x + (hxFrac - 0.5) * w * s;
   const topY = y + lift - h * s;
-  const headY = topY + h * 0.27 * s;
 
   // Every picture this Griffin will ever show is in the page from frame 0 (1 px, invisible), so the
   // render never paints a frame on which the next picture has not loaded yet.
@@ -172,17 +171,12 @@ export function Griffin({
         if (!def) return null;
         const o = stepOpacity(props, i, frame, 8);
         const pop = p.at <= 0 && enter === null ? 1 : popScale(frame, Math.max(p.at, enter ?? 0));
-        // a worn prop sits on the head and moves with it; the others float beside the crest
-        const size = def.worn ? h * 0.3 : ph * (def.k ?? 1);
-        const pw = def.worn ? size : (size * def.w) / def.h;
-        const pH = def.worn ? (size * def.h) / def.w : size;
-        const at = def.worn
-          ? `translate(${headX} ${headY - h * 0.12}) rotate(${(flip ? 8 : -8) + angle}) scale(${pop})`
-          : `translate(${px} ${py}) scale(${pop})`;
+        const pH = ph * (def.k ?? 1);
+        const pw = (pH * def.w) / def.h;
         // one twinkle per arrival, then the prop simply stays
         const tw = p.at > 0 ? appear(frame, p.at, 6) * (1 - fade(frame, p.at + 10, 12)) : 0;
         return (
-          <g key={`${p.name}-${p.at}`} opacity={o < 1 ? o : undefined} transform={at}>
+          <g key={`${p.name}-${p.at}`} opacity={o < 1 ? o : undefined} transform={`translate(${px} ${py}) scale(${pop})`}>
             {tw > 0.01
               ? [-1, 1].map((d) => (
                   <image
