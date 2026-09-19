@@ -196,6 +196,24 @@ Trạng thái mỗi video lưu ở `projects/<id>/.studio/` (không lên git), n
 
 Khi phát triển Studio, `STUDIO_TTS_MOCK=1 npm run studio` tạo giọng im lặng thay vì gọi ElevenLabs.
 
+### Gate, QA ảnh và theo dõi workflow
+
+Agent chỉ viết nội dung của stage; server tự chạy phần máy móc sau khi agent dừng. Hợp đồng đầy đủ ở
+[`docs/VIDEO-WORKFLOW-HARNESS.md`](docs/VIDEO-WORKFLOW-HARNESS.md).
+
+- **Lời & cue** — TTS dry-run (miễn phí, không truyền key) bắt `speaker`/`delivery` sai trước khi duyệt.
+- **Dựng cảnh** — build, verify, chụp một ảnh mỗi câu vào `projects/<id>/qa/auto/`, rồi giao một **phiên QA
+  riêng, chỉ đọc** chấm ảnh. `STUDIO_QA_PROVIDER` (`auto` mặc định) chọn CLI đã cài *khác* agent đang dựng
+  cảnh; máy chỉ có một CLI thì CLI đó tự QA. Tiêu chí = tiêu chí chung + mục `## Tiêu chí QA` của module đang
+  bật. Finding `blocker`/`major` chặn nút Duyệt.
+- **Bàn giao** — final build + verify.
+
+Mỗi lượt ghi stage, actor, máy, model, thời gian, token và cost vào `projects/<id>/.studio/runs.jsonl`;
+feedback vào `feedback.jsonl`, lỗi tái diễn tăng `recurrence`, `IMPROVEMENT-PLAN.md` tự viết lại. Đặt
+`STUDIO_MACHINE_LABEL` và model pin trong `studio/.env` để so sánh giữa các máy. Xem báo cáo bằng
+`npm run workflow -- report --video <id>`; chạy ngoài Studio thì bọc gate bằng `tools/run-logged.mjs` và
+phần agent bằng `tools/video-workflow.mjs run start|finish`.
+
 ---
 
 ## Làm video bằng CLI
@@ -478,6 +496,8 @@ video giữ trên máy:
 | `npm run voices` | In danh mục giọng và kiểu đọc |
 | `npm run media` | Đẩy media lên R2 (chủ bucket) |
 | `npm run test:tools` | Test của `tools/` |
+| `npm run doctor` | Kiểm tra môi trường, không sửa máy |
+| `npm run workflow -- report --video <id>` | Báo cáo lượt chạy, token, feedback của một video |
 
 ### Trong `studio/`
 

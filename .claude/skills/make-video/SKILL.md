@@ -14,9 +14,9 @@ script, optional feedback / old-video folders, notes and the scope. Read it firs
 
 Video dir below = `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/`. Reply in Vietnamese.
 
-## Check the script before building
+## Check the script before building — ask, never assume
 
-A lesson defaults to **3–5 minutes** unless `REQUEST.md` explicitly overrides it. For a new or substantially rewritten lesson, assign one dedicated script lane before cues. That lane writes narration only; the owner still verifies sources, reads the whole script aloud, repairs continuity, and records the review in `PROMPTS.md`.
+For a new or substantially rewritten lesson, assign one dedicated script lane before cues. That lane writes narration only; the owner still verifies sources, reads the whole script aloud, repairs continuity, and records the review in `PROMPTS.md`.
 
 The request names one video; the script file must match it. **Before stage 1, read the script end to end and
 stop to ask the user** whenever it does not line up:
@@ -42,8 +42,8 @@ rebuild and ElevenLabs credit; one question costs nothing. Record the answer in 
 
 When Video Studio runs a stage it says so in the prompt: do ONLY that stage, then stop with a short
 summary. The harness runs deterministic gates and writes telemetry; the coding agent does not repeat build,
-verify, still capture, render or transcript. Scene stills always go to an independent Antigravity QA lane
-through the restricted `.studio/qa-packet/`; findings become tracked feedback. Never run `tts.mjs generate`,
+verify, still capture, render or transcript. Cues go through a free TTS dry-run; scene stills (in
+`projects/<id>/qa/auto/`) go to an independent read-only QA session; findings become tracked feedback. Never run `tts.mjs generate`,
 read `.env`, push or run `/design-sync` from a Studio agent stage.
 
 In direct CLI mode, wrap a deterministic gate with `node tools/run-logged.mjs <stage> --video <id> -- <command…>`.

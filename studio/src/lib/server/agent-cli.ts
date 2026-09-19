@@ -66,15 +66,59 @@ export function codexExecArgs(sessionId: string | null, model?: string) {
   ];
 }
 
-/** Antigravity's separate visual-QA lane: read-only plan mode with schema-bound output. */
-export function antigravityQaArgs(schema: string) {
+/**
+ * Visual QA is a separate, read-only session with a clean context — the provider is secondary. Each
+ * adapter keeps the same guarantees in its own CLI's terms: no tool that writes or runs commands, and the
+ * report forced into QA_SCHEMA (`parseQaReport` re-checks it on our side either way).
+ */
+export type QaProvider = "claude" | "codex" | "antigravity";
+
+/** Claude: only the read tools exist in the session; structured output via `--json-schema`. */
+export function claudeQaArgs(schema: string, model?: string) {
+  return [
+    "-p", "--output-format", "json", "--permission-mode", "dontAsk",
+    ...(model ? ["--model", model] : []),
+    "--tools", "Read", "Glob", "Grep",
+    "--allowedTools", "Read", "Glob", "Grep",
+    "--disallowedTools", "Write", "Edit", "Bash", "PowerShell", "Read(**/.env)", "Read(**/.env.*)",
+    "--json-schema", schema,
+  ];
+}
+
+/**
+ * Codex: `read-only` sandbox instead of the authoring lane's `workspace-write`; the stills go in as image
+ * attachments (one `--image=` each, so the multi-value flag cannot swallow the `-` prompt argument), the
+ * schema as a file, and the final answer is read from `--output-last-message` rather than the event stream.
+ */
+export function codexQaArgs(schemaFile: string, lastMessageFile: string, images: string[], model?: string) {
+  return [
+    "exec", "--json", "--sandbox", "read-only", "--skip-git-repo-check",
+    ...(model ? ["-m", model] : []),
+    "-c", 'approval_policy="never"',
+    "--output-schema", schemaFile,
+    "--output-last-message", lastMessageFile,
+    ...images.map((image) => `--image=${image}`),
+    "-",
+  ];
+}
+
+/** Antigravity: read-only plan mode in its sandbox, schema-bound output. */
+export function antigravityQaArgs(schema: string, model?: string) {
   return [
     "--print",
     "--input-format", "text",
     "--output-format", "json",
     "--mode", "plan",
     "--sandbox",
+    ...(model ? ["--model", model] : []),
     "--json-schema", schema,
     "--print-timeout", "10m",
   ];
+}
+
+/** Env for any agent process: the Studio's paid TTS credential never enters it. */
+export function sanitizedAgentEnv() {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (key.startsWith("ELEVENLABS_")) delete env[key];
+  return env;
 }

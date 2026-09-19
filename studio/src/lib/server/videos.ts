@@ -168,10 +168,12 @@ export async function cuesInfo(id: string): Promise<CuesInfo | null> {
   }
 }
 
+/** Stills in qa/ (shot by hand) and qa/auto/ (the scene gate's own folder). */
 export function qaImages(id: string) {
   const dir = path.join(projectDir(id), "qa");
-  if (!exists(dir)) return [];
-  return fs.readdirSync(dir).filter((f) => /\.(png|jpe?g)$/i.test(f)).sort().map((f) => rel(path.join(dir, f)));
+  return [dir, path.join(dir, "auto")].flatMap((d) => exists(d)
+    ? fs.readdirSync(d).filter((f) => /\.(png|jpe?g)$/i.test(f)).sort().map((f) => rel(path.join(d, f)))
+    : []);
 }
 
 export function listVideos(): VideoSummary[] {

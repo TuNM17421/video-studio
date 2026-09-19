@@ -7,6 +7,8 @@ const OPEN_STATUSES = new Set(["open", "planned", "applied"]);
 // "applied" = agent đã sửa, chờ người dùng xác nhận qua approve. Approve tự nó chuyển
 // applied -> verified, nên nếu applied vẫn tính là blocking thì approve sẽ luôn 409 vĩnh viễn.
 const BLOCKING_STATUSES = new Set(["open", "planned"]);
+// Finding của lượt QA độc lập; provider nào chấm nằm ở `qaProvider`.
+const QA_SOURCES = new Set(["qa"]);
 
 const iso = (now = Date.now()) => new Date(now).toISOString();
 const stateDir = (repo, videoId) => path.join(repo, "projects", videoId, ".studio");
@@ -25,13 +27,38 @@ function readJsonl(filePath) {
   });
 }
 
-// `scope` phân biệt cùng một message xảy ra ở nhiều vị trí khác nhau (vd. cùng lỗi trên
-// cue-01 và cue-05). Không có scope, hai finding đó bị hash trùng nhau, dedup nuốt mất
-// evidence và recurrence của cái thứ hai. User feedback không có scope tự nhiên nên vẫn
-// dedup theo message như trước (backward compatible).
-function fingerprint(stage, message, scope = "") {
+// Mã lỗi cố định của một QA finding. Câu `message` do model tự viết và không bao giờ lặp y hệt giữa
+// hai lượt ("Chữ chạm mascot" rồi "Khối văn bản đè lên cánh trái của mascot"), nên nó chỉ để người đọc;
+// nhận dạng một lỗi là `stage + cảnh + code`. Băm theo câu chữ thì lỗi cũ bị coi là "không tái hiện" và
+// tự `verified` — mở khoá nút Duyệt cho cảnh chưa sửa — còn `recurrence` không bao giờ vượt 1.
+export const QA_CODES = [
+  "text-overflow", // chữ tràn khung, bị cắt, vượt vùng nội dung
+  "overlap", // hai khối/chữ/nhân vật chồng lên nhau
+  "unreadable", // chữ quá nhỏ, quá dày, sai font, không đọc được
+  "low-contrast", // chữ/nét chìm vào nền
+  "empty-layout", // bố cục trống, lệch, dồn một góc
+  "clipped", // thành phần bị xén ở mép khung hình
+  "misaligned", // lệch lưới, lệch hàng, khoảng cách không đều
+  "repetitive", // chuỗi cảnh lặp máy móc, không có nhịp
+  "off-script", // chữ/số trên màn hình không có trong kịch bản
+  "module", // vi phạm tiêu chí QA riêng của một năng lực đang bật
+  "other",
+];
+const QA_CODE_SET = new Set(QA_CODES);
+
+// Ảnh QA tên `cue-03.png`; model có thể ghi "cue-03", "cue 3", "Cue-03.png". Quy về một khoá.
+export function sceneKey(scene) {
+  const text = cleanText(scene).toLocaleLowerCase("vi");
+  const cue = text.match(/cue[\s_-]*0*(\d+)/);
+  return cue ? `cue-${cue[1].padStart(2, "0")}` : text.replace(/\.(png|jpe?g)$/, "");
+}
+
+// `scope` phân biệt cùng một lỗi ở nhiều vị trí (cue-01 và cue-05). Finding có `code` băm theo
+// stage + scope + code; feedback của người dùng không có code nên vẫn dedup theo câu chữ.
+function fingerprint(stage, message, scope = "", code = "") {
+  const what = code ? `code:${code}` : cleanText(message).toLocaleLowerCase("vi");
   return createHash("sha256")
-    .update(`${stage}\n${cleanText(scope).toLocaleLowerCase("vi")}\n${cleanText(message).toLocaleLowerCase("vi")}`)
+    .update(`${stage}\n${cleanText(scope).toLocaleLowerCase("vi")}\n${what}`)
     .digest("hex")
     .slice(0, 16);
 }
@@ -113,7 +140,8 @@ export function readFeedback(repo, videoId) {
 
 export function recordFeedback(repo, videoId, input) {
   const now = iso();
-  const fp = fingerprint(input.stage, input.message, input.scope);
+  const code = input.code && QA_CODE_SET.has(input.code) ? input.code : "";
+  const fp = fingerprint(input.stage, input.message, input.scope, code);
   const existing = readFeedback(repo, videoId)
     .find((item) => item.fingerprint === fp && OPEN_STATUSES.has(item.status));
   if (existing) {
@@ -128,6 +156,8 @@ export function recordFeedback(repo, videoId, input) {
           ? input.severity
           : existing.severity,
         evidence: input.evidence || existing.evidence || "",
+        // Cùng lỗi, lời mô tả mới nhất: người đọc thấy câu model vừa viết, nhận dạng vẫn là code.
+        ...(code ? { message: cleanText(input.message), acceptance: cleanText(input.acceptance || existing.acceptance) } : {}),
         runId: input.runId || existing.runId || null,
       },
     });
@@ -141,11 +171,13 @@ export function recordFeedback(repo, videoId, input) {
     videoId,
     stage: input.stage,
     scope: cleanText(input.scope || ""),
+    ...(code ? { code } : {}),
     source: input.source || "user",
+    ...(input.qaProvider ? { qaProvider: input.qaProvider } : {}),
     severity: input.severity || "major",
     message: cleanText(input.message),
     status: input.status || "open",
-    owner: input.owner || (input.source === "antigravity" ? "coding-agent" : "owner"),
+    owner: input.owner || (QA_SOURCES.has(input.source) ? "coding-agent" : "owner"),
     acceptance: cleanText(input.acceptance || "Người duyệt xác nhận kết quả đã đáp ứng góp ý."),
     evidence: cleanText(input.evidence || ""),
     runId: input.runId || null,
@@ -180,19 +212,21 @@ export function updateFeedbackWhere(repo, videoId, predicate, patch) {
   return matches.length;
 }
 
-export function reconcileQaFeedback(repo, videoId, stage, findings, runId) {
+export function reconcileQaFeedback(repo, videoId, stage, findings, runId, qaProvider = "") {
   const before = readFeedback(repo, videoId).filter((item) =>
-    item.source === "antigravity" && item.stage === stage && OPEN_STATUSES.has(item.status));
+    QA_SOURCES.has(item.source) && item.stage === stage && OPEN_STATUSES.has(item.status));
   const seen = new Set();
   const recorded = findings.map((finding) => {
     const item = recordFeedback(repo, videoId, {
       stage,
-      scope: finding.scene || "",
-      source: "antigravity",
+      scope: sceneKey(finding.scene || ""),
+      code: QA_CODE_SET.has(finding.code) ? finding.code : "other",
+      source: "qa",
+      qaProvider,
       severity: finding.severity || "major",
       message: finding.message,
       evidence: finding.evidence || finding.scene || "",
-      acceptance: finding.acceptance || "Antigravity không còn tái hiện lỗi ở lượt QA kế tiếp.",
+      acceptance: finding.acceptance || "QA không còn tái hiện lỗi ở lượt kế tiếp.",
       owner: "coding-agent",
       runId,
     });
@@ -200,12 +234,11 @@ export function reconcileQaFeedback(repo, videoId, stage, findings, runId) {
     return item;
   });
   for (const item of before) {
-    if (!seen.has(item.fingerprint)) {
-      updateFeedback(repo, videoId, item.id, {
-        status: "verified",
-        evidence: `${item.evidence ? `${item.evidence} · ` : ""}Không tái hiện ở Antigravity QA ${runId}`,
-      });
-    }
+    if (seen.has(item.fingerprint)) continue;
+    updateFeedback(repo, videoId, item.id, {
+      status: "verified",
+      evidence: `${item.evidence ? `${item.evidence} · ` : ""}Không tái hiện ở QA ${runId}`,
+    });
   }
   return recorded;
 }

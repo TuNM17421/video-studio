@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
-import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs } from "./agent-cli";
+import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
 import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
 import { REPO } from "./paths";
-import { runFinalGate, runSceneQa } from "./qa";
+import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
 import { readState, setStage, styleName, updateState } from "./videos";
 import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
 
@@ -112,8 +112,8 @@ const DENIED = [
 ];
 
 const STAGE_TASK: Record<AgentStage, string> = {
-  cues: "Stage 1 · cues: đọc kịch bản và improvement plan, viết cues.js (lời nguyên văn), voice.js rỗng, pronounce.json nếu cần. KHÔNG dựng cảnh và không chạy gate.",
-  scenes: "Stage 3 · scenes: giọng đã được ghi và gắn (voice.js có mốc từng từ, cues.js đã có frames/speech thật). Chỉ dựng/sửa toàn bộ cảnh theo đúng thời lượng này. Runner sẽ build, verify, chụp ảnh và giao Antigravity QA sau khi bạn dừng.",
+  cues: "Stage 1 · cues: đọc kịch bản và improvement plan, viết cues.js (lời nguyên văn), voice.js rỗng, pronounce.json nếu cần. KHÔNG dựng cảnh. Runner tự chạy TTS dry-run (miễn phí) sau khi bạn dừng để bắt speaker/delivery sai.",
+  scenes: "Stage 3 · scenes: giọng đã được ghi và gắn (voice.js có mốc từng từ, cues.js đã có frames/speech thật). Chỉ dựng/sửa toàn bộ cảnh theo đúng thời lượng này. Runner sẽ build, verify, chụp ảnh và giao một phiên QA độc lập (chỉ đọc) sau khi bạn dừng.",
   deliver: "Stage 5 · deliver: MP4 và transcript đã có. Chỉ viết file chương và PROMPTS.md. Runner chịu final gate.",
 };
 
@@ -148,7 +148,7 @@ function feedbackPrompt(id: string, stage: AgentStage, message: string) {
     `Góp ý của người dùng cho stage "${stage}" (Video Studio):`,
     `"""${message.trim()}"""`,
     feedbackContext(id, stage),
-    "Sửa theo góp ý, chỉ trong phạm vi stage này. Runner sẽ chạy mọi gate deterministic và Antigravity QA; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt.",
+    "Sửa theo góp ý, chỉ trong phạm vi stage này. Runner sẽ chạy mọi gate deterministic và QA ảnh; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt.",
   ].join("\n");
 }
 
@@ -177,13 +177,6 @@ function saveSession(id: string, provider: AgentProvider, sessionId: string) {
     // Provider is immutable after creation; an event can only update its own provider's session.
     if (state.agent.provider === provider) state.agent.sessionId = sessionId;
   });
-}
-
-function sanitizedAgentEnv() {
-  const env = { ...process.env };
-  // The Studio's paid TTS credential must never enter either agent process.
-  for (const key of Object.keys(env)) if (key.startsWith("ELEVENLABS_")) delete env[key];
-  return env;
 }
 
 async function runClaude(id: string, prompt: string, sessionId: string | null) {
@@ -404,6 +397,15 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
   let success = result.ok && result.code === 0;
   let failureMessage = `${providerLabel} kết thúc với mã ${result.code}.`;
   if (success && feedback) updateFeedback(REPO, id, feedback.id, { status: "applied" });
+  if (success && stage === "cues") {
+    try {
+      await runCuesGate(id);
+    } catch (error) {
+      success = false;
+      failureMessage = error instanceof Error ? error.message : String(error);
+      log(id, "error", failureMessage);
+    }
+  }
   if (success && stage === "scenes") {
     try {
       await runSceneQa(id, base);

@@ -29,6 +29,13 @@ order: 10
 Tên file (bỏ `.md`) là **id** của module, ghi vào `REQUEST.md` và `state.json`. Chỉ dùng chữ thường, số và
 gạch nối. **Đừng đổi tên file** của một module đã có video dùng — video cũ sẽ mất module đó.
 
+## Tiêu chí QA
+
+Mục `## Tiêu chí QA` (không bắt buộc) là những gì lượt QA ảnh phải soi **thêm** khi module này bật. Studio
+ghép tiêu chí chung (chữ đọc được, không tràn, không chồng, bố cục không trống, nhịp không lặp) với mục này
+của đúng những module đang bật — video không bật module thì QA không bao giờ thấy tiêu chí của nó. Viết
+mỗi tiêu chí là một điều nhìn thấy được trên ảnh tĩnh; thêm tiêu chí không cần sửa code.
+
 ## Khi nào vẫn cần dev
 
 File module đủ cho mọi năng lực **chỉ đổi cách viết kịch bản**. Năng lực cần **cấu hình riêng trên form**

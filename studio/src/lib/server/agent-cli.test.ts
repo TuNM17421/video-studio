@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { antigravityExecArgs, antigravityQaArgs, antigravityStdin, claudeExecArgs, codexExecArgs } from "./agent-cli";
+import { antigravityExecArgs, antigravityQaArgs, antigravityStdin, claudeExecArgs, claudeQaArgs, codexExecArgs, codexQaArgs } from "./agent-cli";
 
 describe("Antigravity CLI adapter", () => {
   it("runs headless, unattended, past the 5-minute default timeout", () => {
@@ -74,5 +74,25 @@ describe("Antigravity QA adapter", () => {
       "--mode", "plan", "--sandbox", "--json-schema", '{"type":"object"}',
       "--print-timeout", "10m",
     ]);
+  });
+});
+
+describe("Claude QA adapter", () => {
+  it("offers only the read tools and forces the schema", () => {
+    const args = claudeQaArgs('{"type":"object"}');
+    const tools = args.slice(args.indexOf("--tools") + 1, args.indexOf("--allowedTools"));
+    expect(tools).toEqual(["Read", "Glob", "Grep"]);
+    expect(args).toContain("--json-schema");
+    for (const denied of ["Write", "Edit", "Bash"]) expect(args).toContain(denied);
+  });
+});
+
+describe("Codex QA adapter", () => {
+  it("runs read-only, never workspace-write, and keeps the prompt argument last", () => {
+    const args = codexQaArgs("s.json", "last.json", ["stills/cue-01.png", "stills/cue-02.png"]);
+    expect(args.slice(args.indexOf("--sandbox"), args.indexOf("--sandbox") + 2)).toEqual(["--sandbox", "read-only"]);
+    expect(args).not.toContain("workspace-write");
+    expect(args).toContain("--image=stills/cue-02.png");
+    expect(args.at(-1)).toBe("-");
   });
 });

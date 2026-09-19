@@ -87,11 +87,35 @@ test("feedback the agent already applied does not block approve", () => {
   assert.equal(blockingFeedback(repo, id, "cues").length, 0);
 });
 
-test("Antigravity reconciliation verifies findings that no longer recur", () => {
+test("QA reconciliation verifies findings that no longer recur", () => {
   const { repo, id } = fixture();
-  reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", message: "Chữ tràn khung", scene: "cue-03.png" }], "qa-1");
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "text-overflow", message: "Chữ tràn khung", scene: "cue-03.png" }], "qa-1");
   assert.equal(blockingFeedback(repo, id, "scenes").length, 1);
   reconcileQaFeedback(repo, id, "scenes", [], "qa-2");
   assert.equal(blockingFeedback(repo, id, "scenes").length, 0);
   assert.equal(readFeedback(repo, id)[0].status, "verified");
+});
+
+test("the same QA defect reworded by the model stays one open item and counts as recurring", () => {
+  const { repo, id } = fixture();
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "blocker", code: "overlap", scene: "cue-03.png", message: "Chữ chạm mascot" }], "qa-1");
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "blocker", code: "overlap", scene: "cue 3", message: "Khối văn bản đè lên cánh trái của mascot" }], "qa-2");
+  const items = readFeedback(repo, id);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].status, "open");
+  assert.equal(items[0].recurrence, 2);
+  assert.equal(items[0].scope, "cue-03");
+  assert.equal(items[0].message, "Khối văn bản đè lên cánh trái của mascot");
+  assert.equal(blockingFeedback(repo, id, "scenes").length, 1);
+});
+
+test("different defect codes on one scene are tracked separately", () => {
+  const { repo, id } = fixture();
+  reconcileQaFeedback(repo, id, "scenes", [
+    { severity: "major", code: "overlap", scene: "cue-01.png", message: "a" },
+    { severity: "minor", code: "low-contrast", scene: "cue-01.png", message: "b" },
+  ], "qa-1");
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "overlap", scene: "cue-01.png", message: "a2" }], "qa-2");
+  const byCode = Object.fromEntries(readFeedback(repo, id).map((item) => [item.code, item.status]));
+  assert.deepEqual(byCode, { overlap: "open", "low-contrast": "verified" });
 });
