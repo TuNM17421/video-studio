@@ -119,3 +119,24 @@ test("different defect codes on one scene are tracked separately", () => {
   const byCode = Object.fromEntries(readFeedback(repo, id).map((item) => [item.code, item.status]));
   assert.deepEqual(byCode, { overlap: "open", "low-contrast": "verified" });
 });
+
+test("a QA finding the user skipped stays skipped when review sees it again", () => {
+  const { repo, id } = fixture();
+  const [item] = reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "overlap", scene: "cue-02.png", message: "a" }], "qa-1");
+  updateFeedback(repo, id, item.id, { status: "wontfix", skipReason: "Cố ý thiết kế" });
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "overlap", scene: "cue-02.png", message: "a, lần hai" }], "qa-2");
+  const items = readFeedback(repo, id);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].status, "wontfix");
+  assert.equal(items[0].recurrence, 2);
+  assert.equal(blockingFeedback(repo, id, "scenes").length, 0);
+});
+
+test("a finding the agent claimed to fix reopens when review still sees it", () => {
+  const { repo, id } = fixture();
+  const [item] = reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "clipped", scene: "cue-05.png", message: "a" }], "qa-1");
+  updateFeedback(repo, id, item.id, { status: "applied" });
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "clipped", scene: "cue-05.png", message: "a" }], "qa-2");
+  assert.equal(readFeedback(repo, id)[0].status, "open");
+  assert.equal(blockingFeedback(repo, id, "scenes").length, 1);
+});

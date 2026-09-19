@@ -72,6 +72,12 @@ Mỗi bước có agent (Lời & cue, Dựng cảnh, Bàn giao) có panel **Ki�
   ở lượt review này** (`resolvedBy` = run review đó). Mỗi finding có ảnh cảnh, mã lỗi tiếng Việt, số lần lặp.
 - Ảnh trong thư viện QA có chấm màu theo lỗi nặng nhất còn mở của cảnh đó.
 - Nút Duyệt tự khoá và nói còn bao nhiêu lỗi chặn — cùng một luật với API (`blockersFor`).
+- **Chọn sửa / bỏ qua** (`POST /api/videos/<id>/findings`): mỗi lỗi blocker/major có `Sửa | Bỏ qua`.
+  Sửa là mặc định; Bỏ qua bắt buộc lý do (*Cố ý thiết kế* · *Review đánh giá sai* · *Để sau* · tự ghi).
+  Một nút gửi đúng những lỗi chọn Sửa cho agent (chúng thành `planned` → `applied`, review ngay sau đó
+  xác nhận hoặc mở lại) và ghi các lỗi bỏ qua thành `wontfix` kèm `skipReason`, `decidedAt`. Lỗi đã bỏ
+  qua **không bị review lượt sau mở lại** — chỉ tăng `recurrence` — và có nút **Mở lại**. Minor chỉ hiện để
+  biết; muốn sửa thì ghi vào Góp ý. Từ CLI: `feedback set --status wontfix --reason "…"`.
 - "Chi phí & lượt chạy" gập thành một dòng trên đầu trang.
 
 ## Telemetry

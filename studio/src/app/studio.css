@@ -4491,3 +4491,46 @@ button.vs-tile:hover {
 }
 .vs-qa-mark.is-blocker { background: var(--vu-brand-secondary); }
 .vs-qa-mark.is-major { background: var(--vu-amber-700); }
+.vs-finding-control {
+  margin-left: auto;
+}
+.vs-finding.is-wontfix {
+  border-left-color: var(--vu-neutral-300);
+}
+.vs-skip-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.vs-skip-reason label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-skip-reason .ant-select {
+  min-width: 170px;
+}
+.vs-skip-reason .ant-input {
+  flex: 1;
+  min-width: 200px;
+}
+.vs-triage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.vs-triage-bar .ant-input-textarea,
+.vs-triage-bar textarea {
+  flex-basis: 100%;
+}
+.vs-triage-summary {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}

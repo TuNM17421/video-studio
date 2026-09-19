@@ -142,9 +142,13 @@ export function recordFeedback(repo, videoId, input) {
   const now = iso();
   const code = input.code && QA_CODE_SET.has(input.code) ? input.code : "";
   const fp = fingerprint(input.stage, input.message, input.scope, code);
+  // A QA finding the user chose to skip stays skipped when the next review sees it again: it counts the
+  // recurrence but must not reopen and re-block the approve button behind the user's back.
   const existing = readFeedback(repo, videoId)
-    .find((item) => item.fingerprint === fp && OPEN_STATUSES.has(item.status));
+    .find((item) => item.fingerprint === fp && (OPEN_STATUSES.has(item.status) || (code && item.status === "wontfix")));
   if (existing) {
+    // Seen again after the agent said it fixed it (planned/applied): it is open again.
+    const reopened = code && ["planned", "applied"].includes(existing.status) ? { status: "open" } : {};
     append(stateFile(repo, videoId, "feedback.jsonl"), {
       event: "updated",
       at: now,
@@ -159,6 +163,7 @@ export function recordFeedback(repo, videoId, input) {
         // Cùng lỗi, lời mô tả mới nhất: người đọc thấy câu model vừa viết, nhận dạng vẫn là code.
         ...(code ? { message: cleanText(input.message), acceptance: cleanText(input.acceptance || existing.acceptance) } : {}),
         runId: input.runId || existing.runId || null,
+        ...reopened,
       },
     });
     writeImprovementPlan(repo, videoId);

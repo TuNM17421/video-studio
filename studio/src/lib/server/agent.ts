@@ -153,6 +153,22 @@ function feedbackPrompt(id: string, stage: AgentStage, message: string) {
   ].join("\n");
 }
 
+type FocusItem = { id: string; severity: string; scope?: string; code?: string; message: string; evidence?: string; acceptance?: string };
+
+/**
+ * A fix round the user picked from the review's findings: only those, each with the still it is about
+ * and its acceptance check. Skipped findings are not mentioned — the user already decided on them.
+ */
+function focusPrompt(stage: AgentStage, items: FocusItem[], note?: string) {
+  return [
+    `Người dùng đã rà kết quả review chéo cho stage "${stage}" và chọn ${items.length} lỗi dưới đây để sửa.`,
+    "Chỉ sửa đúng những lỗi này; đừng đổi các cảnh khác. Ảnh của mỗi cảnh ở `projects/<id>/qa/auto/cue-NN.png`.",
+    ...items.map((item) => `- ${item.id} [${item.severity}] ${item.scope || ""}${item.code ? ` · ${item.code}` : ""}: ${item.message}${item.evidence ? ` | Bằng chứng: ${item.evidence}` : ""}${item.acceptance ? ` | Nghiệm thu: ${item.acceptance}` : ""}`),
+    ...(note?.trim() ? ["Ghi chú thêm của người dùng:", `"""${note.trim()}"""`] : []),
+    "Runner sẽ build, verify, chụp ảnh và review lại sau khi bạn dừng; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt: đã sửa gì ở từng lỗi.",
+  ].join("\n");
+}
+
 function short(value: unknown, max = 160) {
   const s = String(value ?? "").replace(/\s+/g, " ").trim();
   return s.length > max ? `${s.slice(0, max)}…` : s;
@@ -368,24 +384,31 @@ async function runAntigravity(id: string, prompt: string, sessionId: string | nu
 }
 
 /** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
-export async function runAgent(id: string, stage: AgentStage, base: string, message?: string) {
+export async function runAgent(id: string, stage: AgentStage, base: string, message?: string, opts: { focus?: string[] } = {}) {
   const { state } = readState(id);
   const provider = state.agent.provider;
   const providerLabel = agentProviderLabel(provider);
-  const feedback = message ? recordFeedback(REPO, id, {
+  const focus: FocusItem[] = opts.focus?.length
+    ? readFeedback(REPO, id).filter((item: FocusItem) => opts.focus!.includes(item.id))
+    : [];
+  for (const item of focus) updateFeedback(REPO, id, item.id, { status: "planned" });
+  const feedback = message && !focus.length ? recordFeedback(REPO, id, {
     stage,
     source: "user",
     severity: "major",
     message,
     owner: "coding-agent",
   }) : null;
-  const prompt = message ? feedbackPrompt(id, stage, message) : stagePrompt(id, stage, base);
-  startJob(id, stage, { actor: provider, mode: "agent", label: message ? `${stage} feedback` : stage });
+  const prompt = focus.length ? focusPrompt(stage, focus, message) : message ? feedbackPrompt(id, stage, message) : stagePrompt(id, stage, base);
+  const fixing = focus.length ? `sửa ${focus.length} lỗi review` : message ? "sửa theo góp ý" : null;
+  startJob(id, stage, { actor: provider, mode: "agent", label: fixing ? `${stage} feedback` : stage });
   setStage(id, stage, "running");
   beginHarness(id, stage, "agent", HARNESS_STEPS[stage]);
-  stepStart(id, "agent", message ? `${providerLabel} · sửa theo góp ý` : providerLabel);
-  setProgress(id, null, message ? `${providerLabel} đang sửa theo góp ý…` : `${providerLabel} đang làm việc…`);
-  log(id, "system", message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
+  stepStart(id, "agent", fixing ? `${providerLabel} · ${fixing}` : providerLabel);
+  setProgress(id, null, fixing ? `${providerLabel} đang ${fixing}…` : `${providerLabel} đang làm việc…`);
+  log(id, "system", focus.length
+    ? `Góp ý gửi agent (${stage}) · ${providerLabel}: sửa ${focus.map((item) => `${item.scope || item.id} · ${item.code || item.severity}`).join(", ")}${message ? ` — ${short(message, 200)}` : ""}`
+    : message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
 
   const runner = { codex: runCodex, antigravity: runAntigravity, claude: runClaude }[provider] ?? runClaude;
   const result = await runner(id, prompt, state.agent.sessionId);
@@ -403,6 +426,9 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
   if (success) stepDone(id, "agent", [providerLabel, result.metrics.toolCalls ? `${result.metrics.toolCalls} thao tác` : ""].filter(Boolean).join(" · "));
   else stepError(id, "agent", failureMessage);
   if (success && feedback) updateFeedback(REPO, id, feedback.id, { status: "applied" });
+  // Picked findings wait for the review that runs next; one it still sees reopens (ledger), one it no
+  // longer sees is verified. A failed agent turn leaves them planned, so the user can send them again.
+  if (success) for (const item of focus) updateFeedback(REPO, id, item.id, { status: "applied" });
   if (success && stage === "cues") {
     try {
       await runCuesGate(id);

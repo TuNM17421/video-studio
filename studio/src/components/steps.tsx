@@ -825,7 +825,16 @@ export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       {!voiced && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tạo giọng đọc trước" />}
       {voiced && status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Bắt đầu dựng cảnh</Button></Empty>}
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
-      <HarnessPanel run={detail.harness.scenes} findings={detail.findings} qa={detail.qa} reviewEnabled={detail.state.review.enabled} blocking={detail.blocking.scenes} />
+      <HarnessPanel
+        run={detail.harness.scenes}
+        findings={detail.findings}
+        qa={detail.qa}
+        reviewEnabled={detail.state.review.enabled}
+        blocking={detail.blocking.scenes}
+        actions={voiced && ["review", "error"].includes(status) && !busy
+          ? { canFix: true, decide: (payload) => act(() => post(`/api/videos/${id}/findings`, payload)) }
+          : undefined}
+      />
       <AgentSummary logs={runLogs} />
       {detail.qa.length > 0 && <QaGallery paths={detail.qa} marks={findingMarks(detail.findings)} />}
       {(status === "review" || status === "done") && detail.state.stages.render !== "running" && <FeedbackBox disabled={busy} placeholder="Ví dụ: cảnh 12 đổi Gate sang StopGate; cảnh 20 chữ bị tràn khung…" onSend={(message) => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes", message }))} />}

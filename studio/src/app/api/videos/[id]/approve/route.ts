@@ -22,7 +22,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     // Say which ones: a bare count leaves the user nothing to act on.
     const list = blockers.map((item: { severity: string; scope?: string; code?: string; message: string }) =>
       `[${item.severity}]${item.scope ? ` ${item.scope}` : ""}${item.code ? ` · ${item.code}` : ""}: ${item.message.replace(/[.。]+$/, "")}`).join(" — ");
-    throw new HttpError(409, `Còn ${blockers.length} feedback blocker/major chưa xử lý: ${list}. Gửi góp ý để agent sửa; runner sẽ QA lại.`);
+    throw new HttpError(409, `Còn ${blockers.length} feedback blocker/major chưa xử lý: ${list}. Chọn Sửa hoặc Bỏ qua (kèm lý do) ở mục Kiểm tra tự động.`);
   }
   setStage(id, stage, "done");
   updateFeedbackWhere(

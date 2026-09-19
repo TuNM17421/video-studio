@@ -32,7 +32,7 @@ function usage(message) {
   node tools/video-workflow.mjs plan --video <id>
   node tools/video-workflow.mjs feedback list --video <id> [--json]
   node tools/video-workflow.mjs feedback add --video <id> --stage <stage> --message <text> [--severity blocker|major|minor] [--source user]
-  node tools/video-workflow.mjs feedback set --video <id> --id <feedback-id> --status open|planned|applied|verified|wontfix [--evidence <text>]
+  node tools/video-workflow.mjs feedback set --video <id> --id <feedback-id> --status open|planned|applied|verified|wontfix [--reason <text>] [--evidence <text>]
   node tools/video-workflow.mjs run start --video <id> --stage <stage> [--actor claude|codex|cli] [--model <name>]
   node tools/video-workflow.mjs run finish --video <id> --run-id <id> --status done|error [--error <text>]
 
@@ -94,7 +94,13 @@ if (command === "report") {
     const id = value("id");
     const status = value("status");
     if (!id || !["open", "planned", "applied", "verified", "wontfix"].includes(status)) usage("feedback set cần --id và --status hợp lệ.");
-    updateFeedback(repo, videoId, id, { status, evidence: value("evidence", "") });
+    const reason = value("reason", "");
+    if (status === "wontfix" && !reason.trim()) usage("Bỏ qua (wontfix) cần --reason — lý do được lưu lại trong ledger.");
+    updateFeedback(repo, videoId, id, {
+      status,
+      evidence: value("evidence", ""),
+      ...(status === "wontfix" ? { skipReason: reason.trim(), decidedBy: "cli", decidedAt: new Date().toISOString() } : {}),
+    });
     console.log(id);
   } else usage("Feedback action không hợp lệ.");
 } else if (command === "run") {
