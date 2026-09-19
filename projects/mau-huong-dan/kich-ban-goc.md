@@ -5,6 +5,7 @@
   Nội dung chính là năm bước đó, do linh vật Griffin kể.
 - **Thời lượng dự kiến:** khoảng bốn mươi giây.
 - **Giọng đọc:** Nhật Phong (giọng của Griffin, xem `npm run voices`).
+- **Linh vật:** Griffin dẫn — kể cả video bằng giọng của mình.
 - **Hình:** Griffin (component `Griffin`) có mặt ở cảnh mở và cảnh kết; các cảnh giữa là năm bước.
 
 ## 1 · Chào bạn

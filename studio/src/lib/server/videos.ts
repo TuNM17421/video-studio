@@ -261,6 +261,34 @@ function quizSection(enabled: boolean) {
   ];
 }
 
+/**
+ * Griffin is opt-in. The design system ships the component and the agent would otherwise be free to use it,
+ * so the request says so either way — on: how to place it; off: not at all.
+ */
+function mascotSection(enabled: boolean) {
+  if (!enabled) {
+    return [
+      "## Linh vật",
+      "",
+      "Video này **không** có linh vật: không dùng `Griffin` / `GriffinBadge`, không để Griffin nói (`speaker`).",
+      "",
+    ];
+  }
+  return [
+    "## Linh vật Griffin",
+    "",
+    "Video này có Griffin. Đầu kịch bản ghi vai (**Đi cùng** hoặc **Dẫn**); câu có dòng **Griffin** là câu có linh vật,",
+    "câu không có dòng đó thì không vẽ Griffin.",
+    "",
+    "- Vẽ bằng `Griffin` (cả con) hoặc `GriffinBadge` từ `components/mascot/` — dáng, biểu cảm, đạo cụ theo",
+    "  `Griffin.prompt.md`; đặt mỗi lần đổi đúng chữ kịch bản gắn vào bằng `spokenAt(n, cụm từ)`.",
+    "- Vai **Dẫn**: mọi câu trong `cues.js` khai `speaker: 'Griffin'` (giọng mượn qua nhân vật trong `voices.json`),",
+    "  như video mẫu `ui_kits/lesson-video/videos/mau-huong-dan/`. Vai **Đi cùng**: Griffin không nói.",
+    "- Chân Griffin ở y ≈ 930 để cả con nằm trong vùng nội dung; một Griffin mỗi cảnh; nhường chỗ ở cảnh dày chữ.",
+    "",
+  ];
+}
+
 export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
@@ -277,6 +305,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     "",
     ...moduleSections(r.modules),
     ...quizSection(r.modules.includes("quiz")),
+    ...mascotSection(r.modules.includes("mascot")),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

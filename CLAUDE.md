@@ -97,7 +97,7 @@ từng file, sửa thì add lại; phần nặng (`voice.wav`, MP4, ảnh QA) �
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
 quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ
-bản — hiện có `dialogue.md` và `quiz.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
+bản — hiện có `dialogue.md`, `quiz.md` và `mascot.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
 `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
 code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
@@ -131,6 +131,9 @@ Component `Griffin` / `GriffinBadge` (`components/mascot/`) vẽ linh vật từ
 `tools/griffin-assets.json`; đừng sửa tay. Bổ sung biểu cảm = thêm một dòng vào json, chạy lại script, `npm run
 media`, commit hai bảng + `media/manifest.json` (xem `assets/mascot/griffin/README.md`). Studio →
 **Thư viện · Mascot** (`/library/mascot`) xem thử bằng trang `demos/mascot.html` của design system.
+Griffin trong video là **năng lực chọn thêm** (`templates/modules/mascot.md`, card "Video có linh vật Griffin" ở
+bước Kế hoạch): bật thì kịch bản chọn vai *Đi cùng* hoặc *Dẫn* và đánh dấu câu nào có Griffin; tắt thì REQUEST.md
+ghi rõ không dùng `Griffin` / `GriffinBadge` — agent không tự thêm linh vật.
 
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),

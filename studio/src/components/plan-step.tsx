@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PlayCircleFilled, QuestionOutlined, TeamOutlined, WarningFilled } from "@ant-design/icons";
+import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PlayCircleFilled, QuestionOutlined, SmileOutlined, TeamOutlined, WarningFilled } from "@ant-design/icons";
 import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
@@ -100,7 +100,7 @@ function ModulePreview({ module: m }: { module: ModuleInfo }) {
 
 function ModuleGlyph({ icon }: { icon: ModuleInfo["icon"] }) {
   // A capability added as a template file may name an icon the form has no glyph for; it gets the generic one.
-  const glyph = icon === "dialogue" ? <MessageOutlined /> : icon === "quiz" ? <QuestionOutlined /> : <AppstoreOutlined />;
+  const glyph = icon === "dialogue" ? <MessageOutlined /> : icon === "quiz" ? <QuestionOutlined /> : icon === "mascot" ? <SmileOutlined /> : <AppstoreOutlined />;
   return <span className="vs-module-glyph" aria-hidden="true">{glyph}</span>;
 }
 
@@ -285,6 +285,9 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
             {/* A new tab, so the half-filled plan survives the look. */}
             {m.id === "dialogue" && <a className="vs-module-play" href="/library/characters" target="_blank" rel="noreferrer">
               <TeamOutlined /><span>Xem các nhân vật hiện có</span>
+            </a>}
+            {m.id === "mascot" && <a className="vs-module-play" href="/library/mascot" target="_blank" rel="noreferrer">
+              <SmileOutlined /><span>Xem dáng và biểu cảm của Griffin</span>
             </a>}
           </article>;
           })}

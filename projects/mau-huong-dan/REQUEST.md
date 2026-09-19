@@ -8,7 +8,12 @@
 - Video cũ: không có
 - Agent: Claude Code (dựng tay qua CLI, không qua Studio)
 - Phạm vi: dựng cảnh + QA, giọng đọc, render MP4, transcript, file chương
-- Bổ sung: không
+- Bổ sung: Video có linh vật Griffin
+
+## Mẫu kịch bản
+
+Kịch bản theo `templates/kich-ban-co-ban.md`.
+Có **Video có linh vật Griffin**: đọc thêm `templates/modules/mascot.md` — file đó chỉ ghi phần thêm so với mẫu cơ bản.
 
 ## Ghi chú
 

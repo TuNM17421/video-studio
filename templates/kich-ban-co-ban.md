@@ -11,6 +11,7 @@ Video cần thêm năng lực nào (nhiều người nói, câu hỏi có khoả
 |---|---|
 | Video có hội thoại | `templates/modules/dialogue.md` |
 | Video có quiz | `templates/modules/quiz.md` |
+| Video có linh vật Griffin | `templates/modules/mascot.md` |
 
 Viết đúng mẫu thì pipeline nhận được ngay. Viết sai thì `--dry-run` báo lỗi trước khi tốn một ký tự credit.
 
