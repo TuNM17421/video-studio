@@ -7,13 +7,18 @@ Sinh từ bộ ảnh gốc của nhóm thiết kế (`VinUni_Griffin_Transparent
 uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <thư mục bộ gốc>
 ```
 
+**Ảnh nào là tư thế × biểu cảm nào** khai trong `tools/griffin-assets.json`. Script dựng ảnh và sinh luôn
+`components/mascot/griffinPoses.js` (cỡ ảnh, biểu cảm đã có) — component đọc bảng đó, nên:
+
+- **Thêm biểu cảm cho một tư thế** (vd. `wave` buồn): thêm `"sad": "<đường dẫn ảnh>"` vào `moods` của tư thế
+  đó, chạy lại script, `npm run build`. Không sửa code.
+- **Thêm tư thế mới**: thêm một mục vào `poses` (kèm `hx` — tâm đầu theo bề ngang ảnh), chạy lại script, rồi
+  thêm tên vào kiểu `GriffinPose` trong `Griffin.d.ts` và tài liệu `Griffin.prompt.md`.
+- Biểu cảm đầu tiên trong `moods` là ảnh gốc để căn các ảnh khác, và là ảnh mặc định của tư thế.
+
 | File | Nguồn trong bộ gốc |
 |---|---|
-| `stand-<mood>.png` | `griffin_generated_images/03–09` (đứng, cánh xếp) |
-| `sit-<mood>.png` | `griffin_generated_images(1)/…/08–14` (ngồi) |
-| `wings-<mood>.png` | `griffin_mascot_generated_images/02–08` (cánh giơ cao) |
-| `turn-<mood>.png` | `griffin_mascot_all_generated/04–11` (ba phần tư; ảnh vẽ ngược chiều đã được lật) |
-| `gesture-<tên>.png` | `griffin_generated_images(1)/…/01, 03–07` (cheer, walk-left, walk-right, welcome, wave, rest) |
+| `<tư thế>-<mood>.png` | theo `tools/griffin-assets.json`: stand · sit · wings · turn đủ 7 biểu cảm; cheer · welcome · wave · rest · walk-left · walk-right mới có `neutral` (ảnh vẽ ngược chiều được tự lật) |
 | `face-<mood>.png` | cắt vuông từ `stand-<mood>`, nền `C.bgAlt` — avatar cho `DialogueCard` |
 | `badge-<mood>.png` | `02_faces/face_*` (`angry` → `stern`) — mặt của `GriffinBadge` |
 | `lightbulb.png`, `question_mark.png`… | `08_accessories_props/`, cắt sát; `!` và `?` được vẽ thêm dấu chấm (bộ gốc thiếu) |

@@ -1,8 +1,8 @@
 import type { FC } from 'react';
 
-/** Expression sets (carry `mood`): stand · sit · wings (wings raised) · turn (three-quarter, wings open). */
+/** Drawn with all seven moods: stand · sit · wings (wings raised) · turn (three-quarter, wings open). */
 export type GriffinSetPose = 'stand' | 'sit' | 'wings' | 'turn';
-/** Single-picture gestures (one face each, `mood` does not apply). */
+/** Gestures — drawn so far with one mood (neutral); more are added in tools/griffin-assets.json. */
 export type GriffinGesture = 'wave' | 'welcome' | 'cheer' | 'rest' | 'walk-left' | 'walk-right';
 export type GriffinPose = GriffinSetPose | GriffinGesture;
 /** `angry` is accepted as an alias of `stern`. */
@@ -23,7 +23,10 @@ export interface GriffinProps {
   h?: number;
   /** One pose, or steps on beats — each change is a hard cut under a small squash. Default 'stand'. */
   pose?: GriffinPose | readonly GriffinStep<GriffinPose>[];
-  /** Face of the expression sets — one mood, or steps on beats (cut + squash). Default 'neutral'. */
+  /**
+   * One mood, or steps on beats (cut + squash). Default 'neutral'. A mood the current pose is not drawn
+   * with shows that pose's default picture instead (see GRIFFIN_POSE_MOODS).
+   */
   mood?: GriffinMood | readonly GriffinStep<GriffinMood>[];
   /** Mirror left–right. */
   flip?: boolean;
@@ -65,10 +68,12 @@ export declare const GriffinBadge: FC<GriffinBadgeProps>;
 
 /**
  * Ready URL of one picture in the pack: `face-<mood>` (square avatar, e.g. for DialogueCard),
- * `<set>-<mood>`, `gesture-<name>`, or a prop file.
+ * `<pose>-<mood>` (only moods in GRIFFIN_POSE_MOODS exist), `badge-<mood>`, or a prop file.
  */
 export declare function griffinAsset(name: string, base?: string): string;
 
 export declare const GRIFFIN_POSES: readonly GriffinPose[];
 export declare const GRIFFIN_MOODS: readonly Exclude<GriffinMood, 'angry'>[];
 export declare const GRIFFIN_PROPS: readonly GriffinProp[];
+/** The moods each pose is drawn with, default first — generated with the pictures. */
+export declare const GRIFFIN_POSE_MOODS: Readonly<Record<GriffinPose, readonly Exclude<GriffinMood, 'angry'>[]>>;

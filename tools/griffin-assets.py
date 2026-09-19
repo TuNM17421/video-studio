@@ -2,10 +2,11 @@
 
   uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <art pack folder> [out folder]
 
-Every expression set is registered onto its calm picture (scale + shift, legs weighted over the head,
-mirrored when a picture was drawn facing the other way), so a mood change swaps the picture in place.
-Each set shares one canvas cropped to the union of its drawings, 820 px tall, feet on the bottom edge.
-Gestures are single pictures on the same 820 px scale; face-<mood>.png are square avatars cut from `stand`;
+Which picture is which pose × mood lives in tools/griffin-assets.json. Within a pose every picture is
+registered onto the first one (scale + shift, legs weighted over the head, mirrored when a picture was
+drawn facing the other way), so a mood change swaps the picture in place. A pose shares one canvas cropped
+to the union of its drawings, 820 px tall, feet on the bottom edge → <pose>-<mood>.png, and the widths go to
+components/mascot/griffinPoses.js (generated). face-<mood>.png are square avatars cut from `stand`;
 badge-<mood>.png are the head-only drawings of 02_faces (GriffinBadge).
 Output is a 256-colour palette PNG (flat cartoon colours: visually lossless, ~4x smaller).
 Props come from 08_accessories_props, trimmed; `!` and `?` get the dot the pack's drawings are missing.
@@ -16,27 +17,12 @@ from PIL import Image
 from scipy.signal import fftconvolve
 
 SRC = sys.argv[1]
-OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(__file__), '../vinuni-lesson-video-ds/assets/mascot/griffin')
+HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, '../vinuni-lesson-video-ds/assets/mascot/griffin')
+TABLE = os.path.join(HERE, '../vinuni-lesson-video-ds/components/mascot/griffinPoses.js')
 OUT_H = 820
-G1 = f'{SRC}/griffin_generated_images'
-G2 = f'{SRC}/griffin_generated_images(1)/griffin_generated_images'
-G3 = f'{SRC}/griffin_mascot_all_generated'
-G4 = f'{SRC}/griffin_mascot_generated_images'
-MOODS = ['neutral', 'happy', 'wink', 'surprised', 'thinking', 'sad', 'stern']
-SETS = {
-    'stand': [f'{G1}/{f}' for f in ['03_calm', '04_happy', '05_wink', '06_surprised', '07_looking_up', '08_sad_looking_down', '09_stern_serious']],
-    'sit': [f'{G2}/{f}' for f in ['08_expression_calm', '09_expression_happy_eyes_closed', '10_expression_wink', '11_expression_surprised', '12_expression_looking_up_side', '13_expression_sad_looking_down', '14_expression_stern_serious']],
-    'wings': [f'{G4}/{f}' for f in ['02_calm_open_eyes', '03_happy_closed_eyes', '04_wink_smile', '05_surprised_wide_eyes', '06_looking_up_side', '07_sad_looking_down', '08_stern_serious']],
-    'turn': [f'{G3}/{f}' for f in ['04_calm_eyes', '05_happy_closed_eyes', '06_wink', '08_surprised_wide_eyes', '09_looking_up_side', '10_sad_looking_down', '11_stern_serious']],
-}
-GESTURES = {
-    'cheer': f'{G2}/01_wings_up_cheerful',
-    'walk-left': f'{G2}/03_three_quarter_left_walking',
-    'walk-right': f'{G2}/04_three_quarter_right_walking',
-    'welcome': f'{G2}/05_front_wings_spread_welcoming',
-    'wave': f'{G2}/06_front_right_wing_wave',
-    'rest': f'{G2}/07_sitting_wings_folded_tail_right',
-}
+CONFIG = json.load(open(os.path.join(HERE, 'griffin-assets.json'), encoding='utf-8'))
+MOODS = CONFIG['moods']
 
 SMALL = 300  # registration resolution (longest side)
 
@@ -106,9 +92,15 @@ def finish(images, names, outdir, prefix):
 
 
 os.makedirs(OUT, exist_ok=True)
-meta = {'sets': {}, 'gestures': {}}
-for name, files in SETS.items():
+poses = {}
+for name, pose in CONFIG['poses'].items():
+    moods = list(pose['moods'])
+    unknown = [m for m in moods if m not in MOODS]
+    if unknown:
+        sys.exit(f'{name}: biểu cảm lạ {unknown} — chỉ dùng {MOODS}')
+    files = [f"{SRC}/{pose['moods'][m]}" for m in moods]
     ims = [load(f) for f in files]
+    # the first mood is the reference the others are registered onto
     ref = ims[0]
     pad = 80
     size = (ref.width + 2 * pad, ref.height + 2 * pad)
@@ -122,14 +114,22 @@ for name, files in SETS.items():
             (iou, s, dx, dy), im = alt, flipped
             f += ' (lật)'
         placed.append(place(im, s, dx + pad, dy + pad, size))
-        report.append(f'{os.path.basename(f)[:22]} s={s:.3f} dx={dx:.0f} dy={dy:.0f} iou={iou:.3f}')
-    sz = finish(placed, MOODS, OUT, f'{name}-')
-    meta['sets'][name] = sz
-    print(name, sz, *report, sep='\n  ')
-for name, f in GESTURES.items():
-    im = load(f)
-    sz = finish([im], [name], OUT, 'gesture-')
-    meta['gestures'][name] = sz
+        report.append(f'{os.path.basename(f)[:28]} s={s:.3f} dx={dx:.0f} dy={dy:.0f} iou={iou:.3f}')
+    w, _ = finish(placed, moods, OUT, f'{name}-')
+    poses[name] = {'w': w, 'hx': pose['hx'], 'moods': moods, **({'walk': True} if pose.get('walk') else {})}
+    print(name, f'{w}×{OUT_H}', ', '.join(moods), *report, sep='\n  ')
+
+# the pose table the component reads — generated, so adding a mood never means editing Griffin.jsx
+lines = [f'  {json.dumps(k) if "-" in k else k}: {json.dumps(v, separators=(", ", ": "))},' for k, v in poses.items()]
+with open(TABLE, 'w', encoding='utf-8') as fh:
+    fh.write(
+        '// Generated by tools/griffin-assets.py from tools/griffin-assets.json — do not edit by hand.\n'
+        '// Each picture is assets/mascot/griffin/<pose>-<mood>.png, ' + str(OUT_H) + ' px tall (crest on the top edge, feet on the\n'
+        '// bottom edge). w = its width · hx = head centre as a share of it · moods = the ones drawn, the first\n'
+        '// being the default when a scene asks for one the pose does not have · walk = steps on its own.\n'
+        f'export const PIC_H = {OUT_H};\n\nexport const POSES = {{\n' + '\n'.join(lines) + '\n};\n'
+    )
+
 # square avatars (DialogueCard, GriffinBadge) cut from the stand set, on the card fill (C.bgAlt)
 for m in MOODS:
     im = Image.open(f'{OUT}/stand-{m}.png').convert('RGBA')
@@ -170,5 +170,3 @@ for name in PROPS:
         ImageDraw.Draw(dot).ellipse(box, fill=(244, 58, 58, 255), outline=(150, 20, 22, 255), width=round(2 * k))
         im = Image.alpha_composite(canvas, dot.resize(canvas.size, Image.LANCZOS))
     im.save(f'{OUT}/{name}.png', optimize=True)
-# widths go into POSES in components/mascot/Griffin.jsx
-print(json.dumps(meta))

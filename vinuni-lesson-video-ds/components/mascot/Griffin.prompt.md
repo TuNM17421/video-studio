@@ -28,7 +28,7 @@ tối đa một Griffin.
 - **Dáng có biểu cảm** (`mood` đổi mặt ngay trên thân): `stand` (đứng, cánh xếp) · `sit` (ngồi) · `wings`
   (đứng, hai cánh giơ cao) · `turn` (ba phần tư, cánh mở — các biểu cảm của bộ này lệch dáng nhau nhiều hơn,
   đổi mặt trông như một cử động nhỏ).
-- **Động tác** (một ảnh, không nhận `mood`): `wave` (giơ cánh phải — thay cho "giơ tay"), `welcome` (dang
+- **Động tác** (hiện mới vẽ một biểu cảm — `neutral`, vui mắt mở): `wave` (giơ cánh phải — thay cho "giơ tay"), `welcome` (dang
   cánh chào đón), `cheer` (hai cánh giơ, vui), `rest` (ngồi nghỉ), `walk-left` / `walk-right` (đi chéo —
   tự nhún nhịp bước; tự dịch `x` bằng `interpolate` để đi vào khung).
 - `mood`: `neutral` `happy` `wink` `surprised` `thinking` (nhìn lên) `sad` `stern` (`angry` = `stern`).
@@ -36,6 +36,10 @@ tối đa một Griffin.
 - Chuyển động: `enter` (bật vào), `motion` `idle` / `float` / `none`, `hops`, `tilt`, `flip`.
 
 `pose`, `mood`, `prop` nhận một tên hoặc danh sách `{ at, name }`. Đặt `at` bằng `spokenAt(n, phrase)`.
+
+Tư thế nào có biểu cảm nào: `GRIFFIN_POSE_MOODS` (sinh cùng ảnh). Gọi một biểu cảm tư thế chưa có thì hiện
+ảnh mặc định của tư thế đó, không lỗi và không có nhát cắt — nên có thể khai `mood` cho cả cảnh rồi đổi
+`pose` tự do; khi bộ ảnh bổ sung biểu cảm cho tư thế, cảnh cũ tự dùng ảnh mới.
 
 ## Ràng buộc
 

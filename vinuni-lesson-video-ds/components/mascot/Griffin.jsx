@@ -1,13 +1,16 @@
 import React from 'react';
 import { C } from '../../lib/tokens.js';
 import { appear, fade, popScale } from '../../lib/motion.js';
+import { PIC_H, POSES } from './griffinPoses.js';
 
 /**
  * Griffin — the VinUni mascot (bản 2: whole-body pictures, one per pose × mood).
  *
- * Four poses come as expression sets — the same body drawn with seven faces — and six gestures come as
- * single pictures. The set pictures were registered onto each other (scale + shift, legs weighted) and
- * share one canvas, so a mood change swaps the picture in place. They are still separate drawings, not a
+ * Every pose is drawn with some of the seven moods — the four sets with all of them, the gestures so far
+ * with one. Which exist is in griffinPoses.js, generated with the pictures by tools/griffin-assets.py; a
+ * mood a pose does not have falls back to that pose's default picture. Within a pose the pictures were
+ * registered onto each other (scale + shift, legs weighted) and share one canvas, so a mood change swaps
+ * the picture in place. They are still separate drawings, not a
  * rig: a crossfade would show two outlines, so every change is a hard cut hidden under a small squash —
  * which reads as the mascot reacting.
  *
@@ -27,24 +30,6 @@ const DEFAULT_BASE = BUNDLE_SRC ? new URL('../assets/mascot/griffin/', BUNDLE_SR
 /** Ready URL of one Griffin picture: griffinAsset('face-happy') is a square avatar for DialogueCard. */
 export const griffinAsset = (name, base = DEFAULT_BASE) => `${base}${name}.png`;
 
-/**
- * Every picture is 820 px tall, crest at the top edge and feet on the bottom edge. `w` is its width;
- * `hx` the head centre as a fraction of it. `moods` = an expression set; otherwise a single gesture.
- */
-const POSES = {
-  stand: { w: 548, hx: 0.59, moods: true },
-  sit: { w: 647, hx: 0.4, moods: true },
-  wings: { w: 711, hx: 0.52, moods: true },
-  turn: { w: 822, hx: 0.38, moods: true },
-  cheer: { w: 725, hx: 0.5 },
-  welcome: { w: 766, hx: 0.5 },
-  wave: { w: 610, hx: 0.46 },
-  rest: { w: 550, hx: 0.42 },
-  'walk-left': { w: 798, hx: 0.35, walk: true },
-  'walk-right': { w: 778, hx: 0.62, walk: true },
-};
-const PIC_H = 820;
-
 /** Mood names; `angry` is kept as an alias of `stern` (bản 1 called it that). */
 const MOODS = ['neutral', 'happy', 'wink', 'surprised', 'thinking', 'sad', 'stern'];
 const moodName = (m) => (m === 'angry' ? 'stern' : MOODS.includes(m) ? m : 'neutral');
@@ -62,6 +47,8 @@ const PROPS = {
 
 export const GRIFFIN_POSES = Object.keys(POSES);
 export const GRIFFIN_MOODS = MOODS;
+/** The moods each pose is drawn with: { stand: ['neutral', …], wave: ['neutral'], … }. */
+export const GRIFFIN_POSE_MOODS = Object.fromEntries(Object.entries(POSES).map(([k, v]) => [k, v.moods]));
 export const GRIFFIN_PROPS = Object.keys(PROPS);
 
 /** `value` is a name, or a list of { at, name } steps (at = scene frame). → [{ at, name }] sorted. */
@@ -84,8 +71,12 @@ function stepOpacity(list, i, frame, span) {
   return Math.min(inOp, outOp);
 }
 
-/** The picture for a pose + mood: sets carry the mood, gestures have one face. */
-const pictureOf = (pose, mood) => (POSES[pose].moods ? `${pose}-${moodName(mood)}` : `gesture-${pose}`);
+/** The picture for a pose + mood; a mood the pose is not drawn with falls back to its default (first). */
+function pictureOf(pose, mood) {
+  const drawn = POSES[pose].moods;
+  const m = moodName(mood);
+  return `${pose}-${drawn.includes(m) ? m : drawn[0]}`;
+}
 
 /** Squash 0→1→0 over 8 frames after each cut: it hides the swap and reads as a reaction. */
 function squashAt(frame, cuts) {
@@ -149,7 +140,9 @@ export function Griffin({
         ? -Math.abs(Math.sin((frame / 14) * Math.PI)) * h * 0.025
         : 0;
   const hop = hopAt(frame, hops, h * 0.12);
-  const cuts = [...poses, ...(P.moods ? moods : [])].map((c) => c.at).filter((at) => at > 0);
+  // a cut is any step where the picture really changes (a mood the pose lacks changes nothing)
+  const pictureAt = (f) => pictureOf(current(poses, f).name, current(moods, f).name);
+  const cuts = [...poses, ...moods].map((c) => c.at).filter((at) => at > 0 && pictureAt(at) !== pictureAt(at - 1));
   const q = squashAt(frame, cuts);
   const sy = (1 + breathe * 0.012 - hop.squash * 0.06 - q * 0.05) * s;
   const sx = (1 - breathe * 0.004 + hop.squash * 0.04 + q * 0.03) * s;
@@ -165,7 +158,7 @@ export function Griffin({
   // Every picture this Griffin will ever show is in the page from frame 0 (1 px, invisible), so the
   // render never paints a frame on which the next picture has not loaded yet.
   const all = new Set();
-  for (const p of poses) for (const m of POSES[p.name].moods ? moods : [{ name: '' }]) all.add(pictureOf(p.name, m.name));
+  for (const p of poses) for (const m of moods) all.add(pictureOf(p.name, m.name));
   const shown = pictureOf(nowPose, nowMood);
 
   const props = steps(prop);
