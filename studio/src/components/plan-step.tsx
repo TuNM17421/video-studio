@@ -233,7 +233,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   };
   return <div ref={formRef}><Form className="vs-plan-form" layout="vertical" requiredMark={false} aria-busy={loading} onFinish={() => { void submit(); }}>
     <div className="vs-section">
-      <Form.Item className="vs-style-form-item" label={<span id={styleLabelId} className="vs-section-title">Style hình ảnh<RequiredMark /></span>}>
+      <Form.Item className="vs-style-form-item" data-tour="plan.style" label={<span id={styleLabelId} className="vs-section-title">Style hình ảnh<RequiredMark /></span>}>
         {loading
           ? <div className="vs-inline-state" role="status"><LoadingOutlined spin /><span>Đang tải style và cấu hình agent…</span></div>
           : unavailable
@@ -241,7 +241,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
             : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
       {style && <StyleShowcase style={style} collapsible />}
-      <section className="vs-capabilities" aria-labelledby="vs-capabilities-title">
+      <section className="vs-capabilities" data-tour="plan.modules" aria-labelledby="vs-capabilities-title">
         <div className="vs-capabilities-head">
           <h3 id="vs-capabilities-title" className="vs-section-title">Tính năng nội dung</h3>
           <p>Có thể chọn nhiều. Mỗi tính năng mở đúng phần cấu hình liên quan.</p>
@@ -278,7 +278,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
     <div className="vs-section">
       <h3 className="vs-section-title">Nội dung video</h3>
       <div className="field-grid vs-grid-3">
-        <Form.Item className="field" label={<span className="vs-field-label">Mã video<RequiredMark /></span>} validateStatus={shownIdError ? "error" : checkingId ? "validating" : touched.id && idCheck?.value === draft.id ? "success" : undefined} help={(shownIdError || checkingId || (touched.id && idCheck?.value === draft.id && !idCheck.taken)) ? <span id={idErrorId} className={`vs-validation-message ${shownIdError ? "is-error" : checkingId ? "is-checking" : "is-ok"}`} role={shownIdError ? "alert" : "status"}>{shownIdError ? <WarningFilled /> : checkingId ? <LoadingOutlined spin /> : <CheckCircleFilled />}{shownIdError || (checkingId ? "Đang kiểm tra mã…" : "Mã này có thể sử dụng.")}</span> : undefined}>
+        <Form.Item className="field" data-tour="plan.id" label={<span className="vs-field-label">Mã video<RequiredMark /></span>} validateStatus={shownIdError ? "error" : checkingId ? "validating" : touched.id && idCheck?.value === draft.id ? "success" : undefined} help={(shownIdError || checkingId || (touched.id && idCheck?.value === draft.id && !idCheck.taken)) ? <span id={idErrorId} className={`vs-validation-message ${shownIdError ? "is-error" : checkingId ? "is-checking" : "is-ok"}`} role={shownIdError ? "alert" : "status"}>{shownIdError ? <WarningFilled /> : checkingId ? <LoadingOutlined spin /> : <CheckCircleFilled />}{shownIdError || (checkingId ? "Đang kiểm tra mã…" : "Mã này có thể sử dụng.")}</span> : undefined}>
           <Input ref={idInput} status={shownIdError ? "error" : undefined} aria-invalid={!!shownIdError || undefined} aria-describedby={shownIdError || checkingId ? idErrorId : undefined} value={draft.id} disabled={busy} maxLength={61} onBlur={() => { setTouched((current) => ({ ...current, id: true })); void checkVideoId(draft.id); }} onChange={(e) => { setIdCheck(null); setDraft((current) => ({ ...current, id: e.target.value })); }} placeholder="d2-01-lab-v3" spellCheck={false} autoComplete="off" />
         </Form.Item>
         <Form.Item className="field" label={<span className="vs-field-label">Ngày<RequiredMark /></span>}>
@@ -288,7 +288,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
           <Input value={draft.request.title} disabled={busy} maxLength={200} onChange={(e) => set({ title: e.target.value })} />
         </Form.Item>
       </div>
-      <Form.Item className="field vs-script-field" label={<span id={scriptLabelId} className="vs-field-label">Kịch bản<RequiredMark /></span>} validateStatus={shownScriptError ? "error" : undefined} help={shownScriptError ? <span id={scriptErrorId} className="vs-validation-message is-error" role="alert"><WarningFilled />{shownScriptError}</span> : undefined}>
+      <Form.Item className="field vs-script-field" data-tour="plan.script" label={<span id={scriptLabelId} className="vs-field-label">Kịch bản<RequiredMark /></span>} validateStatus={shownScriptError ? "error" : undefined} help={shownScriptError ? <span id={scriptErrorId} className="vs-validation-message is-error" role="alert"><WarningFilled />{shownScriptError}</span> : undefined}>
         {draft.script
           ? <div className="vs-file"><FileTextOutlined /><span><strong>{draft.script.name}</strong><small>{draft.script.content.length.toLocaleString("vi-VN")} ký tự · {draft.script.content.split("\n")[0].slice(0, 90)}</small></span><Upload {...uploadProps}><Button type="link" disabled={busy}>Đổi tệp</Button></Upload></div>
           : <Upload.Dragger {...uploadProps} className={`vs-drop ${shownScriptError ? "is-invalid" : ""}`}>
@@ -325,7 +325,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
     </div>
     <div className="panel-footer">
       <span className="field-hint" aria-live="polite">{footerHint}</span>
-      <Button type="primary" htmlType="submit" loading={loading || (busy && !unavailable) || validating} disabled={busy || validating} icon={!busy && !validating ? <PlayCircleFilled /> : undefined}>{loading ? "Đang tải cấu hình…" : unavailable ? "Chưa thể tạo video" : busy ? "Đang tạo video…" : validating ? "Đang kiểm tra…" : "Tạo video và chạy agent"}</Button>
+      <Button type="primary" htmlType="submit" data-tour="plan.submit" loading={loading || (busy && !unavailable) || validating} disabled={busy || validating} icon={!busy && !validating ? <PlayCircleFilled /> : undefined}>{loading ? "Đang tải cấu hình…" : unavailable ? "Chưa thể tạo video" : busy ? "Đang tạo video…" : validating ? "Đang kiểm tra…" : "Tạo video và chạy agent"}</Button>
     </div>
   </Form></div>;
 }

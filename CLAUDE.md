@@ -78,6 +78,12 @@ cho màu, bộ chữ, token bố cục, mức nhấn của luồng sản xuất 
 Lưu ý: đây là design system **của giao diện Studio**, khác với design system của video bài giảng
 (`vinuni-lesson-video-ds/lib/tokens.js`, 9 màu, dùng khi dựng cảnh). Đừng lẫn hai bên.
 
+### Tour hướng dẫn (Griffin dẫn đường)
+Lời thoại và điểm chỉ của tour nằm ở `studio/src/lib/tours.ts` (dữ liệu thuần); `components/tour.tsx` chạy
+bằng antd `Tour`, tìm phần tử theo `data-tour="…"` (đừng chỉ bằng class CSS), bỏ bước không có trên màn
+hình, nhớ "đã xem" theo `version` trong localStorage. Sửa lời một tour thì tăng `version`. Tour chỉ **chỉ
+vào** nút tốn credit / chạy agent, không bao giờ bấm hộ. Nút Griffin ở góc phải mở lại tour của trang.
+
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
 quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ

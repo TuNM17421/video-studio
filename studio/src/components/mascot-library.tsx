@@ -1,23 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Checkbox, Radio, Segmented, Select, Typography } from "antd";
 import { dsUrl } from "@/lib/client";
+import { mascotAsset, useMascotTable } from "@/lib/mascot";
 import styles from "./library.module.css";
-
-/** assets/mascot/griffin/poses.json — written by tools/griffin-assets.py; the pictures themselves are on R2. */
-type MascotTable = {
-  /** Public folder of the pictures on the media store (R2); `files` maps a picture to its fingerprinted name. */
-  base: string;
-  files: Record<string, string>;
-  moods: Record<string, string>;
-  poses: Record<string, { label: string; group: string; w: number; hx: number; moods: string[]; walk?: boolean }>;
-  props: Record<string, { label: string; file: string; w: number; h: number; k?: number }>;
-};
 
 type Motion = "idle" | "float" | "none";
 
-const TABLE = "assets/mascot/griffin/poses.json";
 const MOTIONS: { value: Motion; label: string }[] = [
   { value: "idle", label: "Thở" },
   { value: "float", label: "Bồng bềnh" },
@@ -41,8 +31,7 @@ function snippet(pose: string, mood: string, prop: string, motion: Motion, hop: 
  * the props come from poses.json, so a mood the designers add shows up here with no Studio change.
  */
 export function MascotLibrary() {
-  const [table, setTable] = useState<MascotTable | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { table, error } = useMascotTable();
   const [pose, setPose] = useState("stand");
   const [mood, setMood] = useState("happy");
   const [prop, setProp] = useState("");
@@ -50,19 +39,12 @@ export function MascotLibrary() {
   const [hop, setHop] = useState(true);
   const stage = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch(dsUrl(TABLE))
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
-      .then(setTable)
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
-
   const moods = useMemo(() => Object.entries(table?.moods ?? {}), [table]);
   const poses = useMemo(() => Object.entries(table?.poses ?? {}), [table]);
   const groups = useMemo(() => [...new Set(poses.map(([, p]) => p.group))], [poses]);
   const drawn = poses.reduce((n, [, p]) => n + p.moods.length, 0);
   const current = table?.poses[pose];
-  const asset = (name: string) => (table ? `${table.base}${table.files[name] ?? `${name}.png`}` : "");
+  const asset = (name: string) => (table ? mascotAsset(table, name) : "");
   const moodDrawn = !current || current.moods.includes(mood);
   const hash = new URLSearchParams({ pose, mood, prop: prop || "none", motion, hop: hop ? "1" : "0" });
   const code = snippet(pose, mood, prop, motion, hop);
