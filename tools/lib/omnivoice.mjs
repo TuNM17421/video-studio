@@ -16,6 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAlign, venvPython as alignPython } from './voice-align.mjs';
 import { AUDIO_EXT, isAudioFile } from './voice-files.mjs';
+import { mediaUrl } from './media.mjs';
 import { castSpeaker, readVoices, resolveVoice, speedFor } from './voices.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -183,13 +184,19 @@ export function castLocal(cues, { voice = '', speakers = {} } = {}) {
     let who = null;
     let character = null;
     if (speaker) {
+      character = characterFor(speaker);
       try {
         who = castSpeaker(speaker);
       } catch (error) {
-        role.error = error instanceof Error ? error.message : String(error);
-        return role;
+        // A character listed without a voice yet (voices.json `"voice": null`) can still be read here when
+        // the member hands it one (--speaker "Tú=<giọng|file>"); without that it stays an error below.
+        if (!character || character.voice) {
+          role.error = error instanceof Error ? error.message : String(error);
+          return role;
+        }
+        const alias = (character.aliases || []).find((a) => norm(a) === norm(speaker));
+        who = { name: alias || character.name, voice: null, avatar: mediaUrl(character.avatar), side: character.side || 'left', tone: character.tone || 'accent', speed: character.speed ?? 1 };
       }
-      character = characterFor(speaker);
       Object.assign(role, {
         name: who.name,
         character: character?.id || null,
@@ -215,6 +222,10 @@ export function castLocal(cues, { voice = '', speakers = {} } = {}) {
       role.source = 'file';
       role.file = path.resolve(wanted);
       role.voiceName = path.basename(role.file);
+      return role;
+    }
+    if (!wanted && character && !character.voice) {
+      role.error = `nhân vật "${character.name}" chưa được gán giọng trong voices.json — chọn một giọng hoặc một file mẫu cho vai này.`;
       return role;
     }
     const picked = wanted ? resolveVoice(wanted) : who?.voice || voices.find((v) => v.default) || null;

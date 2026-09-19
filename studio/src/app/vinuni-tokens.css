@@ -107,6 +107,7 @@
   --vu-duration-fast: 120ms;
   --vu-duration-normal: 180ms;
   --vu-duration-slow: 240ms;
+  --vu-duration-idle: 2200ms;
   --vu-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /* Semantic aliases — use these in product UI. */
@@ -168,6 +169,10 @@
   --vu-capability-card-min-height: 148px;
   --vu-capability-card-padding: var(--vu-space-4);
   --vu-preview-panel-width: 296px;
+  --vu-mascot-cell: 84px;
+  --vu-tour-panel: 440px;
+  --vu-tour-mascot: 104px;
+  --vu-tour-launcher: 56px;
   --vu-emphasis-active: 1;
   --vu-emphasis-complete: 0.7;
   --vu-emphasis-future: 0.35;

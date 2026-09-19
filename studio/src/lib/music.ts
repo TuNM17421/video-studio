@@ -14,6 +14,8 @@ export interface MusicTrack {
   summary: string;
   /** Public URL on the media bucket, or null when the manifest does not list the key yet. */
   url: string | null;
+  /** The bed a new video starts with (music.json `"default": true`). */
+  isDefault?: boolean;
 }
 
 export interface MusicCatalog {

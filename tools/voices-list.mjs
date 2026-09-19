@@ -29,10 +29,10 @@ if (!voices.length) {
 if (characters.length) {
   console.log(`\nNHÂN VẬT — ${characters.length} vai, đây là tên kịch bản phải dùng ở \`speaker\`\n`);
   for (const c of characters) {
-    const voice = voices.find((v) => v.id === c.voice || v.name === c.voice);
+    const voice = c.voice ? voices.find((v) => v.id === c.voice || v.name === c.voice) : null;
     const alias = (c.aliases || []).length ? ` · biệt danh: ${c.aliases.join(', ')}` : '';
     console.log(`  ${c.name}  (id: ${c.id}${alias})`);
-    console.log(`    giọng   ${voice ? voice.name : `?? ${c.voice}`}`);
+    console.log(`    giọng   ${voice ? voice.name : c.voice ? `?? ${c.voice}` : '(chưa gán — chưa dùng được trong kịch bản)'}`);
     console.log(`    ${[c.side === 'right' ? 'đứng phải' : 'đứng trái', `màu ${c.tone || 'accent'}`].join(' · ')}`);
     console.log(`    mặt    ${sampleUrl(c.avatar)}\n`);
   }
@@ -40,7 +40,7 @@ if (characters.length) {
 
 // Hai vai chung một giọng thì người xem nghe hai người nói y hệt nhau — nói ngay ở chỗ dev thêm vai.
 const byVoice = new Map();
-for (const c of characters) byVoice.set(c.voice, [...(byVoice.get(c.voice) || []), c.name]);
+for (const c of characters.filter((x) => x.voice)) byVoice.set(c.voice, [...(byVoice.get(c.voice) || []), c.name]);
 for (const [voice, names] of byVoice) {
   if (names.length > 1) {
     const label = voices.find((v) => v.id === voice)?.name || voice;

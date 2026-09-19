@@ -10,18 +10,21 @@ export const PRODUCTION_STATE_COPY: Record<StageStatus, { label: string; detail:
   error: { label: "Cần xử lý", detail: "Tác vụ dừng; mở nhật ký để sửa nguyên nhân." },
 };
 
-export function ProductionState({ status, title, detail, action, className }: {
+export function ProductionState({ status, title, detail, action, className, tour }: {
   status: StageStatus;
   title?: ReactNode;
   detail?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** `data-tour` anchor for the onboarding tour (lib/tours.ts). */
+  tour?: string;
 }) {
   const copy = PRODUCTION_STATE_COPY[status];
   const message = detail === undefined ? copy.detail : detail;
   return <div
     className={[styles.state, styles[status], className].filter(Boolean).join(" ")}
     data-production-state={status}
+    data-tour={tour}
     role={status === "error" ? "alert" : "status"}
   >
     <span className={styles.dot} aria-hidden="true" />

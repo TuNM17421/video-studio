@@ -322,6 +322,11 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | table | `DataTable` | bảng hiện từng hàng, ô trạng thái (đạt · chặn · chờ · chưa thử · lỗi), cột TRƯỚC/SAU |
 | context | `Envelope`, `ContextBudget`, `ContextTray`, `FilingCabinet` | gói gửi đi / không gửi, thanh ngân sách ngữ cảnh có phần dư, khay ngữ cảnh, tủ hồ sơ ngoài |
 | figures | `Magnifier`, `SourceCard` | kính lúp soi dòng, thẻ nguồn trích đoạn (đã đối chiếu / không có nguồn) |
+| teaching | `MisconceptionCard`, `AnalogyBridge`, `CompareSplit` | "nhiều người nghĩ / thực ra" có gạch đỏ, phép so sánh đời thường ↔ khái niệm, hai bản đặt cạnh nhau + câu chốt khác biệt |
+| structure | `LayerStack`, `Timeline`, `ConceptMap` | các lớp của một hệ thống (một lớp tiêu điểm), mốc thời gian tô dần, bản đồ khái niệm có quan hệ được đặt tên |
+| structure | `Matrix2x2`, `Iceberg` | lưới quyết định 2 × 2 có một ô được chọn, phần nổi / phần chìm |
+| data | `Gauge`, `RangeBand`, `UnitGrid` | đồng hồ bán nguyệt có ngưỡng, ước lượng kèm khoảng dao động, đếm bằng ô (18 trên 60) |
+| marks | `Spotlight` | làm mờ cả khung trừ một vùng để dẫn mắt, không dịch chuyển gì |
 
 Helpers mới: `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
 (`@remotion/paths`, d3-shape/scale/interpolate, flubber, dagre: `curvePath`, `pointOnPath`, `drawOn`, `morphPath`, `layoutGraph`).

@@ -61,11 +61,431 @@
       "sha256": "3e53a51737580b87671951768c39e615ce8aba0a5d1760407292ec946338fc9e",
       "updated": "2026-09-12"
     },
+    "mascot/griffin/badge-happy.24026978ad.png": {
+      "type": "image/png",
+      "bytes": 8135,
+      "sha256": "24026978adc6233844222b01ab8fedb748cfa6d97c12a421562f1470c4e27602",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/badge-neutral.d199735f3a.png": {
+      "type": "image/png",
+      "bytes": 8196,
+      "sha256": "d199735f3ab0e71eafec9d53f0078fa56b07de79b5ee7d80475d5d36f9290742",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/badge-sad.2a0a1bebba.png": {
+      "type": "image/png",
+      "bytes": 8295,
+      "sha256": "2a0a1bebba85194845e397eda630958d7d0b236d59f24d57b24462d12d481caf",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/badge-stern.d49aacf93f.png": {
+      "type": "image/png",
+      "bytes": 8600,
+      "sha256": "d49aacf93fc9994e0467eaadfca866f4b89fa534ae854fdcfc516dd7bc032e0a",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/badge-surprised.6ad7016bd2.png": {
+      "type": "image/png",
+      "bytes": 8569,
+      "sha256": "6ad7016bd2947d66ea56b6b05314e1729d2e99048248bee30f940da3b252d8e5",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/badge-thinking.96a39d27e2.png": {
+      "type": "image/png",
+      "bytes": 8803,
+      "sha256": "96a39d27e2f93e42eb0c69b3a1f899116561bf0ff6b1b8ac7a3932bde781d868",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/badge-wink.0b1c47de7b.png": {
+      "type": "image/png",
+      "bytes": 8472,
+      "sha256": "0b1c47de7b2fa504445ca59317e55396c4538ac3c209a9611fbc8b5eb978c7fa",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/cheer-neutral.5bbcc2b446.png": {
+      "type": "image/png",
+      "bytes": 78368,
+      "sha256": "5bbcc2b4469b21aa60012fa9cf5403a4989f0c4df3bb9d31db6af5952db771dd",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/exclamation.9c66e3c52b.png": {
+      "type": "image/png",
+      "bytes": 3856,
+      "sha256": "9c66e3c52be69d5f2aa8461b6092edff9e94514b31dfa4f1ffdab640abea81bd",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/face-happy.42579a9d4a.png": {
+      "type": "image/png",
+      "bytes": 66307,
+      "sha256": "42579a9d4ac0f0a263d43e21b44461e949a91f70181c2b56c98639d92351f1bd",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/face-neutral.7b56828b41.png": {
+      "type": "image/png",
+      "bytes": 65704,
+      "sha256": "7b56828b41f832f6fff57a5d5b85999207af7995666684a83c17a7e923819af4",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/face-sad.73873d36f1.png": {
+      "type": "image/png",
+      "bytes": 71299,
+      "sha256": "73873d36f1c2c4c7c8b5affbfab714be432eef5ba1f1b8e77ef75c481ab34f46",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/face-stern.f3b545f647.png": {
+      "type": "image/png",
+      "bytes": 71414,
+      "sha256": "f3b545f647b45952bb07c88188716fc29577355b75a6d7e73956753c2105513c",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/face-surprised.6242605264.png": {
+      "type": "image/png",
+      "bytes": 76148,
+      "sha256": "6242605264762c38f41a9c6f56525559faf10e687873c79b10890f6f5bf3298f",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/face-thinking.61f7a5c5e6.png": {
+      "type": "image/png",
+      "bytes": 73783,
+      "sha256": "61f7a5c5e60d23e4d2879040f7b0229df816b5bc57cc51506222d9d9a863dcde",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/face-wink.c30f6f34da.png": {
+      "type": "image/png",
+      "bytes": 70711,
+      "sha256": "c30f6f34da562078eacccec6daf56f92615a7cdb04a0e27edfdbb51691b091c9",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/lightbulb.8c7722f0f2.png": {
+      "type": "image/png",
+      "bytes": 7653,
+      "sha256": "8c7722f0f2333662bedfb580af23127646b0f1a681cdb2625f8509b8c9174024",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/question_mark.161c7e76c3.png": {
+      "type": "image/png",
+      "bytes": 6701,
+      "sha256": "161c7e76c3fcebebca9fefc309be2243370aed47faec115c073c9d6671ac73cf",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/rest-neutral.166d7a43a5.png": {
+      "type": "image/png",
+      "bytes": 69015,
+      "sha256": "166d7a43a5afa97802e5d93d93302680ce41852a4926163af35ee202cddb4280",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sit-happy.561770a164.png": {
+      "type": "image/png",
+      "bytes": 68265,
+      "sha256": "561770a164654673b0324273cc3f59d06c34b712144e12171843f5993fede4e5",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sit-neutral.8a30802176.png": {
+      "type": "image/png",
+      "bytes": 76610,
+      "sha256": "8a308021764bbf34ac448d97c7ac2b5688d802c56c925bdee544eb92bfb26da4",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sit-sad.738720575f.png": {
+      "type": "image/png",
+      "bytes": 77431,
+      "sha256": "738720575f8df758df2443b2d943e7478b312a6fa18254c858a57a6c807a314c",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sit-stern.28f7f2f227.png": {
+      "type": "image/png",
+      "bytes": 80188,
+      "sha256": "28f7f2f2276481a92e549a1330f0c4f716cceab7befd4a7830ad609305a7cbce",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sit-surprised.c15f93bc6e.png": {
+      "type": "image/png",
+      "bytes": 82307,
+      "sha256": "c15f93bc6eaf574cedb563a46efb2638afa044896588b3af8100d7e7f00dcd54",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sit-thinking.1130231fcb.png": {
+      "type": "image/png",
+      "bytes": 67497,
+      "sha256": "1130231fcbe49215ba61003ee6864e5e972fe782a4e55bd30c5542dcd2ab6f42",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sit-wink.bc6babda44.png": {
+      "type": "image/png",
+      "bytes": 80209,
+      "sha256": "bc6babda4456f530667aa067a939be18857db6ed755e6cb0ad6f58de69f92591",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/sparkle.b789caf031.png": {
+      "type": "image/png",
+      "bytes": 8090,
+      "sha256": "b789caf031f7d448c04dc32168d51fe0ba1f8979cb986fc54001a2d82faf3cb4",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/stand-happy.a1405eabd6.png": {
+      "type": "image/png",
+      "bytes": 66701,
+      "sha256": "a1405eabd67824061a825d78481ae3541ab0524139d6a71ae031dc31b8b8458e",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/stand-neutral.049e971db1.png": {
+      "type": "image/png",
+      "bytes": 64985,
+      "sha256": "049e971db19d09c79955e98ff06b064dc76b33fb6b95391145db3761a03645e0",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/stand-sad.83e45e32ab.png": {
+      "type": "image/png",
+      "bytes": 68452,
+      "sha256": "83e45e32ab689de9ab725333207edd65d88ea934f23199f43162d558c4561de2",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/stand-stern.147bcb1bfe.png": {
+      "type": "image/png",
+      "bytes": 64884,
+      "sha256": "147bcb1bfeb295675fb03c67e43550c87eeab912b954e52933d8a47ce1bd44d8",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/stand-surprised.4fb68e9601.png": {
+      "type": "image/png",
+      "bytes": 70170,
+      "sha256": "4fb68e9601e61940426e601d7a9e9199d561cbca8848791c6e9d4cfc199bc198",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/stand-thinking.21286ba5b6.png": {
+      "type": "image/png",
+      "bytes": 68578,
+      "sha256": "21286ba5b629b4b4e846cb93cd719fdf795bf333934a468effd9e0d4fc7b5381",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/stand-wink.77d4f31631.png": {
+      "type": "image/png",
+      "bytes": 74055,
+      "sha256": "77d4f316312fbf9c34a7ccee5794137fb64d562720986c96b21db13bef28afc1",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/turn-happy.a499063126.png": {
+      "type": "image/png",
+      "bytes": 104802,
+      "sha256": "a49906312604d95ee8844e30506b8150bdde9cd98850e40d2f3880e12cada653",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/turn-neutral.629654a49f.png": {
+      "type": "image/png",
+      "bytes": 79455,
+      "sha256": "629654a49fb9a1219a0281450ad3cba78f0efbc98848a449706ae53ee2d857cd",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/turn-sad.ad52bb9302.png": {
+      "type": "image/png",
+      "bytes": 84996,
+      "sha256": "ad52bb93027a35faa8d8f57433a36fd888f4914fd96e81f439a0dbbc0a796876",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/turn-stern.428a7bda9b.png": {
+      "type": "image/png",
+      "bytes": 78683,
+      "sha256": "428a7bda9b60439ef3e66435f30a3fa1e9719f532e080a4fcc997709648452eb",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/turn-surprised.64be38880d.png": {
+      "type": "image/png",
+      "bytes": 92184,
+      "sha256": "64be38880df2b3cdaab505486eba8d31b50b02f06d1a0632a3eabef02035f851",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/turn-thinking.d76619b517.png": {
+      "type": "image/png",
+      "bytes": 75164,
+      "sha256": "d76619b517189792b0c2499648ea43a3692d3a6242af3f3b9a20a44d1779c48e",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/turn-wink.aa8b95f8a4.png": {
+      "type": "image/png",
+      "bytes": 77758,
+      "sha256": "aa8b95f8a4e270a9666d3431ca5ba460b6ef8106b74c95cf0d999324a052c03b",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/walk-left-neutral.e02b69a389.png": {
+      "type": "image/png",
+      "bytes": 93022,
+      "sha256": "e02b69a389261d991afed276bd509b5a46a086bf240c343182fac6b2b62e7c35",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/walk-right-neutral.8b509fff38.png": {
+      "type": "image/png",
+      "bytes": 91611,
+      "sha256": "8b509fff38ff6f8d021c42006e3cfa790dfa1c7f3aa3c992e97b56611eacee23",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wave-neutral.be66de6352.png": {
+      "type": "image/png",
+      "bytes": 75768,
+      "sha256": "be66de63527e66e00b2d745a29a68efce760d877cccc1d7157fe82cb18a886e3",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/welcome-neutral.b06105aa9b.png": {
+      "type": "image/png",
+      "bytes": 93792,
+      "sha256": "b06105aa9bacca46882e6eaa4b68908c89ca8b804635b490a3ef0df3a4c3f96e",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wings-happy.00c239634b.png": {
+      "type": "image/png",
+      "bytes": 85485,
+      "sha256": "00c239634b7b9bec6b971f18e78aec75ef54b937733704cff957b162ebaf13d7",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wings-neutral.10e7412810.png": {
+      "type": "image/png",
+      "bytes": 82929,
+      "sha256": "10e74128103816f07a3ac488d67badd9fa3876a86ddeca3122c44397f5ae34d4",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wings-sad.c0e69b871d.png": {
+      "type": "image/png",
+      "bytes": 80688,
+      "sha256": "c0e69b871d34e6d0475fc50124fd62d1b5ef1f618ddf66dc65aa5e7cf81139bc",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wings-stern.05bef47d98.png": {
+      "type": "image/png",
+      "bytes": 85315,
+      "sha256": "05bef47d98224938ad84c69d9f95ff4d42c8a3ff7c1b60d1d6590e4e0f574db3",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wings-surprised.4a7a2a7084.png": {
+      "type": "image/png",
+      "bytes": 80636,
+      "sha256": "4a7a2a7084f1ea3c47ebd006f7e5f7eeab3aa940da966381ed0d6eb5faea236b",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wings-thinking.a52ed9749b.png": {
+      "type": "image/png",
+      "bytes": 86520,
+      "sha256": "a52ed9749b148e1c76e882c56301b1233cdfd6036c6ed8bfb9db3c50fd8eee4f",
+      "updated": "2026-09-19"
+    },
+    "mascot/griffin/wings-wink.2b9188a7e9.png": {
+      "type": "image/png",
+      "bytes": 82774,
+      "sha256": "2b9188a7e90c31ec7fea4022827b827daf0ede864029c1ca3c36e9799fb1897b",
+      "updated": "2026-09-19"
+    },
     "modules/hoi-thoai-mau-v2.mp4": {
       "type": "video/mp4",
       "bytes": 500381,
       "sha256": "b4af7be5ca84b00d8b75d66c5d0bfea141b41e57afd12b7ff647048eedd1c644",
       "updated": "2026-09-12"
+    },
+    "samples/mau-huong-dan/mau-huong-dan.mp4": {
+      "type": "video/mp4",
+      "bytes": 5261723,
+      "sha256": "86b127953f014fae6809e338735182827bf478328abf08f463ce80e8c3b3e6cc",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s01-mid.png": {
+      "type": "image/png",
+      "bytes": 215115,
+      "sha256": "a153a5793c6417ea4ce68ff037aa465e34eb1373462f562dce5c8c0e80b3aa98",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s01.png": {
+      "type": "image/png",
+      "bytes": 220112,
+      "sha256": "0fc596229657c2023644891cdbb64f647243e39a4317bf9416187a00f3972f4a",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s02-mid.png": {
+      "type": "image/png",
+      "bytes": 186003,
+      "sha256": "17e83b7d4852e1b02f333179e8b1a4c43cfee26286866362d1a8ad794a6293ca",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s02.png": {
+      "type": "image/png",
+      "bytes": 200121,
+      "sha256": "d9fb65c5bd821a4f8e242adb40a8f379c9c3f28a793368d7b6a227a30fe69a30",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s03-mid.png": {
+      "type": "image/png",
+      "bytes": 192926,
+      "sha256": "88ff2027066b85368a4da9af065d45f2f815fcd9aa93e914848907ffb707df33",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s03.png": {
+      "type": "image/png",
+      "bytes": 204698,
+      "sha256": "d3894737ec9652341514e4f10d13e5406187d0bcc8e9c8fe4e0c9363c5dc5a9d",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s04-mid.png": {
+      "type": "image/png",
+      "bytes": 219823,
+      "sha256": "587780be2e47a2edaf0cb6a754658f20331e02e572a1f526f97ce8dc57cb1478",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s04.png": {
+      "type": "image/png",
+      "bytes": 250328,
+      "sha256": "c0feaa83d60fbe0e4fd7f7591602d32fa4cc6b0221b6125fe67dd995671dcc7c",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s05-mid.png": {
+      "type": "image/png",
+      "bytes": 212276,
+      "sha256": "664c70a4d0033e74d59549aca863c718cb7e25858dcae2a967881ac565d59bf6",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s05.png": {
+      "type": "image/png",
+      "bytes": 227223,
+      "sha256": "9dc75fa57e6bf39e576fea8b4f5155edc1c3c7625112272ad0338cddd852fb91",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s06-mid.png": {
+      "type": "image/png",
+      "bytes": 204765,
+      "sha256": "bb28b475be0b8e82c844e4feb08e5e91d3d37c8bb18ae8cb9c8be5e9c99d030a",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s06.png": {
+      "type": "image/png",
+      "bytes": 214957,
+      "sha256": "e75ffadf25693298b0341e52af4f0a5350d7e1a11a3f0301878070d96cbb6870",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s07-mid.png": {
+      "type": "image/png",
+      "bytes": 193385,
+      "sha256": "0a9de07ab20ba6d5ef034505fedcd8da9cd1b8d771ed373b1a81d239e2df95fd",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s07.png": {
+      "type": "image/png",
+      "bytes": 239540,
+      "sha256": "2278e11f8d868ebedc389f9cfbc596c28cc672239a5105a80c5fd0ee0f1a1d28",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s08-mid.png": {
+      "type": "image/png",
+      "bytes": 267577,
+      "sha256": "5f9a47a010acf2186ddf92548f317d8ff86a7a7d57a30ffa535ec845554b79e1",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s08.png": {
+      "type": "image/png",
+      "bytes": 270883,
+      "sha256": "526e676532936d46a61848bbda8ea7b57b4ae3491b6d465f16d8a51cd2b72c04",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/voice.wav": {
+      "type": "audio/wav",
+      "bytes": 1812844,
+      "sha256": "9f38bacc2541b95f2bbd8353cd97701a4b542bd85450c9031f51c308d84333f1",
+      "updated": "2026-09-19"
     },
     "styles/lesson-lab/sample.mp4": {
       "type": "video/mp4",

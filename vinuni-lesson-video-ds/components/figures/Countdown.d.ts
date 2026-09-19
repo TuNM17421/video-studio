@@ -19,6 +19,8 @@ export interface CountdownProps {
   track?: string;
   /** Caption under the ring, e.g. "giây để suy nghĩ". */
   label?: string;
+  /** Draw a stopwatch crown and side button on the ring. Default true. */
+  clock?: boolean;
   opacity?: number;
 }
 
