@@ -96,20 +96,44 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
   and lib/tokens.js; Montserrat; connectors = particle on the drawn path, hidden on card faces, one pulse per
   arrival; no numbers or results the script does not give; prefer the style's showcase components when the
   content fits. Several scene groups can be built in parallel with forked agents.
+- Recurring mistakes (QA d1, 09/2026) — check every scene against these:
+  1. `HookOverlay` hides scene 1 under a white backdrop for its first 96–150 f, and `spokenAt` is fixed by the
+     voice: clamp every beat anchored to a phrase spoken during the hook (`Math.max(spokenAt(N, …), T.hook)`)
+     or shorten the hook until the first anchored phrase lands after the fade-out.
+  2. No meaningless placeholders (grey bars, empty boxes, blank app windows) standing through a câu while the
+     narration names the content: dashed slots only when the script says "chưa biết / sẽ có" — otherwise
+     fill them with the words being spoken.
+  3. Never draw a connector or particle to an empty slot: card first, particle after, one pulse.
+  4. Labels ≥ 24 px from any outline and ≥ 32 px from other text — never wedged between two borders or
+     touching a pill / card edge; the câu's key concept is the biggest text in the diagram (`GlassBox`'s
+     `label` pill, not a loose 18 px text label of your own).
+  5. Cards start inside the frame and move along an empty lane — never slide in from outside across another
+     card's face.
+  6. Consecutive câu on one diagram inherit the frame and change only the text — keep positions, colors and
+     label names; no wipe-to-white and redraw in the same place (a blank second).
+  7. Captions: read each câu's pages with `paginate` from lib/captions.js (verify prints only the video's
+     total) and re-read every break before "từ / cho / bên"; a break that changes the meaning goes back to
+     Stage 1 — never edit the narration here.
+  8. `quiz: true` only on the `silent` cue (Stage 1 rule); `npm run verify` now reports a problem when it sits
+     on a spoken câu.
 - `npm run build && npm run verify` must end with "all checks passed".
-- QA: shoot the settled frame of every scene (and mid-motion frames of busy ones) to `projects/<id>/qa/`
-  (`sNN.png`, `sNN-fNNN.png`) with `node tools/shoot.mjs --batch <jobs.json>`; URL
+- QA: shoot three frames per câu — `start + 20`, the middle, `end − 3` (`sNN-a/b/c.png` or `sNN-fNNN.png`) —
+  to `projects/<id>/qa/` with `node tools/shoot.mjs --batch <jobs.json>`; build jobs.json from `timeline.js`
+  (`TIMELINE[i].start / .end` are global frames); URL
   `<base>/ui_kits/lesson-video/index.html?scene=<id>&frame=<global frame>` where `<base>` is the preview
-  server (studio: given in the prompt; CLI: `npm run serve` → http://127.0.0.1:8765). Open the stills, fix
-  overlaps / clipping / empty frames, reshoot. Stop here in studio mode.
+  server (studio: given in the prompt; CLI: `npm run serve` → http://127.0.0.1:8765). Open every still, fix
+  overlaps / clipping / empty frames / placeholders, reshoot. Stop here in studio mode.
 
 ## Stage 4 · render (not the agent in studio mode)
 ```console
-node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base>
+node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base> [--no-captions]
 node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/<Day>/<id>.txt
 ```
 
 ## Stage 5 · deliver
+- Before writing `chapters/<Day>/`, check the Day in REQUEST.md against the script head (`- **Ngày:** N`,
+  lesson code `N1-01` / `D4-00`); if they disagree, stop and ask ("Check the script before building"), saying
+  where Stage 4 already put `transcripts/<Day>/` — never pick one yourself.
 - `chapters/<Day>/<id>-chương.txt`: `MM:SS: tên chương`, one line per script section (SECTIONS) at the start
   time of its first câu (from voice.cues.json `seconds`), titles summarised from the narration.
 - `transcripts/<Day>/<id>.txt` exists (Stage 4); if not, generate it.

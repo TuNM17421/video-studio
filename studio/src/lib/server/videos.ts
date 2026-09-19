@@ -14,15 +14,17 @@ import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateD
 const execFileP = promisify(execFile);
 const STAGES: StageId[] = ["cues", "voice", "scenes", "render", "deliver"];
 
-export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "" };
+export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "", speakers: {} as Record<string, string> };
 /** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
 export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
-type LegacyVideoState = Omit<VideoState, "agent" | "music"> & {
+type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions"> & {
   agent?: Partial<VideoState["agent"]>;
   sessionId?: unknown;
   /** Before quiz music there was one track, stored as a bare id — and "bg" was the only one. */
   music?: string | Partial<MusicChoice>;
+  /** Missing before captions became optional — every video had them. */
+  captions?: unknown;
 };
 
 /** The single pre-catalog track became bg-goc, the reference bed the catalog was built around. */
@@ -50,6 +52,7 @@ export function normalizeVideoState(value: unknown): VideoState {
     request: { ...state.request, modules },
     voice: { ...DEFAULT_VOICE, ...stored.voice },
     music,
+    captions: stored.captions !== false,
   } as VideoState;
 }
 
@@ -130,7 +133,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, captions: true, lastError: null },
     managed: false,
   };
 }
@@ -235,15 +238,14 @@ function moduleSections(modules: string[]) {
 }
 
 /** What the agent must do for a quiz — cues must be marked even when the video uses no quiz music. */
-function quizSection(enabled: boolean, quiz: string) {
+function quizSection(enabled: boolean) {
   if (!enabled) return [];
   return [
     "## Quiz",
     "",
-    quiz === NO_MUSIC
-      ? "Video này có quiz nhưng không dùng nhạc quiz. Trong `cues.js`, vẫn đánh dấu `quiz: true` cho **đúng khoảng chờ người"
-      : `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng khoảng chờ người`,
-    "xem suy nghĩ** — cue `silent`, lúc đồng hồ chạy và không có lời đọc.",
+    "Video này có quiz. Trong `cues.js`, đánh dấu `quiz: true` cho **đúng khoảng chờ người xem suy nghĩ** — cue",
+    "`silent`, lúc đồng hồ chạy và không có lời đọc. Có dùng nhạc quiz hay không (và bài nào) chọn ở bước Render,",
+    "nên luôn đánh dấu dù chưa biết nhạc.",
     "",
     "**Không** đánh dấu câu đọc câu hỏi: người hỏi đang nói thì vẫn là nhạc nền, nhạc quiz chỉ vào khi câu hỏi đã",
     "dứt. Cũng **không** đánh dấu phần chữa bài — nhạc phải tắt trước khi bắt đầu giải thích.",
@@ -251,14 +253,12 @@ function quizSection(enabled: boolean, quiz: string) {
     "Các câu liền nhau cùng có `quiz: true` được gom thành một đoạn. Đặt trường này ở cuối phần khai của câu,",
     "**đừng** đặt ngay sau `n:` — `voice-timing.mjs --write-cues` ghi `frames`/`speech` vào đúng chỗ đó và sẽ xoá mất nó.",
     "",
-    quiz === NO_MUSIC
-      ? "Không có nhạc quiz; giữ nguyên khoảng suy nghĩ theo kịch bản."
-      : "Trong đoạn quiz, nhạc nền tự động tắt hẳn và nhạc quiz vào (có fade 0,5 giây hai đầu) — không phải làm gì thêm.",
+    "Nếu có nhạc quiz, trong đoạn quiz nhạc nền tự động tắt hẳn và nhạc quiz vào (fade 0,5 giây hai đầu) — không phải làm gì thêm.",
     "",
   ];
 }
 
-export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string, quizMusic: string = NO_MUSIC) {
+export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
     "",
@@ -273,7 +273,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
     ...moduleSections(r.modules),
-    ...quizSection(r.modules.includes("quiz") || quizMusic !== NO_MUSIC, quizMusic),
+    ...quizSection(r.modules.includes("quiz")),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

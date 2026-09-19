@@ -681,8 +681,7 @@
 .buttonRow,
 .formSpecimen,
 .componentPanel :global(.ant-segmented),
-.componentPanel > :global(.ant-alert),
-.statusReadout,
+.productionState,
 .motionStage,
 .motionFooter {
   margin-right: 22px;
@@ -711,31 +710,10 @@
 .formSpecimen > :global(.ant-checkbox-wrapper),
 .switchLabel { align-self: center; display: flex; align-items: center; gap: 9px; }
 .componentPanel :global(.ant-segmented) { margin-top: 22px; width: calc(100% - 44px); }
-.componentPanel > :global(.ant-alert) { margin-top: 16px; }
 
-.statusReadout {
+.productionState {
   margin-top: 20px;
-  padding: 18px;
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  border: 1px solid var(--vu-border-subtle);
-  border-left-width: 4px;
-  border-radius: var(--vu-radius-sm);
-  background: var(--vu-neutral-50);
 }
-
-.statusReadout > span { width: 10px; height: 10px; margin-top: 5px; flex: 0 0 10px; border-radius: 50%; background: var(--vu-neutral-500); }
-.statusReadout strong { color: var(--vu-blue-900); font-family: var(--vu-font-brand); font-size: 14px; }
-.statusReadout p { margin: 4px 0 0; color: var(--vu-text-secondary); font-size: 12px; line-height: 1.5; }
-.status_running { border-left-color: var(--vu-brand-primary); background: var(--vu-brand-info-surface); }
-.status_running > span { background: var(--vu-brand-primary); }
-.status_review { border-left-color: var(--vu-amber-700); background: var(--vu-amber-50); }
-.status_review > span { background: var(--vu-amber-700); }
-.status_done { border-left-color: var(--vu-green-700); background: var(--vu-green-50); }
-.status_done > span { background: var(--vu-green-700); }
-.status_error { border-left-color: var(--vu-brand-secondary); background: var(--vu-red-50); }
-.status_error > span { background: var(--vu-brand-secondary); }
 
 .motionPanel { grid-column: 1 / -1; }
 .motionStage { position: relative; margin-top: 34px; padding: 18px 0 30px; }

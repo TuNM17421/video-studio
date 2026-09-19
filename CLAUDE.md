@@ -48,7 +48,10 @@ style is `styles/<style>.json` (palette, showcase components, rules — they ove
    numbers/results the script does not give. Parallel forks per scene group work well.
    `npm run build && npm run verify`; QA stills to `projects/<id>/qa/` with `node tools/shoot.mjs --batch`.
 4. **render** — `node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4`
-   (+ `--base` of the preview server), QA the MP4; `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`.
+   (+ `--base` of the preview server; `--no-captions` bỏ thanh phụ đề — Studio hỏi "Phụ đề: Có/Không" ở bước
+   Render, mặc định Có), QA the MP4; `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`.
+   Bản mix có giọng được đưa về −16 LUFS qua limiter (giọng ElevenLabs gốc chỉ ~−21 LUFS); `--loudness <LUFS>`
+   đổi mức, `--no-loudnorm` bỏ bước này.
 5. **deliver** — `chapters/DayNN/<id>-chương.txt` (`MM:SS: tên chương`, one per script section),
    `projects/<id>/PROMPTS.md`, final build + verify.
 Optional: `/design-sync` pushes `vinuni-lesson-video-ds/` to the Claude Design project in
@@ -83,9 +86,8 @@ quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.m
 bản — hiện có `dialogue.md` và `quiz.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
 `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
-code; chỉ năng lực cần cấu hình riêng trên form (chọn nhạc quiz) hay dữ liệu chèn vào REQUEST.md (danh sách
-nhân vật) mới cần dev. Tên file là id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem
-`templates/modules/README.md`.
+code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
+id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem `templates/modules/README.md`.
 
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
@@ -98,7 +100,13 @@ còn lại vẫn trúng cache, chỉ câu ấy bị tính phí. Mẫu viết k�
 `templates/modules/dialogue.md` (thêm vào mẫu cơ bản); `npm run voices` in danh sách giọng và kiểu đọc.
 Nhân vật là lớp riêng trong `voices.json → characters`: tên, avatar (key trên kho media), phía, màu, và
 giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn giọng đặt theo người thu (Nhật Phong,
-Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng.
+Đô Trịnh, Viên, Cẩm Hồng). `voice.cues.json` ghi sẵn URL avatar cho từng câu để `DialogueCard` dùng thẳng — cả ba nguồn giọng đều ghi,
+kể cả giọng nhập từ thư mục audio.
+Model local đọc hội thoại được: `omnivoice-generate.mjs` đặt `ref_audio` riêng cho từng dòng JSONL nên các
+nhân vật ra hai giọng trong cùng một lượt; mặc định mỗi nhân vật mượn đúng giọng `voices.json` đã gán.
+`--cast` in trước dàn vai (miễn phí), `--speaker "Tú=<giọng|đường dẫn file>"` đổi giọng một vai — nhận cả
+một file mẫu nằm trên máy, file ở nguyên chỗ đó chứ không đẩy lên R2, lời của mẫu lấy từ `.txt` cùng tên
+hoặc do Whisper nghe.
 
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),
@@ -107,11 +115,13 @@ giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn gi�
 `assets/music/` lần đầu dùng. Thêm bản mới = đẩy file lên R2, thêm key vào `media/manifest.json`, thêm mục
 vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
 - **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`.
-- **Nhạc quiz** chọn ở bước Kế hoạch, vì agent phải biết lúc viết `cues.js` để đánh dấu `quiz: true`.
-  Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc đồng hồ chạy) — **không** đặt ở câu
-  đọc câu hỏi và **không** ở phần chữa bài. Người hỏi đang nói thì vẫn là nhạc nền; nhạc quiz chỉ vào khi
+- **Nhạc quiz** cũng chỉ chọn ở bước Render (ô chọn hiện khi `cues.js` có câu `quiz: true`). Bước Kế hoạch
+  chỉ có ô tick **"Video có quiz"** — đủ để REQUEST.md dặn agent đánh dấu `quiz: true` lúc viết `cues.js`,
+  dù chưa biết dùng bài nhạc nào. Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc
+  đồng hồ chạy) — **không** đặt ở câu đọc câu hỏi và **không** ở phần chữa bài. Người hỏi đang nói thì vẫn là nhạc nền; nhạc quiz chỉ vào khi
   câu hỏi đã dứt. Các câu liền nhau gom thành một đoạn; `render.mjs --quiz-track <id>` tự đọc `cues.js` để
-  lấy mốc thời gian. Trong đoạn quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu.
+  lấy mốc thời gian. Trong đoạn quiz nhạc nền **tắt hẳn**, nhạc quiz vào, fade 0,5 giây hai đầu. Câu có lời
+  mà mang cờ thì `npm run verify` báo problem, còn `render.mjs` bỏ câu đó khỏi đoạn nhạc quiz.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
 ## Media nặng (`media/`, Cloudflare R2)
