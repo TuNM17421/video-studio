@@ -41,7 +41,7 @@ test('casts only names the system actually has', () => {
 
 test('an alias speaks with its character voice and face, under the alias name', () => {
   const { characters } = readVoices();
-  const withAlias = characters.find((c) => (c.aliases || []).length);
+  const withAlias = characters.find((c) => c.voice && (c.aliases || []).length);
   if (!withAlias) return; // no course is renaming anyone at the moment
   const alias = withAlias.aliases[0];
   const asAlias = castSpeaker(alias);
@@ -65,8 +65,10 @@ test('reading speed multiplies the character pace by the delivery, inside the AP
 });
 
 test('a character carries its own face, side and hue, and borrows a voice', () => {
-  const { characters } = readVoices();
-  assert.ok(characters.length, 'voices.json has no characters');
+  const { characters: all } = readVoices();
+  assert.ok(all.length, 'voices.json has no characters');
+  // A character not yet given a voice is listed, but cannot be cast (tested below).
+  const characters = all.filter((c) => c.voice);
   for (const c of characters) {
     const cast = castSpeaker(c.name);
     assert.equal(cast.name, c.name);
@@ -79,6 +81,12 @@ test('a character carries its own face, side and hue, and borrows a voice', () =
   // Two characters must never share a voice, or the video has two people with one set of vocal cords.
   const used = characters.map((c) => castSpeaker(c.name).voice.id);
   assert.equal(new Set(used).size, used.length, 'two characters share a voice');
+});
+
+test('a character with no voice yet stops the cast with its name, before anything is billed', () => {
+  const mute = readVoices().characters.find((c) => !c.voice);
+  if (!mute) return; // every character has a voice at the moment
+  assert.throws(() => castSpeaker(mute.name), (e) => e.message.includes(`"${mute.name}" chưa được gán giọng`));
 });
 
 test('a bare voice still casts, for videos with one narrator', () => {

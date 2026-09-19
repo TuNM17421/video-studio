@@ -33,13 +33,25 @@
   },
   "characters": [
     {
+      "id": "griffin",
+      "name": "Griffin",
+      "voice": "6adFm46eyy74snVn6YrT",
+      "avatar": "mascot/griffin/face-happy.42579a9d4a.png",
+      "side": "left",
+      "tone": "accent",
+      "summary": "Linh vật VinUni · giọng Nhật Phong. Người dẫn của hướng dẫn trong Studio; trong video dùng component Griffin.",
+      "aliases": [
+        "Mascot"
+      ]
+    },
+    {
       "id": "toi",
       "name": "Tới",
-      "voice": "CxJbDdwqY48MY3gPVYwe",
+      "voice": null,
       "avatar": "avatars/toi_2.jpg",
       "side": "left",
       "tone": "accent",
-      "summary": "Nam · giọng Đô Trịnh (trầm nhất trong danh mục). Day 04 gọi là Lucas.",
+      "summary": "Nam · chưa gán giọng (Đô Trịnh trước đây). Day 04 gọi là Lucas. Kịch bản gọi tới sẽ dừng ở dry-run cho tới khi dev gán giọng.",
       "aliases": [
         "Lucas"
       ]
@@ -56,11 +68,11 @@
     {
       "id": "tu",
       "name": "Tú",
-      "voice": "6adFm46eyy74snVn6YrT",
+      "voice": null,
       "avatar": "avatars/tu_2.jpg",
       "side": "right",
       "tone": "red",
-      "summary": "Nam · giọng Nhật Phong (cao hơn Đô Trịnh, hợp vai học viên)."
+      "summary": "Nam · chưa gán giọng (Nhật Phong đã chuyển cho Griffin). Kịch bản gọi tới sẽ dừng ở dry-run cho tới khi dev gán giọng."
     }
   ],
   "voices": [

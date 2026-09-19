@@ -254,8 +254,8 @@ export interface VoiceDef {
 export interface CharacterDef {
   id: string;
   name: string;
-  /** Voice id it borrows. */
-  voice: string;
+  /** Voice id it borrows; null while no voice has been given to it (it cannot be cast yet). */
+  voice: string | null;
   /** Media key of the face. */
   avatar?: string | null;
   /** The face resolved against the media manifest; null when there is none or it was never pushed. */

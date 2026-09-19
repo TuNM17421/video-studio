@@ -218,8 +218,10 @@ function moduleSections(modules: string[]) {
   lines.push("");
   if (modules.includes("dialogue")) {
     const { voices, characters } = listVoices();
-    const names = characters.length
-      ? characters.map((c) => `${c.name} (giọng ${voices.find((v) => v.id === c.voice)?.name || c.voice})`).join(" · ")
+    // only characters someone has lent a voice to can be cast; the others would stop the dry-run
+    const cast = characters.filter((c) => c.voice);
+    const names = cast.length
+      ? cast.map((c) => `${c.name} (giọng ${voices.find((v) => v.id === c.voice)?.name || c.voice})`).join(" · ")
       : voices.map((v) => `${v.name}${v.gender ? ` (${v.gender})` : ""}`).join(" · ");
     lines.push(
       "## Hội thoại",

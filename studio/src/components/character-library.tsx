@@ -19,7 +19,7 @@ function previewUrl(c: CharacterDef) {
   return dsUrl(`ui_kits/lesson-video/demos/character.html?${q}`);
 }
 
-const voiceOf = (voices: VoiceDef[], ref: string) => voices.find((v) => v.id === ref || v.name.toLowerCase() === ref.toLowerCase());
+const voiceOf = (voices: VoiceDef[], ref: string | null) => (ref ? voices.find((v) => v.id === ref || v.name.toLowerCase() === ref.toLowerCase()) : undefined);
 
 function SampleButton({ voice, playing, onToggle }: { voice: VoiceDef; playing: boolean; onToggle: () => void }) {
   return <Button
@@ -84,7 +84,9 @@ export function CharacterLibrary() {
             {voice
               ? <><SampleButton voice={voice} playing={playing === voice.id} onToggle={() => toggle(voice.id)} />
                 <span>Giọng <strong>{voice.name}</strong>{voice.gender ? ` · ${voice.gender}` : ""}</span></>
-              : <span>Giọng <code>{c.voice}</code> không có trong danh mục</span>}
+              : c.voice
+                ? <span>Giọng <code>{c.voice}</code> không có trong danh mục</span>
+                : <span>Chưa gán giọng — kịch bản chưa gọi được vai này</span>}
           </div>
           {c.summary && <p>{c.summary}</p>}
         </div>

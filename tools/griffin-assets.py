@@ -210,4 +210,21 @@ with open(TABLE, 'w', encoding='utf-8') as fh:
         f'export const PROPS = {js_table(props)};\n\n'
         f'export const FILES = {js_table(files)};\n'
     )
+# voices.json: a character whose face is a Griffin picture (the Griffin character) follows its new
+# fingerprinted name, or its avatar would point at a file the next `npm run media --prune` deletes.
+vpath = os.path.join(ROOT, 'voices.json')
+voices = json.load(open(vpath, encoding='utf-8'))
+moved = 0
+for c in voices.get('characters', []):
+    a = c.get('avatar') or ''
+    if a.startswith(f'{KEY_PREFIX}/'):
+        stem = os.path.basename(a).split('.')[0]
+        if stem in files and a != f'{KEY_PREFIX}/{files[stem]}':
+            c['avatar'] = f'{KEY_PREFIX}/{files[stem]}'
+            moved += 1
+if moved:
+    with open(vpath, 'w', encoding='utf-8') as fh:
+        json.dump(voices, fh, ensure_ascii=False, indent=2)
+        fh.write('\n')
+    print(f'voices.json: {moved} avatar đổi theo ảnh mới')
 print(f'{len(files)} ảnh → {os.path.relpath(MEDIA_DIR, ROOT)}/ — đẩy lên R2: npm run media -- --dry-run, rồi npm run media')
