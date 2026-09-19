@@ -4,6 +4,7 @@ import { agentProviderLabel } from "../agent-providers";
 import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
 import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
 import { REPO } from "./paths";
+import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
 import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
 import { readState, setStage, styleName, updateState } from "./videos";
 import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
@@ -381,6 +382,8 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
   const prompt = message ? feedbackPrompt(id, stage, message) : stagePrompt(id, stage, base);
   startJob(id, stage, { actor: provider, mode: "agent", label: message ? `${stage} feedback` : stage });
   setStage(id, stage, "running");
+  beginHarness(id, stage, "agent", HARNESS_STEPS[stage]);
+  stepStart(id, "agent", message ? `${providerLabel} · sửa theo góp ý` : providerLabel);
   setProgress(id, null, message ? `${providerLabel} đang sửa theo góp ý…` : `${providerLabel} đang làm việc…`);
   log(id, "system", message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
 
@@ -391,11 +394,14 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
   if (wasStopped(id)) {
     setStage(id, stage, "error", "Đã dừng agent.");
     log(id, "system", "Đã dừng agent.");
+    endHarness(id, "stopped");
     finishJob(id, "stopped");
     return false;
   }
   let success = result.ok && result.code === 0;
   let failureMessage = `${providerLabel} kết thúc với mã ${result.code}.`;
+  if (success) stepDone(id, "agent", [providerLabel, result.metrics.toolCalls ? `${result.metrics.toolCalls} thao tác` : ""].filter(Boolean).join(" · "));
+  else stepError(id, "agent", failureMessage);
   if (success && feedback) updateFeedback(REPO, id, feedback.id, { status: "applied" });
   if (success && stage === "cues") {
     try {
@@ -431,6 +437,7 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
     }
   }
   setStage(id, stage, success ? (stage === "deliver" ? "done" : "review") : "error", success ? null : failureMessage);
+  endHarness(id, success ? "done" : wasStopped(id) ? "stopped" : "error", failureMessage);
   finishJob(id, success ? "done" : "error");
   return success;
 }

@@ -237,6 +237,7 @@ export function reconcileQaFeedback(repo, videoId, stage, findings, runId, qaPro
     if (seen.has(item.fingerprint)) continue;
     updateFeedback(repo, videoId, item.id, {
       status: "verified",
+      resolvedBy: runId,
       evidence: `${item.evidence ? `${item.evidence} · ` : ""}Không tái hiện ở QA ${runId}`,
     });
   }

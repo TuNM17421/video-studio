@@ -259,6 +259,49 @@ export interface WorkflowReport {
   files: { runs: string; feedback: string; plan: string };
 }
 
+/** One step of the automated checks around an agent stage (lib/server/harness.ts). */
+export type HarnessStepId = "agent" | "dry-run" | "build" | "verify" | "stills" | "review";
+export type HarnessStepStatus = "pending" | "running" | "done" | "error" | "skipped";
+export interface HarnessStep {
+  id: HarnessStepId;
+  label: string;
+  status: HarnessStepStatus;
+  startedAt?: number;
+  finishedAt?: number;
+  /** "4 ảnh", "Codex", or the reason it failed. */
+  detail?: string;
+}
+export type HarnessStage = "cues" | "scenes" | "deliver";
+/** The latest run of the checks for one stage; persisted in .studio/harness/<stage>.json. */
+export interface HarnessRun {
+  stage: HarnessStage;
+  /** `agent` = an agent turn then the gates; `review` = gates + review only (Chạy lại review). */
+  kind: "agent" | "review";
+  status: "running" | "done" | "error" | "stopped";
+  startedAt: number;
+  finishedAt?: number;
+  steps: HarnessStep[];
+  review?: { provider: AgentProvider; runId: string; verdict: "pass" | "needs_changes"; summary: string };
+}
+
+/** A cross-review finding as the ledger holds it now (status moves as it is fixed or skipped). */
+export interface QaFindingItem {
+  id: string;
+  severity: "blocker" | "major" | "minor";
+  code?: string;
+  scope?: string;
+  message: string;
+  evidence?: string;
+  acceptance?: string;
+  status: "open" | "planned" | "applied" | "verified" | "wontfix";
+  recurrence: number;
+  qaProvider?: string;
+  runId?: string | null;
+  /** The review run that no longer saw it (set when QA verifies it). */
+  resolvedBy?: string;
+  lastSeenAt: string;
+}
+
 export interface VideoDetail {
   state: VideoState;
   managed: boolean;
@@ -272,6 +315,11 @@ export interface VideoDetail {
   workflow: WorkflowReport;
   /** CLIs installed on this machine — who can be picked to cross-review. */
   installedAgents: AgentProvider[];
+  harness: Partial<Record<HarnessStage, HarnessRun>>;
+  /** Every cross-review finding on the scenes stage, whatever its status. */
+  findings: QaFindingItem[];
+  /** Feedback that stops the Duyệt button right now (the same rule the approve API applies). */
+  blocking: Record<"cues" | "scenes", number>;
 }
 
 export interface VideoSummary {

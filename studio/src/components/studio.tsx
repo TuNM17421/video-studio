@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleFilled, CloseOutlined, ExportOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
-import { Button, Empty, Steps, Tag, Tooltip } from "antd";
+import { Button, Collapse, Empty, Steps, Tag, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
@@ -59,15 +59,30 @@ function WorkflowNavigation({ step, detail, onChange }: { step: Step; detail: Vi
   </nav>;
 }
 
+/**
+ * Cost and automation of this video's runs, folded to one line: it is for tuning the workflow, not for the
+ * decision in front of the user — what the checks found lives in each step's Kiểm tra tự động panel.
+ */
 function WorkflowHealth({ detail }: { detail: VideoDetail }) {
   const report = detail.workflow;
+  if (!report.runs.total) return null;
   const tokens = report.usage.inputTokens + report.usage.outputTokens;
-  return <section className="vs-workflow-health" aria-label="Hiệu suất workflow">
-    <div><span>Automation</span><strong>{Math.round(report.automationRatio * 100)}%</strong><small>{report.runs.deterministic}/{report.runs.total} lượt deterministic</small></div>
-    <div><span>Agent tokens</span><strong>{tokens.toLocaleString("en-US")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt · ${report.usage.costUsd.toFixed(4)}</small></div>
-    <div><span>Feedback mở</span><strong>{report.feedback.open}</strong><small>{report.feedback.blocker} blocker · {report.feedback.major} major</small></div>
-    <div><span>Điểm tốn nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><Button type="link" href={`/api/videos/${encodeURIComponent(detail.state.id)}/plan`} target="_blank">Mở improvement plan</Button></div>
-  </section>;
+  const line = [
+    `${report.runs.total} lượt chạy`,
+    `tự động ${Math.round(report.automationRatio * 100)}%`,
+    `${tokens.toLocaleString("vi-VN")} token`,
+    report.usage.costUsd ? `$${report.usage.costUsd.toFixed(2)}` : null,
+  ].filter(Boolean).join(" · ");
+  return <Collapse className="vs-workflow-health" size="small" items={[{
+    key: "health",
+    label: <span className="vs-workflow-line"><strong>Chi phí & lượt chạy</strong><span className="mono">{line}</span></span>,
+    children: <div className="vs-workflow-tiles">
+      <div><span>Tự động</span><strong>{Math.round(report.automationRatio * 100)}%</strong><small>{report.runs.deterministic}/{report.runs.total} lượt không cần agent</small></div>
+      <div><span>Token agent</span><strong>{tokens.toLocaleString("vi-VN")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt · ${report.usage.costUsd.toFixed(4)}</small></div>
+      <div><span>Lượt lỗi</span><strong>{report.runs.failures}</strong><small>trên {report.runs.total} lượt</small></div>
+      <div><span>Tốn token nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><small>stage dùng nhiều token agent nhất</small></div>
+    </div>,
+  }]} />;
 }
 
 /** First step that still needs work. */

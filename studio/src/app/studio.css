@@ -2100,40 +2100,43 @@ button.vs-tile:hover {
   border-radius: 0;
 }
 
-.vs-workflow-health {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
+.vs-workflow-health.ant-collapse {
   margin: 0 var(--vu-space-6) var(--vu-space-4);
-  overflow: hidden;
-  border: 1px solid var(--vu-border-default);
-  border-radius: 14px;
-  background: var(--vu-border-default);
-}
-.vs-workflow-health > div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-  padding: 12px 16px;
+  border-color: var(--vu-border-default);
   background: var(--vu-surface-card);
 }
-.vs-workflow-health span,
-.vs-workflow-health small {
+.vs-workflow-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+.vs-workflow-line .mono {
   color: var(--vu-text-muted);
   font-size: 11px;
 }
-.vs-workflow-health strong {
-  color: var(--vu-blue-900);
-  font-size: 19px;
+.vs-workflow-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
-.vs-workflow-health .ant-btn-link {
-  justify-content: flex-start;
-  height: auto;
-  padding: 0;
+.vs-workflow-tiles > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.vs-workflow-tiles span,
+.vs-workflow-tiles small {
+  color: var(--vu-text-muted);
   font-size: 11px;
 }
+.vs-workflow-tiles strong {
+  color: var(--vu-blue-900);
+  font-size: 17px;
+}
 @media (max-width: 900px) {
-  .vs-workflow-health { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vs-workflow-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .vs-showcase-details {
@@ -4252,3 +4255,239 @@ button.vs-tile:hover {
 .vs-review-field .ant-select {
   min-width: 180px;
 }
+
+/* Automated checks of a stage (harness-panel.tsx): live steps, review verdict, findings by scene. */
+.vs-harness {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-harness.is-running {
+  border-color: var(--vu-blue-200);
+}
+.vs-harness-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.vs-harness-head > .anticon {
+  color: var(--vu-lesson-data);
+}
+.vs-harness-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.vs-harness-head .ant-tag {
+  margin-inline-end: 0;
+}
+.vs-harness-meta {
+  margin-left: auto;
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+}
+.vs-harness-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-harness-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+}
+.vs-harness-steps li.is-running {
+  border-color: var(--vu-blue-300);
+  background: var(--vu-lesson-surface);
+}
+.vs-harness-steps li.is-done .vs-harness-icon { color: var(--vu-green-700); }
+.vs-harness-steps li.is-error {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-harness-steps li.is-error .vs-harness-icon { color: var(--vu-brand-secondary); }
+.vs-harness-steps li.is-running .vs-harness-icon { color: var(--vu-lesson-data); }
+.vs-harness-steps li.is-pending,
+.vs-harness-steps li.is-skipped {
+  color: var(--vu-neutral-500);
+}
+.vs-harness-icon {
+  margin-top: 1px;
+}
+.vs-harness-step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.vs-harness-step strong {
+  font-size: 12px;
+}
+.vs-harness-step small {
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.vs-harness-time {
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+}
+.vs-verdict {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--vu-green-50);
+}
+.vs-verdict > .anticon {
+  margin-top: 3px;
+  color: var(--vu-green-700);
+}
+.vs-verdict.is-needs_changes {
+  background: var(--vu-amber-50);
+}
+.vs-verdict.is-needs_changes > .anticon {
+  color: var(--vu-amber-700);
+}
+.vs-verdict strong {
+  font-size: 13px;
+}
+.vs-verdict p {
+  margin: 2px 0 0;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-group {
+  margin-top: 14px;
+}
+.vs-finding-group h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.vs-finding-note {
+  margin: 6px 0;
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-finding-group ul,
+.vs-finding-resolved ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-finding {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--vu-neutral-300);
+  border-radius: 6px;
+}
+.vs-finding.is-blocker { border-left-color: var(--vu-brand-secondary); }
+.vs-finding.is-major { border-left-color: var(--vu-amber-700); }
+.vs-finding.is-verified { opacity: 0.7; }
+.vs-finding-still .ant-image,
+.vs-finding-still img {
+  display: block;
+  width: 160px;
+  border-radius: 4px;
+}
+.vs-finding-nostill {
+  display: grid;
+  place-items: center;
+  width: 160px;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-500);
+  font-size: 11px;
+}
+.vs-finding-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.vs-finding-tags .ant-tag {
+  margin-inline-end: 0;
+}
+.vs-finding-scene,
+.vs-finding-code,
+.vs-finding-status {
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-code {
+  font-weight: 600;
+}
+.vs-finding-status {
+  color: var(--vu-lesson-data);
+}
+.vs-finding-message {
+  margin: 6px 0 4px;
+  font-size: 13px;
+}
+.vs-finding-accept {
+  margin: 0;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-evidence summary {
+  margin-top: 4px;
+  color: var(--vu-lesson-data);
+  font-size: 12px;
+  cursor: pointer;
+}
+.vs-finding-evidence p {
+  margin: 4px 0 0;
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-finding-resolved {
+  margin-top: 14px;
+}
+.vs-approve-hint {
+  color: var(--vu-amber-700);
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .vs-finding { grid-template-columns: 1fr; }
+}
+.vs-approve {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.vs-qa li .ant-btn {
+  position: relative;
+}
+.vs-qa-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--vu-neutral-0);
+  border-radius: 50%;
+  background: var(--vu-neutral-500);
+}
+.vs-qa-mark.is-blocker { background: var(--vu-brand-secondary); }
+.vs-qa-mark.is-major { background: var(--vu-amber-700); }

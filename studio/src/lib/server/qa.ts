@@ -6,6 +6,7 @@ import { resolveReviewer } from "../review";
 import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
 import { agentBin, installedAgents } from "./agent-config";
 import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
+import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
 import { moduleQaCriteria } from "./modules";
 import { projectDir, REPO, rel, stateDir, videoDir, voiceOut } from "./paths";
 import { cuesInfo, readState, setStage } from "./videos";
@@ -156,15 +157,23 @@ async function command(id: string, label: string, cmd: string, args: string[], o
 async function deterministicSceneGate(id: string, base: string) {
   const gate = startRun(REPO, id, { stage: "scenes.gate", actor: "system", mode: "deterministic", label: "build + verify + QA stills", machine: machineLabel() });
   const checks: string[] = [];
+  let step: "build" | "verify" | "stills" = "build";
   try {
+    stepStart(id, "build");
     const build = await command(id, "Build design system", "npm", ["run", "build"]);
     if (!build.ok) throw new Error("Build thất bại.");
     checks.push("build");
+    stepDone(id, "build");
 
+    step = "verify";
+    stepStart(id, "verify");
     const verify = await command(id, "Static verification", "npm", ["run", "verify"]);
-    if (!verify.ok) throw new Error("Verify thất bại.");
+    if (!verify.ok) throw new Error(`Verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
+    stepDone(id, "verify", verifySummary(verify.output));
 
+    step = "stills";
+    stepStart(id, "stills");
     const cues = await cuesInfo(id);
     if (!cues?.cues.length) throw new Error("Không đọc được cues để tạo ảnh QA.");
     // The gate owns qa/auto/ and nothing else: stills a person shot by hand in qa/ are never touched, and
@@ -184,12 +193,27 @@ async function deterministicSceneGate(id: string, base: string) {
     const shoot = await command(id, `Chụp ${jobs.length} ảnh QA`, process.execPath, ["tools/shoot.mjs", "--batch", rel(jobsFile)]);
     if (!shoot.ok) throw new Error("Chụp ảnh QA thất bại.");
     checks.push(`${jobs.length} stills`);
+    stepDone(id, "stills", `${jobs.length} ảnh`);
     finishRun(REPO, id, gate.runId, { status: "done", checks, artifacts: [rel(jobsFile), rel(qaDir)] });
     return { verify: verify.output, qaDir, jobs: jobs.length };
   } catch (error) {
-    finishRun(REPO, id, gate.runId, { status: "error", error: error instanceof Error ? error.message : String(error), checks });
+    const message = error instanceof Error ? error.message : String(error);
+    stepError(id, step, message);
+    finishRun(REPO, id, gate.runId, { status: "error", error: message, checks });
     throw error;
   }
+}
+
+/** The lines verify flags as problems, for the step's detail — the whole output is in the log. */
+function problemLines(output: string) {
+  const lines = output.split("\n").filter((line) => /✗|problem|error/i.test(line)).slice(0, 3);
+  return lines.join(" · ") || "xem nhật ký";
+}
+
+/** "all checks passed", or the warning count when there are some. */
+function verifySummary(output: string) {
+  const warnings = output.split("\n").filter((line) => /warn|⚠/i.test(line)).length;
+  return warnings ? `${warnings} cảnh báo` : "không có lỗi";
 }
 
 export const autoQaDir = (id: string) => path.join(projectDir(id), "qa", "auto");
@@ -238,6 +262,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   const reviewer = resolveReviewer(state.agent.provider, state.review, installedAgents());
   if (!reviewer.ok) {
     fs.rmSync(packet.packet, { recursive: true, force: true });
+    stepError(id, "review", reviewer.reason);
     throw new Error(`Không chạy được review chéo: ${reviewer.reason} Tắt review chéo hoặc chọn CLI khác ở bước Dựng cảnh.`);
   }
   const provider = reviewer.provider;
@@ -264,6 +289,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
 
   const lines: string[] = [];
   let toolCalls = 0;
+  stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
   setProgress(id, null, `${label} đang QA ảnh…`);
   log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
   const code = await run(id, agentBin(provider), args, {
@@ -282,6 +308,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   try {
     if (code !== 0 || wasStopped(id)) {
       finishRun(REPO, id, qaRun.runId, { status: wasStopped(id) ? "stopped" : "error", error: `${label} exit ${code}` });
+      stepError(id, "review", wasStopped(id) ? "Đã dừng" : `${label} thoát với mã ${code}`);
       throw new Error(`QA ảnh (${label}) thất bại (mã ${code}).`);
     }
     try {
@@ -290,9 +317,16 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
       reconcileQaFeedback(REPO, id, "scenes", report.findings, qaRun.runId, provider);
       finishRun(REPO, id, qaRun.runId, { status: "done", artifacts: [rel(path.join(outDir, "latest.json"))] });
       log(id, report.findings.length ? "error" : "result", `QA ảnh (${label}): ${report.summary}`);
+      setHarnessReview(id, { provider, runId: qaRun.runId, verdict: report.verdict, summary: report.summary });
+      const count = (s: string) => report.findings.filter((f) => f.severity === s).length;
+      stepDone(id, "review", report.findings.length
+        ? `${label} · ${report.findings.length} lỗi (${["blocker", "major", "minor"].map((s) => `${count(s)} ${s}`).filter((t) => !t.startsWith("0 ")).join(", ")})`
+        : `${label} · đạt`);
       return report;
     } catch (error) {
-      finishRun(REPO, id, qaRun.runId, { status: "error", error: error instanceof Error ? error.message : String(error) });
+      const message = error instanceof Error ? error.message : String(error);
+      finishRun(REPO, id, qaRun.runId, { status: "error", error: message });
+      stepError(id, "review", message);
       throw error;
     }
   } finally {
@@ -305,6 +339,7 @@ export async function runSceneQa(id: string, base: string) {
   const deterministic = await deterministicSceneGate(id, base);
   if (!readState(id).state.review.enabled) {
     log(id, "system", "Review chéo đang tắt: chỉ chạy build, verify và chụp ảnh.");
+    stepSkip(id, "review", "Đang tắt");
     return null;
   }
   const packet = qaPacket(id, deterministic.verify, deterministic.qaDir);
@@ -320,15 +355,18 @@ export const REVIEW_MARKER = "Review lại dựng cảnh";
 export async function runReviewJob(id: string, base: string) {
   startJob(id, "review", { actor: "system", mode: "deterministic", label: "review lại" });
   setStage(id, "scenes", "running");
+  beginHarness(id, "scenes", "review", HARNESS_STEPS.review);
   log(id, "system", `${REVIEW_MARKER} (không gọi agent)`);
   try {
     await runSceneQa(id, base);
     setStage(id, "scenes", "review");
+    endHarness(id, "done");
     finishJob(id, "done");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log(id, "error", message);
     setStage(id, "scenes", "error", wasStopped(id) ? "Đã dừng review." : message);
+    endHarness(id, wasStopped(id) ? "stopped" : "error", message);
     finishJob(id, "error");
   }
 }
@@ -341,6 +379,7 @@ export async function runReviewJob(id: string, base: string) {
  */
 export async function runCuesGate(id: string) {
   const gate = startRun(REPO, id, { stage: "cues.gate", actor: "system", mode: "deterministic", label: "TTS dry-run", machine: machineLabel() });
+  stepStart(id, "dry-run");
   try {
     const { state } = readState(id);
     const pronounce = path.join(projectDir(id), "pronounce.json");
@@ -355,8 +394,12 @@ export async function runCuesGate(id: string) {
     ], { env });
     if (!dry.ok) throw new Error(`Cues không qua TTS dry-run: ${dry.output.split("\n").filter((line) => line.startsWith("✗")).join(" · ") || `mã ${dry.code}`}`);
     finishRun(REPO, id, gate.runId, { status: "done", checks: ["tts dry-run"] });
+    const cast = dry.output.split("\n").find((line) => line.startsWith("hội thoại"));
+    stepDone(id, "dry-run", cast || "speaker và kiểu đọc hợp lệ");
   } catch (error) {
-    finishRun(REPO, id, gate.runId, { status: "error", error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    finishRun(REPO, id, gate.runId, { status: "error", error: message });
+    stepError(id, "dry-run", message.replace(/^Cues không qua TTS dry-run: /, ""));
     throw error;
   }
 }
@@ -364,16 +407,23 @@ export async function runCuesGate(id: string) {
 export async function runFinalGate(id: string) {
   const gate = startRun(REPO, id, { stage: "deliver.gate", actor: "system", mode: "deterministic", label: "final build + verify", machine: machineLabel() });
   const checks: string[] = [];
+  let step: "build" | "verify" = "build";
   try {
+    stepStart(id, "build");
     const build = await command(id, "Final build", "npm", ["run", "build"]);
     if (!build.ok) throw new Error("Final build thất bại.");
     checks.push("build");
+    stepDone(id, "build");
+    step = "verify";
+    stepStart(id, "verify");
     const verify = await command(id, "Final verification", "npm", ["run", "verify"]);
-    if (!verify.ok) throw new Error("Final verify thất bại.");
+    if (!verify.ok) throw new Error(`Final verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
+    stepDone(id, "verify", verifySummary(verify.output));
     finishRun(REPO, id, gate.runId, { status: "done", checks });
     return true;
   } catch (error) {
+    stepError(id, step, error instanceof Error ? error.message : String(error));
     finishRun(REPO, id, gate.runId, { status: "error", error: error instanceof Error ? error.message : String(error), checks });
     throw error;
   }

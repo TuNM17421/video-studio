@@ -58,6 +58,22 @@ agent chỉ để chạy lại cùng một lệnh.
 - Các command tạo artifact dùng đường dẫn cố định; chạy lại thay artifact của chính stage, không tạo
   bản sao khó truy nguồn.
 
+## Hiện trên Studio
+
+Mỗi bước có agent (Lời & cue, Dựng cảnh, Bàn giao) có panel **Kiểm tra tự động**:
+
+- Dòng chặng của lượt gần nhất — `Agent → TTS dry-run`, `Agent → Build → Verify → Chụp ảnh → Review chéo`,
+  `Agent → Build → Verify` — mỗi chặng có trạng thái (chưa chạy / đang chạy / xong / lỗi / bỏ qua), thời
+  gian và một dòng chi tiết (số ảnh, người review, lý do lỗi). Runner ghi từng bước vào
+  `projects/<id>/.studio/harness/<stage>.json` và báo trang qua SSE, nên trang thấy ngay chặng đang chạy và
+  tải lại vẫn thấy lượt trước kết thúc thế nào.
+- Kết luận review (Đạt / Cần sửa, người review, tóm tắt) và các finding lấy từ ledger, nhóm như nút Duyệt
+  nhìn: **Cần xử lý** (blocker/major), **Lưu ý** (minor, không chặn — muốn sửa thì ghi vào Góp ý), **Đã hết
+  ở lượt review này** (`resolvedBy` = run review đó). Mỗi finding có ảnh cảnh, mã lỗi tiếng Việt, số lần lặp.
+- Ảnh trong thư viện QA có chấm màu theo lỗi nặng nhất còn mở của cảnh đó.
+- Nút Duyệt tự khoá và nói còn bao nhiêu lỗi chặn — cùng một luật với API (`blockersFor`).
+- "Chi phí & lượt chạy" gập thành một dòng trên đầu trang.
+
 ## Telemetry
 
 Mỗi run có: `runId`, stage, actor, mode (`agent|deterministic`), thời gian, status, checks, artifacts,

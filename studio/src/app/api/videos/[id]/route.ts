@@ -5,7 +5,8 @@ import { assertId, HttpError, rel, REPO } from "@/lib/server/paths";
 import { trashVideo } from "@/lib/server/trash-video";
 import { lastDryRun, lastImportReport } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
-import { workflowReport } from "@/lib/server/workflow";
+import { blockersFor, qaFindings, workflowReport } from "@/lib/server/workflow";
+import { harnessRuns } from "@/lib/server/harness";
 import { installedAgents } from "@/lib/server/agent-config";
 
 export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -23,6 +24,9 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     importReport: lastImportReport(id),
     workflow: workflowReport(REPO, id) as VideoDetail["workflow"],
     installedAgents: installedAgents(),
+    harness: harnessRuns(id),
+    findings: qaFindings(id),
+    blocking: { cues: blockersFor(id, "cues", state).length, scenes: blockersFor(id, "scenes", state).length },
   };
   return Response.json(detail);
 });

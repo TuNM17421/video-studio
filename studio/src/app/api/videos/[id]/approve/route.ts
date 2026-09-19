@@ -2,7 +2,7 @@ import { handle } from "@/lib/server/http";
 import { emit, log } from "@/lib/server/jobs";
 import { assertId, HttpError, REPO } from "@/lib/server/paths";
 import { readState, setStage } from "@/lib/server/videos";
-import { blockingFeedback, updateFeedbackWhere } from "@/lib/server/workflow";
+import { blockersFor, updateFeedbackWhere } from "@/lib/server/workflow";
 
 /** The user accepts what the agent made in a review stage (cues, scenes). */
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -17,9 +17,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     return Response.json({ ok: true, alreadyApproved: true });
   }
   if (state.stages[stage] !== "review") throw new HttpError(400, "Stage này chưa sẵn sàng để duyệt.");
-  // With cross-review switched off, its findings are informational: only the user's own feedback blocks.
-  const blockers = blockingFeedback(REPO, id, stage)
-    .filter((item: { source: string }) => state.review.enabled || item.source !== "qa");
+  const blockers = blockersFor(id, stage, state);
   if (blockers.length) {
     // Say which ones: a bare count leaves the user nothing to act on.
     const list = blockers.map((item: { severity: string; scope?: string; code?: string; message: string }) =>
