@@ -1,7 +1,7 @@
 import React from 'react';
 import { C } from '../../lib/tokens.js';
 import { appear, fade, popScale } from '../../lib/motion.js';
-import { MOOD_LABELS, PIC_H, POSES, PROPS } from './griffinPoses.js';
+import { BASE, FILES, MOOD_LABELS, PIC_H, POSES, PROPS } from './griffinPoses.js';
 
 /**
  * Griffin — the VinUni mascot (bản 2: whole-body pictures, one per pose × mood).
@@ -14,21 +14,18 @@ import { MOOD_LABELS, PIC_H, POSES, PROPS } from './griffinPoses.js';
  * rig: a crossfade would show two outlines, so every change is a hard cut hidden under a small squash —
  * which reads as the mascot reacting.
  *
- * The PNGs sit in assets/mascot/griffin/. Their URL is resolved against the bundle (dist/vk.js), so the
- * same scene works from a card, a video player, the Studio's /ds route and the render; `base` overrides it.
+ * The PNGs are on the media store (R2), built and named by tools/griffin-assets.py; griffinPoses.js carries
+ * the public base and every file name, so a card, a video, the Studio and the render all load the same URL.
  */
 
-const BUNDLE_SRC = (() => {
-  if (typeof document === 'undefined') return '';
-  const own = document.currentScript?.src;
-  if (own) return own;
-  const tag = [...document.querySelectorAll('script[src]')].find((s) => /dist\/vk\.js(\?|$)/.test(s.src));
-  return tag ? tag.src : '';
-})();
-const DEFAULT_BASE = BUNDLE_SRC ? new URL('../assets/mascot/griffin/', BUNDLE_SRC).href : 'assets/mascot/griffin/';
+const DEFAULT_BASE = BASE;
 
-/** Ready URL of one Griffin picture: griffinAsset('face-happy') is a square avatar for DialogueCard. */
-export const griffinAsset = (name, base = DEFAULT_BASE) => `${base}${name}.png`;
+/**
+ * Ready URL of one Griffin picture: griffinAsset('face-happy') is a square avatar for DialogueCard.
+ * The pictures live on the media store (R2) under names carrying a content fingerprint (griffinPoses.js);
+ * `base` points at another copy of the same files.
+ */
+export const griffinAsset = (name, base = DEFAULT_BASE) => `${base}${FILES[name] ?? `${name}.png`}`;
 
 /** Mood names; `angry` is kept as an alias of `stern` (bản 1 called it that). */
 const MOODS = Object.keys(MOOD_LABELS);

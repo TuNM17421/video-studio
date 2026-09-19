@@ -1,6 +1,11 @@
-"""Build vinuni-lesson-video-ds/assets/mascot/griffin/ from the Griffin art pack (the designers' folder).
+"""Build the Griffin pictures from the art pack (the designers' folder) into the media store.
 
-  uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <art pack folder> [out folder]
+  uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <art pack folder>
+  npm run media -- --dry-run && npm run media          # push media/files/mascot/griffin/ to R2
+
+Pictures → media/files/mascot/griffin/<name>.<fingerprint>.png (not in git; served from R2). Tables →
+vinuni-lesson-video-ds/components/mascot/griffinPoses.js and vinuni-lesson-video-ds/assets/mascot/griffin/
+poses.json (in git): base URL, the file name of every picture, poses, moods, props.
 
 Which picture is which pose × mood lives in tools/griffin-assets.json. Within a pose every picture is
 registered onto the first one (scale + shift, legs weighted over the head, mirrored when a picture was
@@ -11,15 +16,20 @@ badge-<mood>.png are the head-only drawings of 02_faces (GriffinBadge).
 Output is a 256-colour palette PNG (flat cartoon colours: visually lossless, ~4x smaller).
 Props come from 08_accessories_props, trimmed; `!` and `?` get the dot the pack's drawings are missing.
 """
-import json, os, sys
+import hashlib, json, os, shutil, sys, tempfile
 import numpy as np
 from PIL import Image
 from scipy.signal import fftconvolve
 
 SRC = sys.argv[1]
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, '../vinuni-lesson-video-ds/assets/mascot/griffin')
-TABLE = os.path.join(HERE, '../vinuni-lesson-video-ds/components/mascot/griffinPoses.js')
+ROOT = os.path.join(HERE, '..')
+# pictures go to the media store (pushed to R2 by `npm run media`), the two tables stay in the repo
+KEY_PREFIX = 'mascot/griffin'
+MEDIA_DIR = os.path.join(ROOT, 'media/files', KEY_PREFIX)
+TABLE = os.path.join(ROOT, 'vinuni-lesson-video-ds/components/mascot/griffinPoses.js')
+POSES_JSON = os.path.join(ROOT, 'vinuni-lesson-video-ds/assets/mascot/griffin/poses.json')
+OUT = tempfile.mkdtemp(prefix='griffin-')
 OUT_H = 820
 CONFIG = json.load(open(os.path.join(HERE, 'griffin-assets.json'), encoding='utf-8'))
 MOODS = list(CONFIG['moods'])
@@ -161,10 +171,25 @@ for name, prop in CONFIG['props'].items():
     props[name] = {'label': prop['label'], 'file': prop['file'], 'w': im.width, 'h': im.height,
                    **({'k': prop['k']} if 'k' in prop else {})}
 
+# Publish: every picture gets a content fingerprint in its name (stand-happy.3f2a9c1b04.png), so a redrawn
+# picture is a new URL and no browser or CDN can serve the old one; the folder is replaced as a whole.
+shutil.rmtree(MEDIA_DIR, ignore_errors=True)
+os.makedirs(MEDIA_DIR)
+files = {}
+for fname in sorted(os.listdir(OUT)):
+    stem = fname[:-4]
+    digest = hashlib.sha256(open(os.path.join(OUT, fname), 'rb').read()).hexdigest()[:10]
+    files[stem] = f'{stem}.{digest}.png'
+    shutil.move(os.path.join(OUT, fname), os.path.join(MEDIA_DIR, files[stem]))
+shutil.rmtree(OUT)
+manifest = json.load(open(os.path.join(ROOT, 'media/manifest.json'), encoding='utf-8'))
+base = f"{manifest['base'].rstrip('/')}/{KEY_PREFIX}/"
+
 # The tables the component reads (griffinPoses.js) and the Studio reads (poses.json) — generated, so adding
 # a mood or a prop never means editing Griffin.jsx or the Studio.
-table = {'moods': CONFIG['moods'], 'poses': poses, 'props': props}
-with open(f'{OUT}/poses.json', 'w', encoding='utf-8') as fh:
+table = {'base': base, 'moods': CONFIG['moods'], 'poses': poses, 'props': props, 'files': files}
+os.makedirs(os.path.dirname(POSES_JSON), exist_ok=True)
+with open(POSES_JSON, 'w', encoding='utf-8') as fh:
     json.dump(table, fh, ensure_ascii=False, indent=2)
     fh.write('\n')
 def js_table(obj):
@@ -177,8 +202,12 @@ with open(TABLE, 'w', encoding='utf-8') as fh:
         '// feet on the bottom edge). w = its width · hx = head centre as a share of it · moods = the ones drawn,\n'
         '// the first being the default when a scene asks for one the pose does not have · walk = steps on its own.\n'
         '// Props: w/h = picture size · k = size against the other props.\n'
+        '// The pictures live on the media store (R2): BASE + FILES[name], names carrying a content fingerprint.\n'
         f'export const PIC_H = {OUT_H};\n\n'
+        f'export const BASE = {json.dumps(base)};\n\n'
         f'export const MOOD_LABELS = {js_table(CONFIG["moods"])};\n\n'
         f'export const POSES = {js_table(poses)};\n\n'
-        f'export const PROPS = {js_table(props)};\n'
+        f'export const PROPS = {js_table(props)};\n\n'
+        f'export const FILES = {js_table(files)};\n'
     )
+print(f'{len(files)} ảnh → {os.path.relpath(MEDIA_DIR, ROOT)}/ — đẩy lên R2: npm run media -- --dry-run, rồi npm run media')

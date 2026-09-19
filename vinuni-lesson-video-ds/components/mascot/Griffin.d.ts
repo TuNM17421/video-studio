@@ -42,7 +42,7 @@ export interface GriffinProps {
   tilt?: number;
   /** Object floating beside the crest, on the side the head faces — one prop, or steps on beats (each arrival twinkles once). */
   prop?: GriffinProp | readonly GriffinStep<GriffinProp>[] | null;
-  /** URL folder of the pictures. Default: assets/mascot/griffin/ next to dist/vk.js. */
+  /** URL folder of the pictures. Default: the media store (R2) folder in griffinPoses.js. */
   base?: string;
   opacity?: number;
 }
@@ -60,6 +60,7 @@ export interface GriffinBadgeProps {
   enter?: number | null;
   /** Ring colour. Default 'accent'. */
   tone?: 'accent' | 'strong' | 'red' | 'muted';
+  /** URL folder of the pictures. Default: the media store (R2) folder in griffinPoses.js. */
   base?: string;
   opacity?: number;
 }

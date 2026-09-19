@@ -48,6 +48,7 @@ Tư thế nào có biểu cảm nào: `GRIFFIN_POSE_MOODS` (sinh cùng ảnh). G
 - `x, y` là **chân** (tâm đáy). Đạo cụ nằm ngang mào, lệch sang bên ~`0.2h` — với `h` 460, đặt `y` ≈ 930 để cả con vẫn
   trong vùng nội dung y 250–960.
 - Không có tay: Griffin không cầm, không chỉ. "Giơ tay" = `wave`. Mỏ không mấp máy theo lời.
-- Ảnh ở `assets/mascot/griffin/` (xem README ở đó để dựng lại từ bộ gốc), URL tính từ `dist/vk.js`; trang nạp
-  bundle theo cách khác thì truyền `base`. Mọi ảnh sẽ dùng đều được tải sẵn từ frame 0.
+- Ảnh ở **kho media R2** (`mascot/griffin/`, tên kèm vân tay nội dung — xem `assets/mascot/griffin/README.md`
+  để dựng lại từ bộ gốc); cần mạng lúc xem và lúc render. `base` trỏ sang một bản sao khác của cùng các file.
+  Mọi ảnh sẽ dùng đều được tải sẵn từ frame 0.
 - Mọi chuyển động là hàm của `frame` — không đồng hồ thật, không ngẫu nhiên.

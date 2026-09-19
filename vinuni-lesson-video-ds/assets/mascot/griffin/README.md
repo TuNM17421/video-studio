@@ -1,11 +1,21 @@
 # Griffin — ảnh của component `Griffin` / `GriffinBadge`
 
+**Ảnh không nằm trong repo**: chúng ở kho media R2 (`mascot/griffin/…`), tên file kèm vân tay nội dung
+(`stand-happy.3f2a9c1b04.png`). Thư mục này chỉ giữ `poses.json` — bảng Studio đọc — và README này.
+
 Sinh từ bộ ảnh gốc của nhóm thiết kế (`VinUni_Griffin_Transparent_Parts/`) bằng
 `tools/griffin-assets.py` — đừng sửa tay, dựng lại khi bộ gốc đổi:
 
 ```sh
 uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <thư mục bộ gốc>
+npm run media -- --dry-run      # xem sẽ đẩy gì
+npm run media                    # đẩy media/files/mascot/griffin/ lên R2, cập nhật media/manifest.json
+npm run build
 ```
+
+Script ghi ảnh vào `media/files/mascot/griffin/` (không vào git), rồi ghi `griffinPoses.js` và `poses.json` với
+base URL công khai và tên file thật của từng ảnh. Commit hai bảng đó cùng `media/manifest.json`. Ảnh đổi nội
+dung thì đổi tên, nên không cần xoá cache; ảnh cũ nằm lại trên R2 cho tới khi `npm run media -- --prune`.
 
 **Ảnh nào là tư thế × biểu cảm nào** (kèm tên tiếng Việt, nhóm, đạo cụ) khai trong `tools/griffin-assets.json`.
 Script dựng ảnh và sinh luôn hai bảng: `components/mascot/griffinPoses.js` cho component và `poses.json` (thư
@@ -36,4 +46,3 @@ wings) và ~0,71–0,88 (turn). Component vì vậy đổi ảnh bằng nhát c�
 Không dùng từ bộ gốc: `01_main`, `03_bodies`, `07_face_parts` (nét vẽ bản 1, không viền, lệch với bộ mới),
 `griffin_generated_images/02_front_view` (tỉ lệ khác), các ảnh trùng giữa các thư mục.
 
-Tạm để trong repo (~3 MB) để xem thử; khi chốt thì chuyển lên kho media R2.

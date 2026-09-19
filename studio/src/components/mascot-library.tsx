@@ -5,8 +5,11 @@ import { Alert, Checkbox, Radio, Segmented, Select, Typography } from "antd";
 import { dsUrl } from "@/lib/client";
 import styles from "./library.module.css";
 
-/** assets/mascot/griffin/poses.json — written by tools/griffin-assets.py together with the pictures. */
+/** assets/mascot/griffin/poses.json — written by tools/griffin-assets.py; the pictures themselves are on R2. */
 type MascotTable = {
+  /** Public folder of the pictures on the media store (R2); `files` maps a picture to its fingerprinted name. */
+  base: string;
+  files: Record<string, string>;
   moods: Record<string, string>;
   poses: Record<string, { label: string; group: string; w: number; hx: number; moods: string[]; walk?: boolean }>;
   props: Record<string, { label: string; file: string; w: number; h: number; k?: number }>;
@@ -14,8 +17,7 @@ type MascotTable = {
 
 type Motion = "idle" | "float" | "none";
 
-const ASSETS = "assets/mascot/griffin";
-const asset = (name: string) => dsUrl(`${ASSETS}/${name}.png`);
+const TABLE = "assets/mascot/griffin/poses.json";
 const MOTIONS: { value: Motion; label: string }[] = [
   { value: "idle", label: "Thở" },
   { value: "float", label: "Bồng bềnh" },
@@ -49,7 +51,7 @@ export function MascotLibrary() {
   const stage = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(dsUrl(`${ASSETS}/poses.json`))
+    fetch(dsUrl(TABLE))
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
       .then(setTable)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
@@ -60,6 +62,7 @@ export function MascotLibrary() {
   const groups = useMemo(() => [...new Set(poses.map(([, p]) => p.group))], [poses]);
   const drawn = poses.reduce((n, [, p]) => n + p.moods.length, 0);
   const current = table?.poses[pose];
+  const asset = (name: string) => (table ? `${table.base}${table.files[name] ?? `${name}.png`}` : "");
   const moodDrawn = !current || current.moods.includes(mood);
   const hash = new URLSearchParams({ pose, mood, prop: prop || "none", motion, hop: hop ? "1" : "0" });
   const code = snippet(pose, mood, prop, motion, hop);
@@ -188,7 +191,7 @@ export function MascotLibrary() {
 
       <div className={styles.spareVoices}>
         <h2>Bổ sung biểu cảm hay tư thế</h2>
-        <p>Thêm ảnh vào <code>tools/griffin-assets.json</code> (một dòng trong <code>moods</code> của tư thế), chạy lại <code>tools/griffin-assets.py</code> với thư mục bộ gốc, rồi <code>npm run build</code>. Bảng trên và component tự đọc bộ ảnh mới — xem <code>assets/mascot/griffin/README.md</code>.</p>
+        <p>Thêm ảnh vào <code>tools/griffin-assets.json</code> (một dòng trong <code>moods</code> của tư thế), chạy lại <code>tools/griffin-assets.py</code> với thư mục bộ gốc, <code>npm run media</code> để đẩy ảnh lên R2, rồi <code>npm run build</code>. Bảng trên và component tự đọc bộ ảnh mới — xem <code>assets/mascot/griffin/README.md</code>.</p>
       </div>
     </>}
   </section>;

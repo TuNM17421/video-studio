@@ -103,10 +103,11 @@ Xem danh sách nhân vật tại Studio → **Thư viện · Nhân vật** (`/li
 (`ui_kits/lesson-video/demos/character.html?name=&tone=&side=&avatar=`), tên dùng được trong `speaker`, giọng mượn.
 
 ## Linh vật Griffin (Thư viện · Mascot)
-Component `Griffin` / `GriffinBadge` (`components/mascot/`) vẽ linh vật từ ảnh trong
-`assets/mascot/griffin/` — ảnh và hai bảng tư thế (`griffinPoses.js`, `poses.json`) đều **sinh** bởi
-`tools/griffin-assets.py` từ bộ ảnh gốc của nhóm thiết kế theo `tools/griffin-assets.json`; đừng sửa tay.
-Bổ sung biểu cảm = thêm một dòng vào json rồi chạy lại script (xem README trong thư mục ảnh). Studio →
+Component `Griffin` / `GriffinBadge` (`components/mascot/`) vẽ linh vật từ ảnh trên **kho media R2**
+(`mascot/griffin/<tên>.<vân tay>.png`). Ảnh và hai bảng tư thế (`griffinPoses.js`, `assets/mascot/griffin/poses.json`
+— giữ base URL và tên file) đều **sinh** bởi `tools/griffin-assets.py` từ bộ ảnh gốc của nhóm thiết kế theo
+`tools/griffin-assets.json`; đừng sửa tay. Bổ sung biểu cảm = thêm một dòng vào json, chạy lại script, `npm run
+media`, commit hai bảng + `media/manifest.json` (xem `assets/mascot/griffin/README.md`). Studio →
 **Thư viện · Mascot** (`/library/mascot`) xem thử bằng trang `demos/mascot.html` của design system.
 
 ## Nhạc nền và nhạc quiz
