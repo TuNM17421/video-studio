@@ -40,7 +40,7 @@ export interface GriffinProps {
   hops?: readonly number[];
   /** Constant lean in degrees. */
   tilt?: number;
-  /** Object floating above the head (`hat` is worn) — one prop, or steps on beats (each arrival twinkles once). */
+  /** Object floating beside the crest, on the side the head faces (`hat` is worn) — one prop, or steps on beats (each arrival twinkles once). */
   prop?: GriffinProp | readonly GriffinStep<GriffinProp>[] | null;
   /** URL folder of the pictures. Default: assets/mascot/griffin/ next to dist/vk.js. */
   base?: string;

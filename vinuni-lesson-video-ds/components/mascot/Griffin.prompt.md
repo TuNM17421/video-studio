@@ -32,7 +32,7 @@ tối đa một Griffin.
   cánh chào đón), `cheer` (hai cánh giơ, vui), `rest` (ngồi nghỉ), `walk-left` / `walk-right` (đi chéo —
   tự nhún nhịp bước; tự dịch `x` bằng `interpolate` để đi vào khung).
 - `mood`: `neutral` `happy` `wink` `surprised` `thinking` (nhìn lên) `sad` `stern` (`angry` = `stern`).
-- `prop` (bay trên đầu): `lightbulb` `question` `exclamation` `sparkle` `book` `laptop`; `hat` thì đội lên đầu.
+- `prop` (bay chéo phía trên bên phải đầu, ngang mào — `flip` thì sang trái): `lightbulb` `question` `exclamation` `sparkle` `book` `laptop`; `hat` thì đội lên đầu.
 - Chuyển động: `enter` (bật vào), `motion` `idle` / `float` / `none`, `hops`, `tilt`, `flip`.
 
 `pose`, `mood`, `prop` nhận một tên hoặc danh sách `{ at, name }`. Đặt `at` bằng `spokenAt(n, phrase)`.
@@ -45,7 +45,7 @@ Tư thế nào có biểu cảm nào: `GRIFFIN_POSE_MOODS` (sinh cùng ảnh). G
 
 - Đổi dáng/biểu cảm là **cắt thẳng** kèm một nhịp nhún 8 frame — ảnh là các bản vẽ riêng, chồng mờ sẽ hiện
   hai đường viền. Đừng đổi nhanh hơn ~1 lần/giây, nhân vật sẽ giật.
-- `x, y` là **chân** (tâm đáy). Đạo cụ nằm trên đỉnh mào ~`0.2h` — với `h` 460, đặt `y` ≈ 930 để cả con vẫn
+- `x, y` là **chân** (tâm đáy). Đạo cụ nằm ngang mào, lệch sang bên ~`0.2h` — với `h` 460, đặt `y` ≈ 930 để cả con vẫn
   trong vùng nội dung y 250–960.
 - Không có tay: Griffin không cầm, không chỉ. "Giơ tay" = `wave`. Mỏ không mấp máy theo lời.
 - Ảnh ở `assets/mascot/griffin/` (xem README ở đó để dựng lại từ bộ gốc), URL tính từ `dist/vk.js`; trang nạp

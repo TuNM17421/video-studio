@@ -152,8 +152,10 @@ export function Griffin({
 
   const props = steps(prop);
   const ph = Math.max(46, h * 0.16);
-  const px = headX + (flip ? 1 : -1) * h * 0.04;
-  const py = topY - ph * 0.7 + Math.sin((frame / 36) * Math.PI * 2) * 5;
+  // floating props hang beside the crest, up and to the facing side of the head (not on top of it, where
+  // they read as a hat); flip mirrors the side
+  const px = headX + (flip ? -1 : 1) * h * 0.21;
+  const py = topY + h * 0.03 + Math.sin((frame / 36) * Math.PI * 2) * 5;
 
   return (
     <g opacity={opacity < 1 ? opacity : undefined}>
@@ -170,7 +172,7 @@ export function Griffin({
         if (!def) return null;
         const o = stepOpacity(props, i, frame, 8);
         const pop = p.at <= 0 && enter === null ? 1 : popScale(frame, Math.max(p.at, enter ?? 0));
-        // a worn prop sits on the head and moves with it; the others float above the crest
+        // a worn prop sits on the head and moves with it; the others float beside the crest
         const size = def.worn ? h * 0.3 : ph * (def.k ?? 1);
         const pw = def.worn ? size : (size * def.w) / def.h;
         const pH = def.worn ? (size * def.h) / def.w : size;
