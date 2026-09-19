@@ -346,7 +346,7 @@ export function writeImprovementPlan(repo, videoId) {
   if (!items.length) lines.push("Không còn feedback mở.", "");
   for (const item of items) {
     lines.push(
-      `### [${item.severity.toUpperCase()}] ${item.id} · ${item.stage}`,
+      `### [${item.severity.toUpperCase()}] ${item.id} · ${[item.stage, item.scope, item.code].filter(Boolean).join(" · ")}`,
       "",
       `- Trạng thái: \`${item.status}\` · owner: \`${item.owner}\` · lặp lại: ${item.recurrence}`,
       `- Feedback: ${item.message}`,

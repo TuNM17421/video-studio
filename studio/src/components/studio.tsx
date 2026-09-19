@@ -66,7 +66,7 @@ function WorkflowHealth({ detail }: { detail: VideoDetail }) {
     <div><span>Automation</span><strong>{Math.round(report.automationRatio * 100)}%</strong><small>{report.runs.deterministic}/{report.runs.total} lượt deterministic</small></div>
     <div><span>Agent tokens</span><strong>{tokens.toLocaleString("en-US")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt · ${report.usage.costUsd.toFixed(4)}</small></div>
     <div><span>Feedback mở</span><strong>{report.feedback.open}</strong><small>{report.feedback.blocker} blocker · {report.feedback.major} major</small></div>
-    <div><span>Điểm tốn nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><Button type="link" href={fileUrl(report.files.plan)} target="_blank">Mở improvement plan</Button></div>
+    <div><span>Điểm tốn nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><Button type="link" href={`/api/videos/${encodeURIComponent(detail.state.id)}/plan`} target="_blank">Mở improvement plan</Button></div>
   </section>;
 }
 
