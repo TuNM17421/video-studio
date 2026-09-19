@@ -129,6 +129,7 @@
 
   /* Màu đứng yên cho nhãn đè lên ảnh preview. Ảnh là PNG nướng sẵn nền sáng nên không đổi theo chế độ
      tối — nhãn trên nó cũng không được đổi. Khối `[data-theme="dark"]` bên dưới cố ý khai lại y hệt. */
+  --vu-media-surface: #ffffff;
   --vu-media-chip-surface: #ffffff;
   --vu-media-chip-border: #e0edf8;
   --vu-media-chip-text: #0b2a4d;
@@ -465,6 +466,7 @@
   --vu-overlay-hover: rgba(255, 255, 255, 0.1);
 
   /* Y hệt bảng sáng — cố ý, không phải sót. Xem chú thích ở khối :root. */
+  --vu-media-surface: #ffffff;
   --vu-media-chip-surface: #ffffff;
   --vu-media-chip-border: #e0edf8;
   --vu-media-chip-text: #0b2a4d;

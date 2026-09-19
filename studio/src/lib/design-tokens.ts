@@ -45,6 +45,8 @@ export const STUDIO_COLORS = {
      độ tối, nên nhãn đè lên chúng cũng không được đổi, nếu không sẽ thành chữ sáng trên nền trắng. Đây
      là nhóm duy nhất mà bảng tối cố ý chép y nguyên bảng sáng; đừng "sửa" cho khác đi. */
   media: {
+    // the sheet a baked preview sits on: the PNG's own white, so the frame and the image read as one
+    surface: "#ffffff",
     chipSurface: "#ffffff",
     chipBorder: "#e0edf8",
     chipText: "#0b2a4d",
@@ -96,6 +98,8 @@ export const STUDIO_COLORS_DARK = {
   },
   /* Chép y nguyên bảng sáng — cố ý. Xem chú thích ở STUDIO_COLORS.media. */
   media: {
+    // the sheet a baked preview sits on: the PNG's own white, so the frame and the image read as one
+    surface: "#ffffff",
     chipSurface: "#ffffff",
     chipBorder: "#e0edf8",
     chipText: "#0b2a4d",
