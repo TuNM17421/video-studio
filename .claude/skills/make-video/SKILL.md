@@ -47,6 +47,8 @@ order and ask the user before spending ElevenLabs credit (show the dry-run first
 - Copy the script to `projects/<id>/kich-ban-goc.md` if it is not there yet. Scripts follow
   `templates/kich-ban-co-ban.md`; every capability named in REQUEST.md adds its own
   `templates/modules/<id>.md` on top — read those files, they carry the rules for that capability.
+  The mascot `Griffin` is one of them (`mascot`): use `Griffin` / `GriffinBadge` only when REQUEST.md turns it on,
+  and only on the câu the script marks with a **Griffin** line.
 - If the request gives a feedback folder or old videos: read the feedback files; for old MP4s extract a few
   frames with ffmpeg (`node_modules/ffmpeg-static/ffmpeg` if ffmpeg is not on PATH) to see what to change.
   List every feedback item and how this version answers it (goes into PROMPTS.md at the end).

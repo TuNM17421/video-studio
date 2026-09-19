@@ -124,7 +124,8 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
     const state = normalizeVideoState(JSON.parse(fs.readFileSync(stateFile(id), "utf8")));
     // a server restart kills running agents: never leave a stage stuck in "running"
     if (!isRunning(id)) for (const s of STAGES) if (state.stages[s] === "running") state.stages[s] = "error";
-    return { state, managed: true };
+    // a practice sample keeps its real state but is read-only, like a video made outside the studio
+    return { state, managed: !state.sample };
   }
   const day = findDay(id);
   const request: VideoRequest = {
@@ -188,7 +189,7 @@ export function listVideos(): VideoSummary[] {
       title: state.request.title || id,
       cueCount: null,
       managed,
-      stages: managed ? state.stages : inferredStages(a),
+      stages: managed || state.sample ? state.stages : inferredStages(a),
       artifacts: a,
       running: isRunning(id),
       updatedAt: managed ? state.updatedAt : null,
@@ -218,8 +219,10 @@ function moduleSections(modules: string[]) {
   lines.push("");
   if (modules.includes("dialogue")) {
     const { voices, characters } = listVoices();
-    const names = characters.length
-      ? characters.map((c) => `${c.name} (giọng ${voices.find((v) => v.id === c.voice)?.name || c.voice})`).join(" · ")
+    // only characters someone has lent a voice to can be cast; the others would stop the dry-run
+    const cast = characters.filter((c) => c.voice);
+    const names = cast.length
+      ? cast.map((c) => `${c.name} (giọng ${voices.find((v) => v.id === c.voice)?.name || c.voice})`).join(" · ")
       : voices.map((v) => `${v.name}${v.gender ? ` (${v.gender})` : ""}`).join(" · ");
     lines.push(
       "## Hội thoại",
@@ -258,6 +261,34 @@ function quizSection(enabled: boolean) {
   ];
 }
 
+/**
+ * Griffin is opt-in. The design system ships the component and the agent would otherwise be free to use it,
+ * so the request says so either way — on: how to place it; off: not at all.
+ */
+function mascotSection(enabled: boolean) {
+  if (!enabled) {
+    return [
+      "## Linh vật",
+      "",
+      "Video này **không** có linh vật: không dùng `Griffin` / `GriffinBadge`, không để Griffin nói (`speaker`).",
+      "",
+    ];
+  }
+  return [
+    "## Linh vật Griffin",
+    "",
+    "Video này có Griffin. Đầu kịch bản ghi vai (**Đi cùng** hoặc **Dẫn**); câu có dòng **Griffin** là câu có linh vật,",
+    "câu không có dòng đó thì không vẽ Griffin.",
+    "",
+    "- Vẽ bằng `Griffin` (cả con) hoặc `GriffinBadge` từ `components/mascot/` — dáng, biểu cảm, đạo cụ theo",
+    "  `Griffin.prompt.md`; đặt mỗi lần đổi đúng chữ kịch bản gắn vào bằng `spokenAt(n, cụm từ)`.",
+    "- Vai **Dẫn**: mọi câu trong `cues.js` khai `speaker: 'Griffin'` (giọng mượn qua nhân vật trong `voices.json`),",
+    "  như video mẫu `ui_kits/lesson-video/videos/mau-huong-dan/`. Vai **Đi cùng**: Griffin không nói.",
+    "- Chân Griffin ở y ≈ 930 để cả con nằm trong vùng nội dung; một Griffin mỗi cảnh; nhường chỗ ở cảnh dày chữ.",
+    "",
+  ];
+}
+
 export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
@@ -274,6 +305,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     "",
     ...moduleSections(r.modules),
     ...quizSection(r.modules.includes("quiz")),
+    ...mascotSection(r.modules.includes("mascot")),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

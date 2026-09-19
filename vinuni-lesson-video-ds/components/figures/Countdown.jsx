@@ -10,6 +10,9 @@ import { SvgText } from '../text/Text.jsx';
  * answers it exactly; Stopwatch (Figures.jsx) sweeps a hand but never says how long is left, which is the
  * only thing being asked here.
  *
+ * With `clock` (default) the ring wears a stopwatch's crown and side button, so it reads as a timer
+ * before the number is even read — the same object as Stopwatch, but one that says how long is left.
+ *
  * It is driven by the scene frame, not by wall-clock time — the render paints frames out of order and far
  * slower than real time, so anything reading a clock would come out wrong.
  */
@@ -23,6 +26,7 @@ export function Countdown({
   color = C.red,
   track = C.dotInactive,
   label,
+  clock = true,
   opacity = 1,
 }) {
   if (opacity <= 0.001) return null;
@@ -48,8 +52,32 @@ export function Countdown({
       />
     );
 
+  // Stopwatch hardware, sized from r: a stem and crown at twelve, a push button at half past one. Both sit
+  // just outside the ring's outer edge (ring + half the stroke).
+  const edge = ring + 6;
+  const stemW = r * 0.14;
+  const capW = r * 0.4;
+  const capH = r * 0.14;
+  const stemH = r * 0.12;
+  const hardware = clock ? (
+    <>
+      <rect x={x - stemW / 2} y={y - edge - stemH - 2} width={stemW} height={stemH + 4} fill={color} />
+      <rect x={x - capW / 2} y={y - edge - stemH - capH} width={capW} height={capH} rx={capH * 0.35} fill={color} />
+      <rect
+        x={x - stemW / 2}
+        y={y - edge - stemH}
+        width={stemW}
+        height={stemH + 4}
+        rx={stemW * 0.3}
+        fill={color}
+        transform={`rotate(45 ${x} ${y})`}
+      />
+    </>
+  ) : null;
+
   return (
     <g opacity={opacity < 1 ? opacity : undefined}>
+      {hardware}
       <circle cx={x} cy={y} r={ring} fill={C.bg} stroke={track} strokeWidth={12} />
       {arc}
       {/* Ceil, so the number only reaches zero when the pause is actually over. */}

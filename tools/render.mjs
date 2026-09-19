@@ -19,7 +19,7 @@
  * --keep-frames both keeps the frames and reuses the ones already in that directory, so a run that
  * failed part-way is finished by repeating the same command — only the missing frames are painted.
  *
- * --music-track names a bed from music.json: the audio is fetched from the media bucket into
+ * --music-track names a bed from music.json (left out = the track marked "default": true; `none` = no bed): the audio is fetched from the media bucket into
  * assets/music/ once, and the catalog's measured loudness sets the gain (the masters differ by 15 dB,
  * so a fixed one would bury one track and blare the next). It loops under --audio and is trimmed to
  * the voice's length — any track length works, the video's duration always wins.
@@ -51,7 +51,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launch, waitReady } from './cdp.mjs';
-import { NO_MUSIC, trackFile, trackGain } from './lib/music.mjs';
+import { defaultBackground, NO_MUSIC, trackFile, trackGain } from './lib/music.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FPS = 30;
@@ -152,10 +152,12 @@ async function quizWindowsFromCues(scene) {
 
 // A --music/--quiz-music path is taken as given; a track id is looked up in music.json, which also says
 // how loud that particular master needs to be.
+// No --music-track at all means the catalog's default bed (music.json `"default": true`); `none` means silence.
+const bedTrack = args['music-track'] ?? (args.music ? null : defaultBackground());
 const bed = args.music
   ? { file: path.resolve(args.music), gain: Number(args['music-gain']) || 0.15 }
-  : args['music-track'] && args['music-track'] !== NO_MUSIC
-    ? { file: await trackFile(args['music-track'], (m) => console.log(`  ${m}`)), gain: trackGain(args['music-track'], 'background', args['music-db']) }
+  : bedTrack && bedTrack !== NO_MUSIC
+    ? { file: await trackFile(bedTrack, (m) => console.log(`  ${m}`)), gain: trackGain(bedTrack, 'background', args['music-db']) }
     : { file: null, gain: 0 };
 const quiz = args['quiz-music']
   ? { file: path.resolve(args['quiz-music']), gain: Number(args['quiz-gain']) || 0.18 }
