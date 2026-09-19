@@ -51,6 +51,9 @@ export function readMusic() {
 export const backgroundTracks = () => readMusic().background;
 export const quizTracks = () => readMusic().quiz;
 
+/** The background bed a render uses when none is named: the track marked `"default": true` in music.json. */
+export const defaultBackground = () => backgroundTracks().find((t) => t.default === true)?.id ?? null;
+
 /** A track by id, from either list — the two namespaces never collide. */
 export function findTrack(id) {
   if (!id || id === NO_MUSIC) return null;

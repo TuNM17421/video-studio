@@ -130,7 +130,10 @@ media`, commit hai bảng + `media/manifest.json` (xem `assets/mascot/griffin/RE
 `tools/lib/music.mjs` suy gain từ `lufs` về mức −32 LUFS (nhạc nền) / −28 LUFS (nhạc quiz), và tải file về
 `assets/music/` lần đầu dùng. Thêm bản mới = đẩy file lên R2, thêm key vào `media/manifest.json`, thêm mục
 vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
-- **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`.
+- **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`. Bản đánh dấu
+  `"default": true` trong `music.json` (hiện là `bg-goc`, "bg (bản gốc)") là mặc định: video mới trong Studio
+  chọn sẵn nó, và `render.mjs` không có `--music-track` cũng dùng nó; muốn im thì `--music-track none` (Studio luôn
+  gửi rõ lựa chọn).
 - **Nhạc quiz** cũng chỉ chọn ở bước Render (ô chọn hiện khi `cues.js` có câu `quiz: true`). Bước Kế hoạch
   chỉ có ô tick **"Video có quiz"** — đủ để REQUEST.md dặn agent đánh dấu `quiz: true` lúc viết `cues.js`,
   dù chưa biết dùng bài nhạc nào. Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc

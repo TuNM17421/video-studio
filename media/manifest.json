@@ -381,8 +381,8 @@
     },
     "samples/mau-huong-dan/mau-huong-dan.mp4": {
       "type": "video/mp4",
-      "bytes": 5283306,
-      "sha256": "3df7e8dc1d77b06e196b316322693a9f1813aff4ab72cd0a5d0906285bb47273",
+      "bytes": 5306408,
+      "sha256": "b03ef435f98525ab4d6d65654ec4d2e16aa85932b24222e8c55f4ff4cd78d4aa",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s01-mid.png": {
