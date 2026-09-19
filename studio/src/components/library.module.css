@@ -385,6 +385,20 @@
 }
 
 .componentPreview img { width: 100%; height: 100%; display: block; object-fit: contain; }
+/* Chế độ tối: nền ô preview thành giấy trắng như chính ảnh (xem studio.css, khung preview), và số thứ tự đè
+   lên ảnh dùng màu đứng yên như nhãn trên ảnh preview của style. Hạ sáng cả ô (không riêng ảnh) để
+   ảnh và nền giấy dịu đi cùng một mức. */
+:global(:root[data-theme="dark"]) .componentPreview:has(img) {
+  background: var(--vu-media-surface);
+  filter: brightness(0.9);
+  transition: filter var(--vu-duration-normal) var(--vu-ease-standard);
+}
+:global(:root[data-theme="dark"]) .componentCard:hover .componentPreview:has(img) { filter: none; }
+:global(:root[data-theme="dark"]) .componentPreview:has(img) .componentIndex {
+  border-color: var(--vu-media-chip-border);
+  color: var(--vu-media-chip-text);
+  background: var(--vu-media-chip-surface);
+}
 
 .componentIndex {
   position: absolute;

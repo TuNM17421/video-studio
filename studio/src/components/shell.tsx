@@ -5,6 +5,7 @@ import { BookOutlined, KeyOutlined, PlusOutlined, ReadOutlined, UnorderedListOut
 import { Badge, Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "./theme-toggle";
 import { StudioTour } from "./tour";
 
 type Page = "new" | "library" | "videos" | "guide";
@@ -114,6 +115,7 @@ export function Shell({ page, section, hasKey, children }: { page: Page; section
         onClick={({ key }) => { if (sidebarCollapsed && PAGE_ROUTES[key]) router.push(PAGE_ROUTES[key]); }}
       />
       <div className="sidebar-bottom">
+        <ThemeToggle />
         {hasKey !== undefined && <div className="sidebar-item vs-key-status" data-tour="nav.key" role="status" aria-label={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`} title={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`}><KeyOutlined /><span className="vs-sidebar-label">ElevenLabs</span><Badge status={hasKey ? "success" : "default"} /></div>}
         <div className="sidebar-footer"><span>VIDEO STUDIO</span><span>vinuni-lesson-video-ds</span></div>
       </div>
