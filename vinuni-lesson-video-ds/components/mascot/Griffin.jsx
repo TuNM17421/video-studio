@@ -1,7 +1,7 @@
 import React from 'react';
 import { C } from '../../lib/tokens.js';
 import { appear, fade, popScale } from '../../lib/motion.js';
-import { PIC_H, POSES } from './griffinPoses.js';
+import { MOOD_LABELS, PIC_H, POSES, PROPS } from './griffinPoses.js';
 
 /**
  * Griffin — the VinUni mascot (bản 2: whole-body pictures, one per pose × mood).
@@ -31,19 +31,8 @@ const DEFAULT_BASE = BUNDLE_SRC ? new URL('../assets/mascot/griffin/', BUNDLE_SR
 export const griffinAsset = (name, base = DEFAULT_BASE) => `${base}${name}.png`;
 
 /** Mood names; `angry` is kept as an alias of `stern` (bản 1 called it that). */
-const MOODS = ['neutral', 'happy', 'wink', 'surprised', 'thinking', 'sad', 'stern'];
+const MOODS = Object.keys(MOOD_LABELS);
 const moodName = (m) => (m === 'angry' ? 'stern' : MOODS.includes(m) ? m : 'neutral');
-
-const PROPS = {
-  lightbulb: { file: 'lightbulb', w: 51, h: 77 },
-  // `k` scales a prop against the others: the marks include their dot, so they get more height
-  question: { file: 'question_mark', w: 52, h: 86, k: 1.3 },
-  exclamation: { file: 'exclamation', w: 29, h: 85, k: 1.3 },
-  sparkle: { file: 'sparkle', w: 66, h: 76 },
-  book: { file: 'book', w: 56, h: 93 },
-  laptop: { file: 'laptop', w: 129, h: 85 },
-  hat: { file: 'graduation_hat', w: 152, h: 98, worn: true },
-};
 
 export const GRIFFIN_POSES = Object.keys(POSES);
 export const GRIFFIN_MOODS = MOODS;

@@ -7,13 +7,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Page = "new" | "library" | "videos" | "guide";
-export type LibrarySection = "styles" | "components" | "characters" | "videos";
+export type LibrarySection = "styles" | "components" | "characters" | "mascot" | "videos";
 
 /** The library's sections are sidebar children, not tabs on the page. */
 export const LIBRARY_SECTIONS: { id: LibrarySection; label: string }[] = [
   { id: "styles", label: "Style" },
   { id: "components", label: "Component" },
   { id: "characters", label: "Nhân vật" },
+  { id: "mascot", label: "Mascot" },
   { id: "videos", label: "Video mẫu" },
 ];
 export const librarySectionPath = (section: LibrarySection) => `/library/${section}`;

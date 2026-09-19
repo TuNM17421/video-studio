@@ -102,6 +102,13 @@ giọng nó mượn — vì avatar đặt theo nhân vật (Tới, Tú) còn gi�
 Xem danh sách nhân vật tại Studio → **Thư viện · Nhân vật** (`/library/characters`): thẻ thoại do design system vẽ
 (`ui_kits/lesson-video/demos/character.html?name=&tone=&side=&avatar=`), tên dùng được trong `speaker`, giọng mượn.
 
+## Linh vật Griffin (Thư viện · Mascot)
+Component `Griffin` / `GriffinBadge` (`components/mascot/`) vẽ linh vật từ ảnh trong
+`assets/mascot/griffin/` — ảnh và hai bảng tư thế (`griffinPoses.js`, `poses.json`) đều **sinh** bởi
+`tools/griffin-assets.py` từ bộ ảnh gốc của nhóm thiết kế theo `tools/griffin-assets.json`; đừng sửa tay.
+Bổ sung biểu cảm = thêm một dòng vào json rồi chạy lại script (xem README trong thư mục ảnh). Studio →
+**Thư viện · Mascot** (`/library/mascot`) xem thử bằng trang `demos/mascot.html` của design system.
+
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),
 `seconds` và `lufs` — độ to đo được. Các bản master chênh nhau tới 15 dB nên **không** dùng gain cố định:

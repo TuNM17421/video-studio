@@ -168,6 +168,7 @@
   --vu-capability-card-min-height: 148px;
   --vu-capability-card-padding: var(--vu-space-4);
   --vu-preview-panel-width: 296px;
+  --vu-mascot-cell: 84px;
   --vu-emphasis-active: 1;
   --vu-emphasis-complete: 0.7;
   --vu-emphasis-future: 0.35;

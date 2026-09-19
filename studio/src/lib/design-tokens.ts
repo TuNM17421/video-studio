@@ -82,6 +82,7 @@ export const STUDIO_LAYOUT = [
   { token: "capability.card.min-height", value: "148 px", usage: "Giữ các card tính năng cân hàng dù nội dung và preview khác nhau" },
   { token: "capability.card.padding", value: "16 px", usage: "Giữ checkbox, glyph và mô tả tách khỏi viền chọn" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },
+  { token: "mascot.matrix.cell", value: "84 px", usage: "Ô ảnh của bảng tư thế × biểu cảm (Thư viện · Mascot): đủ nhận ra nét mặt, bảy cột vẫn vừa khung" },
 ] as const;
 
 export const STUDIO_WORKFLOW_EMPHASIS = [

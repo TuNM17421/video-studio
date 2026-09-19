@@ -7,13 +7,17 @@ Sinh từ bộ ảnh gốc của nhóm thiết kế (`VinUni_Griffin_Transparent
 uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <thư mục bộ gốc>
 ```
 
-**Ảnh nào là tư thế × biểu cảm nào** khai trong `tools/griffin-assets.json`. Script dựng ảnh và sinh luôn
-`components/mascot/griffinPoses.js` (cỡ ảnh, biểu cảm đã có) — component đọc bảng đó, nên:
+**Ảnh nào là tư thế × biểu cảm nào** (kèm tên tiếng Việt, nhóm, đạo cụ) khai trong `tools/griffin-assets.json`.
+Script dựng ảnh và sinh luôn hai bảng: `components/mascot/griffinPoses.js` cho component và `poses.json` (thư
+mục này) cho Studio → **Thư viện · Mascot** (`/library/mascot`: xem thử từng tư thế × biểu cảm × đạo cụ, bảng
+ô nào đã vẽ, copy mã dùng trong cảnh). Không ai đọc danh sách chép tay, nên:
 
 - **Thêm biểu cảm cho một tư thế** (vd. `wave` buồn): thêm `"sad": "<đường dẫn ảnh>"` vào `moods` của tư thế
   đó, chạy lại script, `npm run build`. Không sửa code.
-- **Thêm tư thế mới**: thêm một mục vào `poses` (kèm `hx` — tâm đầu theo bề ngang ảnh), chạy lại script, rồi
-  thêm tên vào kiểu `GriffinPose` trong `Griffin.d.ts` và tài liệu `Griffin.prompt.md`.
+- **Thêm tư thế mới**: thêm một mục vào `poses` (`label`, `group`, `hx` — tâm đầu theo bề ngang ảnh), chạy lại
+  script, rồi thêm tên vào kiểu `GriffinPose` trong `Griffin.d.ts` và tài liệu `Griffin.prompt.md`.
+- **Thêm đạo cụ**: thêm một mục vào `props` (`label`, `file` trong `08_accessories_props`), chạy lại script, thêm
+  tên vào `GriffinProp` trong `Griffin.d.ts`.
 - Biểu cảm đầu tiên trong `moods` là ảnh gốc để căn các ảnh khác, và là ảnh mặc định của tư thế.
 
 | File | Nguồn trong bộ gốc |

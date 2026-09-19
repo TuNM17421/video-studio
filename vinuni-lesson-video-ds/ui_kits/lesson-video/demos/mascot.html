@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Griffin — xem thử một tư thế</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Một Griffin giữa khung, dựng từ phần # của URL — Video Studio nhúng trang này vào Thư viện · Mascot:
+  //   #pose=wave&mood=happy&prop=lightbulb&motion=idle&hop=1
+  // Đọc lại # ở mỗi frame, nên Studio đổi lựa chọn bằng cách đổi # (không tải lại trang, không nháy).
+  var h = VK.h;
+  var LOOP = 150;
+  VK.mountCard('#root', {
+    width: 960, height: 540, duration: LOOP,
+    render: function (f) {
+      var q = new URLSearchParams(location.hash.slice(1));
+      var prop = q.get('prop');
+      return h(VK.Griffin, {
+        x: 480, y: 500, h: 400, frame: f,
+        pose: q.get('pose') || 'stand',
+        mood: q.get('mood') || 'neutral',
+        prop: prop && prop !== 'none' ? prop : null,
+        motion: q.get('motion') || 'idle',
+        hops: q.get('hop') === '1' ? [LOOP / 2] : [],
+      });
+    }
+  });
+</script>
+</body>
+</html>

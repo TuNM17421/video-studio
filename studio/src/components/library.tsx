@@ -14,6 +14,7 @@ import type { Library as LibraryData, LibraryComponent, StyleDef } from "@/lib/t
 import { Shell, type LibrarySection } from "./shell";
 import { StyleShowcase } from "./style-showcase";
 import { CharacterLibrary } from "./character-library";
+import { MascotLibrary } from "./mascot-library";
 import styles from "./library.module.css";
 
 const PAGE_SIZE = 30;
@@ -161,6 +162,7 @@ export default function Library({ section }: { section: LibrarySection }) {
       {visibleCount < components.length && <div className={styles.loadMore}><span>Còn {components.length - visibleCount} component chưa hiển thị</span><Button icon={<DownOutlined />} iconPlacement="end" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>Hiển thị thêm</Button></div>}
     </section>,
     characters: <CharacterLibrary />,
+    mascot: <MascotLibrary />,
     videos: <section className={styles.videoPanel}>
       <header className={styles.catalogHeader}>
         <div><span className={styles.sectionEyebrow}>Reference cuts</span><h1>Bản dựng tham chiếu</h1><p>Đối chiếu nhịp cảnh, caption và chuyển động trước khi bắt đầu video mới.</p></div>

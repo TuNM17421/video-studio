@@ -1,0 +1,176 @@
+{
+  "moods": {
+    "neutral": "Bình thường",
+    "happy": "Vui",
+    "wink": "Nháy mắt",
+    "surprised": "Ngạc nhiên",
+    "thinking": "Suy nghĩ",
+    "sad": "Buồn",
+    "stern": "Nghiêm"
+  },
+  "poses": {
+    "stand": {
+      "label": "Đứng",
+      "group": "Tư thế",
+      "w": 548,
+      "hx": 0.59,
+      "moods": [
+        "neutral",
+        "happy",
+        "wink",
+        "surprised",
+        "thinking",
+        "sad",
+        "stern"
+      ]
+    },
+    "sit": {
+      "label": "Ngồi",
+      "group": "Tư thế",
+      "w": 647,
+      "hx": 0.4,
+      "moods": [
+        "neutral",
+        "happy",
+        "wink",
+        "surprised",
+        "thinking",
+        "sad",
+        "stern"
+      ]
+    },
+    "wings": {
+      "label": "Giơ cánh",
+      "group": "Tư thế",
+      "w": 711,
+      "hx": 0.52,
+      "moods": [
+        "neutral",
+        "happy",
+        "wink",
+        "surprised",
+        "thinking",
+        "sad",
+        "stern"
+      ]
+    },
+    "turn": {
+      "label": "Ba phần tư",
+      "group": "Tư thế",
+      "w": 822,
+      "hx": 0.38,
+      "moods": [
+        "neutral",
+        "happy",
+        "wink",
+        "surprised",
+        "thinking",
+        "sad",
+        "stern"
+      ]
+    },
+    "cheer": {
+      "label": "Reo vui",
+      "group": "Động tác",
+      "w": 725,
+      "hx": 0.5,
+      "moods": [
+        "neutral"
+      ]
+    },
+    "welcome": {
+      "label": "Chào đón",
+      "group": "Động tác",
+      "w": 766,
+      "hx": 0.5,
+      "moods": [
+        "neutral"
+      ]
+    },
+    "wave": {
+      "label": "Vẫy cánh",
+      "group": "Động tác",
+      "w": 610,
+      "hx": 0.46,
+      "moods": [
+        "neutral"
+      ]
+    },
+    "rest": {
+      "label": "Ngồi nghỉ",
+      "group": "Động tác",
+      "w": 550,
+      "hx": 0.42,
+      "moods": [
+        "neutral"
+      ]
+    },
+    "walk-left": {
+      "label": "Đi sang trái",
+      "group": "Động tác",
+      "w": 798,
+      "hx": 0.35,
+      "moods": [
+        "neutral"
+      ],
+      "walk": true
+    },
+    "walk-right": {
+      "label": "Đi sang phải",
+      "group": "Động tác",
+      "w": 778,
+      "hx": 0.62,
+      "moods": [
+        "neutral"
+      ],
+      "walk": true
+    }
+  },
+  "props": {
+    "lightbulb": {
+      "label": "Bóng đèn",
+      "file": "lightbulb",
+      "w": 51,
+      "h": 77
+    },
+    "question": {
+      "label": "Dấu hỏi",
+      "file": "question_mark",
+      "w": 52,
+      "h": 86,
+      "k": 1.3
+    },
+    "exclamation": {
+      "label": "Dấu chấm than",
+      "file": "exclamation",
+      "w": 29,
+      "h": 85,
+      "k": 1.3
+    },
+    "sparkle": {
+      "label": "Lấp lánh",
+      "file": "sparkle",
+      "w": 66,
+      "h": 76
+    },
+    "book": {
+      "label": "Sách",
+      "file": "book",
+      "w": 56,
+      "h": 93
+    },
+    "laptop": {
+      "label": "Laptop",
+      "file": "laptop",
+      "w": 129,
+      "h": 85
+    },
+    "hat": {
+      "label": "Mũ tốt nghiệp",
+      "file": "graduation_hat",
+      "w": 152,
+      "h": 98,
+      "worn": true
+    }
+  }
+}
