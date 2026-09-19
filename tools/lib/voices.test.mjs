@@ -1,7 +1,12 @@
 /** npm run test:tools — the catalog is what both the studio and tts.mjs pick a voice from. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { castSpeaker, defaultVoice, readVoices, resolveVoice, speedFor } from './voices.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 test('every voice is complete enough to be picked and heard', () => {
   const { voices, sampleText } = readVoices();
@@ -78,9 +83,17 @@ test('a character carries its own face, side and hue, and borrows a voice', () =
     // The id is an alias for the name, so a script may write either.
     assert.equal(castSpeaker(c.id).voice.id, cast.voice.id);
   }
-  // Two characters must never share a voice, or the video has two people with one set of vocal cords.
-  const used = characters.map((c) => castSpeaker(c.name).voice.id);
-  assert.equal(new Set(used).size, used.length, 'two characters share a voice');
+  // Two characters sharing a voice sound like one person. It is allowed as a stopgap (Tú borrows Griffin's
+  // voice until a new one is recorded), but never silently: `npm run voices` must name every such pair.
+  const byVoice = new Map();
+  for (const c of characters) byVoice.set(castSpeaker(c.name).voice.id, [...(byVoice.get(castSpeaker(c.name).voice.id) || []), c.name]);
+  const shared = [...byVoice.values()].filter((names) => names.length > 1);
+  if (shared.length) {
+    const listing = execFileSync(process.execPath, [path.join(ROOT, 'tools/voices-list.mjs')], { encoding: 'utf8' });
+    for (const names of shared) {
+      assert.ok(listing.includes(`⚠ ${names.join(' và ')} đang dùng chung giọng`), `npm run voices does not warn that ${names.join(' and ')} share a voice`);
+    }
+  }
 });
 
 test('a character with no voice yet stops the cast with its name, before anything is billed', () => {

@@ -7,6 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { batchSizeFor, castLocal, deviceFrom, FILE_PENDING, looksLikeFile, refFailCache, refFromFile, refStatus, torchArgs } from './omnivoice.mjs';
+import { readVoices } from './voices.mjs';
 
 const NVIDIA_3060 = 'NVIDIA GeForce RTX 3060 Laptop GPU, 6144';
 const NVIDIA_4090 = 'NVIDIA GeForce RTX 4090, 24564';
@@ -95,7 +96,7 @@ test('Mac Apple Silicon đi theo đúng ngưỡng chật/rộng của bộ nhớ
 // Các test dưới đây đọc voices.json thật của repo, vì đó chính là thứ quyết định ai mượn giọng ai —
 // một bản giả sẽ kiểm đúng cái nó tự bịa ra.
 
-// Dàn vai hiện tại: Griffin mượn Nhật Phong, Mai Anh mượn Viên; Tới (bí danh Lucas) và Tú đang chưa có giọng.
+// Dàn vai hiện tại: Griffin mượn Nhật Phong, Mai Anh mượn Viên, Tới (bí danh Lucas) mượn Đô Trịnh, Tú tạm mượn Nhật Phong.
 const HOI_THOAI = [
   { n: 1, text: 'Chào các bạn.', speaker: 'Griffin' },
   { n: 2, text: 'Bắt đầu từ đâu?', speaker: 'Mai Anh', delivery: 'hoi' },
@@ -127,12 +128,19 @@ test('bí danh trong kịch bản trỏ về đúng nhân vật, kèm mặt và 
   assert.ok(lucas.avatar, 'phải có avatar để thẻ hội thoại vẽ được');
 });
 
-test('nhân vật chưa có giọng: báo lỗi gọi đúng tên vai, và đọc được khi được giao một giọng', () => {
-  const bare = castLocal(HOI_LUCAS);
-  assert.match(bare.roles[1].error, /"Tới" chưa được gán giọng/);
+test('nhân vật chưa có giọng: báo lỗi gọi đúng tên vai, và đọc được khi được giao một giọng', (t) => {
+  // Danh mục thật đổi theo thời gian — lấy một vai đang chưa có giọng, không cố định tên.
+  const mute = readVoices().characters.find((c) => !c.voice);
+  if (!mute) return t.skip('mọi nhân vật trong voices.json đều đã có giọng');
+  const cues = [
+    { n: 1, text: 'Chào các bạn.', speaker: 'Griffin' },
+    { n: 2, text: 'Bắt đầu từ đâu?', speaker: mute.name },
+  ];
+  const bare = castLocal(cues);
+  assert.match(bare.roles[1].error, new RegExp(`"${mute.name}" chưa được gán giọng`));
   assert.equal(bare.ok, false, 'không sinh khi một vai chưa có giọng');
   assert.equal(bare.roles[0].error, null, 'vai có giọng không bị vạ lây');
-  const given = castLocal(HOI_LUCAS, { speakers: { Lucas: 'Đô Trịnh' } });
+  const given = castLocal(cues, { speakers: { [mute.name]: 'Đô Trịnh' } });
   assert.equal(given.roles[1].voiceName, 'Đô Trịnh');
   assert.equal(given.roles[1].error, null);
 });

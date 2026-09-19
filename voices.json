@@ -47,11 +47,11 @@
     {
       "id": "toi",
       "name": "Tới",
-      "voice": null,
+      "voice": "CxJbDdwqY48MY3gPVYwe",
       "avatar": "avatars/toi_2.jpg",
       "side": "left",
       "tone": "accent",
-      "summary": "Nam · chưa gán giọng (Đô Trịnh trước đây). Day 04 gọi là Lucas. Kịch bản gọi tới sẽ dừng ở dry-run cho tới khi dev gán giọng.",
+      "summary": "Nam · giọng Đô Trịnh. Day 04 gọi là Lucas.",
       "aliases": [
         "Lucas"
       ]
@@ -68,11 +68,11 @@
     {
       "id": "tu",
       "name": "Tú",
-      "voice": null,
+      "voice": "6adFm46eyy74snVn6YrT",
       "avatar": "avatars/tu_2.jpg",
       "side": "right",
       "tone": "red",
-      "summary": "Nam · chưa gán giọng (Nhật Phong đã chuyển cho Griffin). Kịch bản gọi tới sẽ dừng ở dry-run cho tới khi dev gán giọng."
+      "summary": "Nam · giọng Nhật Phong (tạm dùng chung với Griffin — đừng để hai nhân vật này nói trong cùng một video)."
     }
   ],
   "voices": [
