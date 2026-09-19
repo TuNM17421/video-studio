@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { batchSizeFor, deviceFrom, torchArgs } from './omnivoice.mjs';
+import { batchSizeFor, castLocal, deviceFrom, FILE_PENDING, looksLikeFile, refFailCache, refFromFile, refStatus, torchArgs } from './omnivoice.mjs';
 
 const NVIDIA_3060 = 'NVIDIA GeForce RTX 3060 Laptop GPU, 6144';
 const NVIDIA_4090 = 'NVIDIA GeForce RTX 4090, 24564';
@@ -89,4 +89,137 @@ test('không GPU hoặc không đo được VRAM thì chọn mức an toàn nh�
 test('Mac Apple Silicon đi theo đúng ngưỡng chật/rộng của bộ nhớ hợp nhất', () => {
   assert.equal(batchSizeFor(deviceFrom({ platform: 'darwin', arch: 'arm64', totalMemGb: 8 })), 2);
   assert.equal(batchSizeFor(deviceFrom({ platform: 'darwin', arch: 'arm64', totalMemGb: 32 })), 16);
+});
+
+// ── phân vai: hai nhân vật, hai giọng ────────────────────────────────────────
+// Các test dưới đây đọc voices.json thật của repo, vì đó chính là thứ quyết định ai mượn giọng ai —
+// một bản giả sẽ kiểm đúng cái nó tự bịa ra.
+
+// Dàn vai hiện tại: Griffin mượn Nhật Phong, Mai Anh mượn Viên; Tới (bí danh Lucas) và Tú đang chưa có giọng.
+const HOI_THOAI = [
+  { n: 1, text: 'Chào các bạn.', speaker: 'Griffin' },
+  { n: 2, text: 'Bắt đầu từ đâu?', speaker: 'Mai Anh', delivery: 'hoi' },
+  { n: 3, silent: 2 },
+  { n: 4, text: 'Từ vòng lặp.', speaker: 'Griffin' },
+];
+const HOI_LUCAS = [
+  { n: 1, text: 'Chào các bạn.', speaker: 'Griffin' },
+  { n: 2, text: 'Bắt đầu từ đâu?', speaker: 'Lucas' },
+];
+
+test('mỗi nhân vật mượn đúng giọng voices.json đã gán, không phải giọng mặc định của video', () => {
+  const cast = castLocal(HOI_THOAI);
+  assert.equal(cast.dialogue, true);
+  assert.equal(cast.roles.length, 2, 'Griffin nói hai câu nhưng vẫn là một vai');
+  const [griffin, maiAnh] = cast.roles;
+  assert.equal(griffin.voiceName, 'Nhật Phong');
+  assert.equal(maiAnh.voiceName, 'Viên');
+  assert.notEqual(griffin.voiceId, maiAnh.voiceId, 'hai nhân vật phải ra hai giọng khác nhau');
+  assert.deepEqual(griffin.cues, [1, 4]);
+  assert.ok(cast.ok);
+});
+
+test('bí danh trong kịch bản trỏ về đúng nhân vật, kèm mặt và phía của nhân vật đó', () => {
+  // Day 04 gọi Tới là "Lucas" — thẻ hội thoại phải mang mặt của Tới, không phải một vai mới.
+  const lucas = castLocal(HOI_LUCAS, { speakers: { Lucas: 'Đô Trịnh' } }).roles[1];
+  assert.equal(lucas.character, 'toi');
+  assert.equal(lucas.name, 'Lucas', 'tên hiện lên là tên kịch bản gọi');
+  assert.ok(lucas.avatar, 'phải có avatar để thẻ hội thoại vẽ được');
+});
+
+test('nhân vật chưa có giọng: báo lỗi gọi đúng tên vai, và đọc được khi được giao một giọng', () => {
+  const bare = castLocal(HOI_LUCAS);
+  assert.match(bare.roles[1].error, /"Tới" chưa được gán giọng/);
+  assert.equal(bare.ok, false, 'không sinh khi một vai chưa có giọng');
+  assert.equal(bare.roles[0].error, null, 'vai có giọng không bị vạ lây');
+  const given = castLocal(HOI_LUCAS, { speakers: { Lucas: 'Đô Trịnh' } });
+  assert.equal(given.roles[1].voiceName, 'Đô Trịnh');
+  assert.equal(given.roles[1].error, null);
+});
+
+test('câu khoảng lặng không sinh audio, và kiểu đọc đổi tốc độ của riêng câu đó', () => {
+  const cast = castLocal(HOI_THOAI);
+  assert.deepEqual(cast.rows.map((r) => r.n), [1, 2, 4]);
+  assert.equal(cast.rows.find((r) => r.n === 2).speed, 0.9, 'delivery "hỏi" chậm lại');
+  assert.equal(cast.rows.find((r) => r.n === 1).speed, 1, 'câu không khai delivery giữ nguyên nhịp');
+});
+
+test('đổi giọng cho riêng một vai, các vai khác giữ nguyên', () => {
+  // Gọi vai bằng tên kịch bản, bằng id nhân vật hay bằng tên nhân vật đều phải trúng.
+  for (const key of ['Lucas', 'toi', 'Tới']) {
+    const cast = castLocal(HOI_LUCAS, { speakers: { [key]: 'Cẩm Hồng' } });
+    assert.equal(cast.roles[1].voiceName, 'Cẩm Hồng', `khai bằng "${key}"`);
+    assert.equal(cast.roles[1].picked, true);
+    assert.equal(cast.roles[0].voiceName, 'Nhật Phong', 'vai còn lại không bị đụng tới');
+  }
+});
+
+test('một đường dẫn file được hiểu là mẫu giọng, một cái tên thì không', () => {
+  assert.ok(looksLikeFile('D:/giong/mau.wav'));
+  assert.ok(looksLikeFile('mau.mp3'));
+  assert.ok(!looksLikeFile('Nhật Phong'), 'tên giọng không có gạch chéo và không có đuôi audio');
+  const cast = castLocal(HOI_THOAI, { speakers: { Griffin: 'D:/giong/griffin.wav' } });
+  assert.equal(cast.roles[0].source, 'file');
+  assert.equal(cast.roles[1].source, 'catalog', 'vai kia vẫn lấy mẫu từ kho media');
+});
+
+test('chọn "giọng từ file" mà chưa chọn file thì là lỗi chặn sinh, không lặng lẽ rơi về giọng vừa bỏ', () => {
+  // Panel từng để lọt: một vai chọn Cẩm Hồng rồi đổi sang "giọng từ file", bỏ trống ô — lượt sinh vẫn đọc bằng Cẩm Hồng.
+  const cast = castLocal(HOI_THOAI, { speakers: { Griffin: FILE_PENDING } });
+  const griffin = cast.roles[0];
+  assert.equal(griffin.source, 'file');
+  assert.equal(griffin.picked, true);
+  assert.equal(griffin.voiceId, null, 'không được mang giọng nào của danh mục');
+  assert.match(griffin.error, /chưa chọn file/);
+  assert.equal(cast.ok, false, 'phải chặn lượt sinh');
+  assert.ok(cast.problems.some((p) => p.includes('Griffin') && /chưa chọn file/.test(p)), 'lỗi phải gọi đúng tên vai');
+  assert.equal(cast.roles[1].error, null, 'vai còn lại không bị vạ lây');
+});
+
+test('mẫu đã nghe thất bại được nhớ lại: dàn vai báo ngay, không khen "lần đầu sẽ nghe" và không nghe lần nữa', async () => {
+  // Đã thấy thật: một MP3 không có tiếng nói làm lượt sinh chết, mà thẻ nhân vật vẫn xanh "lần đầu sẽ nghe
+  // lời của mẫu bằng Whisper" — vì bước kiểm dàn vai không biết lần nghe trước đã hỏng.
+  const [fs, os, path] = await Promise.all([import('node:fs'), import('node:os'), import('node:path')]);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ref-fail-'));
+  const file = path.join(dir, 'khong-co-loi.wav');
+  fs.writeFileSync(file, 'không phải wav thật, chỉ cần nội dung để băm');
+  const failCache = refFailCache(file);
+  fs.mkdirSync(path.dirname(failCache), { recursive: true });
+  const hadCache = fs.existsSync(failCache);
+  fs.writeFileSync(failCache, 'mẫu giọng không có tiếng nói — Whisper không nghe ra lời nào.\n');
+  try {
+    const role = { source: 'file', file, error: null };
+    const status = refStatus(role);
+    assert.equal(status.ready, false);
+    assert.match(status.note, /không có tiếng nói/);
+    const again = await refFromFile(file);
+    assert.match(again.error, /không có tiếng nói/, 'trả lại đúng câu đã nhớ, không chạy Whisper');
+    // Người dùng đặt .txt cùng tên cạnh file thì lời người ghi thắng cache hỏng.
+    fs.writeFileSync(path.join(dir, 'khong-co-loi.txt'), 'Lời của đoạn mẫu.');
+    assert.equal(refStatus(role).ready, true, 'có .txt cùng tên là sẵn sàng');
+    assert.equal((await refFromFile(file)).from, 'sidecar');
+  } finally {
+    if (!hadCache) fs.rmSync(failCache, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('tên nhân vật lạ dừng lượt sinh, thay vì lặng lẽ đọc bằng người khác', () => {
+  const cast = castLocal([{ n: 1, text: 'Xin chào.', speaker: 'Bảo' }]);
+  assert.equal(cast.ok, false);
+  assert.match(cast.problems[0], /Bảo/);
+});
+
+test('giọng không có trong danh mục cũng bị chặn: model local cần một mẫu để nhân bản', () => {
+  const cast = castLocal(HOI_THOAI, { speakers: { Griffin: 'Giọng Không Tồn Tại' } });
+  assert.equal(cast.ok, false);
+  assert.match(cast.roles[0].error, /không có giọng/);
+});
+
+test('video một người dẫn vẫn chạy như cũ: không nhân vật, giọng lấy từ --voice', () => {
+  const cast = castLocal([{ n: 1, text: 'Xin chào.' }], { voice: 'Viên' });
+  assert.equal(cast.dialogue, false);
+  assert.equal(cast.roles.length, 1);
+  assert.equal(cast.roles[0].speaker, null);
+  assert.equal(cast.roles[0].voiceName, 'Viên');
 });

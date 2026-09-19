@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRightOutlined, CheckCircleFilled, TeamOutlined, CopyOutlined, DeleteOutlined, DownloadOutlined, ExportOutlined, FolderOpenOutlined, ImportOutlined, KeyOutlined, LeftOutlined, LockOutlined, PlayCircleFilled, RightOutlined, SearchOutlined, SoundOutlined } from "@ant-design/icons";
-import { Alert, Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
+import { Button, Checkbox, Empty, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Tag } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import { reportMatchesDir } from "@/lib/import-report";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
-import type { DryRun, ImportReport, JobInfo, LogEntry, OmnivoiceStatus, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
+import type { DryRun, ImportReport, JobInfo, LocalCast, LogEntry, OmnivoiceStatus, VideoDetail, VoiceScript, VoiceSettings } from "@/lib/types";
 import { AgentLog, AgentSummary, FeedbackBox, JobProgress, StageBadge, stageLogs } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
+import { isRefFile, LocalCastPicker, RefFileField } from "./local-cast";
 import { MusicPicker } from "./music-picker";
+import { ProductionState } from "./production-state";
 import { SourcePickerField } from "./source-picker";
 import { VoicePicker } from "./voice-picker";
 
@@ -212,7 +214,7 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       <div className="vs-step-status"><StageBadge status={status} />{count > 0 && <span className="quiet-label">{count} CÂU · {formatFrames(detail.cues?.duration)} ƯỚC TÍNH</span>}</div>
       <JobProgress job={job?.kind === "cues" ? job : null} onStop={stop} />
       {status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy agent</Button></Empty>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
+      {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
       <AgentSummary logs={runLogs} />
       <CueList detail={detail} />
       {status === "done" && <ScriptExport detail={detail} busy={busy} act={act} />}
@@ -290,6 +292,28 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   // Cài xong thì job kết thúc — hỏi lại để bước 1 tự chuyển sang "xong". Cũng chạy lượt đầu khi mở tab.
   useEffect(() => { if (!installing && !aligning) void refresh(); }, [installing, aligning, refresh]);
 
+  /**
+   * Dàn vai: ai đọc câu nào, bằng giọng nào, mẫu đã sẵn sàng chưa. Miễn phí và tức thì (chỉ đọc cues.js
+   * với voices.json), nên hỏi lại sau mỗi lần đổi giọng — đó là cách duy nhất biết được một đường dẫn
+   * vừa gõ có thật hay không trước khi GPU chạy hàng chục phút.
+   */
+  const [cast, setCast] = useState<LocalCast | null>(null);
+  const castKey = JSON.stringify([settings.voiceId, settings.speakers || {}]);
+  useEffect(() => {
+    let alive = true;
+    void api<LocalCast>(`/api/videos/${id}/voice`, { method: "POST", json: { action: "omnivoice-cast", settings } })
+      .then((c) => { if (alive) setCast(c); })
+      .catch(() => { if (alive) setCast(null); });
+    return () => { alive = false; };
+    // settings đi cùng castKey; chỉ hỏi lại khi giọng của một vai nào đó thật sự đổi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, castKey]);
+  // Lúc người dùng đổi giọng gần nhất: một lượt sinh thất bại TRƯỚC đó nói về thiết lập cũ, không còn
+  // đáng treo trên màn hình — dàn vai đã nói lý do hiện tại rồi. 0 = chưa đo (frame đầu), không hiện gì.
+  const [settingsChangedAt, setSettingsChangedAt] = useState(0);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setSettingsChangedAt(Date.now()); }, [castKey]);
+
   const server = (action: "start" | "stop") => act(async () => {
     setWorking(true);
     try { setStatus(await send(`omnivoice-server-${action}`)); } finally { setWorking(false); }
@@ -298,6 +322,24 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   const installed = status?.installed ?? false;
   const aligned = status?.align ?? false;
   const running = status?.server.running ?? false;
+  // Video hội thoại: giọng là chuyện của từng nhân vật, không còn "giọng của video" nào để chọn một lần.
+  const dialogue = cast?.dialogue ?? false;
+  // Người dẫn của video một giọng có thể nhân bản từ file trên máy — khai ở cùng chỗ với các vai khác.
+  const narratorRef = String(settings.speakers?.[""] ?? "").trim();
+  const narratorFile = isRefFile(narratorRef);
+  const narratorless = () => {
+    const speakers = { ...(settings.speakers || {}) };
+    delete speakers[""];
+    return speakers;
+  };
+  const setNarratorFile = (value: string) => {
+    const speakers = { ...(settings.speakers || {}) };
+    if (value.trim()) speakers[""] = value.trim();
+    else delete speakers[""];
+    setSettings({ ...settings, speakers });
+  };
+  // Sinh được chưa: dàn vai nói thay cho ô "đã chọn giọng" — nó biết cả nhân vật lạ lẫn file mẫu không có thật.
+  const voiceReady = cast ? cast.ok : Boolean(settings.voiceId);
   const generating = jobRunning("omnivoice-generate");
   const spoken = detail.cues?.cues.filter((c) => !c.silent && c.text.trim()).length ?? 0;
   // Thư mục nhập đang trỏ vào kết quả của chính model local: bước 3 đã chạy xong ít nhất một lần.
@@ -327,11 +369,10 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   // Mất trạng thái thì panel rỗng trông như hỏng hẳn, và mất luôn nút Cài — phải còn đường thử lại.
   if (failed && !status) {
     return <div className="vs-local">
-      <Alert
-        type="error"
-        showIcon
+      <ProductionState
+        status="error"
         title="Không đọc được trạng thái model local"
-        description="Máy chủ Studio không trả lời. Kiểm tra cửa sổ đang chạy `npm run studio` rồi thử lại."
+        detail="Máy chủ Studio không trả lời. Kiểm tra cửa sổ đang chạy `npm run studio` rồi thử lại."
         action={<Button size="small" onClick={() => void refresh()}>Thử lại</Button>}
       />
     </div>;
@@ -346,12 +387,11 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
       {status && <Tag className="vs-badge" color={installed ? "success" : "default"}>{installed ? "Đã cài" : "Chưa cài"}</Tag>}
     </header>
 
-    {status && weak && <Alert
+    {status && weak && <ProductionState
       className="vs-local-warning"
-      type={device?.id === "cpu" ? "error" : "warning"}
-      showIcon
+      status={device?.id === "cpu" ? "error" : "review"}
       title={device?.id === "cpu" ? "Máy này không đủ sức chạy model local" : "Máy này chạy được nhưng sát sức"}
-      description={weakText}
+      detail={weakText}
     />}
 
     <ol className="vs-local-flow">
@@ -373,18 +413,37 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
         {status && !installed && <span className="vs-local-aside">{device?.label}</span>}
       </li>
 
-      <li className={`vs-local-step ${!installed ? "is-wait" : settings.voiceId ? "is-done" : "is-now"}`}>
-        <span className="vs-local-num">{installed && settings.voiceId ? <CheckCircleFilled /> : 2}</span>
+      <li className={`vs-local-step ${!installed ? "is-wait" : voiceReady ? "is-done" : "is-now"}`}>
+        <span className="vs-local-num">{installed && voiceReady ? <CheckCircleFilled /> : 2}</span>
         <div className="vs-local-body">
-          <strong>Chọn giọng để nhân bản</strong>
+          <strong>{dialogue ? `Chọn giọng cho ${cast?.roles.length} nhân vật` : "Chọn giọng để nhân bản"}</strong>
           {/* OmniVoice clone giọng từ một đoạn mẫu, và voices.json đã có sẵn mẫu của cả bốn người
               dẫn trên kho media — dùng lại đúng bộ chọn của tab ElevenLabs để giọng không lệch nhau. */}
-          <small>Mẫu của giọng được chọn sẽ là <code>ref_audio</code> cho OmniVoice, nên giọng local khớp với giọng ElevenLabs đang dùng.</small>
-          <VoicePicker value={settings.voiceId} onChange={(voiceId) => setSettings({ ...settings, voiceId })} disabled={busy || !installed} />
+          <small>
+            {dialogue
+              ? <>Mỗi câu mang giọng của người nói câu đó, sinh gọn trong một lượt. Mặc định là đúng giọng voices.json đã gán cho nhân vật, nên không phải chọn gì cả — bảng dưới chỉ để đổi khác đi.</>
+              : <>Mẫu của giọng được chọn sẽ là <code>ref_audio</code> cho OmniVoice, nên giọng local khớp với giọng ElevenLabs đang dùng.</>}
+          </small>
+          {dialogue && cast
+            ? <LocalCastPicker cast={cast} settings={settings} setSettings={setSettings} disabled={busy || !installed} />
+            : <>
+                <VoicePicker value={settings.voiceId} onChange={(voiceId) => setSettings({ ...settings, voiceId, speakers: narratorless() })} disabled={busy || !installed || narratorFile} />
+                {/* Giọng chưa có trong danh mục: chỉ trỏ tới file mẫu trên máy, không tải lên đâu cả. */}
+                <details className="vs-local-extra vs-cast-other" open={narratorFile}>
+                  <summary>Hoặc nhân bản từ một file giọng trên máy</summary>
+                  <RefFileField
+                    value={narratorFile ? narratorRef : ""}
+                    onChange={setNarratorFile}
+                    disabled={busy || !installed}
+                    note={narratorFile ? cast?.roles[0]?.note : null}
+                    error={narratorFile ? cast?.roles[0]?.error : null}
+                  />
+                </details>
+              </>}
         </div>
       </li>
 
-      <li className={`vs-local-step ${!installed || !settings.voiceId ? "is-wait" : generated ? "is-done" : "is-now"}`}>
+      <li className={`vs-local-step ${!installed || !voiceReady ? "is-wait" : generated ? "is-done" : "is-now"}`}>
         <span className="vs-local-num">{generated ? <CheckCircleFilled /> : 3}</span>
         <div className="vs-local-body">
           <strong>Sinh giọng cho cả video</strong>
@@ -396,10 +455,21 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
             type="primary"
             icon={<SoundOutlined />}
             loading={generating}
-            disabled={busy || generating || !installed || !settings.voiceId}
+            disabled={busy || generating || !installed || !voiceReady}
             onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-generate", settings }))}
           >{generated ? "Sinh lại" : "Sinh giọng bằng model local"}</Button>
-          {!settings.voiceId && installed && <small className="vs-local-log">Chọn một giọng ở bước 2 trước.</small>}
+          {/* Lượt sinh thất bại chỉ được ghi vào nhật ký (hành động này cố ý không đụng trạng thái bước), nên
+              thanh tiến trình biến mất mà không nói gì — đã thấy thật với một file mẫu không có tiếng nói. */}
+          {job?.kind === "omnivoice-generate" && job.status === "error" && settingsChangedAt > 0 && job.startedAt >= settingsChangedAt && (() => {
+            const last = [...detail.logs].reverse().find((l) => l.kind === "error");
+            return <ProductionState
+              className="vs-production-state"
+              status="error"
+              title="Sinh giọng thất bại"
+              detail={last ? last.text.split(/\r?\n/).filter(Boolean).map((line, i) => <span key={i}>{line}<br /></span>) : "Xem nhật ký bên dưới."}
+            />;
+          })()}
+          {!voiceReady && installed && <small className="vs-local-log vs-local-hint">{cast?.problems.length ? cast.problems[0].split(/\r?\n/)[0] : "Chọn một giọng ở bước 2 trước."}</small>}
           {/* Đo thật trên card 6 GB: server giữ model sẵn, lệnh sinh nạp thêm một bản nữa → VRAM lên 97 %
               và cả hai cùng ì. Máy VRAM rộng thì chạy song song vô tư, nên chỉ nhắc khi card chật. */}
           {running && device?.tight && <small className="vs-local-log vs-local-hint">
@@ -426,12 +496,11 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
 
           {/* Whisper nằm ở voice/.venv, KHÁC venv của OmniVoice. Cài xong OmniVoice mà thiếu nó thì
               sinh giọng vẫn chạy ngon rồi chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút. */}
-          {status && !aligned && <Alert
+          {status && !aligned && <ProductionState
             className="vs-local-warning"
-            type="warning"
-            showIcon
+            status="review"
             title="Còn thiếu môi trường nhận diện giọng"
-            description="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, bản cài OmniVoice không bao gồm."
+            detail="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, bản cài OmniVoice không bao gồm."
             action={<Button size="small" type="primary" loading={aligning} disabled={busy || aligning} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "align-setup" }))}>Cài Whisper</Button>}
           />}
 
@@ -467,19 +536,30 @@ function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
 
     {/* Server Gradio KHÔNG nằm trên đường sinh giọng: lệnh sinh gọi thẳng omnivoice-infer-batch và
         không biết tới cổng nào. Để nó ở đây như một tiện ích, không phải một bước bắt buộc. */}
+    {/* Nói bằng việc người dùng làm, không bằng tên công nghệ: "Gradio", "server", "nạp model" từng làm
+        người dùng không hiểu mục này để làm gì. Cảnh báo về bộ nhớ card chỉ hiện trên máy card chật. */}
     {installed && <details className="vs-local-extra">
-      <summary>Giao diện thử từng câu (tuỳ chọn)</summary>
-      <p>Server Gradio của OmniVoice, để nghe thử một câu lẻ. Không cần bật để sinh giọng — bật lúc đang sinh là nạp model hai lần.</p>
+      <summary>Nghe thử một câu trước khi sinh cả video (tuỳ chọn)</summary>
+      <p>
+        Mở một trang nghe thử trên máy này: gõ một câu bất kỳ, chọn giọng hoặc file mẫu, nghe ngay — để chắc
+        giọng đúng ý trước khi sinh cả {spoken || "video"} câu. Không bắt buộc; bước Sinh giọng không cần nó.
+      </p>
       <div className="vs-local-actions">
         {running
           ? <>
-              <a className="vs-local-url" href={status?.server.url ?? "#"} target="_blank" rel="noreferrer">{status?.server.url}</a>
-              <Button size="small" icon={<ExportOutlined />} href={status?.server.url ?? undefined} target="_blank">Mở giao diện</Button>
-              <Button size="small" danger loading={working} disabled={busy} onClick={() => server("stop")}>Tắt server</Button>
+              <span className="vs-local-url">Trang nghe thử đang mở</span>
+              <Button size="small" type="primary" icon={<ExportOutlined />} href={status?.server.url ?? undefined} target="_blank">Mở trang</Button>
+              <Button size="small" danger loading={working} disabled={busy} onClick={() => server("stop")}>Đóng trang nghe thử</Button>
             </>
-          : <Button size="small" icon={<PlayCircleFilled />} loading={working} disabled={busy} onClick={() => server("start")}>Bật server</Button>}
+          : <>
+              <Button size="small" icon={<PlayCircleFilled />} loading={working} disabled={busy} onClick={() => server("start")}>Mở trang nghe thử</Button>
+              <small>Lần đầu mở có thể phải chờ một lúc.</small>
+            </>}
       </div>
-      {running && <small className="vs-local-log">Nhật ký: <code>{status?.server.log}</code></small>}
+      {device?.tight && <small className="vs-local-log vs-local-hint">
+        Máy này card chật: <strong>đóng trang nghe thử trước khi bấm Sinh giọng</strong> — hai việc chạy cùng lúc sẽ giành nhau bộ nhớ card.
+      </small>}
+      {running && <small className="vs-local-log">Trang không mở được? Xem nhật ký: <code>{status?.server.log}</code></small>}
     </details>}
 
     {confirmSetup && <ConfirmDialog
@@ -575,7 +655,7 @@ function ImportPanel({ detail, settings, setSettings, busy, act }: {
       </p>}
       </div>
     </div>
-    {report?.align.note && <Alert className="feedback" type="warning" showIcon title={report.align.note} />}
+    {report?.align.note && <ProductionState className="vs-production-state" status="review" title={report.align.note} detail={null} />}
     {report && <ImportMap report={report} onPlay={bound.length ? play : undefined} />}
     {detail.artifacts.voiceWav && <div className="audio-result vs-audio">
       <div><span><CheckCircleFilled />Giọng đã gắn vào video · {formatFrames(detail.cues?.voiceDuration)}{detail.cues?.wordTimings ? " · có mốc từng từ" : " · chưa có mốc từng từ"}</span></div>
@@ -698,7 +778,7 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
             : <ElevenLabsPanel {...panel} hasKey={hasKey} setHasKey={setHasKey} />}
         </Form>
         <JobProgress job={job && ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup"].includes(job.kind) ? job : null} onStop={stop} />
-        {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
+        {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
         <AgentLog logs={runLogs} open={status === "running"} />
       </>}
     </div>
@@ -717,7 +797,7 @@ export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       <JobProgress job={job?.kind === "scenes" ? job : null} onStop={stop} />
       {!voiced && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tạo giọng đọc trước" />}
       {voiced && status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Bắt đầu dựng cảnh</Button></Empty>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} action={<Button disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
+      {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
       <AgentSummary logs={runLogs} />
       {detail.qa.length > 0 && <QaGallery paths={detail.qa} />}
       {(status === "review" || status === "done") && detail.state.stages.render !== "running" && <FeedbackBox disabled={busy} placeholder="Ví dụ: cảnh 12 đổi Gate sang StopGate; cảnh 20 chữ bị tràn khung…" onSend={(message) => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes", message }))} />}
@@ -760,7 +840,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         <div><span>Giọng</span><strong>{detail.state.voice.model}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
-      {status === "error" && <Alert className="feedback" type="error" showIcon title="Chưa xong" description={detail.state.lastError || "Xem nhật ký."} />}
+      {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
       {ready && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
         {path ? <CheckCircleFilled className="is-ok" /> : <span className="vs-dot" />}
         <span>{label}</span>

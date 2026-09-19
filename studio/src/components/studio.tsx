@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircleFilled, ExportOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
-import { Alert, Button, Empty, Steps, Tag } from "antd";
+import { CheckCircleFilled, CloseOutlined, ExportOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
+import { Button, Empty, Steps, Tag, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
@@ -11,6 +11,7 @@ import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
 import { PageAgentBinding } from "./page-agent-binding";
+import { ProductionState } from "./production-state";
 import { CuesStep, RenderStep, ScenesStep, VoiceStep } from "./steps";
 
 /** Ba nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả ba là sai với hai cái kia. */
@@ -135,6 +136,7 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
 export default function Studio() {
   const id = useSearchParams().get("id");
   const [step, setStep] = useState<Step>("plan");
+  const [workflowTooltip, setWorkflowTooltip] = useState<Step | null>(null);
   const [styles, setStyles] = useState<StyleDef[]>([]);
   const [draft, setDraft] = useState<PlanDraft>(emptyDraft("lesson-lab"));
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true });
@@ -235,6 +237,26 @@ export default function Studio() {
   const current = STEPS.find((s) => s.id === step)!;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
   const pageProvider = detail?.state.agent.provider ?? draft.agentProvider;
+  const workflowItems = STEPS.map((item) => {
+    const disabled = item.id !== "plan" && !detail;
+    let status: "finish" | "process" | "wait" = "wait";
+    if (complete(item.id, detail) && detail) status = "finish";
+    else if (step === item.id) status = "process";
+    return {
+      title: <Tooltip title={item.description} placement="bottom" open={workflowTooltip === item.id} destroyOnHidden>
+        <span>{item.title}</span>
+      </Tooltip>,
+      disabled,
+      status,
+      tabIndex: 0,
+      "aria-label": `${item.title}: ${item.description}`,
+      "aria-disabled": disabled || undefined,
+      onMouseEnter: () => setWorkflowTooltip(item.id),
+      onMouseLeave: () => setWorkflowTooltip((current) => current === item.id ? null : current),
+      onFocus: () => setWorkflowTooltip(item.id),
+      onBlur: () => setWorkflowTooltip((current) => current === item.id ? null : current),
+    };
+  });
 
   return <Shell page={id ? "videos" : "new"} hasKey={hasKey}>
     <div className="page-heading vs-page-heading">
@@ -258,25 +280,19 @@ export default function Studio() {
           itemIcon: "vs-workflow-item-icon",
           itemSection: "vs-workflow-item-section",
           itemTitle: "vs-workflow-item-title",
-          itemContent: "vs-workflow-item-content",
         }}
         current={STEPS.findIndex((item) => item.id === step)}
         responsive={false}
         onChange={(index) => { const target = STEPS[index]; if (target.id === "plan" || detail) goToStep(target.id); }}
-        items={STEPS.map((item) => ({
-          title: item.title,
-          content: item.description,
-          disabled: item.id !== "plan" && !detail,
-          status: complete(item.id, detail) && detail ? "finish" : step === item.id ? "process" : "wait",
-        }))}
+        items={workflowItems}
       />
     </div>
-    {setupError && <Alert className="feedback" type="error" showIcon title="Không tải được cấu hình Studio" description={setupError} action={<Button size="small" onClick={() => { void loadSetup(); }}>Thử lại</Button>} />}
-    {error && <Alert className="feedback" type="error" showIcon closable title="Thao tác chưa hoàn tất" description={error} onClose={() => setError(null)} />}
-    {loadError && <Alert className="feedback" type="error" showIcon title="Không tải được video" description={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}
+    {setupError && <ProductionState className="vs-production-state" status="error" title="Không tải được cấu hình Studio" detail={setupError} action={<Button size="small" onClick={() => { void loadSetup(); }}>Thử lại</Button>} />}
+    {error && <ProductionState className="vs-production-state" status="error" title="Thao tác chưa hoàn tất" detail={error} action={<Button type="text" size="small" aria-label="Đóng thông báo" icon={<CloseOutlined />} onClick={() => setError(null)} />} />}
+    {loadError && <ProductionState className="vs-production-state" status="error" title="Không tải được video" detail={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}
     {detail && !detail.managed && (detail.state.sample
-      ? <Alert className="feedback" data-tour="studio.sample" type="info" showIcon title="Video mẫu của chế độ tập" description="Một video đã đi đủ năm bước, để bạn xem từng bước trông thế nào khi xong. Chỉ xem — không chạy lại được bước nào." />
-      : <Alert className="feedback" type="info" showIcon title="Video được làm ngoài Video Studio" description="Bạn chỉ có thể xem tệp và kết quả của video này." />)}
+      ? <ProductionState className="vs-production-state" tour="studio.sample" status="idle" title="Video mẫu của chế độ tập" detail="Một video đã đi đủ năm bước, để bạn xem từng bước trông thế nào khi xong. Chỉ xem — không chạy lại được bước nào." />
+      : <ProductionState className="vs-production-state" status="idle" title="Video được làm ngoài Video Studio" detail="Bạn chỉ có thể xem tệp và kết quả của video này." />)}
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>

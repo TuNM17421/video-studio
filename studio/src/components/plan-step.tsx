@@ -5,6 +5,7 @@ import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, CopyOutlined, Fi
 import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
+import { inferDay } from "@/lib/day";
 import type { AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { AgentName } from "./agent-mark";
 import { SourcePickerField } from "./source-picker";
@@ -35,10 +36,11 @@ export interface PlanDraft {
   script: { name: string; content: string } | null;
 }
 
+// No default day: a fixed one once sent a Ngày 1 video into Day02/. The script fills it in (lib/day.ts).
 export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude"): PlanDraft => ({
   id: "",
   agentProvider,
-  request: { style, modules: [], day: "Day02", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
+  request: { style, modules: [], day: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
 
@@ -49,7 +51,7 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef, modules: ModuleI
   const scope = [r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ");
   const showcase = style ? [...(style.base?.showcase || []), ...style.showcase].map((s) => s.component).join(", ") : "";
   return [
-    `Dựng video ${id} (${r.day}) theo style ${style?.name || r.style} (styles/${r.style}.json).`,
+    `Dựng video ${id} (${r.day || "<ngày>"}) theo style ${style?.name || r.style} (styles/${r.style}.json).`,
     `Dùng skill make-video (.claude/skills/make-video/SKILL.md), thứ tự: cues → giọng → cảnh → render → bàn giao.`,
     `Kịch bản: ${draft.script ? `projects/${id}/kich-ban-goc.md (chép từ ${draft.script.name})` : "<đường dẫn kịch bản>"}.`,
     r.title && `Tên video: ${r.title}.`,
@@ -119,14 +121,17 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const formRef = useRef<HTMLDivElement>(null);
   const idInput = useRef<InputRef>(null);
   const idCheckRun = useRef(0);
+  // Once the member picks a day by hand, a later script only warns about a mismatch instead of overriding it.
+  const dayPicked = useRef(false);
   const [copied, setCopied] = useState(false);
-  const [touched, setTouched] = useState({ id: false, script: false });
+  const [touched, setTouched] = useState({ id: false, day: false, script: false });
   const [scriptIssue, setScriptIssue] = useState<string | null>(null);
   const [idCheck, setIdCheck] = useState<{ value: string; taken: boolean } | null>(null);
   const [checkingId, setCheckingId] = useState(false);
   const [validating, setValidating] = useState(false);
   const styleLabelId = useId();
   const idErrorId = useId();
+  const dayMessageId = useId();
   const scriptLabelId = useId();
   const scriptErrorId = useId();
   const prompt = useMemo(() => buildPrompt(draft, style, modules), [draft, style, modules]);
@@ -143,6 +148,13 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const formatError = videoIdError(draft.id);
   const duplicateError = idCheck?.value === draft.id && idCheck.taken ? `Đã có video “${draft.id}”. Chọn một mã khác.` : null;
   const shownIdError = touched.id ? formatError || duplicateError : null;
+  const requiredDayError = !draft.request.day ? "Chọn ngày của bài học (Day01, Day02…)." : null;
+  const shownDayError = touched.day ? requiredDayError : null;
+  const scriptDay = useMemo(() => draft.script ? inferDay(draft.script.name, draft.script.content) : null, [draft.script]);
+  // Not an error — the member may know better than the script — but the folders it lands in must be said out loud.
+  const dayMismatch = scriptDay && draft.request.day && scriptDay !== draft.request.day
+    ? `Kịch bản ghi ${scriptDay.replace("Day", "Ngày ")} nhưng đang chọn ${draft.request.day} — transcript và file chương sẽ nằm trong ${draft.request.day}/.`
+    : null;
   const requiredScriptError = !draft.script ? scriptIssue || "Chọn một tệp kịch bản định dạng .md hoặc .txt." : null;
   const shownScriptError = touched.script ? scriptIssue || requiredScriptError : null;
 
@@ -187,12 +199,15 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
       return;
     }
     setScriptIssue(null);
-    setDraft((current) => ({ ...current, script: { name: file.name, content }, request: { ...current.request, scriptName: file.name } }));
+    setDraft((current) => {
+      const day = dayPicked.current ? current.request.day : inferDay(file.name, content) ?? current.request.day;
+      return { ...current, script: { name: file.name, content }, request: { ...current.request, scriptName: file.name, day } };
+    });
   }
 
   async function submit() {
-    setTouched({ id: true, script: true });
-    if (formatError || duplicateError || requiredScriptError || formRef.current?.querySelector("[aria-invalid='true'], [data-validation-invalid='true'], [data-validation-pending='true']")) {
+    setTouched({ id: true, day: true, script: true });
+    if (formatError || duplicateError || requiredDayError || requiredScriptError || formRef.current?.querySelector("[aria-invalid='true'], [data-validation-invalid='true'], [data-validation-pending='true']")) {
       focusFirstInvalid();
       return;
     }
@@ -208,8 +223,9 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
     onCreate();
   }
 
-  const hasVisibleError = !!shownIdError || !!shownScriptError;
-  const complete = VIDEO_ID_RE.test(draft.id) && !!draft.script && !duplicateError;
+  const hasVisibleError = !!shownIdError || !!shownDayError || !!shownScriptError;
+  const missing = [!VIDEO_ID_RE.test(draft.id) && "mã video", !draft.request.day && "ngày", !draft.script && "kịch bản"].filter(Boolean);
+  const complete = missing.length === 0 && !duplicateError;
   const footerHint = loading
     ? "Đang tải style và cấu hình agent…"
     : unavailable
@@ -220,7 +236,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
           ? "Sửa các trường được đánh dấu ở trên."
           : complete
             ? "Sẽ tạo project và chạy agent Lời & cue."
-            : "Thêm mã video và kịch bản để tiếp tục.";
+            : `Thêm ${missing.join(", ")} để tiếp tục.`;
   const uploadProps: UploadProps = {
     accept: ".md,.txt,text/markdown,text/plain",
     disabled: busy,
@@ -281,8 +297,8 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
         <Form.Item className="field" data-tour="plan.id" label={<span className="vs-field-label">Mã video<RequiredMark /></span>} validateStatus={shownIdError ? "error" : checkingId ? "validating" : touched.id && idCheck?.value === draft.id ? "success" : undefined} help={(shownIdError || checkingId || (touched.id && idCheck?.value === draft.id && !idCheck.taken)) ? <span id={idErrorId} className={`vs-validation-message ${shownIdError ? "is-error" : checkingId ? "is-checking" : "is-ok"}`} role={shownIdError ? "alert" : "status"}>{shownIdError ? <WarningFilled /> : checkingId ? <LoadingOutlined spin /> : <CheckCircleFilled />}{shownIdError || (checkingId ? "Đang kiểm tra mã…" : "Mã này có thể sử dụng.")}</span> : undefined}>
           <Input ref={idInput} status={shownIdError ? "error" : undefined} aria-invalid={!!shownIdError || undefined} aria-describedby={shownIdError || checkingId ? idErrorId : undefined} value={draft.id} disabled={busy} maxLength={61} onBlur={() => { setTouched((current) => ({ ...current, id: true })); void checkVideoId(draft.id); }} onChange={(e) => { setIdCheck(null); setDraft((current) => ({ ...current, id: e.target.value })); }} placeholder="d2-01-lab-v3" spellCheck={false} autoComplete="off" />
         </Form.Item>
-        <Form.Item className="field" label={<span className="vs-field-label">Ngày<RequiredMark /></span>}>
-          <Select value={draft.request.day} disabled={busy} onChange={(day) => set({ day })} options={DAYS.map((day) => ({ value: day, label: day }))} />
+        <Form.Item className="field" label={<span className="vs-field-label">Ngày<RequiredMark /></span>} validateStatus={shownDayError ? "error" : dayMismatch ? "warning" : undefined} help={shownDayError || dayMismatch ? <span id={dayMessageId} className={`vs-validation-message ${shownDayError ? "is-error" : "is-warn"}`} role={shownDayError ? "alert" : "status"}><WarningFilled />{shownDayError || dayMismatch}</span> : undefined}>
+          <Select value={draft.request.day || undefined} placeholder="Day01, Day02…" status={shownDayError ? "error" : dayMismatch ? "warning" : undefined} aria-invalid={!!shownDayError || undefined} aria-describedby={shownDayError || dayMismatch ? dayMessageId : undefined} disabled={busy} onBlur={() => setTouched((current) => ({ ...current, day: true }))} onChange={(day) => { dayPicked.current = true; setTouched((current) => ({ ...current, day: true })); set({ day }); }} options={DAYS.map((day) => ({ value: day, label: day }))} />
         </Form.Item>
         <Form.Item className="field" label={<span className="vs-field-label">Tên video</span>}>
           <Input value={draft.request.title} disabled={busy} maxLength={200} onChange={(e) => set({ title: e.target.value })} />

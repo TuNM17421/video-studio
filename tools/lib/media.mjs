@@ -32,3 +32,23 @@ export function mediaUrl(key) {
   const version = entry.sha256 ? `?v=${entry.sha256.slice(0, 12)}` : '';
   return `${base}/${key.split('/').map(encodeURIComponent).join('/')}${version}`;
 }
+
+/**
+ * `--prune` của tools/media-push.mjs xoá trên R2 mọi object không còn trong `media/files/`. Phép trừ đó
+ * chỉ đúng khi máy đang chạy giữ **bản gốc** của kho media — mà file nặng không nằm trong git
+ * (`.gitignore` chặn `/media/files/*`), nên máy vừa clone về luôn có thư mục rỗng, và ở đó "xoá những gì
+ * không còn" nghĩa là xoá sạch kho của cả nhóm. Không hoàn tác được, và chỉ cần phạm một lần.
+ *
+ * Hai dáng của cùng một sai lầm, đều là "thư mục dưới máy không phải bản gốc":
+ *   rỗng hẳn        — máy vừa clone, chưa bao giờ có file nặng nào
+ *   có vài file     — vừa bỏ một mẫu giọng mới vào để đẩy lên, không phải toàn bộ kho
+ *
+ * Trả về lý do từ chối, hoặc null khi lượt prune này hợp lý (xoá ít hơn số file đang giữ = đúng dáng
+ * "vừa bỏ đi vài file khỏi bản gốc").
+ */
+export function pruneGuard({ local, orphans }) {
+  if (!orphans) return null;
+  if (!local) return `media/files/ đang rỗng, nên "xoá những gì không còn trong đó" là xoá sạch ${orphans} object trên R2`;
+  if (orphans > local) return `sẽ xoá ${orphans} object trên R2 trong khi máy này chỉ giữ ${local} file`;
+  return null;
+}
