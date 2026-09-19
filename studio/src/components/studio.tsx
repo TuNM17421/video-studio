@@ -6,6 +6,7 @@ import { Alert, Button, Empty, Steps, Tag } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
+import { STUDIO_STEP_EVENT } from "@/lib/tours";
 import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
@@ -152,6 +153,19 @@ export default function Studio() {
     requestAnimationFrame(() => editorPanel.current?.scrollIntoView({ block: "start" }));
   }, []);
 
+  // The practice tour (components/tour.tsx) opens each production step of the sample video in turn.
+  useEffect(() => {
+    const open = (event: Event) => {
+      const target = (event as CustomEvent<Step>).detail;
+      if (STEPS.some((s) => s.id === target) && (target === "plan" || detail)) {
+        setAutoStep(false);
+        setStep(target);
+      }
+    };
+    window.addEventListener(STUDIO_STEP_EVENT, open);
+    return () => window.removeEventListener(STUDIO_STEP_EVENT, open);
+  }, [detail]);
+
   const loadSetup = useCallback(async () => {
     setSetupLoading(true);
     setSetupError(null);
@@ -234,7 +248,7 @@ export default function Studio() {
         onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
       />
     </div>
-    <div className="vs-production-rail">
+    <div className="vs-production-rail" data-tour="studio.rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
       <Steps
         className="workflow vs-workflow"
@@ -261,10 +275,10 @@ export default function Studio() {
     {error && <Alert className="feedback" type="error" showIcon closable title="Thao tác chưa hoàn tất" description={error} onClose={() => setError(null)} />}
     {loadError && <Alert className="feedback" type="error" showIcon title="Không tải được video" description={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}
     {detail && !detail.managed && (detail.state.sample
-      ? <Alert className="feedback" type="info" showIcon title="Video mẫu của chế độ tập" description="Một video đã đi đủ năm bước, để bạn xem từng bước trông thế nào khi xong. Chỉ xem — không chạy lại được bước nào." />
+      ? <Alert className="feedback" data-tour="studio.sample" type="info" showIcon title="Video mẫu của chế độ tập" description="Một video đã đi đủ năm bước, để bạn xem từng bước trông thế nào khi xong. Chỉ xem — không chạy lại được bước nào." />
       : <Alert className="feedback" type="info" showIcon title="Video được làm ngoài Video Studio" description="Bạn chỉ có thể xem tệp và kết quả của video này." />)}
     <div className="editor-layout">
-      <section ref={editorPanel} className="editor-panel" aria-label={current.title}>
+      <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
         {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}

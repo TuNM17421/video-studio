@@ -87,7 +87,9 @@ vào** nút tốn credit / chạy agent, không bao giờ bấm hộ. Nút Griff
 `state.json` có `"sample": true` nên Studio mở ở chế độ **chỉ xem** (API chặn agent/giọng/render như với video
 làm ngoài Studio). Phần chữ nằm trong git dù `projects/`, `videos/`, `voice/out/` bị ignore — đã `git add -f`
 từng file, sửa thì add lại; phần nặng (`voice.wav`, MP4, ảnh QA) ở R2 `samples/mau-huong-dan/…`, tải về bằng
-`npm run sample` (`tools/sample-fetch.mjs`). Dựng lại video mẫu thì đẩy lại ba loại file đó vào
+`npm run sample` (`tools/sample-fetch.mjs`). Tour `practice` (nút Griffin → "Chế độ tập", có ở mọi trang) mở
+`/?id=mau-huong-dan` rồi đi qua năm bước: bước tour khai `studioStep`, `tour.tsx` phát sự kiện
+`video-studio:tour-step` và trang video tự mở bước đó. Dựng lại video mẫu thì đẩy lại ba loại file đó vào
 `media/files/samples/<id>/` rồi `npm run media`.
 
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file

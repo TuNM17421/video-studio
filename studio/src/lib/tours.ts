@@ -18,9 +18,16 @@ export type TourMascot = {
   prop?: "lightbulb" | "exclamation" | "question" | "sparkle";
 };
 
+/** A production step of the video page; a tour step naming one switches the Studio to it first. */
+export type StudioStep = "plan" | "cues" | "voice" | "scenes" | "render";
+/** Window event the tour sends to the video page (components/studio.tsx) to open a production step. */
+export const STUDIO_STEP_EVENT = "video-studio:tour-step";
+
 export type TourStep = {
   /** `data-tour` value of the element to point at; null = a centred card with no pointer. */
   target: string | null;
+  /** Open this production step of the video page before pointing (practice tour). */
+  studioStep?: StudioStep;
   title: string;
   body: string;
   mascot: TourMascot;
@@ -39,13 +46,17 @@ export type TourDef = {
    * order of TOURS, each after the previous one is finished (closing with × stops the chain).
    */
   auto: boolean;
+  /** The tour walks this video (`/?id=…`): the launcher opens it first. The practice sample is read-only. */
+  video?: string;
+  /** Offered by the launcher on every page, not only on `routes`. */
+  everywhere?: boolean;
   steps: TourStep[];
 };
 
 export const TOURS: TourDef[] = [
   {
     id: "welcome",
-    version: 1,
+    version: 2,
     label: "Làm quen với Video Studio",
     routes: ["/"],
     auto: true,
@@ -94,7 +105,7 @@ export const TOURS: TourDef[] = [
       {
         target: "tour.launcher",
         title: "Cần mình thì gọi nhé",
-        body: "Bấm vào mình ở góc màn hình bất cứ lúc nào để xem lại hướng dẫn của trang đang mở.",
+        body: "Bấm vào mình ở góc màn hình để xem lại hướng dẫn, hoặc mở Chế độ tập: một video mẫu đã đi đủ năm bước.",
         mascot: { pose: "cheer", mood: "neutral" },
         placement: "left",
       },
@@ -141,6 +152,78 @@ export const TOURS: TourDef[] = [
         body: "Bấm là agent bắt đầu bước Lời & cue thật. Xong mỗi bước, Studio dừng chờ bạn duyệt rồi mới đi tiếp.",
         mascot: { pose: "stand", mood: "surprised", prop: "exclamation" },
         placement: "top",
+      },
+    ],
+  },
+  {
+    id: "practice",
+    version: 1,
+    label: "Chế độ tập — xem một video đi đủ năm bước",
+    routes: ["/"],
+    auto: false,
+    video: "mau-huong-dan",
+    everywhere: true,
+    steps: [
+      {
+        target: "studio.sample",
+        title: "Đây là chế độ tập",
+        body: "Video mẫu này đã đi đủ năm bước. Mình dẫn bạn xem từng bước trông thế nào khi xong — chỉ xem, không tốn gì cả.",
+        mascot: { pose: "welcome", mood: "neutral" },
+        placement: "bottom",
+      },
+      {
+        target: "studio.rail",
+        title: "Luồng sản xuất",
+        body: "Năm cổng đi lần lượt. Cổng có dấu tích là đã xong và đã được duyệt; bấm vào một cổng để xem lại nó.",
+        mascot: { pose: "stand", mood: "thinking" },
+        placement: "bottom",
+      },
+      {
+        target: "studio.editor",
+        studioStep: "plan",
+        title: "Bước 1 · Kế hoạch",
+        body: "Style, ngày, kịch bản và tính năng đã chọn lúc tạo video. Sau khi tạo, phần này giữ cố định.",
+        mascot: { pose: "stand", mood: "neutral" },
+        placement: "right",
+      },
+      {
+        target: "studio.editor",
+        studioStep: "cues",
+        title: "Bước 2 · Lời & cue",
+        body: "Agent cắt kịch bản thành từng câu, giữ nguyên văn. Bạn đọc lại ở đây, góp ý nếu cần, rồi duyệt.",
+        mascot: { pose: "stand", mood: "wink" },
+        placement: "right",
+      },
+      {
+        target: "studio.editor",
+        studioStep: "voice",
+        title: "Bước 3 · Giọng đọc",
+        body: "Chọn nguồn giọng và người đọc; bản thu nằm ngay bên dưới để nghe lại. Tạo giọng bằng ElevenLabs sẽ tốn credit.",
+        mascot: { pose: "stand", mood: "surprised", prop: "exclamation" },
+        placement: "right",
+      },
+      {
+        target: "studio.editor",
+        studioStep: "scenes",
+        title: "Bước 4 · Dựng cảnh",
+        body: "Agent dựng từng cảnh đúng theo độ dài giọng thật và tự chụp ảnh kiểm tra. Bạn xem ảnh, góp ý chỗ sai rồi duyệt.",
+        mascot: { pose: "stand", mood: "happy", prop: "lightbulb" },
+        placement: "right",
+      },
+      {
+        target: "studio.editor",
+        studioStep: "render",
+        title: "Bước 5 · Render",
+        body: "Chọn phụ đề và nhạc nền rồi render ra MP4, kèm transcript và file chương. Bấm phát để xem thành phẩm.",
+        mascot: { pose: "wings", mood: "happy" },
+        placement: "right",
+      },
+      {
+        target: "nav.new",
+        title: "Đến lượt bạn!",
+        body: "Bấm Video mới ở thanh bên để làm video đầu tiên của bạn — mình sẽ đi cùng bạn ở trang Kế hoạch.",
+        mascot: { pose: "cheer", mood: "neutral" },
+        placement: "right",
       },
     ],
   },

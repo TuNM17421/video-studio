@@ -1,15 +1,40 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Dropdown, Tour, type TourProps } from "antd";
 import { mascotAsset, mascotPicture, useMascotTable, type MascotTable } from "@/lib/mascot";
-import { TOURS, tourById, toursFor, type TourDef, type TourMascot } from "@/lib/tours";
+import { STUDIO_STEP_EVENT, TOURS, tourById, toursFor, type TourDef, type TourMascot } from "@/lib/tours";
 import styles from "./tour.module.css";
 
 const SEEN_KEY = (id: string) => `video-studio.tour.${id}`;
 /** Gives the page a moment to paint the elements a tour points at before looking for them. */
 const SETTLE_MS = 700;
+/** How long a tour that opens a video waits for that video page to be on screen. */
+const OPEN_VIDEO_MS = 10000;
+
+/**
+ * A tour waiting for its video page. Every page mounts its own Shell (and this component), so the wait has
+ * to outlive the navigation: it is kept in sessionStorage, not in state.
+ */
+const PENDING_KEY = "video-studio.tour.pending";
+function takePending(): TourDef | null {
+  try {
+    const id = window.sessionStorage.getItem(PENDING_KEY);
+    return id ? tourById(id) ?? null : null;
+  } catch {
+    return null;
+  }
+}
+function putPending(tour: TourDef | null) {
+  try {
+    if (tour) window.sessionStorage.setItem(PENDING_KEY, tour.id);
+    else window.sessionStorage.removeItem(PENDING_KEY);
+  } catch {}
+}
+
+/** The video the page shows (`/?id=…`), read from the address bar so the tour needs no Suspense boundary. */
+const openVideo = () => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("id"));
 
 function seen(tour: TourDef) {
   try {
@@ -50,11 +75,16 @@ function TourMascotFigure({ table, mascot }: { table: MascotTable; mascot: TourM
  */
 export function StudioTour() {
   const pathname = usePathname();
+  const router = useRouter();
   const { table } = useMascotTable();
   const [active, setActive] = useState<{ tour: TourDef; steps: TourDef["steps"] } | null>(null);
   const [current, setCurrent] = useState(0);
   // Closing a tour with × means "not now": no other tour starts by itself until the next page load.
   const [quiet, setQuiet] = useState(false);
+  // A tour waiting for its video page to open (the practice tour starts on /?id=mau-huong-dan).
+  const [pending, setPending] = useState<TourDef | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage is only readable after mount
+  useEffect(() => { setPending(takePending()); }, []);
 
   const start = useCallback((tour: TourDef) => {
     const steps = tour.steps.filter((s) => !s.target || findTarget(s.target));
@@ -77,6 +107,38 @@ export function StudioTour() {
     return () => window.clearTimeout(timer);
   }, [pathname, active, quiet, start]);
 
+  /** Start a tour chosen in the launcher: open its video first if it walks one. */
+  const launch = (tour: TourDef) => {
+    if (tour.video && openVideo() !== tour.video) {
+      putPending(tour);
+      setPending(tour);
+      router.push(`/?id=${encodeURIComponent(tour.video)}`);
+      return;
+    }
+    // a page tour whose targets are not on screen falls back to the tour of the whole Studio
+    if (!start(tour)) start(TOURS[0]);
+  };
+
+  // After the video page opens, start the waiting tour as soon as its targets are painted.
+  useEffect(() => {
+    if (!pending) return;
+    const began = Date.now();
+    const timer = window.setInterval(() => {
+      if ((openVideo() === pending.video && start(pending)) || Date.now() - began > OPEN_VIDEO_MS) {
+        window.clearInterval(timer);
+        putPending(null);
+        setPending(null);
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [pending, start]);
+
+  // A step that belongs to a production step asks the video page to open it before pointing at it.
+  const studioStep = active?.steps[current]?.studioStep;
+  useEffect(() => {
+    if (studioStep) window.dispatchEvent(new CustomEvent(STUDIO_STEP_EVENT, { detail: studioStep }));
+  }, [studioStep]);
+
   const close = (finished: boolean) => {
     if (!active) return;
     markSeen(active.tour);
@@ -96,7 +158,8 @@ export function StudioTour() {
     prevButtonProps: { children: "Quay lại" },
   }));
 
-  const offered = [...toursFor(pathname), ...TOURS.filter((t) => t.id === "welcome" && !t.routes.includes(pathname))];
+  // the page's own tours, then the ones offered everywhere (and the welcome tour, from any page)
+  const offered = [...toursFor(pathname), ...TOURS.filter((t) => (t.everywhere || t.id === "welcome") && !t.routes.includes(pathname))];
 
   return <>
     {active && <Tour
@@ -119,8 +182,7 @@ export function StudioTour() {
         items: offered.map((t) => ({ key: t.id, label: t.label })),
         onClick: ({ key }) => {
           const tour = tourById(key);
-          // a page tour whose targets are not on screen falls back to the tour of the whole Studio
-          if (tour && !start(tour)) start(TOURS[0]);
+          if (tour) launch(tour);
         },
       }}
     >
