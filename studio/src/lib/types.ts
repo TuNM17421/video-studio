@@ -2,12 +2,21 @@ import type { MusicChoice } from "./music";
 
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
+export type JobKind = StageId | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
   defaultProvider: AgentProvider;
   selectionLocked: boolean;
+  /** Cross-review defaults for new videos, and which CLIs this machine actually has. */
+  review: { defaults: ReviewSettings; installed: AgentProvider[] };
+}
+
+/** Cross-review of scene stills by a separate read-only session (lib/review.ts). Changeable any time. */
+export interface ReviewSettings {
+  enabled: boolean;
+  /** `auto` = an installed CLI other than the authoring one; otherwise that exact CLI. */
+  provider: "auto" | AgentProvider;
 }
 
 export interface AgentBinding {
@@ -163,6 +172,7 @@ export interface VideoState {
   music: MusicChoice;
   /** Burn the navy subtitle bar into the MP4 (render step; off = render.mjs --no-captions). */
   captions: boolean;
+  review: ReviewSettings;
   lastError: string | null;
 }
 
@@ -260,6 +270,8 @@ export interface VideoDetail {
   dryRun: DryRun | null;
   importReport: ImportReport | null;
   workflow: WorkflowReport;
+  /** CLIs installed on this machine — who can be picked to cross-review. */
+  installedAgents: AgentProvider[];
 }
 
 export interface VideoSummary {

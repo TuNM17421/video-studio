@@ -1,13 +1,14 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { AgentProvider } from "../types";
-import { agentProviderLabel, isAgentProvider } from "../agent-providers";
-import { antigravityQaArgs, claudeQaArgs, codexQaArgs, type QaProvider, sanitizedAgentEnv } from "./agent-cli";
-import { log, machineLabel, run, setProgress, wasStopped } from "./jobs";
+import { agentProviderLabel } from "../agent-providers";
+import { resolveReviewer } from "../review";
+import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
+import { agentBin, installedAgents } from "./agent-config";
+import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
 import { moduleQaCriteria } from "./modules";
-import { exists, projectDir, REPO, rel, stateDir, videoDir, voiceOut } from "./paths";
-import { cuesInfo, readState } from "./videos";
+import { projectDir, REPO, rel, stateDir, videoDir, voiceOut } from "./paths";
+import { cuesInfo, readState, setStage } from "./videos";
 import {
   addRunMetrics,
   finishRun,
@@ -216,38 +217,6 @@ function qaPacket(id: string, verifyOutput: string, qaDir: string) {
   return { packet, stills: stills.map((name) => `stills/${name}`) };
 }
 
-const QA_ORDER: QaProvider[] = ["antigravity", "codex", "claude"];
-const qaBin = (provider: QaProvider) => ({
-  claude: process.env.CLAUDE_BIN || "claude",
-  codex: process.env.CODEX_BIN || "codex",
-  antigravity: process.env.ANTIGRAVITY_BIN || "agy",
-})[provider];
-
-/** Is this CLI installed? A path is checked as is; a bare name is looked up on PATH (with Windows shims). */
-function installed(bin: string) {
-  if (bin.includes("/") || bin.includes("\\")) return exists(bin);
-  const exts = process.platform === "win32" ? ["", ".cmd", ".exe", ".bat"] : [""];
-  return (process.env.PATH || "").split(path.delimiter).filter(Boolean)
-    .some((dir) => exts.some((ext) => exists(path.join(dir, bin + ext))));
-}
-
-/**
- * Who grades the stills. `STUDIO_QA_PROVIDER` pins one; otherwise the first installed provider that is not
- * the one authoring this video, and only when none is installed does a provider review its own work — a
- * same-provider QA in a fresh read-only session still beats a scenes stage that can never pass.
- */
-export function pickQaProvider(author: AgentProvider, env = process.env.STUDIO_QA_PROVIDER, isInstalled = (p: QaProvider) => installed(qaBin(p))): QaProvider {
-  const pinned = env?.trim();
-  if (pinned && pinned !== "auto") {
-    if (!isAgentProvider(pinned)) throw new Error(`STUDIO_QA_PROVIDER="${pinned}" không hợp lệ (claude | codex | antigravity | auto).`);
-    return pinned;
-  }
-  const others = QA_ORDER.filter((p) => p !== author && isInstalled(p));
-  if (others.length) return others[0];
-  if (isInstalled(author)) return author;
-  throw new Error("Không tìm thấy CLI nào để QA ảnh (claude, codex hoặc agy).");
-}
-
 function qaPrompt(id: string, modules: string[]) {
   const extra = moduleQaCriteria(modules);
   return [
@@ -266,7 +235,12 @@ function qaPrompt(id: string, modules: string[]) {
 
 async function visualQa(id: string, packet: { packet: string; stills: string[] }) {
   const { state } = readState(id);
-  const provider = pickQaProvider(state.agent.provider);
+  const reviewer = resolveReviewer(state.agent.provider, state.review, installedAgents());
+  if (!reviewer.ok) {
+    fs.rmSync(packet.packet, { recursive: true, force: true });
+    throw new Error(`Không chạy được review chéo: ${reviewer.reason} Tắt review chéo hoặc chọn CLI khác ở bước Dựng cảnh.`);
+  }
+  const provider = reviewer.provider;
   const label = agentProviderLabel(provider);
   const model = process.env.STUDIO_QA_MODEL?.trim() || undefined;
   const qaRun = startRun(REPO, id, { stage: "scenes.qa", actor: provider, mode: "agent", label: `visual QA · ${label}`, machine: machineLabel() });
@@ -292,7 +266,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   let toolCalls = 0;
   setProgress(id, null, `${label} đang QA ảnh…`);
   log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
-  const code = await run(id, qaBin(provider), args, {
+  const code = await run(id, agentBin(provider), args, {
     cwd: packet.packet,
     env: sanitizedAgentEnv(),
     input: prompt,
@@ -326,10 +300,37 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   }
 }
 
+/** Gate, then — when this video has cross-review on — the read-only review. Off: the free checks only. */
 export async function runSceneQa(id: string, base: string) {
   const deterministic = await deterministicSceneGate(id, base);
+  if (!readState(id).state.review.enabled) {
+    log(id, "system", "Review chéo đang tắt: chỉ chạy build, verify và chụp ảnh.");
+    return null;
+  }
   const packet = qaPacket(id, deterministic.verify, deterministic.qaDir);
   return visualQa(id, packet);
+}
+
+export const REVIEW_MARKER = "Review lại dựng cảnh";
+
+/**
+ * Gate + review without an agent turn: after switching review on, changing who grades, or fixing a scene
+ * by hand. Runs as its own job so Dừng works and the ledger records it.
+ */
+export async function runReviewJob(id: string, base: string) {
+  startJob(id, "review", { actor: "system", mode: "deterministic", label: "review lại" });
+  setStage(id, "scenes", "running");
+  log(id, "system", `${REVIEW_MARKER} (không gọi agent)`);
+  try {
+    await runSceneQa(id, base);
+    setStage(id, "scenes", "review");
+    finishJob(id, "done");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log(id, "error", message);
+    setStage(id, "scenes", "error", wasStopped(id) ? "Đã dừng review." : message);
+    finishJob(id, "error");
+  }
 }
 
 /**

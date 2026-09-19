@@ -203,8 +203,9 @@ Agent chỉ viết nội dung của stage; server tự chạy phần máy móc s
 
 - **Lời & cue** — TTS dry-run (miễn phí, không truyền key) bắt `speaker`/`delivery` sai trước khi duyệt.
 - **Dựng cảnh** — build, verify, chụp một ảnh mỗi câu vào `projects/<id>/qa/auto/`, rồi giao một **phiên QA
-  riêng, chỉ đọc** chấm ảnh. `STUDIO_QA_PROVIDER` (`auto` mặc định) chọn CLI đã cài *khác* agent đang dựng
-  cảnh; máy chỉ có một CLI thì CLI đó tự QA. Tiêu chí = tiêu chí chung + mục `## Tiêu chí QA` của module đang
+  riêng, chỉ đọc** chấm ảnh (review chéo). Công tắc review chéo nằm ở form Kế hoạch và bước Dựng cảnh, bật
+  sẵn, đổi được bất cứ lúc nào; "Tự chọn" lấy CLI đã cài *khác* agent đang dựng cảnh, máy chỉ có một CLI thì
+  CLI đó tự review. Nút "Chạy lại review" chấm lại cảnh hiện có mà không gọi agent. Tiêu chí = tiêu chí chung + mục `## Tiêu chí QA` của module đang
   bật. Finding `blocker`/`major` chặn nút Duyệt.
 - **Bàn giao** — final build + verify.
 

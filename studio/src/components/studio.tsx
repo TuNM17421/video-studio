@@ -83,7 +83,7 @@ function applySetupToDraft(current: PlanDraft, list: StyleDef[], config: AgentCo
   const next = list.length && !list.some((style) => style.id === current.request.style)
     ? emptyDraft(list[list.length - 1].id, config.defaultProvider)
     : current;
-  return { ...next, agentProvider: config.defaultProvider };
+  return { ...next, agentProvider: config.defaultProvider, review: { ...config.review.defaults } };
 }
 
 /** One exact 1920×1080 frame (the scene kit's ?frame= capture mode), scaled down to the panel width. */
@@ -149,7 +149,7 @@ export default function Studio() {
   const [workflowTooltip, setWorkflowTooltip] = useState<Step | null>(null);
   const [styles, setStyles] = useState<StyleDef[]>([]);
   const [draft, setDraft] = useState<PlanDraft>(emptyDraft("lesson-lab"));
-  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true });
+  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true, review: { defaults: { enabled: true, provider: "auto" }, installed: [] } });
   const [setupReady, setSetupReady] = useState(false);
   const [setupLoading, setSetupLoading] = useState(true);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -221,7 +221,7 @@ export default function Studio() {
   async function create() {
     if (!setupReady) return;
     await act(async () => {
-      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, request: draft.request, script: draft.script } });
+      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, review: draft.review, request: draft.request, script: draft.script } });
       await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
       window.history.pushState(null, "", `/?id=${draft.id}`);
       setAutoStep(false);
@@ -292,7 +292,7 @@ export default function Studio() {
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
-        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
+        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}

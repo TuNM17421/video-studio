@@ -12,6 +12,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { isRefFile, LocalCastPicker, RefFileField } from "./local-cast";
 import { MusicPicker } from "./music-picker";
 import { ProductionState } from "./production-state";
+import { ReviewControl } from "./review-control";
 import { SourcePickerField } from "./source-picker";
 import { VoicePicker } from "./voice-picker";
 
@@ -789,12 +790,21 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
 export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
   const id = detail.state.id;
   const status = detail.state.stages.scenes;
-  const runLogs = stageLogs(logs, /agent · scenes|agent \(scenes\)/);
+  const runLogs = stageLogs(logs, /agent · scenes|agent \(scenes\)|Review lại dựng cảnh/);
   const voiced = detail.state.stages.voice === "done";
   return <>
     <div className="vs-step-body">
       <div className="vs-step-status"><StageBadge status={status} />{detail.qa.length > 0 && <span className="quiet-label">{detail.qa.length} ẢNH QA</span>}</div>
-      <JobProgress job={job?.kind === "scenes" ? job : null} onStop={stop} />
+      <JobProgress job={job?.kind === "scenes" || job?.kind === "review" ? job : null} onStop={stop} />
+      {voiced && status !== "done" && <ReviewControl
+        author={detail.state.agent.provider}
+        value={detail.state.review}
+        installed={detail.installedAgents}
+        disabled={busy || status === "running"}
+        onChange={(review) => act(() => post(`/api/videos/${id}/review`, review))}
+        onRerun={() => act(() => post(`/api/videos/${id}/review`, { action: "run" }))}
+        rerunDisabled={!["review", "error"].includes(status)}
+      />}
       {!voiced && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tạo giọng đọc trước" />}
       {voiced && status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Bắt đầu dựng cảnh</Button></Empty>}
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}

@@ -35,9 +35,15 @@ agent chỉ để chạy lại cùng một lệnh.
   trong `qa/` không bị đụng.
 - Scene QA là một **phiên riêng, context sạch, chỉ đọc** — giá trị nằm ở đó, không ở tên nhà cung cấp.
   Lane chỉ nhận một packet tạm ngoài repo (để CLI không tự nạp `CLAUDE.md`/`AGENTS.md`): request,
-  improvement plan, output verify và ảnh still. Provider theo `STUDIO_QA_PROVIDER`
-  (`claude | codex | antigravity | auto`, mặc định `auto`): `auto` chọn CLI đã cài **khác** provider
-  đang dựng cảnh (thứ tự Antigravity → Codex → Claude); máy chỉ có một CLI thì CLI đó tự QA.
+  improvement plan, output verify và ảnh still.
+- **Review chéo là công tắc của từng video** (`state.review = { enabled, provider }`), bật sẵn, đổi được
+  bất cứ lúc nào ở form Kế hoạch hoặc bước Dựng cảnh — khác agent dựng cảnh, vốn bị khoá khi tạo video.
+  `provider: auto` chọn CLI đã cài **khác** agent đang dựng (Antigravity → Codex → Claude); máy chỉ có một
+  CLI thì CLI đó tự review trong phiên riêng. Chọn đích danh thì CLI đó phải đã cài. `STUDIO_REVIEW` và
+  `STUDIO_QA_PROVIDER` chỉ là mặc định cho video mới.
+- Tắt review: runner vẫn build, verify, chụp ảnh; finding QA cũ còn hiện nhưng **không chặn duyệt**.
+- "Chạy lại review" (`POST /api/videos/<id>/review {action:"run"}`) chạy gate + review trên cảnh hiện
+  có mà không gọi agent — sau khi bật review, đổi người review hoặc tự sửa tay một cảnh.
 
   | Provider | Chỉ đọc bằng | Schema |
   |---|---|---|

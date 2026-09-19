@@ -17,7 +17,9 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     return Response.json({ ok: true, alreadyApproved: true });
   }
   if (state.stages[stage] !== "review") throw new HttpError(400, "Stage này chưa sẵn sàng để duyệt.");
-  const blockers = blockingFeedback(REPO, id, stage);
+  // With cross-review switched off, its findings are informational: only the user's own feedback blocks.
+  const blockers = blockingFeedback(REPO, id, stage)
+    .filter((item: { source: string }) => state.review.enabled || item.source !== "qa");
   if (blockers.length) {
     // Say which ones: a bare count leaves the user nothing to act on.
     const list = blockers.map((item: { severity: string; scope?: string; code?: string; message: string }) =>

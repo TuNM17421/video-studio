@@ -4189,3 +4189,66 @@ button.vs-tile:hover {
   background: var(--vu-amber-50);
   color: var(--vu-amber-700) !important;
 }
+
+/* Cross-review switch (review-control.tsx): plan form and scenes step. */
+.vs-review {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-50);
+}
+.vs-review.is-on {
+  border-color: var(--vu-blue-200);
+  background: var(--vu-lesson-surface);
+}
+.vs-review.is-problem {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-review-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.vs-review-head > .anticon {
+  margin-top: 3px;
+  color: var(--vu-lesson-data);
+}
+.vs-review-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.vs-review-copy strong {
+  font-size: 13px;
+}
+.vs-review-copy small {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-review.is-problem .vs-review-copy small {
+  color: var(--vu-brand-secondary);
+}
+.vs-review-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding-left: 24px;
+}
+.vs-review-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-review-field .ant-select {
+  min-width: 180px;
+}

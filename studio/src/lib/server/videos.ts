@@ -6,6 +6,7 @@ import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoStat
 import { isAgentProvider } from "../agent-providers";
 import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
 import { BASE_TEMPLATE_PATH } from "../modules";
+import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { isRunning } from "./jobs";
@@ -18,7 +19,9 @@ export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model
 /** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
 export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
-type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions"> & {
+type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions" | "review"> & {
+  /** Missing before cross-review became a per-video switch. */
+  review?: unknown;
   agent?: Partial<VideoState["agent"]>;
   sessionId?: unknown;
   /** Before quiz music there was one track, stored as a bare id — and "bg" was the only one. */
@@ -53,6 +56,8 @@ export function normalizeVideoState(value: unknown): VideoState {
     voice: { ...DEFAULT_VOICE, ...stored.voice },
     music,
     captions: stored.captions !== false,
+    // Videos made before cross-review could be switched keep the behaviour they had: review on.
+    review: normalizeReview(stored.review),
   } as VideoState;
 }
 
@@ -133,7 +138,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, captions: true, lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, captions: true, review: { ...DEFAULT_REVIEW }, lastError: null },
     managed: false,
   };
 }

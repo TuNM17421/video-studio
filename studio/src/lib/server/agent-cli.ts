@@ -71,7 +71,6 @@ export function codexExecArgs(sessionId: string | null, model?: string) {
  * adapter keeps the same guarantees in its own CLI's terms: no tool that writes or runs commands, and the
  * report forced into QA_SCHEMA (`parseQaReport` re-checks it on our side either way).
  */
-export type QaProvider = "claude" | "codex" | "antigravity";
 
 /** Claude: only the read tools exist in the session; structured output via `--json-schema`. */
 export function claudeQaArgs(schema: string, model?: string) {

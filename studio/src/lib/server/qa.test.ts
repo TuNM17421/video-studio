@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQaReport, pickQaProvider, usageFrom } from "./qa";
+import { parseQaReport, usageFrom } from "./qa";
 
 describe("QA report protocol", () => {
   it("accepts the CLI envelope while preserving structured findings", () => {
@@ -56,29 +56,6 @@ describe("QA report protocol", () => {
   it("reads Claude's structured_output field", () => {
     const raw = JSON.stringify({ type: "result", result: "", structured_output: { verdict: "pass", summary: "ok", findings: [] } });
     expect(parseQaReport(raw).verdict).toBe("pass");
-  });
-});
-
-describe("QA provider choice", () => {
-  const all = () => true;
-  it("never grades with the authoring provider when another one is installed", () => {
-    expect(pickQaProvider("antigravity", undefined, all)).not.toBe("antigravity");
-    expect(pickQaProvider("claude", undefined, all)).not.toBe("claude");
-    expect(pickQaProvider("claude", undefined, (p) => p !== "antigravity")).toBe("codex");
-  });
-
-  it("falls back to the authoring provider on a machine that only has that one", () => {
-    expect(pickQaProvider("claude", undefined, (p) => p === "claude")).toBe("claude");
-  });
-
-  it("honours an explicit STUDIO_QA_PROVIDER and rejects an unknown one", () => {
-    expect(pickQaProvider("claude", "claude", all)).toBe("claude");
-    expect(pickQaProvider("claude", "auto", all)).not.toBe("claude");
-    expect(() => pickQaProvider("claude", "gemini", all)).toThrow();
-  });
-
-  it("errors when no QA CLI is installed at all", () => {
-    expect(() => pickQaProvider("claude", undefined, () => false)).toThrow();
   });
 });
 

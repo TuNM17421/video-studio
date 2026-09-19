@@ -6,6 +6,7 @@ import { trashVideo } from "@/lib/server/trash-video";
 import { lastDryRun, lastImportReport } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
 import { workflowReport } from "@/lib/server/workflow";
+import { installedAgents } from "@/lib/server/agent-config";
 
 export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
@@ -21,6 +22,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     dryRun: lastDryRun(id),
     importReport: lastImportReport(id),
     workflow: workflowReport(REPO, id) as VideoDetail["workflow"],
+    installedAgents: installedAgents(),
   };
   return Response.json(detail);
 });
