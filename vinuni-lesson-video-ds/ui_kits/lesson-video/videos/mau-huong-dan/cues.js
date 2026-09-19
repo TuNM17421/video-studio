@@ -12,45 +12,45 @@ import { createSpeech } from '../../../../lib/speech.js';
 const RAW = [
   // ── Phần 1 · Chào bạn ─────────────────────────────────────────────────────
   {
-    n: 1, frames: 130, speech: 100, seconds: 5, section: 1, speaker: 'Griffin', delivery: 'ke',
+    n: 1, frames: 124, speech: 94, seconds: 5, section: 1, speaker: 'Griffin', delivery: 'ke',
     title: 'Griffin · Linh vật VinUni',
     text: 'Xin chào, mình là Griffin, linh vật của VinUni.',
     visual: 'Griffin bước vào từ mép phải và vẫy cánh chào; tên GRIFFIN · Linh vật VinUni',
   },
   {
-    n: 2, frames: 131, speech: 101, seconds: 7, section: 1, speaker: 'Griffin', delivery: 'giang',
+    n: 2, frames: 139, speech: 109, seconds: 7, section: 1, speaker: 'Griffin', delivery: 'giang',
     title: 'Từ kịch bản thành video',
     text: 'Hôm nay mình kể bạn nghe một kịch bản trở thành video bài giảng như thế nào.',
     visual: 'Tệp kịch bản → mũi tên → khung video',
   },
   // ── Phần 2 · Năm bước ─────────────────────────────────────────────────────
   {
-    n: 3, frames: 138, speech: 108, seconds: 5, section: 2, speaker: 'Griffin', delivery: 'ke',
+    n: 3, frames: 132, speech: 102, seconds: 5, section: 2, speaker: 'Griffin', delivery: 'ke',
     title: 'Bước 1 · Kế hoạch',
     text: 'Đầu tiên, bạn chọn style và thả kịch bản vào Studio.',
     visual: 'Bước 1 · Kế hoạch — chọn style, thả kịch bản',
   },
   {
-    n: 4, frames: 139, speech: 109, seconds: 6, section: 2, speaker: 'Griffin', delivery: 'giang',
+    n: 4, frames: 159, speech: 129, seconds: 6, section: 2, speaker: 'Griffin', delivery: 'giang',
     title: 'Bước 2 · Lời & cue',
     text: 'Sau đó, agent cắt kịch bản thành từng câu và giữ nguyên văn từng chữ.',
     visual: 'Bước 2 · Lời & cue — kịch bản tách thành các dòng câu đánh số',
   },
   {
-    n: 5, frames: 154, speech: 124, seconds: 7, section: 2, speaker: 'Griffin', delivery: 'giang',
+    n: 5, frames: 147, speech: 117, seconds: 7, section: 2, speaker: 'Griffin', delivery: 'giang',
     title: 'Bước 3 · Giọng đọc → Bước 4 · Dựng cảnh',
     text: 'Giọng đọc được thu trước, rồi mỗi cảnh được dựng đúng theo độ dài của giọng thật.',
     visual: 'Bước 3 · Giọng đọc và Bước 4 · Dựng cảnh — dạng sóng giọng, các cảnh xếp theo đúng độ dài',
   },
   {
-    n: 6, frames: 181, speech: 151, seconds: 6, section: 2, speaker: 'Griffin', delivery: 'ke',
+    n: 6, frames: 164, speech: 134, seconds: 6, section: 2, speaker: 'Griffin', delivery: 'ke',
     title: 'Bước 5 · Render',
     text: 'Cuối cùng, Studio ghép hình, giọng và nhạc nền thành một tệp video.',
     visual: 'Bước 5 · Render — hình + giọng + nhạc nền → MP4',
   },
   // ── Phần 3 · Đến lượt bạn ─────────────────────────────────────────────────
   {
-    n: 7, frames: 187, speech: 157, seconds: 7, section: 3, speaker: 'Griffin', delivery: 'nhan',
+    n: 7, frames: 189, speech: 159, seconds: 7, section: 3, speaker: 'Griffin', delivery: 'nhan',
     title: 'Duyệt từng bước',
     text: 'Xong mỗi bước, bạn duyệt rồi mới đi tiếp, nên không có gì chạy ngoài ý muốn.',
     visual: 'Năm bước nối nhau, mỗi bước một dấu duyệt ✓',

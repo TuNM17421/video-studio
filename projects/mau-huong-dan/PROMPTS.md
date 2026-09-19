@@ -1,10 +1,10 @@
 # Mẫu · Griffin kể năm bước làm video — ghi chú dựng
 
 - Kịch bản gốc: `kich-ban-goc.md` (viết cho video mẫu, 8 câu). Design system: `vinuni-lesson-video-ds`, style Lesson Lab.
-- Video: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/mau-huong-dan/` · 8 câu, 37,97 giây.
+- Video: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/mau-huong-dan/` · 8 câu, 37,77 giây.
 - Giọng: ElevenLabs `eleven_turbo_v2_5`, nhân vật `Griffin` → giọng Nhật Phong, kiểu đọc theo từng câu (kể / giảng /
-  chốt), nghỉ mặc định 1,4 giây. 518 ký tự (người dùng duyệt trước khi chạy).
-- Nhạc nền: `bg-goc` — "bg (bản gốc)", nhạc nền mặc định của `music.json`. Phụ đề: có.
+  chốt), nghỉ mặc định 1,4 giây. Lần đầu 518 ký tự; thu lại 468 ký tự khi bỏ cách đọc phiên âm (xem dưới).
+- Nhạc nền: `bg-goc` — "bg (bản gốc)", nhạc nền mặc định của `music.json` (render không ghi `--music-track`). Phụ đề: có.
 - Đầu ra: `render/mau-huong-dan.mp4` (5,3 MB), `transcripts/Day01/mau-huong-dan.txt`,
   `chapters/Day01/mau-huong-dan-chương.txt`.
 
@@ -16,8 +16,9 @@ Griffin kể — người mới xem video là hiểu quy trình.
 
 ## Cách đọc (`pronounce.json`)
 
-"VinUni" → Vin Uni · "Griffin" → Gờ-ríp-phin · "Studio" → xờ-tiu-đi-ô · "style" → xờ-tai · "agent" → ây-giần.
-Whisper nghe lại đủ tám câu đúng lời; các từ viết theo cách đọc cần người nghe lại để chốt độ tự nhiên.
+**Để trống.** Bản đầu phiên âm các từ tiếng Anh ("Gờ-ríp-phin", "xờ-tai", "xờ-tiu-đi-ô", "ây-giần", "Vin Uni");
+so sánh bốn câu có từ tiếng Anh cho thấy ElevenLabs đọc **chữ nguyên gốc** đúng và tự nhiên hơn (người dùng
+nghe và chốt), nên cả video được thu lại với chữ gốc. Whisper nhận đúng Griffin, VinUni, style, Studio, agent.
 
 ## Hình
 
@@ -33,7 +34,7 @@ node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesso
 node tts-elevenlabs/tts.mjs generate --cues vinuni-lesson-video-ds/ui_kits/lesson-video/videos/mau-huong-dan/cues.js --pronounce projects/mau-huong-dan/pronounce.json --out voice/out/mau-huong-dan
 node tools/voice-timing.mjs voice/out/mau-huong-dan/voice.cues.json vinuni-lesson-video-ds/ui_kits/lesson-video/videos/mau-huong-dan --write-cues
 npm run build && npm run verify
-node tools/render.mjs --scene mau-huong-dan --audio voice/out/mau-huong-dan/voice.wav --music-track bg-goc --out projects/mau-huong-dan/render/mau-huong-dan.mp4 --base http://127.0.0.1:8765
+node tools/render.mjs --scene mau-huong-dan --audio voice/out/mau-huong-dan/voice.wav --out projects/mau-huong-dan/render/mau-huong-dan.mp4 --base http://127.0.0.1:8765
 node tools/transcript.mjs voice/out/mau-huong-dan/voice.cues.json transcripts/Day01/mau-huong-dan.txt
 ```
 
@@ -44,8 +45,8 @@ node tools/transcript.mjs voice/out/mau-huong-dan/voice.cues.json transcripts/Da
 
 ## So sánh cách đọc từ tiếng Anh
 
-Bốn câu có từ tiếng Anh (01, 03, 04, 06) được đọc thêm một lần bằng chữ nguyên gốc, không qua
-`pronounce.json` (235 ký tự, người dùng duyệt), để so với bản hiện tại. File nghe ở
-`projects/mau-huong-dan/so-sanh-phat-am/` (không vào git): `so-sanh-4-cau.wav` đọc mỗi câu hai lần — hiện tại
-rồi nguyên gốc. Whisper nhận đúng "Griffin", "style", "studio", "agent" ở bản nguyên gốc, còn bản hiện tại bị
-nghe thành "GoReapVin", "so tai", "so tiêu DIO", "Ê Gián". Chờ người dùng nghe và chốt.
+Bốn câu có từ tiếng Anh (01, 03, 04, 06) được đọc hai cách — phiên âm qua `pronounce.json` và chữ nguyên gốc
+(235 ký tự, người dùng duyệt) — nghe ở `projects/mau-huong-dan/so-sanh-phat-am/` (không vào git). Người dùng chọn
+bản nguyên gốc. Whisper: bản phiên âm bị nghe thành "GoReapVin", "so tai", "so tiêu DIO", "Ê Gián". Lưu ý chi
+phí: đổi câu nào thì các câu kề bên (cùng người nói) cũng bị tính lại, vì mỗi câu được đọc kèm ngữ cảnh câu
+trước và câu sau — thu lại cả video tốn 468 ký tự chứ không phải 235.

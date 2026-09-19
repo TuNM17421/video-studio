@@ -381,92 +381,92 @@
     },
     "samples/mau-huong-dan/mau-huong-dan.mp4": {
       "type": "video/mp4",
-      "bytes": 5306408,
-      "sha256": "b03ef435f98525ab4d6d65654ec4d2e16aa85932b24222e8c55f4ff4cd78d4aa",
+      "bytes": 5261723,
+      "sha256": "86b127953f014fae6809e338735182827bf478328abf08f463ce80e8c3b3e6cc",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s01-mid.png": {
       "type": "image/png",
-      "bytes": 219914,
-      "sha256": "c3402988b48d4e947d03efdd2900f46bb6e188eb02019d171b0613ebc4a63db2",
+      "bytes": 215115,
+      "sha256": "a153a5793c6417ea4ce68ff037aa465e34eb1373462f562dce5c8c0e80b3aa98",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s01.png": {
       "type": "image/png",
-      "bytes": 220428,
-      "sha256": "175df1ca2924fa390a9d1e67a229c160a1dc5cdc7e047d4b1988c81977364b9c",
+      "bytes": 220112,
+      "sha256": "0fc596229657c2023644891cdbb64f647243e39a4317bf9416187a00f3972f4a",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s02-mid.png": {
       "type": "image/png",
-      "bytes": 186060,
-      "sha256": "92ee1878bf1ddd62928f7a97dd57bc0dc7a346b6e7325f98371fa7c87034b834",
+      "bytes": 186003,
+      "sha256": "17e83b7d4852e1b02f333179e8b1a4c43cfee26286866362d1a8ad794a6293ca",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s02.png": {
       "type": "image/png",
-      "bytes": 199146,
-      "sha256": "cc9dec5c0546b05b2518060ac13d79c24aa580413cb59f120fc12e6d3cbffa05",
+      "bytes": 200121,
+      "sha256": "d9fb65c5bd821a4f8e242adb40a8f379c9c3f28a793368d7b6a227a30fe69a30",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s03-mid.png": {
       "type": "image/png",
-      "bytes": 193266,
-      "sha256": "ee64f5437f270c4a6833f654f6b1755664260a480d3366f0ab1773962a17e0ae",
+      "bytes": 192926,
+      "sha256": "88ff2027066b85368a4da9af065d45f2f815fcd9aa93e914848907ffb707df33",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s03.png": {
       "type": "image/png",
-      "bytes": 205036,
-      "sha256": "6a2c4cc68666312e1b6746cea86909fb680a86c10e1d886069e35360fedc8ebc",
+      "bytes": 204698,
+      "sha256": "d3894737ec9652341514e4f10d13e5406187d0bcc8e9c8fe4e0c9363c5dc5a9d",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s04-mid.png": {
       "type": "image/png",
-      "bytes": 207617,
-      "sha256": "08c01bcb7f74143cbcdbffb8800f8b067774561f803d68df243827caadfba33c",
+      "bytes": 219823,
+      "sha256": "587780be2e47a2edaf0cb6a754658f20331e02e572a1f526f97ce8dc57cb1478",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s04.png": {
       "type": "image/png",
-      "bytes": 250413,
-      "sha256": "3c70c54539c72cb4a2781d8788fe286a5ad6c765f0bcd6161d146c258f3c5086",
+      "bytes": 250328,
+      "sha256": "c0feaa83d60fbe0e4fd7f7591602d32fa4cc6b0221b6125fe67dd995671dcc7c",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s05-mid.png": {
       "type": "image/png",
-      "bytes": 212347,
-      "sha256": "0cfd8a91815690d4626377a33e0a5b3bec14963927e6db9e30d73ec07aa55088",
+      "bytes": 212276,
+      "sha256": "664c70a4d0033e74d59549aca863c718cb7e25858dcae2a967881ac565d59bf6",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s05.png": {
       "type": "image/png",
-      "bytes": 227204,
-      "sha256": "a1e20b5f2b433df5417b5afa121bcbf51f19dd4417b9297a4ebf605e4cd36cc9",
+      "bytes": 227223,
+      "sha256": "9dc75fa57e6bf39e576fea8b4f5155edc1c3c7625112272ad0338cddd852fb91",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s06-mid.png": {
       "type": "image/png",
-      "bytes": 204162,
-      "sha256": "c93ddeee3d3e1c72af29501e408e1e6779a7b295724e67dafbc9f0755d8515ab",
+      "bytes": 204765,
+      "sha256": "bb28b475be0b8e82c844e4feb08e5e91d3d37c8bb18ae8cb9c8be5e9c99d030a",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s06.png": {
       "type": "image/png",
-      "bytes": 214547,
-      "sha256": "8c2a5cceb1092f085627abdf9611b9bb0a97ad73ee6806024231a56bef7b4b0f",
+      "bytes": 214957,
+      "sha256": "e75ffadf25693298b0341e52af4f0a5350d7e1a11a3f0301878070d96cbb6870",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s07-mid.png": {
       "type": "image/png",
-      "bytes": 193458,
-      "sha256": "b10314474ecabd390b31f18a6ad48abc1c7e702deb9e652b2166dbcfe4ed40cd",
+      "bytes": 193385,
+      "sha256": "0a9de07ab20ba6d5ef034505fedcd8da9cd1b8d771ed373b1a81d239e2df95fd",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s07.png": {
       "type": "image/png",
-      "bytes": 239433,
-      "sha256": "7112c7cda82f5d20161ce7dcfac2f020d04647468ad065dc9241b0e43bd46a92",
+      "bytes": 239540,
+      "sha256": "2278e11f8d868ebedc389f9cfbc596c28cc672239a5105a80c5fd0ee0f1a1d28",
       "updated": "2026-09-19"
     },
     "samples/mau-huong-dan/qa/s08-mid.png": {
@@ -483,8 +483,8 @@
     },
     "samples/mau-huong-dan/voice.wav": {
       "type": "audio/wav",
-      "bytes": 1822444,
-      "sha256": "6babe24dbea04e9341236341223529e69af50448501e428f3ad2285606757b5d",
+      "bytes": 1812844,
+      "sha256": "9f38bacc2541b95f2bbd8353cd97701a4b542bd85450c9031f51c308d84333f1",
       "updated": "2026-09-19"
     },
     "styles/lesson-lab/sample.mp4": {
