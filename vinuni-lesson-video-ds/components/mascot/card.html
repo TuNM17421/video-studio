@@ -1,4 +1,4 @@
-<!-- @dsCard group="Components" viewport="700x300" name="Mascot · Griffin VinUni" subtitle="Griffin (dáng đứng/ngồi, bong bóng cảm xúc, đạo cụ trên đầu, nhảy) · GriffinBadge (gương mặt trong khung tròn)" -->
+<!-- @dsCard group="Components" viewport="700x300" name="Mascot · Griffin VinUni" subtitle="Griffin: 4 dáng × 7 biểu cảm (stand · sit · wings · turn) + 6 động tác (vẫy cánh, chào đón, đi…) · GriffinBadge" -->
 <!doctype html>
 <html lang="vi">
 <head>
@@ -16,24 +16,31 @@
 <script src="../../dist/vk.js"></script>
 <script>
   var h = VK.h, C = VK.C;
-  var moods = ['neutral', 'happy', 'wink', 'thinking', 'surprised', 'sad', 'angry'];
+  var moods = VK.GRIFFIN_MOODS;
+  // every set cycles through the seven moods, one every 34 frames, each set a little out of step
+  function cycle(offset) {
+    return moods.map(function (m, i) { return { at: i * 34 + offset, name: m }; }).concat([{ at: 0, name: moods[0] }]);
+  }
+  var sets = [['stand', 120, 0], ['sit', 330, 8], ['wings', 560, 16], ['turn', 810, 24]];
+  var gestures = ['wave', 'welcome', 'cheer', 'rest', 'walk-left', 'walk-right'];
   VK.mountCard('#root', {
-    width: 1400, height: 600, duration: 240,
+    width: 1400, height: 600, duration: 238,
     render: function (f) {
       return h(VK.Fragment, null,
-        h(VK.Griffin, { x: 190, y: 560, h: 400, frame: f, hops: [60, 150],
-          mood: [{ at: 0, name: 'happy' }, { at: 100, name: 'thinking' }, { at: 180, name: 'surprised' }],
-          prop: [{ at: 100, name: 'question' }, { at: 180, name: 'lightbulb' }] }),
-        h(VK.Griffin, { x: 600, y: 560, h: 340, pose: 'sit', frame: f, motion: 'float', mood: 'wink', prop: 'hat' }),
-        h(VK.Griffin, { x: 910, y: 560, h: 190, pose: 'front', frame: f }),
-        h(VK.Griffin, { x: 1200, y: 560, h: 190, pose: 'left', frame: f }),
-        h(VK.Griffin, { x: 1050, y: 560, h: 190, pose: 'right', frame: f }),
-        h(VK.Griffin, { x: 1330, y: 560, h: 190, pose: 'back', frame: f }),
-        moods.map(function (m, i) {
-          return h(VK.GriffinBadge, { key: m, x: 880 + i * 80, y: 120, r: 34, mood: m, tone: i === 6 ? 'red' : 'accent' });
+        sets.map(function (s) {
+          return h(VK.Fragment, { key: s[0] },
+            h(VK.Griffin, { x: s[1], y: 285, h: 250, pose: s[0], mood: cycle(s[2]), frame: f }),
+            h(VK.SvgText, { x: s[1], y: 318, size: 19, weight: 700, color: C.textMuted }, s[0]));
         }),
-        h(VK.SvgText, { x: 1120, y: 205, size: 19, weight: 600, color: C.textMuted }, 'GriffinBadge · 7 cảm xúc'),
-        h(VK.SvgText, { x: 1120, y: 300, size: 19, weight: 600, color: C.textMuted }, 'front · left · right · back (ảnh nhỏ)')
+        gestures.map(function (g, i) {
+          return h(VK.Fragment, { key: g },
+            h(VK.Griffin, { x: 110 + i * 190, y: 555, h: 190, pose: g, frame: f }),
+            h(VK.SvgText, { x: 110 + i * 190, y: 588, size: 19, weight: 700, color: C.textMuted }, g));
+        }),
+        moods.map(function (m, i) {
+          return h(VK.GriffinBadge, { key: m, x: 1030 + (i % 4) * 92 + (i > 3 ? 46 : 0), y: 90 + Math.floor(i / 4) * 96, r: 40, mood: m, tone: m === 'stern' ? 'red' : 'accent' });
+        }),
+        h(VK.SvgText, { x: 1190, y: 272, size: 19, weight: 600, color: C.textMuted }, 'GriffinBadge · 7 biểu cảm')
       );
     }
   });

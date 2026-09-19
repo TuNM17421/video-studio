@@ -1,43 +1,49 @@
 # Griffin · GriffinBadge
 
-Linh vật VinUni (griffin: 4 chân, 2 cánh, khăn VinUni) — **bản 1, dạng sticker nguyên con**.
+Linh vật VinUni (griffin: 4 chân, 2 cánh, khăn VinUni) — **bản 2: ảnh nguyên con, mỗi dáng × mỗi biểu cảm
+một ảnh**, đổi theo nhịp lời.
 
 ```jsx
-<Griffin x={1540} y={930} h={460} frame={T} enter={spokenAt(1, 'Xin chào')}
-  hops={[spokenAt(1, 'chào')]}
-  mood={[{ at: 0, name: 'happy' }, { at: spokenAt(2, 'nhưng'), name: 'thinking' }]}
-  prop={[{ at: spokenAt(2, 'nhưng'), name: 'question' }, { at: spokenAt(3, 'hiểu'), name: 'lightbulb' }]} />
+<Griffin x={1540} y={930} h={460} frame={T}
+  pose={[{ at: 0, name: 'walk-left' }, { at: spokenAt(1, 'Xin chào'), name: 'wave' }, { at: spokenAt(2, 'nhưng'), name: 'stand' }]}
+  mood={[{ at: 0, name: 'happy' }, { at: spokenAt(2, 'nhưng'), name: 'thinking' }, { at: spokenAt(3, 'hiểu'), name: 'surprised' }]}
+  prop={[{ at: spokenAt(2, 'nhưng'), name: 'question' }, { at: spokenAt(3, 'hiểu'), name: 'lightbulb' }]}
+  hops={[spokenAt(3, 'hiểu')]} />
 
 <GriffinBadge x={180} y={820} r={60} mood="wink" frame={T} enter={30} />
+<DialogueCard … speaker="Griffin" avatar={griffinAsset('face-happy')} … />
 ```
 
 ## Khi nào dùng
 
-- Người dẫn dắt ở mở bài / chuyển đoạn / kết bài: chào, gợi câu hỏi, "à ra thế", chúc mừng.
-- `GriffinBadge` — chỉ gương mặt trong khung tròn: dấu phản ứng nhỏ cạnh một ý, hoặc avatar khi Griffin là
-  một bên của hội thoại. `griffinAsset('face_happy')` trả URL để truyền vào `avatar` của `DialogueCard`.
+- Người dẫn dắt ở mở bài / chuyển đoạn / kết bài: bước vào, vẫy cánh chào, gợi câu hỏi, "à ra thế", chúc mừng.
+- `GriffinBadge` — gương mặt trong khung tròn: dấu phản ứng nhỏ cạnh một ý. `griffinAsset('face-<mood>')` là
+  ảnh vuông cho `avatar` của `DialogueCard` khi Griffin là một bên của hội thoại.
 
 **Không dùng** trong cảnh đang giải thích dày chữ/sơ đồ — linh vật chiếm ~25 % khung và hút mắt. Một cảnh
 tối đa một Griffin.
 
 ## Có gì
 
-- `pose`: `stand` · `sit` (ảnh lớn, nét ở mọi cỡ; cả hai đều nháy mắt, cánh mở) · `front` · `left` · `right`
-  · `back` (ảnh nhỏ ~225 px — giữ `h` ≤ 260, hợp làm "hướng dẫn viên" ở góc).
-- `mood` (bong bóng tròn cạnh đầu): `neutral` `happy` `wink` `thinking` `surprised` `sad` `angry`.
-- `prop` (bay trên đầu): `lightbulb` `question` `exclamation` `sparkle` `book` `laptop` `hat`.
-- Chuyển động: `enter` (bật vào), `motion` `idle` (thở) / `float` (bồng bềnh) / `none`, `hops` (nhảy một nhịp
-  tại frame cho sẵn), `tilt`, `flip`.
+- **Dáng có biểu cảm** (`mood` đổi mặt ngay trên thân): `stand` (đứng, cánh xếp) · `sit` (ngồi) · `wings`
+  (đứng, hai cánh giơ cao) · `turn` (ba phần tư, cánh mở — các biểu cảm của bộ này lệch dáng nhau nhiều hơn,
+  đổi mặt trông như một cử động nhỏ).
+- **Động tác** (một ảnh, không nhận `mood`): `wave` (giơ cánh phải — thay cho "giơ tay"), `welcome` (dang
+  cánh chào đón), `cheer` (hai cánh giơ, vui), `rest` (ngồi nghỉ), `walk-left` / `walk-right` (đi chéo —
+  tự nhún nhịp bước; tự dịch `x` bằng `interpolate` để đi vào khung).
+- `mood`: `neutral` `happy` `wink` `surprised` `thinking` (nhìn lên) `sad` `stern` (`angry` = `stern`).
+- `prop` (bay trên đầu): `lightbulb` `question` `exclamation` `sparkle` `book` `laptop`; `hat` thì đội lên đầu.
+- Chuyển động: `enter` (bật vào), `motion` `idle` / `float` / `none`, `hops`, `tilt`, `flip`.
 
-`mood` và `prop` nhận một tên hoặc danh sách `{ at, name }`: mỗi bước đổi mờ sang trong 8 frame; prop mới
-lấp lánh **một lần** lúc đến. Đặt `at` bằng `spokenAt(n, phrase)` để khớp lời.
+`pose`, `mood`, `prop` nhận một tên hoặc danh sách `{ at, name }`. Đặt `at` bằng `spokenAt(n, phrase)`.
 
 ## Ràng buộc
 
-- `x, y` là **chân** (tâm đáy). Đầu và bong bóng nằm phía trên ~`h` px — với `h` 460, đặt `y` ≈ 930 để cả
-  prop lẫn bong bóng vẫn trong vùng nội dung y 250–960.
-- Chưa có khớp nối: **không** giơ cánh, không đổi mặt trên thân, không mấp máy mỏ theo giọng — những thứ
-  đó cần bộ ảnh bản 2 (thân không đầu, đầu trống, cánh rời cùng tỉ lệ, điểm gắn).
-- Tay không có: Griffin không cầm, không chỉ bằng "tay". Đạo cụ chỉ bay cạnh đầu.
-- Ảnh nằm ở `assets/mascot/griffin/`, URL tính từ `dist/vk.js`; trang nạp bundle theo cách khác thì truyền `base`.
+- Đổi dáng/biểu cảm là **cắt thẳng** kèm một nhịp nhún 8 frame — ảnh là các bản vẽ riêng, chồng mờ sẽ hiện
+  hai đường viền. Đừng đổi nhanh hơn ~1 lần/giây, nhân vật sẽ giật.
+- `x, y` là **chân** (tâm đáy). Đạo cụ nằm trên đỉnh mào ~`0.2h` — với `h` 460, đặt `y` ≈ 930 để cả con vẫn
+  trong vùng nội dung y 250–960.
+- Không có tay: Griffin không cầm, không chỉ. "Giơ tay" = `wave`. Mỏ không mấp máy theo lời.
+- Ảnh ở `assets/mascot/griffin/` (xem README ở đó để dựng lại từ bộ gốc), URL tính từ `dist/vk.js`; trang nạp
+  bundle theo cách khác thì truyền `base`. Mọi ảnh sẽ dùng đều được tải sẵn từ frame 0.
 - Mọi chuyển động là hàm của `frame` — không đồng hồ thật, không ngẫu nhiên.

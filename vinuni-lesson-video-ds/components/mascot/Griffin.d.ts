@@ -1,10 +1,15 @@
 import type { FC } from 'react';
 
-export type GriffinPose = 'stand' | 'sit' | 'front' | 'left' | 'right' | 'back';
-export type GriffinMood = 'neutral' | 'happy' | 'wink' | 'thinking' | 'surprised' | 'sad' | 'angry';
+/** Expression sets (carry `mood`): stand · sit · wings (wings raised) · turn (three-quarter, wings open). */
+export type GriffinSetPose = 'stand' | 'sit' | 'wings' | 'turn';
+/** Single-picture gestures (one face each, `mood` does not apply). */
+export type GriffinGesture = 'wave' | 'welcome' | 'cheer' | 'rest' | 'walk-left' | 'walk-right';
+export type GriffinPose = GriffinSetPose | GriffinGesture;
+/** `angry` is accepted as an alias of `stern`. */
+export type GriffinMood = 'neutral' | 'happy' | 'wink' | 'surprised' | 'thinking' | 'sad' | 'stern' | 'angry';
 export type GriffinProp = 'lightbulb' | 'question' | 'exclamation' | 'sparkle' | 'book' | 'laptop' | 'hat';
 
-/** A name that switches in at scene frame `at` (crossfades over 8 frames). */
+/** A name that takes over at scene frame `at`. */
 export interface GriffinStep<T extends string> {
   at: number;
   name: T;
@@ -14,28 +19,26 @@ export interface GriffinProps {
   /** Feet: bottom-centre of the mascot. */
   x: number;
   y: number;
-  /** Height in px. Default 440. `front/left/right/back` are small pictures — keep them ≤ 260. */
+  /** Height in px (crest to feet). Default 440. */
   h?: number;
-  /** Default 'stand'. 'stand' and 'sit' are the large poses (both wink, wings open). */
-  pose?: GriffinPose;
+  /** One pose, or steps on beats — each change is a hard cut under a small squash. Default 'stand'. */
+  pose?: GriffinPose | readonly GriffinStep<GriffinPose>[];
+  /** Face of the expression sets — one mood, or steps on beats (cut + squash). Default 'neutral'. */
+  mood?: GriffinMood | readonly GriffinStep<GriffinMood>[];
   /** Mirror left–right. */
   flip?: boolean;
   /** Current scene frame. */
   frame?: number;
   /** Frame of the pop-in entrance. Omit = already on screen. */
   enter?: number | null;
-  /** 'idle' = slow breathing (default) · 'float' = bob and sway · 'none'. */
+  /** 'idle' = slow breathing (default) · 'float' = bob and sway · 'none'. Walk poses always step unless 'none'. */
   motion?: 'idle' | 'float' | 'none';
   /** Frames at which it hops once (16 frames each, squash on take-off and landing). */
   hops?: readonly number[];
   /** Constant lean in degrees. */
   tilt?: number;
-  /** Face in the round badge beside the head — one mood, or steps on beats. */
-  mood?: GriffinMood | readonly GriffinStep<GriffinMood>[] | null;
-  /** Object floating above the head — one prop, or steps on beats (each arrival twinkles once). */
+  /** Object floating above the head (`hat` is worn) — one prop, or steps on beats (each arrival twinkles once). */
   prop?: GriffinProp | readonly GriffinStep<GriffinProp>[] | null;
-  /** Which side of the head the mood badge sits on (before `flip`). Default 'right'. */
-  bubbleSide?: 'left' | 'right';
   /** URL folder of the pictures. Default: assets/mascot/griffin/ next to dist/vk.js. */
   base?: string;
   opacity?: number;
@@ -60,9 +63,12 @@ export interface GriffinBadgeProps {
 
 export declare const GriffinBadge: FC<GriffinBadgeProps>;
 
-/** Ready URL of one picture in the pack, e.g. griffinAsset('face_happy') as a DialogueCard avatar. */
+/**
+ * Ready URL of one picture in the pack: `face-<mood>` (square avatar, e.g. for DialogueCard),
+ * `<set>-<mood>`, `gesture-<name>`, or a prop file.
+ */
 export declare function griffinAsset(name: string, base?: string): string;
 
 export declare const GRIFFIN_POSES: readonly GriffinPose[];
-export declare const GRIFFIN_MOODS: readonly GriffinMood[];
+export declare const GRIFFIN_MOODS: readonly Exclude<GriffinMood, 'angry'>[];
 export declare const GRIFFIN_PROPS: readonly GriffinProp[];
