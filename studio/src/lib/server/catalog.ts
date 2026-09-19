@@ -8,8 +8,8 @@ import { DS, exists, REPO, STYLES } from "./paths";
 type StyleFile = Omit<StyleDef, "sampleVideo"> & { sampleVideo?: string | null };
 
 /** Component groups that exist only in Lesson Lab Style (the old 9-color set had none of them). */
-const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "system", "table", "ui"]);
-const LAB_COMPONENTS = new Set(["Magnifier", "SourceCard", "LineIcon", "Icon", "IllustrativeStamp"]);
+const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "structure", "system", "table", "teaching", "ui"]);
+const LAB_COMPONENTS = new Set(["Magnifier", "SourceCard", "LineIcon", "Icon", "IllustrativeStamp", "Gauge", "RangeBand", "UnitGrid", "Spotlight"]);
 
 export function listStyles(): StyleDef[] {
   if (!exists(STYLES)) return [];
@@ -83,7 +83,7 @@ export function getLibrary(): Library {
 }
 
 export function componentDoc(doc: string) {
-  if (!/^components\/[a-z]+\/[A-Za-z]+\.prompt\.md$/.test(doc)) return null;
+  if (!/^components\/[a-z]+\/[A-Za-z][A-Za-z0-9]*\.prompt\.md$/.test(doc)) return null;
   const file = path.join(DS, doc);
   return exists(file) ? fs.readFileSync(file, "utf8") : null;
 }
