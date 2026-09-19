@@ -832,7 +832,8 @@
   background: var(--vu-lesson-surface);
 }
 
-.mascotBadge img { width: 74%; margin-top: 12%; display: block; }
+/* the head sits 10 px above the ring's centre so crest and beak both show */
+.mascotBadge img { width: 74%; margin-top: 12%; display: block; transform: translateY(-10px); }
 
 @media (max-width: 960px) {
   .mascotWorkbench { grid-template-columns: 1fr; }
