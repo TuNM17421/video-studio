@@ -17,8 +17,8 @@ một ảnh**, đổi theo nhịp lời.
 ## Khi nào dùng
 
 - Người dẫn dắt ở mở bài / chuyển đoạn / kết bài: bước vào, vẫy cánh chào, gợi câu hỏi, "à ra thế", chúc mừng.
-- `GriffinBadge` — gương mặt trong khung tròn: dấu phản ứng nhỏ cạnh một ý. `griffinAsset('face-<mood>')` là
-  ảnh vuông cho `avatar` của `DialogueCard` khi Griffin là một bên của hội thoại.
+- `GriffinBadge` — gương mặt trong khung tròn: dấu phản ứng nhỏ cạnh một ý (ảnh mặt riêng, nét tới `r` ≈ 100).
+- `griffinAsset('face-<mood>')` là ảnh vuông cho `avatar` của `DialogueCard` khi Griffin là một bên của hội thoại.
 
 **Không dùng** trong cảnh đang giải thích dày chữ/sơ đồ — linh vật chiếm ~25 % khung và hút mắt. Một cảnh
 tối đa một Griffin.

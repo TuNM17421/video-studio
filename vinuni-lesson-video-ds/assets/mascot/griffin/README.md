@@ -15,7 +15,8 @@ uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <thư m�
 | `turn-<mood>.png` | `griffin_mascot_all_generated/04–11` (ba phần tư; ảnh vẽ ngược chiều đã được lật) |
 | `gesture-<tên>.png` | `griffin_generated_images(1)/…/01, 03–07` (cheer, walk-left, walk-right, welcome, wave, rest) |
 | `face-<mood>.png` | cắt vuông từ `stand-<mood>`, nền `C.bgAlt` — avatar cho `DialogueCard` |
-| `lightbulb.png`, `question_mark.png`… | chép nguyên từ `08_accessories_props/` |
+| `badge-<mood>.png` | `02_faces/face_*` (`angry` → `stern`) — mặt của `GriffinBadge` |
+| `lightbulb.png`, `question_mark.png`… | `08_accessories_props/`, cắt sát; `!` và `?` được vẽ thêm dấu chấm (bộ gốc thiếu) |
 
 `<mood>` = neutral · happy · wink · surprised · thinking (looking up) · sad · stern.
 
@@ -23,7 +24,7 @@ uv run --with numpy --with pillow --with scipy tools/griffin-assets.py <thư m�
 là thay ảnh tại chỗ. Chúng vẫn là các bản vẽ riêng: độ chồng khớp sau khi căn ~0,92–0,97 (stand, sit,
 wings) và ~0,71–0,88 (turn). Component vì vậy đổi ảnh bằng nhát cắt kèm nhịp nhún, không chồng mờ.
 
-Không dùng từ bộ gốc: `01_main`, `02_faces`, `03_bodies`, `07_face_parts` (nét vẽ bản 1, không viền, lệch
-với bộ mới), `griffin_generated_images/02_front_view` (tỉ lệ khác), các ảnh trùng giữa các thư mục.
+Không dùng từ bộ gốc: `01_main`, `03_bodies`, `07_face_parts` (nét vẽ bản 1, không viền, lệch với bộ mới),
+`griffin_generated_images/02_front_view` (tỉ lệ khác), các ảnh trùng giữa các thư mục.
 
 Tạm để trong repo (~3 MB) để xem thử; khi chốt thì chuyển lên kho media R2.

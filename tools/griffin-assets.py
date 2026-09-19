@@ -5,9 +5,10 @@
 Every expression set is registered onto its calm picture (scale + shift, legs weighted over the head,
 mirrored when a picture was drawn facing the other way), so a mood change swaps the picture in place.
 Each set shares one canvas cropped to the union of its drawings, 820 px tall, feet on the bottom edge.
-Gestures are single pictures on the same 820 px scale; face-<mood>.png are square avatars cut from `stand`.
+Gestures are single pictures on the same 820 px scale; face-<mood>.png are square avatars cut from `stand`;
+badge-<mood>.png are the head-only drawings of 02_faces (GriffinBadge).
 Output is a 256-colour palette PNG (flat cartoon colours: visually lossless, ~4x smaller).
-Props (lightbulb, question_mark…) are copied by hand from 08_accessories_props — they are not touched here.
+Props come from 08_accessories_props, trimmed; `!` and `?` get the dot the pack's drawings are missing.
 """
 import json, os, sys
 import numpy as np
@@ -139,5 +140,35 @@ for m in MOODS:
     bg = Image.new('RGBA', c.size, (242, 247, 252, 255))
     bg.alpha_composite(c)
     bg.convert('RGB').save(f'{OUT}/face-{m}.png', optimize=True)
+# badge faces (GriffinBadge): the head-only drawings of 02_faces, trimmed; `angry` is the pack's name for stern
+for m in MOODS:
+    im = Image.open(f"{SRC}/02_faces/face_{'angry' if m == 'stern' else m}.png").convert('RGBA')
+    im = im.crop(im.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox())
+    save(im, f'{OUT}/badge-{m}.png')
+# props: copied from 08_accessories_props, trimmed. The pack's `!` and `?` are drawn without their dot, so
+# one is painted under the stem in the drawing's own fill and outline (supersampled 4x for a clean edge).
+from PIL import ImageDraw
+PROPS = ['lightbulb', 'question_mark', 'exclamation', 'sparkle', 'book', 'laptop', 'graduation_hat']
+DOTTED = {'exclamation': 0.72, 'question_mark': 0.62}  # dot diameter as a share of the stem's width
+for name in PROPS:
+    im = Image.open(f'{SRC}/08_accessories_props/{name}.png').convert('RGBA')
+    im = im.crop(im.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox())
+    if name in DOTTED:
+        a = im.getchannel('A')
+        # the stem: opaque run of the row 12 % above the bottom of the drawing
+        row = int(im.height * 0.88)
+        xs = [x for x in range(im.width) if a.getpixel((x, row)) > 128]
+        cx, stem = (xs[0] + xs[-1]) / 2, xs[-1] - xs[0] + 1
+        d = max(8, round(stem * DOTTED[name] + 6))
+        gap = max(4, round(d * 0.35))
+        canvas = Image.new('RGBA', (max(im.width, round(cx + d / 2) + 2), im.height + gap + d + 2), (0, 0, 0, 0))
+        canvas.paste(im, (0, 0))
+        k = 4
+        dot = Image.new('RGBA', (canvas.width * k, canvas.height * k), (0, 0, 0, 0))
+        top = im.height + gap
+        box = [(cx - d / 2) * k, top * k, (cx + d / 2) * k, (top + d) * k]
+        ImageDraw.Draw(dot).ellipse(box, fill=(244, 58, 58, 255), outline=(150, 20, 22, 255), width=round(2 * k))
+        im = Image.alpha_composite(canvas, dot.resize(canvas.size, Image.LANCZOS))
+    im.save(f'{OUT}/{name}.png', optimize=True)
 # widths go into POSES in components/mascot/Griffin.jsx
 print(json.dumps(meta))

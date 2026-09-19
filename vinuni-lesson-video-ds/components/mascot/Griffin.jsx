@@ -51,8 +51,9 @@ const moodName = (m) => (m === 'angry' ? 'stern' : MOODS.includes(m) ? m : 'neut
 
 const PROPS = {
   lightbulb: { file: 'lightbulb', w: 51, h: 77 },
-  question: { file: 'question_mark', w: 52, h: 62 },
-  exclamation: { file: 'exclamation', w: 29, h: 60 },
+  // `k` scales a prop against the others: the marks include their dot, so they get more height
+  question: { file: 'question_mark', w: 52, h: 86, k: 1.3 },
+  exclamation: { file: 'exclamation', w: 29, h: 85, k: 1.3 },
   sparkle: { file: 'sparkle', w: 66, h: 76 },
   book: { file: 'book', w: 56, h: 93 },
   laptop: { file: 'laptop', w: 129, h: 85 },
@@ -188,7 +189,7 @@ export function Griffin({
         const o = stepOpacity(props, i, frame, 8);
         const pop = p.at <= 0 && enter === null ? 1 : popScale(frame, Math.max(p.at, enter ?? 0));
         // a worn prop sits on the head and moves with it; the others float above the crest
-        const size = def.worn ? h * 0.3 : ph;
+        const size = def.worn ? h * 0.3 : ph * (def.k ?? 1);
         const pw = def.worn ? size : (size * def.w) / def.h;
         const pH = def.worn ? (size * def.h) / def.w : size;
         const at = def.worn
@@ -220,8 +221,9 @@ export function Griffin({
 }
 
 /**
- * GriffinBadge — the face in a round frame: a reaction mark, or a speaker face beside a line. The faces
- * (face-<mood>.png, square, on bgAlt) are cut from the `stand` set; mood changes cut with a small pop.
+ * GriffinBadge — the face in a round frame: a reaction mark beside an idea. The heads are the pack's own
+ * face drawings (badge-<mood>.png, ~150×210 px — sharp up to r ≈ 100); mood changes cut with a small pop.
+ * A square avatar for DialogueCard is face-<mood>.png instead, cut from the `stand` set.
  */
 export function GriffinBadge({ x, y, r = 56, mood = 'neutral', frame = 0, enter = null, tone = 'accent', base = DEFAULT_BASE, opacity = 1 }) {
   if (opacity <= 0.001) return null;
@@ -233,6 +235,10 @@ export function GriffinBadge({ x, y, r = 56, mood = 'neutral', frame = 0, enter 
   const ring = { accent: C.accent, strong: C.accentStrong, red: C.red, muted: C.textMuted }[tone] ?? C.accent;
   const id = `gb-${Math.round(x)}-${Math.round(y)}`;
   const names = [...new Set(moods.map((m) => moodName(m.name)))];
+  // the heads are drawn larger than the ring and clipped to it (crest on top, scarf below), eyes and beak
+  // at the centre; the box keeps their ~0.72 aspect and the image fits inside it
+  const fh = r * 2.0;
+  const fw = fh * 0.74;
   return (
     <g opacity={opacity < 1 ? opacity : undefined} transform={`translate(${x} ${y}) scale(${s * (1 + q * 0.06)})`}>
       <defs>
@@ -245,11 +251,11 @@ export function GriffinBadge({ x, y, r = 56, mood = 'neutral', frame = 0, enter 
         {names.map((name) => (
           <image
             key={name}
-            href={griffinAsset(`face-${name}`, base)}
-            x={-r}
-            y={-r}
-            width={r * 2}
-            height={r * 2}
+            href={griffinAsset(`badge-${name}`, base)}
+            x={-fw / 2}
+            y={-fh * 0.47}
+            width={fw}
+            height={fh}
             opacity={name === now ? undefined : 0}
           />
         ))}
