@@ -124,7 +124,8 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
     const state = normalizeVideoState(JSON.parse(fs.readFileSync(stateFile(id), "utf8")));
     // a server restart kills running agents: never leave a stage stuck in "running"
     if (!isRunning(id)) for (const s of STAGES) if (state.stages[s] === "running") state.stages[s] = "error";
-    return { state, managed: true };
+    // a practice sample keeps its real state but is read-only, like a video made outside the studio
+    return { state, managed: !state.sample };
   }
   const day = findDay(id);
   const request: VideoRequest = {
@@ -188,7 +189,7 @@ export function listVideos(): VideoSummary[] {
       title: state.request.title || id,
       cueCount: null,
       managed,
-      stages: managed ? state.stages : inferredStages(a),
+      stages: managed || state.sample ? state.stages : inferredStages(a),
       artifacts: a,
       running: isRunning(id),
       updatedAt: managed ? state.updatedAt : null,

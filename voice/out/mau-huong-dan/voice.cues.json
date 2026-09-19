@@ -1,0 +1,655 @@
+{
+  "schema": "vinuni-tts-elevenlabs/1",
+  "generator": "elevenlabs",
+  "voiceId": "6adFm46eyy74snVn6YrT",
+  "cast": [
+    {
+      "id": "6adFm46eyy74snVn6YrT",
+      "name": "Griffin"
+    }
+  ],
+  "model": "eleven_turbo_v2_5",
+  "language": "vi",
+  "outputFormat": "pcm_24000",
+  "voiceSettings": {
+    "stability": 0.5,
+    "similarity_boost": 0.75,
+    "style": 0,
+    "use_speaker_boost": true,
+    "speed": 1
+  },
+  "fps": 30,
+  "sampleRate": 24000,
+  "pauseSeconds": 1,
+  "cuesSource": "vinuni-lesson-video-ds/ui_kits/lesson-video/videos/mau-huong-dan/cues.js",
+  "cuesSha256": "aa71fcf311b44a08ec280eced06b1f37be8161d0847b089b7ed7fb0da87dc5e2",
+  "durationInFrames": 1139,
+  "audioDurationSeconds": 37.967,
+  "masterSha256": "6babe24dbea04e9341236341223529e69af50448501e428f3ad2285606757b5d",
+  "cues": [
+    {
+      "n": 1,
+      "startFrame": 0,
+      "endFrame": 130,
+      "durationInFrames": 130,
+      "speechFrames": 100,
+      "authoredFrames": 150,
+      "seconds": 0,
+      "speechDurationSeconds": 3.309,
+      "text": "Xin chào, mình là Griffin, linh vật của VinUni.",
+      "textSha256": "b36f3cb7db1a897eae39833277469fce32ea1274d769294d46d1e822a710e7b4",
+      "ttsText": "Xin chào, mình là Gờ-ríp-phin, linh vật của Vin Uni.",
+      "ttsTextSha256": "2f7d82b3f72124e038bfff262dd1a06e87311cba31a34186573c2c41ec6adf82",
+      "cache": "43bfe8b5ab7e26b10417a0ea9c7cc457e0cb5aaf776dfc424fd4307febaa3152.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "ke",
+      "speed": 1.06,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          10,
+          25
+        ],
+        [
+          15,
+          31
+        ],
+        [
+          18,
+          35
+        ],
+        [
+          31,
+          62
+        ],
+        [
+          36,
+          69
+        ],
+        [
+          40,
+          75
+        ],
+        [
+          44,
+          80
+        ],
+        [
+          48,
+          88
+        ]
+      ]
+    },
+    {
+      "n": 2,
+      "startFrame": 130,
+      "endFrame": 261,
+      "durationInFrames": 131,
+      "speechFrames": 101,
+      "authoredFrames": 210,
+      "seconds": 4.333,
+      "speechDurationSeconds": 3.35,
+      "text": "Hôm nay mình kể bạn nghe một kịch bản trở thành video bài giảng như thế nào.",
+      "textSha256": "0fafbd8b3c7bd185887b08841c0ab2dc532070736a4fe5a302a162bf6d45601f",
+      "ttsText": "Hôm nay mình kể bạn nghe một kịch bản trở thành video bài giảng như thế nào.",
+      "ttsTextSha256": "0fafbd8b3c7bd185887b08841c0ab2dc532070736a4fe5a302a162bf6d45601f",
+      "cache": "cdbd8f2f0fed8e277191e7953a1689e44449f5e881649a5a992fa626d5c7e134.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "giang",
+      "speed": 1,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          8,
+          10
+        ],
+        [
+          13,
+          15
+        ],
+        [
+          16,
+          22
+        ],
+        [
+          20,
+          29
+        ],
+        [
+          25,
+          35
+        ],
+        [
+          29,
+          40
+        ],
+        [
+          34,
+          46
+        ],
+        [
+          38,
+          52
+        ],
+        [
+          42,
+          56
+        ],
+        [
+          48,
+          61
+        ],
+        [
+          54,
+          70
+        ],
+        [
+          58,
+          75
+        ],
+        [
+          64,
+          82
+        ],
+        [
+          68,
+          86
+        ],
+        [
+          72,
+          90
+        ]
+      ]
+    },
+    {
+      "n": 3,
+      "startFrame": 261,
+      "endFrame": 399,
+      "durationInFrames": 138,
+      "speechFrames": 108,
+      "authoredFrames": 150,
+      "seconds": 8.7,
+      "speechDurationSeconds": 3.568,
+      "text": "Đầu tiên, bạn chọn style và thả kịch bản vào Studio.",
+      "textSha256": "bd90b1514dee17efa06793bcd706ed0e38a9c8a9115be16a8cb91c22132bd73f",
+      "ttsText": "Đầu tiên, bạn chọn xờ-tai và thả kịch bản vào xờ-tiu-đi-ô.",
+      "ttsTextSha256": "4db64958bdd0df3b5e67a2b610ee2fc91d064c11f8b6d5d1e1a7c4fc257ae2be",
+      "cache": "6fcc89aeb388927d14da65bcf8a26ffdad9fb7dbd00b116ed37fa9965e956834.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "ke",
+      "speed": 1.06,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          10,
+          26
+        ],
+        [
+          14,
+          32
+        ],
+        [
+          19,
+          38
+        ],
+        [
+          26,
+          53
+        ],
+        [
+          29,
+          57
+        ],
+        [
+          33,
+          62
+        ],
+        [
+          38,
+          68
+        ],
+        [
+          42,
+          75
+        ],
+        [
+          46,
+          79
+        ]
+      ]
+    },
+    {
+      "n": 4,
+      "startFrame": 399,
+      "endFrame": 538,
+      "durationInFrames": 139,
+      "speechFrames": 109,
+      "authoredFrames": 180,
+      "seconds": 13.3,
+      "speechDurationSeconds": 3.615,
+      "text": "Sau đó, agent cắt kịch bản thành từng câu và giữ nguyên văn từng chữ.",
+      "textSha256": "a56317b70dfc0ac587c46b390593fae4daa00546754405ad70002e965bf8c6cc",
+      "ttsText": "Sau đó, ây-giần cắt kịch bản thành từng câu và giữ nguyên văn từng chữ.",
+      "ttsTextSha256": "0029c22feb27c005f5becd7ce3d9606bbbc0c7410563f4d1321a39b3d8b55279",
+      "cache": "db0311fc9b869410c7761a98b9825fc0117944a428cc2abe504264ca79d6bd30.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "giang",
+      "speed": 1,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          8,
+          26
+        ],
+        [
+          16,
+          38
+        ],
+        [
+          20,
+          42
+        ],
+        [
+          25,
+          48
+        ],
+        [
+          29,
+          55
+        ],
+        [
+          35,
+          60
+        ],
+        [
+          40,
+          66
+        ],
+        [
+          44,
+          73
+        ],
+        [
+          47,
+          76
+        ],
+        [
+          51,
+          79
+        ],
+        [
+          58,
+          86
+        ],
+        [
+          62,
+          91
+        ],
+        [
+          67,
+          96
+        ]
+      ]
+    },
+    {
+      "n": 5,
+      "startFrame": 538,
+      "endFrame": 692,
+      "durationInFrames": 154,
+      "speechFrames": 124,
+      "authoredFrames": 210,
+      "seconds": 17.933,
+      "speechDurationSeconds": 4.106,
+      "text": "Giọng đọc được thu trước, rồi mỗi cảnh được dựng đúng theo độ dài của giọng thật.",
+      "textSha256": "f05ea9bc7f9df1fe113eff198c54c59292be1272d6cdd02e17e13f31830a718f",
+      "ttsText": "Giọng đọc được thu trước, rồi mỗi cảnh được dựng đúng theo độ dài của giọng thật.",
+      "ttsTextSha256": "f05ea9bc7f9df1fe113eff198c54c59292be1272d6cdd02e17e13f31830a718f",
+      "cache": "7e98bd35a737999043ba64dbdcc2085d8c2c7abc927d8d4498a49c9465d4b15b.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "giang",
+      "speed": 1,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          10,
+          14
+        ],
+        [
+          15,
+          19
+        ],
+        [
+          19,
+          25
+        ],
+        [
+          26,
+          46
+        ],
+        [
+          30,
+          53
+        ],
+        [
+          34,
+          60
+        ],
+        [
+          39,
+          66
+        ],
+        [
+          44,
+          74
+        ],
+        [
+          49,
+          79
+        ],
+        [
+          54,
+          86
+        ],
+        [
+          59,
+          91
+        ],
+        [
+          62,
+          96
+        ],
+        [
+          66,
+          104
+        ],
+        [
+          70,
+          109
+        ],
+        [
+          76,
+          116
+        ]
+      ]
+    },
+    {
+      "n": 6,
+      "startFrame": 692,
+      "endFrame": 873,
+      "durationInFrames": 181,
+      "speechFrames": 151,
+      "authoredFrames": 180,
+      "seconds": 23.067,
+      "speechDurationSeconds": 5.025,
+      "text": "Cuối cùng, Studio ghép hình, giọng và nhạc nền thành một tệp video.",
+      "textSha256": "dfb34b55c5235d9c249f52a085f1c93553e51834d708544e41f7fc3ad261283d",
+      "ttsText": "Cuối cùng, xờ-tiu-đi-ô ghép hình, giọng và nhạc nền thành một tệp video.",
+      "ttsTextSha256": "5223795022d50b219d2f904e4cdfd309c13c72dbcf13669ccd0fd03913f6b347",
+      "cache": "76262cbf9bdf856dedf082dedac84260af6c76ec66e7155eb78c0b651a1d4e68.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "ke",
+      "speed": 1.06,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          5,
+          6
+        ],
+        [
+          11,
+          24
+        ],
+        [
+          23,
+          52
+        ],
+        [
+          28,
+          58
+        ],
+        [
+          34,
+          74
+        ],
+        [
+          40,
+          81
+        ],
+        [
+          43,
+          85
+        ],
+        [
+          48,
+          90
+        ],
+        [
+          52,
+          98
+        ],
+        [
+          58,
+          103
+        ],
+        [
+          62,
+          108
+        ],
+        [
+          66,
+          115
+        ]
+      ]
+    },
+    {
+      "n": 7,
+      "startFrame": 873,
+      "endFrame": 1060,
+      "durationInFrames": 187,
+      "speechFrames": 157,
+      "authoredFrames": 210,
+      "seconds": 29.1,
+      "speechDurationSeconds": 5.201,
+      "text": "Xong mỗi bước, bạn duyệt rồi mới đi tiếp, nên không có gì chạy ngoài ý muốn.",
+      "textSha256": "a70fed675932f95d053460f815d7bffc68640bf0de9ab51303d09fae07d20e9b",
+      "ttsText": "Xong mỗi bước, bạn duyệt rồi mới đi tiếp, nên không có gì chạy ngoài ý muốn.",
+      "ttsTextSha256": "a70fed675932f95d053460f815d7bffc68640bf0de9ab51303d09fae07d20e9b",
+      "cache": "a67ec85a0d35381405fec4035ca77b681b5b971db1e6ad6fbd67dd19bdf894d5.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "nhan",
+      "speed": 0.86,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          5,
+          9
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          15,
+          36
+        ],
+        [
+          19,
+          44
+        ],
+        [
+          25,
+          53
+        ],
+        [
+          29,
+          57
+        ],
+        [
+          33,
+          61
+        ],
+        [
+          36,
+          68
+        ],
+        [
+          42,
+          87
+        ],
+        [
+          46,
+          94
+        ],
+        [
+          52,
+          101
+        ],
+        [
+          55,
+          106
+        ],
+        [
+          58,
+          111
+        ],
+        [
+          63,
+          117
+        ],
+        [
+          69,
+          125
+        ],
+        [
+          71,
+          130
+        ]
+      ]
+    },
+    {
+      "n": 8,
+      "startFrame": 1060,
+      "endFrame": 1139,
+      "durationInFrames": 79,
+      "speechFrames": 49,
+      "authoredFrames": 120,
+      "seconds": 35.333,
+      "speechDurationSeconds": 1.604,
+      "text": "Giờ thì đến lượt bạn thử rồi đó!",
+      "textSha256": "bd736cc740465fdc690babd5d58417f84e847a98ecbb5d36e2d1436c2dcdff5a",
+      "ttsText": "Giờ thì đến lượt bạn thử rồi đó!",
+      "ttsTextSha256": "bd736cc740465fdc690babd5d58417f84e847a98ecbb5d36e2d1436c2dcdff5a",
+      "cache": "23954181401c5bfe0335684baa8f069934c0a6dace00d1265cdef70bb4c465dd.pcm",
+      "speaker": "Griffin",
+      "voiceId": "6adFm46eyy74snVn6YrT",
+      "delivery": "ke",
+      "speed": 1.06,
+      "avatar": "https://pub-75f38a18d7494e158433fd71f020ea01.r2.dev/mascot/griffin/face-happy.42579a9d4a.png?v=42579a9d4ac0",
+      "side": "left",
+      "tone": "accent",
+      "words": [
+        [
+          0,
+          0
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          8,
+          11
+        ],
+        [
+          12,
+          16
+        ],
+        [
+          17,
+          22
+        ],
+        [
+          21,
+          27
+        ],
+        [
+          25,
+          33
+        ],
+        [
+          29,
+          38
+        ]
+      ]
+    }
+  ]
+}

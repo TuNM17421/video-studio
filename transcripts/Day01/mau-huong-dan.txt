@@ -1,0 +1,9 @@
+00:00 - 00:03: Xin chào, mình là Griffin, linh vật của VinUni.
+00:04 - 00:08: Hôm nay mình kể bạn nghe một kịch bản trở thành video bài giảng như thế nào.
+00:09 - 00:12: Đầu tiên, bạn chọn style và thả kịch bản vào Studio.
+00:13 - 00:17: Sau đó, agent cắt kịch bản thành từng câu và giữ nguyên văn từng chữ.
+00:18 - 00:19: Giọng đọc được thu trước,
+00:19 - 00:22: rồi mỗi cảnh được dựng đúng theo độ dài của giọng thật.
+00:23 - 00:28: Cuối cùng, Studio ghép hình, giọng và nhạc nền thành một tệp video.
+00:29 - 00:34: Xong mỗi bước, bạn duyệt rồi mới đi tiếp, nên không có gì chạy ngoài ý muốn.
+00:35 - 00:37: Giờ thì đến lượt bạn thử rồi đó!

@@ -104,6 +104,7 @@ cd video-studio
 npm install              # dependency, link design system vào node_modules, build dist/vk.js
 npm run setup            # tải Chromium dùng để chụp frame và render (một lần)
 npm run studio:install   # cài Video Studio (một lần)
+npm run sample           # tải bản thu, MP4 và ảnh QA của video mẫu (chế độ tập của tour hướng dẫn)
 
 npm run build && npm run verify   # kết thúc bằng "all checks passed" là cài đúng
 ```
@@ -450,6 +451,7 @@ video giữ trên máy:
 | `npm run tts:check` | Kiểm tra key và giọng ElevenLabs, không tốn ký tự |
 | `npm run voices` | In danh mục giọng và kiểu đọc |
 | `npm run media` | Đẩy media lên R2 (chủ bucket) |
+| `npm run sample` | Tải phần nặng của video mẫu `mau-huong-dan` từ R2 (bản thu, MP4, ảnh QA) |
 | `npm run test:tools` | Test của `tools/` |
 
 ### Trong `studio/`

@@ -1,0 +1,49 @@
+{
+  "id": "mau-huong-dan",
+  "createdAt": "2026-09-19T06:26:11.000Z",
+  "updatedAt": "2026-09-19T06:26:11.000Z",
+  "request": {
+    "style": "lesson-lab",
+    "modules": [],
+    "day": "Day01",
+    "title": "Mẫu · Griffin kể năm bước làm video",
+    "scriptName": "kich-ban-goc.md",
+    "feedbackDir": "",
+    "oldVideoDir": "",
+    "notes": "Video mẫu của chế độ tập trong tour hướng dẫn.",
+    "scope": {
+      "scenes": true,
+      "voice": true,
+      "render": true,
+      "transcript": true,
+      "chapters": true
+    }
+  },
+  "agent": {
+    "provider": "claude",
+    "sessionId": null
+  },
+  "stages": {
+    "cues": "done",
+    "voice": "done",
+    "scenes": "done",
+    "render": "done",
+    "deliver": "done"
+  },
+  "voice": {
+    "source": "elevenlabs",
+    "voiceId": "6adFm46eyy74snVn6YrT",
+    "model": "eleven_turbo_v2_5",
+    "language": "vi",
+    "pause": 1.4,
+    "importDir": "",
+    "speakers": {}
+  },
+  "music": {
+    "background": "bg-01",
+    "quiz": "none"
+  },
+  "captions": true,
+  "lastError": null,
+  "sample": true
+}

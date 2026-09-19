@@ -379,6 +379,114 @@
       "sha256": "b4af7be5ca84b00d8b75d66c5d0bfea141b41e57afd12b7ff647048eedd1c644",
       "updated": "2026-09-12"
     },
+    "samples/mau-huong-dan/mau-huong-dan.mp4": {
+      "type": "video/mp4",
+      "bytes": 5283306,
+      "sha256": "3df7e8dc1d77b06e196b316322693a9f1813aff4ab72cd0a5d0906285bb47273",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s01-mid.png": {
+      "type": "image/png",
+      "bytes": 219914,
+      "sha256": "c3402988b48d4e947d03efdd2900f46bb6e188eb02019d171b0613ebc4a63db2",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s01.png": {
+      "type": "image/png",
+      "bytes": 220428,
+      "sha256": "175df1ca2924fa390a9d1e67a229c160a1dc5cdc7e047d4b1988c81977364b9c",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s02-mid.png": {
+      "type": "image/png",
+      "bytes": 186060,
+      "sha256": "92ee1878bf1ddd62928f7a97dd57bc0dc7a346b6e7325f98371fa7c87034b834",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s02.png": {
+      "type": "image/png",
+      "bytes": 199146,
+      "sha256": "cc9dec5c0546b05b2518060ac13d79c24aa580413cb59f120fc12e6d3cbffa05",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s03-mid.png": {
+      "type": "image/png",
+      "bytes": 193266,
+      "sha256": "ee64f5437f270c4a6833f654f6b1755664260a480d3366f0ab1773962a17e0ae",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s03.png": {
+      "type": "image/png",
+      "bytes": 205036,
+      "sha256": "6a2c4cc68666312e1b6746cea86909fb680a86c10e1d886069e35360fedc8ebc",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s04-mid.png": {
+      "type": "image/png",
+      "bytes": 207617,
+      "sha256": "08c01bcb7f74143cbcdbffb8800f8b067774561f803d68df243827caadfba33c",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s04.png": {
+      "type": "image/png",
+      "bytes": 250413,
+      "sha256": "3c70c54539c72cb4a2781d8788fe286a5ad6c765f0bcd6161d146c258f3c5086",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s05-mid.png": {
+      "type": "image/png",
+      "bytes": 212347,
+      "sha256": "0cfd8a91815690d4626377a33e0a5b3bec14963927e6db9e30d73ec07aa55088",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s05.png": {
+      "type": "image/png",
+      "bytes": 227204,
+      "sha256": "a1e20b5f2b433df5417b5afa121bcbf51f19dd4417b9297a4ebf605e4cd36cc9",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s06-mid.png": {
+      "type": "image/png",
+      "bytes": 204162,
+      "sha256": "c93ddeee3d3e1c72af29501e408e1e6779a7b295724e67dafbc9f0755d8515ab",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s06.png": {
+      "type": "image/png",
+      "bytes": 214547,
+      "sha256": "8c2a5cceb1092f085627abdf9611b9bb0a97ad73ee6806024231a56bef7b4b0f",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s07-mid.png": {
+      "type": "image/png",
+      "bytes": 193458,
+      "sha256": "b10314474ecabd390b31f18a6ad48abc1c7e702deb9e652b2166dbcfe4ed40cd",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s07.png": {
+      "type": "image/png",
+      "bytes": 239433,
+      "sha256": "7112c7cda82f5d20161ce7dcfac2f020d04647468ad065dc9241b0e43bd46a92",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s08-mid.png": {
+      "type": "image/png",
+      "bytes": 267577,
+      "sha256": "5f9a47a010acf2186ddf92548f317d8ff86a7a7d57a30ffa535ec845554b79e1",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/qa/s08.png": {
+      "type": "image/png",
+      "bytes": 270883,
+      "sha256": "526e676532936d46a61848bbda8ea7b57b4ae3491b6d465f16d8a51cd2b72c04",
+      "updated": "2026-09-19"
+    },
+    "samples/mau-huong-dan/voice.wav": {
+      "type": "audio/wav",
+      "bytes": 1822444,
+      "sha256": "6babe24dbea04e9341236341223529e69af50448501e428f3ad2285606757b5d",
+      "updated": "2026-09-19"
+    },
     "styles/lesson-lab/sample.mp4": {
       "type": "video/mp4",
       "bytes": 17607633,

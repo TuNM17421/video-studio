@@ -83,6 +83,12 @@ Lời thoại và điểm chỉ của tour nằm ở `studio/src/lib/tours.ts` (
 bằng antd `Tour`, tìm phần tử theo `data-tour="…"` (đừng chỉ bằng class CSS), bỏ bước không có trên màn
 hình, nhớ "đã xem" theo `version` trong localStorage. Sửa lời một tour thì tăng `version`. Tour chỉ **chỉ
 vào** nút tốn credit / chạy agent, không bao giờ bấm hộ. Nút Griffin ở góc phải mở lại tour của trang.
+**Video mẫu của chế độ tập** là `mau-huong-dan` (Griffin kể năm bước, 8 câu): một video đã đi đủ năm bước,
+`state.json` có `"sample": true` nên Studio mở ở chế độ **chỉ xem** (API chặn agent/giọng/render như với video
+làm ngoài Studio). Phần chữ nằm trong git dù `projects/`, `videos/`, `voice/out/` bị ignore — đã `git add -f`
+từng file, sửa thì add lại; phần nặng (`voice.wav`, MP4, ảnh QA) ở R2 `samples/mau-huong-dan/…`, tải về bằng
+`npm run sample` (`tools/sample-fetch.mjs`). Dựng lại video mẫu thì đẩy lại ba loại file đó vào
+`media/files/samples/<id>/` rồi `npm run media`.
 
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không

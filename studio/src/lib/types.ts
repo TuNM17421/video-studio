@@ -128,6 +128,11 @@ export interface VideoState {
   /** Burn the navy subtitle bar into the MP4 (render step; off = render.mjs --no-captions). */
   captions: boolean;
   lastError: string | null;
+  /**
+   * A finished video shipped with the repo for the tour's practice mode (projects/mau-huong-dan): shown with
+   * its real title and stages, but read-only — no agent, voice or render can be started on it.
+   */
+  sample?: boolean;
 }
 
 export interface LogEntry {
