@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CheckCircleFilled, DeleteOutlined, ExportOutlined, FileTextOutlined, PlusOutlined, RedoOutlined, SendOutlined, WarningFilled,
+  CheckCircleFilled, ExportOutlined, FileTextOutlined, RedoOutlined, SendOutlined, WarningFilled,
 } from "@ant-design/icons";
-import { Button, Checkbox, Collapse, Input, Popconfirm, Segmented, Select, Tag } from "antd";
+import { Button, Input, Popconfirm, Segmented, Tag } from "antd";
 import { fileUrl } from "@/lib/client";
 import {
-  blankClaim, DIFFICULTY_LABEL, GATE2_LABEL, KIND_LABEL, PRIORITY_LABEL, RUN_RESULT_LABEL, STANCE_LABEL, VERDICT_LABEL,
-  type Claim, type ClaimKind, type Difficulty, type Gate2Decision, type Priority, type ResearchView,
+  DIFFICULTY_LABEL, GATE2_LABEL, KIND_LABEL, RUN_RESULT_LABEL, STANCE_LABEL, VERDICT_LABEL,
+  type Gate2Decision, type ResearchView,
 } from "@/lib/research";
 import type { LogEntry } from "@/lib/types";
 
@@ -33,84 +33,6 @@ export function LogList({ logs, empty = "Chưa có hoạt động." }: { logs: L
       <span className="vs-scout-body">{e.kind === "agent" || e.kind === "result" || e.kind === "error" ? <p className={e.kind === "error" ? "vs-scout-error" : "vs-scout-say"}>{e.text}</p> : <small>{e.text}</small>}</span>
     </li>)}
   </ol>;
-}
-
-// ── cổng 1 · duyệt claim ──────────────────────────────────────────────────────────
-
-const KIND_OPTIONS = (Object.keys(KIND_LABEL) as ClaimKind[]).map((k) => ({ value: k, label: KIND_LABEL[k] }));
-const DIFF_OPTIONS = (Object.keys(DIFFICULTY_LABEL) as Difficulty[]).map((k) => ({ value: k, label: DIFFICULTY_LABEL[k] }));
-const PRIO_OPTIONS = (Object.keys(PRIORITY_LABEL) as Priority[]).map((k) => ({ value: k, label: PRIORITY_LABEL[k] }));
-
-function ClaimCard({ claim, on, onChange, onToggle, onRemove }: { claim: Claim; on: boolean; onChange: (c: Claim) => void; onToggle: (on: boolean) => void; onRemove: () => void }) {
-  const set = (patch: Partial<Claim>) => onChange({ ...claim, ...patch });
-  return <li className={`vs-scout-item${on ? "" : " is-off"}`}>
-    <Checkbox checked={on} onChange={(e) => onToggle(e.target.checked)} aria-label={`Kiểm claim ${claim.id}`} />
-    <div className="vs-scout-item-body">
-      <div className="vs-scout-item-head vs-rs-claim-head">
-        <span className="vs-scout-sid mono">{claim.id}</span>
-        <Select size="small" value={claim.kind} options={KIND_OPTIONS} onChange={(kind) => set({ kind })} popupMatchSelectWidth={false} aria-label="Loại" />
-        <Select size="small" value={claim.difficulty} options={DIFF_OPTIONS} onChange={(difficulty) => set({ difficulty })} popupMatchSelectWidth={false} aria-label="Độ khó" />
-        <Select size="small" value={claim.priority} options={PRIO_OPTIONS} onChange={(priority) => set({ priority })} popupMatchSelectWidth={false} aria-label="Ưu tiên" />
-        <Checkbox checked={claim.timeSensitive} onChange={(e) => set({ timeSensitive: e.target.checked })}>Hay đổi</Checkbox>
-        <span className="vs-scout-item-slides mono">{claim.slides.length ? `slide ${claim.slides.join(", ")}` : "cả bài"}</span>
-        <Button type="text" size="small" icon={<DeleteOutlined />} onClick={onRemove} aria-label="Xoá claim này" />
-      </div>
-      <Input.TextArea value={claim.text} placeholder="Slide nói gì — điều cần kiểm" autoSize={{ minRows: 1, maxRows: 4 }} maxLength={600} onChange={(e) => set({ text: e.target.value })} aria-label="Nội dung slide" />
-      <Input value={claim.question} placeholder="Câu hỏi research phải trả lời" maxLength={400} onChange={(e) => set({ question: e.target.value })} aria-label="Câu hỏi" />
-    </div>
-  </li>;
-}
-
-export function Gate1Panel({ view, act }: { view: ResearchView; act: Act }) {
-  const [draft, setDraft] = useState<Claim[]>(view.claims);
-  const [off, setOff] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
-  // Mã cho claim thêm tay không bao giờ dùng lại mã đã có trong phiên này — xoá c3 rồi thêm mới mà lại được
-  // "c3" thì claim mới mang luôn dấu bỏ tick của c3 cũ và bị bỏ âm thầm khi duyệt.
-  const [lastId, setLastId] = useState(() => Math.max(0, ...view.claims.map((c) => Number(c.id.slice(1)) || 0)));
-  const chosen = draft.filter((c) => !off.has(c.id) && c.text.trim());
-  const add = () => {
-    setDraft([...draft, blankClaim(`c${lastId + 1}`)]);
-    setLastId(lastId + 1);
-  };
-  const submit = async () => {
-    setBusy(true);
-    await act({ action: "approve-claims", claims: chosen });
-    setBusy(false);
-  };
-  return <div className="vs-scout-review">
-    <p className="vs-scout-review-lede">
-      Agent đã đọc slide và chọn <strong>{view.claims.length} điều nên kiểm trên web</strong>. Bỏ tick điều không cần, sửa lại cho đúng
-      ý, hoặc thêm điều agent bỏ sót. Độ khó quyết định cần bao nhiêu nguồn: <em>Dễ</em> một nguồn chính thức là đủ, <em>Vừa</em> và
-      <em> Khó</em> cần hai nơi xuất bản độc lập.
-    </p>
-    {view.outline && <Collapse size="small" className="vs-scout-outline" items={[{
-      key: "outline",
-      label: `Dàn ý agent bóc được · ${view.outline.length} slide`,
-      children: <ol>{view.outline.map((o) => <li key={o.slide} value={o.slide}><strong>{o.heading || `Slide ${o.slide}`}</strong>{o.skip && <Tag className="vs-badge">bỏ qua</Tag>}{(o.points?.length ?? 0) > 0 && <ul>{o.points!.map((p, i) => <li key={i}>{p}</li>)}</ul>}</li>)}</ol>,
-    }]} />}
-    {draft.length === 0
-      ? <p className="vs-scout-empty">Agent không thấy điều gì cần kiểm. Thêm tay, hoặc viết kịch bản thẳng từ slide.</p>
-      : <ul className="vs-scout-items">
-          {draft.map((c, i) => <ClaimCard
-            key={c.id}
-            claim={c}
-            on={!off.has(c.id)}
-            onChange={(next) => setDraft(draft.map((x, j) => (j === i ? next : x)))}
-            onToggle={(on) => setOff((s) => { const n = new Set(s); if (on) n.delete(c.id); else n.add(c.id); return n; })}
-            onRemove={() => {
-              setDraft(draft.filter((_, j) => j !== i));
-              setOff((s) => { const n = new Set(s); n.delete(c.id); return n; });
-            }}
-          />)}
-        </ul>}
-    <div className="vs-scout-review-actions">
-      <Button icon={<PlusOutlined />} disabled={busy || draft.length >= 25} onClick={add}>Thêm claim</Button>
-      <Button type="primary" icon={<CheckCircleFilled />} loading={busy} onClick={() => void submit()}>
-        {chosen.length ? `Duyệt · research ${chosen.length} claim` : "Viết kịch bản từ slide, không research"}
-      </Button>
-    </div>
-  </div>;
 }
 
 // ── claim ─────────────────────────────────────────────────────────────────────────

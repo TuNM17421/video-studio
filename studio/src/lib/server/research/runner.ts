@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Claim, ClaimCheck, ClaimKind, Difficulty, Gate2Decision, Priority, ResearchStage, ResearchState, ScriptCheck, ScriptIssue } from "../../research";
-import { RUN_RESULT_LABEL } from "../../research";
+import { batches, difficultyOf, RUN_RESULT_LABEL } from "../../research";
 import type { AgentProvider } from "../../types";
 import type { ResearchCall } from "../agent-cli";
 import { short } from "../agent-stream";
@@ -159,19 +159,8 @@ async function doExtract(state: ResearchState) {
   throw new Error(`Bóc tách chưa đạt soát sau hai lần: ${problems.slice(0, 3).join("; ")}`);
 }
 
-const PRIORITY_RANK: Record<Priority, number> = { high: 0, normal: 1, low: 2 };
-const BATCH: Record<Difficulty, number> = { easy: 6, normal: 4, hard: 2 };
-const difficultyOf = (c: Claim): Difficulty => (c.difficulty in BATCH ? c.difficulty : "normal");
-
-/** Lô claim cho từng lượt agent: claim dễ đi lô lớn (ít lượt, ít token cố định), claim khó đi lô nhỏ. */
-export function batches(claims: Claim[]): Claim[][] {
-  const out: Claim[][] = [];
-  for (const d of ["hard", "normal", "easy"] as Difficulty[]) {
-    const group = claims.filter((c) => difficultyOf(c) === d).sort((a, b) => (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1));
-    for (let i = 0; i < group.length; i += BATCH[d]) out.push(group.slice(i, i + BATCH[d]));
-  }
-  return out;
-}
+// Lô claim theo độ khó nằm ở lib/research.ts (cổng 1 cần nó để báo trước số lượt agent); xuất lại cho test cũ.
+export { batches };
 
 const MAX_ATTEMPTS = 2;
 

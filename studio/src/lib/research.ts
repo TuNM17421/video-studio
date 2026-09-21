@@ -203,7 +203,60 @@ export const KIND_LABEL: Record<ClaimKind, string> = {
 };
 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: "Dễ", normal: "Vừa", hard: "Khó" };
-export const PRIORITY_LABEL: Record<Priority, string> = { high: "Ưu tiên cao", normal: "Bình thường", low: "Thấp" };
+/** Nhãn trong ô chọn (cột đã ghi "Ưu tiên"); trên thẻ claim thì dùng `PRIORITY_TAG`. */
+export const PRIORITY_LABEL: Record<Priority, string> = { high: "Cao", normal: "Bình thường", low: "Thấp" };
+/** Thẻ claim chỉ nói ưu tiên khi nó khác mặc định — "Bình thường" trên cả 12 thẻ chỉ là thêm chữ để đọc. */
+export const PRIORITY_TAG: Partial<Record<Priority, string>> = { high: "Ưu tiên cao", low: "Ưu tiên thấp" };
+
+// Lời giải thích từng nhãn ở cổng 1 — nói đúng điều code làm (tools/lib/research-check.mjs, runner.ts), vì người
+// duyệt chọn độ khó là chọn số nguồn phải có và số lượt agent phải chạy.
+export const DIFFICULTY_HELP: Record<Difficulty, string> = {
+  easy: "Đủ với 1 nguồn gốc (trang chính thức, bài nghiên cứu, tài liệu tham khảo) hoặc 2 nơi xuất bản khác nhau. Research 6 claim mỗi lượt agent.",
+  normal: "Cần 2 nơi xuất bản độc lập, hoặc 1 trang chính thức. Research 4 claim mỗi lượt agent.",
+  hard: "Như Vừa, và có cảnh báo nếu không nguồn nào là nguồn gốc (chỉ báo, blog thuật lại). Research 2 claim mỗi lượt agent — tốn lượt nhất.",
+};
+export const PRIORITY_HELP: Record<Priority, string> = {
+  high: "Research trước trong lô. Claim có cảnh báo sau khi soát thì dừng ở cổng 2 cho bạn xem.",
+  normal: "Thứ tự bình thường trong lô.",
+  low: "Xếp cuối trong lô. Không bớt nguồn, không bỏ research.",
+};
+export const TIME_SENSITIVE_HELP = "Nguồn mới nhất phải đăng trong 12 tháng; dữ kiện chỉ được dùng lại 90 ngày thay vì 365; có cảnh báo thì dừng ở cổng 2.";
+export const KIND_HELP = "Chỉ để phân loại — không đổi cách research.";
+export const SLIDES_HELP = "Kịch bản dẫn nguồn theo slide này. Để trống là cả bài.";
+export const TEXT_HELP = "Chép sát lời slide — thư viện dữ kiện nhận lại claim theo đúng câu này.";
+export const REUSE_NOTE = "Đã đổi câu hoặc câu hỏi so với bản agent: claim này sẽ research từ đầu, không dùng lại dữ kiện đã kiểm ở bài trước (nếu có).";
+
+/** Trần số claim một lượt research — máy chủ cũng cắt ở đây (runner.ts `cleanClaims`, research-check.mjs). */
+export const MAX_CLAIMS = 25;
+/** Số claim mỗi lượt agent theo độ khó: claim dễ đi lô lớn (ít lượt, ít token cố định), claim khó đi lô nhỏ. */
+export const RESEARCH_BATCH: Record<Difficulty, number> = { easy: 6, normal: 4, hard: 2 };
+const PRIORITY_RANK: Record<Priority, number> = { high: 0, normal: 1, low: 2 };
+export const difficultyOf = (c: Claim): Difficulty => (c.difficulty in RESEARCH_BATCH ? c.difficulty : "normal");
+
+/**
+ * Lô claim cho từng lượt agent. Nằm ở đây chứ không ở máy chủ để cổng 1 báo trước được số lượt agent sẽ chạy —
+ * con số người duyệt đổi được bằng cách bỏ qua claim hay hạ độ khó.
+ */
+export function batches(claims: Claim[]): Claim[][] {
+  const out: Claim[][] = [];
+  for (const d of ["hard", "normal", "easy"] as Difficulty[]) {
+    const group = claims.filter((c) => difficultyOf(c) === d).sort((a, b) => (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1));
+    for (let i = 0; i < group.length; i += RESEARCH_BATCH[d]) out.push(group.slice(i, i + RESEARCH_BATCH[d]));
+  }
+  return out;
+}
+
+/**
+ * Dàn ý nói bao nhiêu — theo mục, không theo slide: agent đánh số theo slide gốc nên số có thể nhảy (1–72 với 60 mục)
+ * hay lặp (hai mục cùng số 47 khi PDF có trang dựng dần), và "60 slide" thì sai cả hai chiều.
+ */
+export function outlineSummary(outline: OutlineSlide[]): string {
+  if (!outline.length) return "0 mục";
+  const numbers = outline.map((o) => o.slide);
+  const lo = Math.min(...numbers);
+  const hi = Math.max(...numbers);
+  return `${outline.length} mục, slide ${lo === hi ? lo : `${lo}–${hi}`}`;
+}
 
 export const VERDICT_LABEL: Record<Verdict, string> = {
   ok: "Slide đúng",

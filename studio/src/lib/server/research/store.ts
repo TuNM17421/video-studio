@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Claim, ClaimCheck, EditReview, Finding, OutlineSlide, ResearchState, ResearchSummary, ResearchView, ScriptCheck, SourceInfo } from "../../research";
+import { KIND_LABEL, type Claim, type ClaimCheck, type EditReview, type Finding, type OutlineSlide, type ResearchState, type ResearchSummary, type ResearchView, type ScriptCheck, type SourceInfo } from "../../research";
 import type { LogEntry } from "../../types";
 import { currentJob, emit, isRunning, registry } from "../jobs";
 import { exists, HttpError, REPO, safeJoin } from "../paths";
@@ -82,16 +82,29 @@ export function updateState(rid: string, patch: (state: ResearchState) => void) 
 
 const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 const DIFFICULTIES = ["easy", "normal", "hard"];
+const PRIORITIES = ["high", "normal", "low"];
+const KINDS = Object.keys(KIND_LABEL);
+const text = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
 
 /**
  * claims.json như agent ghi — có thể thiếu trường hay sai giá trị (agent không phải lúc nào cũng theo đúng
  * hợp đồng, và Antigravity không có ép cấu trúc). Chuẩn hoá ở một chỗ để không phần nào phía sau vấp: một
- * độ khó lạ từng làm vòng research quay mãi không có lô nào để chạy.
+ * độ khó lạ từng làm vòng research quay mãi không có lô nào để chạy; một claim thiếu `priority` từng hiện
+ * "Cao" ở cổng 1 mà bấm "Cao" không ăn (ô chọn tự lấy lựa chọn đầu khi giá trị trống).
  */
 export const readClaims = (rid: string): Claim[] =>
   arr<Claim>(readJson<{ claims?: unknown }>(path.join(runDir(rid), "claims.json"), {}).claims)
     .filter((c) => c && typeof c === "object" && /^c\d{1,3}$/.test(String(c.id)))
-    .map((c) => ({ ...c, slides: arr<number>(c.slides), difficulty: DIFFICULTIES.includes(c.difficulty) ? c.difficulty : "normal" }));
+    .map((c) => ({
+      ...c,
+      slides: arr<unknown>(c.slides).filter((n): n is number => Number.isInteger(n)),
+      text: text(c.text),
+      question: text(c.question),
+      kind: KINDS.includes(c.kind) ? c.kind : "technical",
+      difficulty: DIFFICULTIES.includes(c.difficulty) ? c.difficulty : "normal",
+      priority: PRIORITIES.includes(c.priority) ? c.priority : "normal",
+      timeSensitive: c.timeSensitive === true,
+    }));
 
 /** finding.json của agent, với các mảng luôn là mảng — trang đọc thẳng `evidence.length`. */
 export function readFinding(rid: string, cid: string): Finding | null {
@@ -101,13 +114,29 @@ export function readFinding(rid: string, cid: string): Finding | null {
   return { ...f, sources: arr(f.sources), evidence: arr<Finding["evidence"][number]>(f.evidence).filter((e) => e && typeof e === "object") };
 }
 
-/** Dàn ý slide chặng bóc tách ghi ra — chặng viết nhận nó qua prompt thay vì tự Read. */
 /** Mọi nguồn lượt này đã tải — để nói cho agent biết trang nào có sẵn, gọi page.mjs là đọc từ đĩa. */
 export const readSources = (rid: string): SourceInfo[] =>
   Object.values(readJson<{ sources?: Record<string, SourceInfo> }>(path.join(runDir(rid), "sources", "index.json"), {}).sources ?? {});
 
-export const readOutline = (rid: string): OutlineSlide[] =>
-  readJson<{ outline?: OutlineSlide[] } | null>(path.join(runDir(rid), "outline.json"), null)?.outline ?? [];
+/**
+ * outline.json đúng hình dạng trang và prompt dùng, `null` khi chưa có. Soát bóc tách chỉ nhắc khi mục thiếu tiêu
+ * đề hay ý, không soát kiểu — một năm agent ghi thành số (2030) hay một ý `null` từng làm cổng 1 vỡ trắng trang.
+ */
+function outlineOf(rid: string): OutlineSlide[] | null {
+  const raw = readJson<{ outline?: unknown } | null>(path.join(runDir(rid), "outline.json"), null);
+  if (!raw || !Array.isArray(raw.outline)) return null;
+  return arr<Record<string, unknown>>(raw.outline)
+    .filter((o) => o && typeof o === "object" && Number.isInteger(o.slide))
+    .map((o) => ({
+      slide: o.slide as number,
+      ...(text(o.heading) ? { heading: text(o.heading) } : {}),
+      points: arr<unknown>(o.points).map(text).filter((p) => p.trim()),
+      ...(o.skip === true ? { skip: true } : {}),
+    }));
+}
+
+/** Dàn ý slide chặng bóc tách ghi ra — chặng viết nhận nó qua prompt thay vì tự Read. */
+export const readOutline = (rid: string): OutlineSlide[] => outlineOf(rid) ?? [];
 
 export const readEvidence = (rid: string): Record<string, ClaimCheck> =>
   readJson<{ claims?: Record<string, ClaimCheck> }>(path.join(runDir(rid), "checks", "evidence.json"), {}).claims ?? {};
@@ -203,7 +232,7 @@ export function readView(rid: string): ResearchView {
     if (f) findings[c.id] = f;
   }
   const index = readJson<{ sources?: Record<string, SourceInfo> }>(path.join(dir, "sources", "index.json"), {});
-  const outline = readJson<{ outline?: OutlineSlide[] } | null>(path.join(dir, "outline.json"), null)?.outline ?? null;
+  const outline = outlineOf(rid);
   return {
     state,
     outline,

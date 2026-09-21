@@ -4290,7 +4290,7 @@ button.vs-tile:hover {
 .vs-scout-sid {
   padding: 0 5px;
   border-radius: var(--vu-radius-sm);
-  background: var(--vu-sidebar-accent);
+  background: var(--vu-surface-subtle);
   color: var(--vu-neutral-600);
   font-size: var(--vu-text-2xs);
 }
@@ -4484,14 +4484,186 @@ button.vs-tile:hover {
   border-radius: var(--vu-radius-md);
   background: var(--vu-surface-card);
 }
-.vs-scout-item.is-off { opacity: 0.55; }
 .vs-scout-item-body { display: grid; gap: var(--vu-space-2); min-width: 0; }
-.vs-scout-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2); }
-.vs-scout-item-head .ant-btn { margin-left: auto; }
-.vs-scout-item-head .ant-checkbox-wrapper { font-size: var(--vu-text-2xs); }
-.vs-scout-item-slides { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
 .vs-scout-review-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--vu-space-2); }
 .vs-rs-decision strong { font-size: var(--vu-text-xs); }
+
+/* ── cổng 1 · duyệt claim ──
+   Thẻ claim đọc như chữ: nhãn nhỏ, câu slide trong một khối trích, câu hỏi bên dưới, hai nút ở góc. Cảnh báo chỉ
+   hiện khi có gì lệch. Thanh duyệt dính đáy chừa chỗ bên phải cho nút Griffin (cố định ở góc màn hình).
+   Cỡ chữ và bố cục theo bề rộng của chính cổng (container query), không theo màn hình: sidebar thu/mở làm cổng
+   hẹp đi cả trăm px ở cùng một cỡ màn hình. */
+.vs-rs-g1 { display: grid; gap: var(--vu-space-4); container-type: inline-size; }
+.vs-rs-g1-lede { margin: 0; max-width: var(--vu-reading-max); font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-rs-g1-tip { display: inline-flex; }
+.vs-rs-g1-group { display: grid; gap: var(--vu-space-2); }
+.vs-rs-g1-ghead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vu-space-1) var(--vu-space-2); }
+.vs-rs-g1-ghead h4 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-semibold);
+  line-height: var(--vu-leading-snug);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-slide {
+  margin-right: var(--vu-space-2);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-g1-ghead .ant-tag { margin: 0 0 0 var(--vu-space-2); }
+.vs-rs-g1-count { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-rs-g1-skipnote {
+  margin: 0;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-left: 3px solid var(--vu-amber-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-amber-50);
+  color: var(--vu-amber-700);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-rs-g1-source > summary { width: fit-content; cursor: pointer; font-size: var(--vu-text-xs); color: var(--vu-text-link); }
+.vs-rs-g1-source > summary:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; border-radius: var(--vu-radius-sm); }
+.vs-rs-g1-points {
+  margin: var(--vu-space-2) 0 0;
+  padding: var(--vu-space-2) var(--vu-space-3) var(--vu-space-2) var(--vu-space-6);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-muted);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-points li.is-claimed { color: var(--vu-text-primary); }
+.vs-rs-g1-points .vs-rs-ref,
+.vs-rs-g1-outline .vs-rs-ref { margin-left: var(--vu-space-1); }
+.vs-rs-g1-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-2); margin: 0; padding: 0; list-style: none; }
+.vs-rs-g1-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--vu-space-2) var(--vu-space-3);
+  padding: var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  min-width: 0;
+  scroll-margin-block: var(--vu-space-4) calc(var(--vu-step-bar-height) + var(--vu-space-4));
+}
+/* Thẻ có tabindex=-1 để chip đưa tới được; bấm chuột vào chữ cũng focus thẻ nên chỉ vẽ vòng khi tới bằng bàn phím hay chip. */
+.vs-rs-g1-card:focus { outline: none; }
+.vs-rs-g1-card:focus-visible,
+.vs-rs-g1-card.is-target:focus { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; }
+.vs-rs-g1-card > * { grid-column: 1 / -1; }
+.vs-rs-g1-card > .vs-rs-g1-top { grid-column: 1; grid-row: 1; }
+.vs-rs-g1-card > .vs-rs-g1-actions { grid-column: 2; grid-row: 1; }
+.vs-rs-g1-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-1) var(--vu-space-2); min-height: var(--vu-control-sm); }
+.vs-rs-g1-top .ant-tag { margin: 0; }
+.vs-rs-g1-kind {
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-g1-also { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-rs-g1-actions { display: flex; gap: var(--vu-space-1); }
+.vs-rs-g1-text {
+  margin: 0;
+  max-width: var(--vu-reading-max);
+  padding: var(--vu-space-1) var(--vu-space-3);
+  border-left: 3px solid var(--vu-blue-300);
+  border-radius: 0 var(--vu-radius-sm) var(--vu-radius-sm) 0;
+  background: var(--vu-surface-subtle);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-question { margin: 0; max-width: var(--vu-reading-max); font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); overflow-wrap: anywhere; }
+.vs-rs-g1-question b { margin-right: var(--vu-space-1); font-weight: var(--vu-font-semibold); color: var(--vu-text-muted); }
+.vs-rs-g1-warn { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-amber-700); }
+.vs-rs-g1-warn .anticon { margin-right: var(--vu-space-1); }
+.vs-rs-g1-card.is-off {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-style: dashed;
+  border-color: var(--vu-border-default);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-rs-g1-offtext { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Nhãn mã claim dùng nền surface-subtle — trên dòng đã bỏ qua (cũng nền đó) thì đổi sang nền thẻ để còn thấy. */
+.vs-rs-g1-card.is-off .vs-scout-sid,
+.vs-rs-claimlist .vs-scout-sid { background: var(--vu-surface-card); }
+.vs-rs-g1-card.is-editing { grid-template-columns: minmax(0, 1fr); border-color: var(--vu-border-focus); box-shadow: var(--vu-shadow-xs); }
+.vs-rs-g1-editor { display: grid; gap: var(--vu-space-3); min-width: 0; }
+.vs-rs-g1-edithead { margin: 0; font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-g1-form { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; gap: var(--vu-space-3) var(--vu-space-4); }
+.vs-rs-g1-form > :is(label, .vs-rs-g1-label) { padding-top: var(--vu-space-2); font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-g1-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-1); min-width: 0; }
+.vs-rs-g1-field > .ant-select { width: 100%; }
+.vs-rs-g1-field > .ant-segmented { justify-self: start; }
+.vs-rs-g1-help { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-muted); }
+.vs-rs-g1-reuse {
+  margin: 0;
+  padding: var(--vu-space-1) var(--vu-space-2);
+  border-left: 3px solid var(--vu-amber-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-amber-50);
+  color: var(--vu-amber-700);
+  font-size: var(--vu-text-xs);
+}
+.vs-rs-g1-editbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2); }
+.vs-rs-g1-editbar > :first-child { margin-right: auto; }
+.vs-rs-g1-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-4);
+  min-height: var(--vu-step-bar-height);
+  margin: 0 calc(-1 * var(--vu-space-4)) calc(-1 * var(--vu-space-3));
+  padding: var(--vu-space-3) calc(var(--vu-tour-launcher) + var(--vu-space-6)) var(--vu-space-3) var(--vu-space-4);
+  border-top: 1px solid var(--vu-border-subtle);
+  border-radius: 0 0 var(--vu-radius-md) var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  box-shadow: var(--vu-step-bar-shadow);
+}
+/* Nền tối nuốt bóng: thêm viền đậm để thanh vẫn tách khỏi thẻ đang cuộn bên dưới. */
+:root[data-theme="dark"] .vs-rs-g1-bar { border-top-color: var(--vu-border-strong); }
+.vs-rs-g1-state { flex: 1 1 0; min-width: 0; margin: 0; font-size: var(--vu-text-sm); color: var(--vu-text-secondary); }
+.vs-rs-g1-state .anticon { margin-left: var(--vu-space-1); color: var(--vu-text-muted); }
+.vs-rs-g1-state.is-error { color: var(--vu-text-danger); }
+.vs-rs-g1-baracts { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
+@container (max-width: 720px) {
+  .vs-rs-g1-state { flex-basis: 100%; }
+}
+@container (max-width: 560px) {
+  .vs-rs-g1-form { grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-1); }
+  .vs-rs-g1-form > .vs-rs-g1-field + :is(label, .vs-rs-g1-label) { margin-top: var(--vu-space-2); }
+  .vs-rs-g1-field > .ant-segmented { justify-self: stretch; }
+}
+/* Hẹp tới mức hai nút xếp chồng: thanh cao ba hàng mà dính đáy thì che nửa màn hình — để nó nằm cuối cổng. */
+@container (max-width: 440px) {
+  .vs-rs-g1-bar { position: static; padding-inline-end: var(--vu-space-4); box-shadow: none; }
+  .vs-rs-g1-baracts,
+  .vs-rs-g1-baracts > .vs-rs-g1-tip,
+  .vs-rs-g1-baracts > .ant-btn { flex: 1 1 auto; }
+  .vs-rs-g1-baracts .ant-btn { width: 100%; }
+}
 
 /* ── kịch bản ── */
 .vs-rs-script { display: grid; gap: var(--vu-space-3); }

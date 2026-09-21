@@ -100,7 +100,7 @@ export function buildGraph(view: ResearchView) {
   });
   add("extract", 1, 0, {
     title: "Bóc tách",
-    subtitle: view.outline ? `${claims.length} claim · ${view.outline.length} slide trong dàn ý` : "Đọc slide, chọn điều cần kiểm",
+    subtitle: view.outline ? `${claims.length} claim · ${view.outline.length} mục dàn ý` : "Đọc slide, chọn điều cần kiểm",
     tone: tone(1), icon: <FileSearchOutlined />,
   });
   link("input", "extract");

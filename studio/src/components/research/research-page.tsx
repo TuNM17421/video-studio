@@ -9,11 +9,12 @@ import {
 import { Alert, Button, Empty, Input, InputNumber, Modal, Popconfirm, Select, Tag, Upload } from "antd";
 import { AGENT_PROVIDER_OPTIONS, agentProviderLabel } from "@/lib/agent-providers";
 import { api, fileUrl } from "@/lib/client";
-import { STAGE_LABEL, totalUsage, type ResearchSummary, type ResearchView } from "@/lib/research";
+import { outlineSummary, STAGE_LABEL, totalUsage, type ResearchSummary, type ResearchView } from "@/lib/research";
 import type { AgentProvider } from "@/lib/types";
 import { Shell } from "../shell";
+import { Gate1Panel } from "./gate1-panel";
 import { ResearchFlow } from "./research-flow";
-import { ClaimDetail, Gate1Panel, Gate2Panel, Gate3Panel, LogList, ReviewDetail, RunsTable, ScriptView, type Act } from "./research-panels";
+import { ClaimDetail, Gate2Panel, Gate3Panel, LogList, ReviewDetail, RunsTable, ScriptView, type Act } from "./research-panels";
 import { useResearch, useResearchIndex } from "./use-research";
 
 const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
@@ -79,9 +80,9 @@ function RerunButton({ view, step, label, act, running }: { view: ResearchView; 
 }
 
 /** Bảng của cổng đang chờ — luôn mở phía trên sơ đồ, để bấm sang claim hay nhật ký không làm mất phần đang soạn. */
-function GatePanel({ view, act, onSelect }: { view: ResearchView; act: Act; onSelect: (id: string) => void }) {
+function GatePanel({ view, act, error, onSelect }: { view: ResearchView; act: Act; error: string | null; onSelect: (id: string) => void }) {
   const { stage } = view.state;
-  if (stage === "gate1") return <Gate1Panel view={view} act={act} />;
+  if (stage === "gate1") return <Gate1Panel view={view} act={act} error={error} />;
   if (stage === "gate2") return <Gate2Panel view={view} act={act} />;
   if (stage === "gate3") return <Gate3Panel view={view} act={act} onClaim={(cid) => onSelect(`claim:${cid}`)} />;
   return null;
@@ -105,8 +106,8 @@ function NodeDetail({ view, node, act, running, onSelect }: { view: ResearchView
       </div>;
     case "extract":
       return <div className="vs-scout-node">
-        <p className="vs-scout-node-lede">{view.outline ? `${view.outline.length} slide trong dàn ý · ${view.claims.length} claim` : "Chưa bóc tách xong."}</p>
-        {view.outline && <ol className="vs-rs-outline">{view.outline.map((o) => <li key={o.slide} value={o.slide}>{o.heading || `Slide ${o.slide}`}{o.skip ? " · bỏ qua" : ""}</li>)}</ol>}
+        <p className="vs-scout-node-lede">{view.outline ? `Dàn ý ${outlineSummary(view.outline)} · ${view.claims.length} claim` : "Chưa bóc tách xong."}</p>
+        {view.outline && <ol className="vs-rs-outline">{view.outline.map((o, i) => <li key={`${o.slide}-${i}`} value={o.slide}>{o.heading || `Slide ${o.slide}`}{o.skip ? " · không đọc" : ""}</li>)}</ol>}
         {rerun("extract", "Bóc tách lại")}
       </div>;
     case "gate1":
@@ -314,7 +315,7 @@ export default function ResearchPage() {
           {actError && <Alert className="feedback" type="error" showIcon closable title="Chưa làm được" description={actError} onClose={() => setActError(null)} />}
           {view.state.status === "waiting" && !view.state.sample && ["gate1", "gate2", "gate3"].includes(view.state.stage) && <section className="vs-scout-detail vs-rs-gate" aria-label="Cổng duyệt">
             <div className="vs-scout-detail-head"><h3>{NODE_TITLE[view.state.stage]}</h3></div>
-            <GatePanel key={`${view.state.id}:${view.state.stage}`} view={view} act={act} onSelect={(id) => { setPicked({ rid, node: id }); setAllLogs(false); }} />
+            <GatePanel key={`${view.state.id}:${view.state.stage}`} view={view} act={act} error={actError} onSelect={(id) => { setPicked({ rid, node: id }); setAllLogs(false); }} />
           </section>}
           <ResearchFlow view={view} selected={node} onSelect={(id) => { setPicked({ rid, node: id }); setAllLogs(false); }} />
           <section className="vs-scout-detail" aria-label="Chi tiết">
