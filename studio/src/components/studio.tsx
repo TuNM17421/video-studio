@@ -295,7 +295,7 @@ export default function Studio() {
     };
   });
 
-  return <Shell page={id ? "videos" : "new"} hasKey={hasKey}>
+  return <Shell page={id ? "videos" : "new"}>
     <div className="page-heading vs-page-heading">
       <div>
         <div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div>

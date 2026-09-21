@@ -5,13 +5,6 @@
   gap: 9px;
   margin-left: 8px;
 }
-.vs-key-status {
-  cursor: default;
-}
-.vs-key-status:hover {
-  background: transparent;
-  color: var(--muted);
-}
 .vs-workflow {
   grid-template-columns: repeat(5, 1fr);
 }
@@ -2449,9 +2442,6 @@ button.vs-tile:hover {
 .vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item-selected {
   border-left: 3px solid var(--vu-blue-700);
 }
-.vs-key-status .ant-badge {
-  margin-left: auto;
-}
 
 @media (min-width: 681px) {
   .sidebar.ant-layout-sider.ant-layout-sider-collapsed {
@@ -2539,29 +2529,6 @@ button.vs-tile:hover {
   }
   .sidebar.ant-layout-sider-collapsed .sidebar-bottom {
     width: var(--vu-shell-sidebar-collapsed-width);
-  }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status {
-    position: relative;
-    width: var(--vu-shell-sidebar-rail-item);
-    min-height: var(--vu-shell-sidebar-rail-item);
-    margin: 0 auto;
-    padding: 0 !important;
-    justify-content: center;
-    gap: 0;
-    border: 1px solid var(--vu-border-subtle);
-    border-left-color: var(--vu-border-subtle);
-    border-radius: var(--vu-radius-sm);
-  }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge {
-    position: absolute;
-    inset-block-start: 7px;
-    inset-inline-end: 7px;
-    margin-left: 0;
-    line-height: 0;
-  }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge-status-dot {
-    width: 6px;
-    height: 6px;
   }
 }
 

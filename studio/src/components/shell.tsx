@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { BookOutlined, KeyOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
-import { Badge, Button, Layout, Menu } from "antd";
+import { BookOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -60,7 +60,7 @@ function SidebarPanelIcon() {
 }
 
 /** No top bar: the sidebar names where you are, and every page carries its own heading. */
-export function Shell({ page, section, hasKey, children }: { page: Page; section?: LibrarySection; hasKey?: boolean; children: ReactNode }) {
+export function Shell({ page, section, children }: { page: Page; section?: LibrarySection; children: ReactNode }) {
   const router = useRouter();
   const sidebarCollapsed = useSyncExternalStore(subscribeSidebarCollapsed, getSidebarCollapsed, () => false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
@@ -111,8 +111,7 @@ export function Shell({ page, section, hasKey, children }: { page: Page; section
         onClick={({ key }) => { if (sidebarCollapsed && PAGE_ROUTES[key]) router.push(PAGE_ROUTES[key]); }}
       />
       <div className="sidebar-bottom">
-        {hasKey !== undefined && <div className="sidebar-item vs-key-status" role="status" aria-label={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`} title={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`}><KeyOutlined /><span className="vs-sidebar-label">ElevenLabs</span><Badge status={hasKey ? "success" : "default"} /></div>}
-        <div className="sidebar-footer"><span>VIDEO STUDIO</span><span>vinuni-lesson-video-ds</span></div>
+        <div className="sidebar-footer"><span>VIDEO STUDIO</span></div>
       </div>
     </Layout.Sider>
     <Layout className="workspace">

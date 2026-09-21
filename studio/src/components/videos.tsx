@@ -5,7 +5,7 @@ import { ArrowRightOutlined, DeleteOutlined, LoadingOutlined, ReloadOutlined } f
 import { Alert, Button, Empty, Input, Select, Table } from "antd";
 import type { TableProps } from "antd";
 import { useRouter } from "next/navigation";
-import { api, useKeyStatus } from "@/lib/client";
+import { api } from "@/lib/client";
 import type { VideoSummary } from "@/lib/types";
 import { completedStages, matchesVideo, nextStageLabel, overallStageStatus, VIDEO_STAGES, type VideoFilter } from "@/lib/video-status";
 import { Shell } from "./shell";
@@ -63,7 +63,6 @@ export default function Videos() {
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<VideoFilter>("all");
-  const { hasKey } = useKeyStatus();
 
   useEffect(() => {
     api<VideoSummary[]>("/api/videos").then(setVideos).catch((caught) => {
@@ -155,7 +154,7 @@ export default function Videos() {
             </ul>
           </>;
 
-  return <Shell page="videos" hasKey={hasKey}>
+  return <Shell page="videos">
     <div className={`page-heading ${styles.pageHeading}`}>
       <div><div className="eyebrow"><span className="tiny-mark" /> projects/</div><h1>Các video</h1></div>
       <p>Đọc tiến độ, nhận diện cổng đang chờ và trở lại đúng bàn dựng.</p>
