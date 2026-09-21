@@ -106,6 +106,33 @@ export const STUDIO_COLORS_DARK = {
   },
 } as const;
 
+/**
+ * Nút chuyển (Ant Segmented) — nguồn duy nhất cho mọi Segmented trong Studio: nguồn giọng, Sửa | Bỏ qua,
+ * Tất cả | Có lỗi, Phụ đề Có | Không. Phần được chọn là nền brand.primary chữ trắng — cùng tín hiệu "đang
+ * chọn" với nút primary và cổng đang mở trên rail; nền trắng trên rãnh xám từng làm lựa chọn gần như vô hình.
+ * ui-provider.tsx đưa các giá trị này vào theme của Ant, nên không component nào phải tự viết CSS.
+ */
+export function segmentedTheme(c: { brand: { primary: string }; lesson: { surface: string; rail: string }; neutral: { 0: string; 100: string; 700: string } }) {
+  return {
+    trackBg: c.neutral[100],
+    itemColor: c.neutral[700],
+    itemHoverColor: c.brand.primary,
+    itemHoverBg: c.lesson.surface,
+    itemActiveBg: c.lesson.rail,
+    // neutral.0 is white in light mode and near-black in dark, so the chosen item keeps its contrast in both
+    itemSelectedBg: c.brand.primary,
+    itemSelectedColor: c.neutral[0],
+  };
+}
+
+export const STUDIO_SEGMENTED_SPEC = [
+  { part: "Rãnh", token: "neutral.100", usage: "Nền chung của cả nhóm lựa chọn" },
+  { part: "Mục thường", token: "neutral.700", usage: "Chữ của lựa chọn chưa chọn" },
+  { part: "Hover", token: "lesson.surface · brand.primary", usage: "Nền xanh nhạt, chữ xanh — báo là bấm được" },
+  { part: "Đang chọn", token: "brand.primary · neutral.0", usage: "Nền xanh dương VinUni, chữ trắng (chế độ tối: xanh sáng, chữ tối); không dùng đỏ — đỏ dành cho lỗi" },
+  { part: "Tắt", token: "neutral.500", usage: "Lựa chọn không dùng được lúc này, vd. Sửa khi bước không chờ duyệt" },
+] as const;
+
 export const STUDIO_TYPOGRAPHY = [
   {
     role: "Display & brand",
@@ -145,6 +172,9 @@ export const STUDIO_LAYOUT = [
   { token: "capability.card.min-height", value: "148 px", usage: "Giữ các card tính năng cân hàng dù nội dung và preview khác nhau" },
   { token: "capability.card.padding", value: "16 px", usage: "Giữ checkbox, glyph và mô tả tách khỏi viền chọn" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },
+  { token: "step.bar", value: "64 px", usage: "Thanh quyết định dính đáy mỗi bước: trạng thái, hành động chính, Quay lại / Tiếp" },
+  { token: "finding.still", value: "280 px", usage: "Ảnh cảnh của lỗi cần xử lý đủ lớn để thấy lỗi mà không phải mở" },
+  { token: "finding.still.compact", value: "128 px", usage: "Ảnh nhỏ cho lỗi minor và lỗi đã xử lý" },
   { token: "mascot.matrix.cell", value: "84 px", usage: "Ô ảnh của bảng tư thế × biểu cảm (Thư viện · Mascot): đủ nhận ra nét mặt, bảy cột vẫn vừa khung" },
   { token: "tour.panel", value: "440 px", usage: "Khung lời thoại của tour hướng dẫn: đủ cho Griffin bên trái và hai câu ngắn bên phải" },
   { token: "tour.mascot", value: "104 px", usage: "Chiều cao Griffin trong khung tour — nhận ra nét mặt mà không lấn chữ" },

@@ -13,7 +13,7 @@ const ACTIVE = new Set(["open", "planned", "applied"]);
  *   even when a later review sees it again.
  * - `reopen`: [id] — undo a skip.
  * - `fix`: [id] (+ optional `note`) — one agent turn on exactly those findings, then the usual gates + review.
- * Minor findings are informational: they can be skipped or reopened, not sent — a minor fix is a Góp ý.
+ * Minor findings never block Duyệt, but can ride along in a fix round when the user ticks "Sửa luôn".
  */
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
@@ -42,7 +42,6 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   if (!fix.length && !skip.length && !reopen.length) throw new HttpError(400, "Chưa chọn lỗi nào.");
   for (const { item } of skip) if (!ACTIVE.has(item.status)) throw new HttpError(400, `Lỗi ${item.id} không còn mở.`);
   for (const item of fix) {
-    if (item.severity === "minor") throw new HttpError(400, "Lỗi minor không gửi riêng — ghi vào ô Góp ý nếu muốn sửa.");
     if (!ACTIVE.has(item.status)) throw new HttpError(400, `Lỗi ${item.id} không còn mở.`);
   }
   if (fix.length) {

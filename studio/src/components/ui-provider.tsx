@@ -5,7 +5,7 @@ import { App, ConfigProvider, theme } from "antd";
 import type { ThemeConfig } from "antd";
 import viVN from "antd/locale/vi_VN";
 import { useTheme } from "next-themes";
-import { STUDIO_COLORS, STUDIO_COLORS_DARK } from "@/lib/design-tokens";
+import { segmentedTheme, STUDIO_COLORS, STUDIO_COLORS_DARK } from "@/lib/design-tokens";
 
 type Palette = typeof STUDIO_COLORS | typeof STUDIO_COLORS_DARK;
 
@@ -75,6 +75,7 @@ function studioTheme(colors: Palette, dark: boolean): ThemeConfig {
       Modal: { borderRadiusLG: 8 },
       Progress: { defaultColor: brand.primary, remainingColor: lesson.rail },
       Radio: { buttonCheckedBg: lesson.surface, buttonSolidCheckedBg: brand.primary },
+      Segmented: segmentedTheme(colors),
       Select: { activeBorderColor: brand.primary, hoverBorderColor: lesson.data },
       Table: { headerBg: neutral[50], headerColor: neutral[700], borderColor: neutral[200] },
       Tabs: { inkBarColor: brand.secondary, itemActiveColor: brand.primary, itemSelectedColor: brand.primary },

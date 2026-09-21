@@ -56,7 +56,7 @@ export type TourDef = {
 export const TOURS: TourDef[] = [
   {
     id: "welcome",
-    version: 2,
+    version: 3,
     label: "Làm quen với Video Studio",
     routes: ["/"],
     auto: true,
@@ -93,13 +93,6 @@ export const TOURS: TourDef[] = [
         title: "Thư viện: tra trước khi dựng",
         body: "Style, component, nhân vật, mascot và video mẫu — xem đúng như video sẽ vẽ, trước khi viết một dòng kịch bản.",
         mascot: { pose: "stand", mood: "happy" },
-        placement: "right",
-      },
-      {
-        target: "nav.key",
-        title: "Key ElevenLabs",
-        body: "Chấm xanh là máy này đã có key để đọc giọng. Mỗi lần đọc bằng ElevenLabs đều tốn credit, nên duyệt kỹ lời đọc trước khi bấm.",
-        mascot: { pose: "stand", mood: "surprised", prop: "exclamation" },
         placement: "right",
       },
       {

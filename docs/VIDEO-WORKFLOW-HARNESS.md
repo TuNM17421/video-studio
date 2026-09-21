@@ -61,25 +61,38 @@ agent chỉ để chạy lại cùng một lệnh.
 
 ## Hiện trên Studio
 
+Mọi bước dùng chung một khuôn: **kết quả** của bước ở trên cùng, **việc cần làm** chỉ hiện khi có việc,
+**chi tiết** (cài đặt nâng cao, nhật ký, tóm tắt agent) gập lại, và một **thanh quyết định dính đáy** gồm
+trạng thái, hành động chính của bước, Quay lại / Tiếp. Tiếp chỉ hiện khi bước đã xong; trước đó hành động
+của bước (Duyệt, Tạo giọng, Render…) là nút chính duy nhất.
+
 Mỗi bước có agent (Lời & cue, Dựng cảnh, Bàn giao) có panel **Kiểm tra tự động**:
 
-- Dòng chặng của lượt gần nhất — `Agent → TTS dry-run`, `Agent → Build → Verify → Chụp ảnh → Review chéo`,
-  `Agent → Build → Verify` — mỗi chặng có trạng thái (chưa chạy / đang chạy / xong / lỗi / bỏ qua), thời
-  gian và một dòng chi tiết (số ảnh, người review, lý do lỗi). Runner ghi từng bước vào
+- Các chặng của lượt gần nhất — `Agent → TTS dry-run`, `Agent → Build → Verify → Chụp ảnh → Review chéo`,
+  `Agent → Build → Verify`. Lượt xong sạch gập thành **một dòng**; chỉ khi đang chạy hoặc có chặng lỗi mới
+  bung ra từng ô (trạng thái, thời gian, chi tiết). Runner ghi từng bước vào
   `projects/<id>/.studio/harness/<stage>.json` và báo trang qua SSE, nên trang thấy ngay chặng đang chạy và
   tải lại vẫn thấy lượt trước kết thúc thế nào.
-- Kết luận review (Đạt / Cần sửa, người review, tóm tắt) và các finding lấy từ ledger, nhóm như nút Duyệt
-  nhìn: **Cần xử lý** (blocker/major), **Lưu ý** (minor, không chặn — muốn sửa thì ghi vào Góp ý), **Đã hết
-  ở lượt review này** (`resolvedBy` = run review đó). Mỗi finding có ảnh cảnh, mã lỗi tiếng Việt, số lần lặp.
-- Ảnh trong thư viện QA có chấm màu theo lỗi nặng nhất còn mở của cảnh đó.
+- Kết luận review (Đạt / Cần sửa, người review) hiện hai dòng, "Đọc toàn bộ" mới bung. Khi bước đã duyệt,
+  kết luận chỉ còn một dòng lịch sử. Người review và công tắc review chéo nằm ở nút ⚙ trên đầu panel, cạnh
+  "Chạy lại review".
+- Finding lấy từ ledger, nhóm như nút Duyệt nhìn: **Cần xử lý** (blocker/major, ảnh cảnh lớn), **Lưu ý**
+  (minor, không chặn), **Đã bỏ qua**, **Đã hết ở lượt review này** (`resolvedBy` = run review đó). Mỗi
+  finding có ảnh cảnh, mã lỗi tiếng Việt, số lần lặp.
 - Nút Duyệt tự khoá và nói còn bao nhiêu lỗi chặn — cùng một luật với API (`blockersFor`).
 - **Chọn sửa / bỏ qua** (`POST /api/videos/<id>/findings`): mỗi lỗi blocker/major có `Sửa | Bỏ qua`.
   Sửa là mặc định; Bỏ qua bắt buộc lý do (*Cố ý thiết kế* · *Review đánh giá sai* · *Để sau* · tự ghi).
-  Một nút gửi đúng những lỗi chọn Sửa cho agent (chúng thành `planned` → `applied`, review ngay sau đó
-  xác nhận hoặc mở lại) và ghi các lỗi bỏ qua thành `wontfix` kèm `skipReason`, `decidedAt`. Lỗi đã bỏ
-  qua **không bị review lượt sau mở lại** — chỉ tăng `recurrence` — và có nút **Mở lại**. Minor chỉ hiện để
-  biết; muốn sửa thì ghi vào Góp ý. Từ CLI: `feedback set --status wontfix --reason "…"`.
-- "Chi phí & lượt chạy" gập thành một dòng trên đầu trang.
+  Lỗi minor có ô **Sửa luôn** (mặc định không tick) để đi cùng lượt sửa. Khung **Gửi cho agent** là đường
+  duy nhất nói với agent dựng cảnh: lỗi đã chọn hiện thành chip, cộng ghi chú tự do; không chọn lỗi nào thì
+  ghi chú đi như một Góp ý. Nút gửi nằm trên thanh quyết định. Lỗi chọn Sửa thành `planned` → `applied`,
+  review ngay sau đó xác nhận hoặc mở lại; lỗi bỏ qua thành `wontfix` kèm `skipReason`, `decidedAt`, **không
+  bị review lượt sau mở lại** — chỉ tăng `recurrence` — và có nút **Mở lại**. Từ CLI:
+  `feedback set --status wontfix --reason "…"`.
+- **Xem tất cả cảnh** gập sẵn — review chéo đã xem hết rồi, lưới ảnh là cho lúc người dùng muốn tự xem. Ảnh
+  chính của mỗi cảnh là `qa/auto/cue-NN.png` (đúng ảnh reviewer chấm); ảnh agent tự chụp (`sNN.png`,
+  `sNN-fNNN.png`) là ảnh phụ của cảnh đó, xem trong lightbox. Lọc **Tất cả / Có lỗi**, chấm màu theo lỗi
+  nặng nhất còn mở của cảnh.
+- "Chi phí & lượt chạy" nằm trong mục **Thông số** gập lại ở panel xem trước bên phải.
 
 ## Telemetry
 
