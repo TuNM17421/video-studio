@@ -237,3 +237,7 @@ export declare function layoutGraph(
   edges: ReadonlyArray<{ from: string; to: string }>,
   opts?: { rankdir?: 'LR' | 'TB' | 'RL' | 'BT'; nodesep?: number; ranksep?: number; marginx?: number; marginy?: number; x?: number; y?: number },
 ): { nodes: Record<string, Box>; edges: Array<{ from: string; to: string; points: Point[] }>; width: number; height: number };
+
+/* ---------------------------------------------------------------- assets */
+/** Absolute URL of a file addressed from the design-system root ("ui_kits/lesson-video/videos/<id>/img/s3.jpg"); URLs pass through. */
+export declare function dsUrl(path: string): string;

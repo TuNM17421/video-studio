@@ -58,6 +58,7 @@ export * from './figures/Dialogue.jsx';
 export * from './mascot/Griffin.jsx';
 export * from './figures/Magnifier.jsx';
 export * from './figures/SourceCard.jsx';
+export * from './media/PhotoCard.jsx';
 export * from './teaching/MisconceptionCard.jsx';
 export * from './teaching/AnalogyBridge.jsx';
 export * from './teaching/CompareSplit.jsx';
