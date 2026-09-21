@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { DryRun, ImportReport, LocalCast, OmnivoiceStatus, VoiceScript, VoiceSettings } from "../types";
+import type { DryRun, ImportReport, LocalCast, OmnivoiceStatus, VoiceBound, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -135,6 +135,7 @@ export async function generateVoice(id: string) {
   }
   setProgress(id, null, "Gắn giọng vào video…");
   const bind = await bindVoice(id);
+  if (bind) recordBound(id, "elevenlabs", v);
   setStage(id, "voice", bind ? "done" : "error", bind ? null : "Không gắn được giọng vào video.");
   finishJob(id, bind ? "done" : "error");
   return bind;
@@ -435,6 +436,10 @@ export async function scanImport(id: string, dir: string, v: VoiceSettings) {
   }
 }
 
+function recordBound(id: string, source: VoiceBound["source"], v: VoiceSettings) {
+  updateState(id, (s) => { s.voiceBound = { source, voiceId: v.voiceId, model: v.model, at: new Date().toISOString() }; });
+}
+
 /** Assemble the master from the folder and bind it to the video, exactly as the ElevenLabs path does. */
 export async function importVoice(id: string, force: boolean) {
   const { state } = readState(id);
@@ -463,6 +468,8 @@ export async function importVoice(id: string, force: boolean) {
   }
   setProgress(id, null, "Gắn giọng vào video…");
   const bind = await bindVoice(id);
+  // The folder a local model writes to is the only thing telling its import apart from a recorded one.
+  if (bind) recordBound(id, target.replace(/\\/g, "/").endsWith("/voice-script/omnivoice") ? "local" : "import", v);
   setStage(id, "voice", bind ? "done" : "error", bind ? null : "Không gắn được giọng vào video.");
   finishJob(id, bind ? "done" : "error");
   return bind;

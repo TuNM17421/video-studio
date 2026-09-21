@@ -157,6 +157,13 @@ export interface VoiceScript {
   text: string;
 }
 
+export interface VoiceBound {
+  source: VoiceSource;
+  voiceId: string;
+  model: string;
+  at: string;
+}
+
 export interface VideoState {
   id: string;
   createdAt: string;
@@ -165,6 +172,12 @@ export interface VideoState {
   agent: AgentBinding;
   stages: Record<StageId, StageStatus>;
   voice: VoiceSettings;
+  /**
+   * The voice actually bound to the video, recorded when a generate/import binds it. `voice` is only the
+   * form (a tab looked at, a folder scanned); this is what the result card reports. Absent on videos voiced
+   * before it existed — the card falls back to `voice`.
+   */
+  voiceBound?: VoiceBound | null;
   /**
    * Track ids from music.json, never part of TTS. Both are picked on the render step; `quiz` only plays
    * over the cues marked `quiz: true` in cues.js.

@@ -82,6 +82,9 @@ export const STUDIO_LAYOUT = [
   { token: "capability.card.min-height", value: "148 px", usage: "Giữ các card tính năng cân hàng dù nội dung và preview khác nhau" },
   { token: "capability.card.padding", value: "16 px", usage: "Giữ checkbox, glyph và mô tả tách khỏi viền chọn" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },
+  { token: "step.bar", value: "64 px", usage: "Thanh quyết định dính đáy mỗi bước: trạng thái, hành động chính, Quay lại / Tiếp" },
+  { token: "finding.still", value: "280 px", usage: "Ảnh cảnh của lỗi cần xử lý đủ lớn để thấy lỗi mà không phải mở" },
+  { token: "finding.still.compact", value: "128 px", usage: "Ảnh nhỏ cho lỗi minor và lỗi đã xử lý" },
 ] as const;
 
 export const STUDIO_WORKFLOW_EMPHASIS = [
