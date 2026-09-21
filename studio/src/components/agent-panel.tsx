@@ -48,6 +48,7 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     cues: "Lời & cue",
     voice: "Giọng đọc",
     scenes: "Dựng cảnh",
+    review: "Review lại dựng cảnh",
     render: "Render MP4",
     deliver: "Bàn giao",
     research: "Đóng gói kịch bản",
@@ -80,12 +81,7 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
   </>;
 }
 
-/** Log lines since the last start of the given stage (entries are appended in order). */
-export function stageLogs(logs: LogEntry[], marker: RegExp) {
-  let start = -1;
-  logs.forEach((entry, i) => { if (entry.kind === "system" && marker.test(entry.text)) start = i; });
-  return start < 0 ? [] : logs.slice(start);
-}
+export { stageLogs, type LogStage } from "@/lib/stage-logs";
 
 export function AgentLog({ logs, open = false }: { logs: LogEntry[]; open?: boolean }) {
   const ref = useRef<HTMLOListElement>(null);
@@ -132,13 +128,21 @@ export function Markdown({ text }: { text: string }) {
   return <div className="vs-md">{blocks}</div>;
 }
 
-/** The agent's closing summary for the latest run (the text of its last "result" entry). */
+/**
+ * The agent's closing summary for the latest run (the text of its last "result" entry), folded to its first
+ * line: the checks and the findings are what the step is decided on, the summary is background.
+ */
 export function AgentSummary({ logs }: { logs: LogEntry[] }) {
   const result = useMemo(() => [...logs].reverse().find((e) => e.kind === "result" || e.kind === "error"), [logs]);
   if (!result || result.kind !== "result") return null;
   const text = result.text.split("\n").slice(1).join("\n").trim();
   if (!text) return null;
-  return <div className="vs-summary"><div className="vs-summary-heading"><RobotOutlined />Tóm tắt của agent</div><Markdown text={text} /></div>;
+  const lead = text.split("\n").find((line) => line.trim())?.replace(/[*`#]/g, "").trim() ?? "";
+  return <Collapse className="vs-summary" items={[{
+    key: "summary",
+    label: <span className="vs-summary-heading"><RobotOutlined />Tóm tắt của agent<span className="vs-summary-lead">{lead}</span></span>,
+    children: <Markdown text={text} />,
+  }]} />;
 }
 
 export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boolean; onSend: (message: string) => Promise<void>; placeholder: string }) {

@@ -178,6 +178,10 @@
   --vu-capability-card-min-height: 148px;
   --vu-capability-card-padding: var(--vu-space-4);
   --vu-preview-panel-width: 296px;
+  --vu-step-bar-height: 64px;
+  --vu-step-bar-shadow: 0 -8px 20px -14px rgba(11, 42, 77, 0.3);
+  --vu-finding-still-width: 280px;
+  --vu-finding-still-compact-width: 128px;
   --vu-mascot-cell: 84px;
   --vu-tour-panel: 440px;
   --vu-tour-mascot: 104px;

@@ -16,6 +16,8 @@ Video dir below = `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/`. Re
 
 ## Check the script before building — ask, never assume
 
+For a new or substantially rewritten lesson, assign one dedicated script lane before cues. That lane writes narration only; the owner still verifies sources, reads the whole script aloud, repairs continuity, and records the review in `PROMPTS.md`.
+
 The request names one video; the script file must match it. **Before stage 1, read the script end to end and
 stop to ask the user** whenever it does not line up:
 - the file holds **several videos / parts / sections** (a V0–V3 table, chapter headings, more than one "Tổng"
@@ -32,16 +34,21 @@ rebuild and ElevenLabs credit; one question costs nothing. Record the answer in 
 ("Phạm vi") and in PROMPTS.md, so the next run does not re-guess.
 
 ## Order (voice first)
-1. **cues** (agent) — lock the narration.
+1. **script lane → cues** — draft narration in a dedicated lane, then let the owner verify and lock it.
 2. **voice** (Video Studio, or the user in the CLI) — ElevenLabs with word timestamps, bound with `--write-cues`.
 3. **scenes** (agent) — one scene per cue, authored at the recorded length, beats on real word times. QA.
 4. **render** (Video Studio, or the user) — MP4 + transcript.
 5. **deliver** (agent) — chapters, PROMPTS.md, final checks.
 
 When Video Studio runs a stage it says so in the prompt: do ONLY that stage, then stop with a short
-summary (what was made, open questions). Never run `tts.mjs generate`, never read `.env`, never push, never
-run `/design-sync` — the studio or the user does those. Run by hand in the CLI (no studio), do the stages in
-order and ask the user before spending ElevenLabs credit (show the dry-run first).
+summary. The harness runs deterministic gates and writes telemetry; the coding agent does not repeat build,
+verify, still capture, render or transcript. Cues go through a free TTS dry-run; scene stills (in
+`projects/<id>/qa/auto/`) go to an independent read-only QA session; findings become tracked feedback. Never run `tts.mjs generate`,
+read `.env`, push or run `/design-sync` from a Studio agent stage.
+
+In direct CLI mode, wrap a deterministic gate with `node tools/run-logged.mjs <stage> --video <id> -- <command…>`.
+Bracket authoring with `node tools/video-workflow.mjs run start --video <id> --stage <stage> --actor <agent>`
+and the matching `run finish`; this keeps token, time, machine, outcome and feedback history in the same ledger.
 
 ## Stage 1 · cues
 - Copy the script to `projects/<id>/kich-ban-goc.md` if it is not there yet. Scripts follow

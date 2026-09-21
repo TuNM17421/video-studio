@@ -19,7 +19,8 @@ export interface AgentUsage {
 }
 
 export type AgentEvent =
-  | { type: "session"; id: string }
+  /** `model`: only Claude names it, in its init line — the other two CLIs never say which model ran. */
+  | { type: "session"; id: string; model?: string }
   | { type: "say"; text: string }
   | { type: "tool"; name: string; detail: string; input: Record<string, unknown> }
   | { type: "toolError"; text: string }
@@ -67,6 +68,7 @@ interface ClaudeMessage {
   num_turns?: number;
   is_error?: boolean;
   result?: string;
+  model?: string;
   usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
 }
 
@@ -84,7 +86,7 @@ export function describeClaudeTool(name: string, input: Record<string, unknown>)
 function claudeLine(msg: ClaudeMessage): AgentEvent[] {
   const out: AgentEvent[] = [];
   if (msg.type === "system" && msg.subtype === "init" && msg.session_id) {
-    out.push({ type: "session", id: msg.session_id });
+    out.push({ type: "session", id: msg.session_id, ...(msg.model ? { model: msg.model } : {}) });
   } else if (msg.type === "assistant") {
     for (const block of msg.message?.content || []) {
       if (block.type === "text" && block.text?.trim()) out.push({ type: "say", text: block.text.trim() });

@@ -89,3 +89,13 @@ chỉ áp dụng trong một chuỗi câu **cùng người nói**. Nghĩa là: *
 
 `--dry-run` của mẫu cơ bản với video hội thoại còn in thêm **dàn vai**: từng câu ai đọc, giọng nào. Nhân
 vật sai thì dừng ngay tại đây.
+
+---
+
+## Tiêu chí QA
+
+Lượt QA ảnh chỉ đọc mục này khi video bật hội thoại (mã lỗi `module`).
+
+- Tối đa hai thẻ hội thoại trên màn hình cùng lúc.
+- Mỗi nhân vật giữ một màu và một phía suốt video; thẻ có avatar thì mặt nằm dưới đuôi thẻ, đúng phía người nói.
+- Thẻ và mặt nằm trong vùng nội dung y 250–960 — tính cả phần mặt thò xuống dưới thẻ.

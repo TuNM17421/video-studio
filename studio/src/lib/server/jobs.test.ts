@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { currentJob, registry, setProgress, startJob } from "./jobs";
+import { currentJob, finishJob, registry, setProgress, startJob } from "./jobs";
 
 const ID = "test-eta";
 
@@ -51,6 +51,7 @@ describe("job countdown", () => {
 });
 
 describe("arguments through a Windows .cmd shim", () => {
+  // cmd.exe → node takes well under a second alone, but can pass 5 s while every test file runs at once.
   it.runIf(process.platform === "win32")("reach the program exactly as passed, spaces, parentheses and quotes included", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
@@ -65,5 +66,23 @@ describe("arguments through a Windows .cmd shim", () => {
     const code = await run("test-shim", shim, args);
     expect(code).toBe(0);
     expect(JSON.parse(fs.readFileSync(out, "utf8"))).toEqual(args);
+  }, 20_000);
+});
+
+describe("a research job", () => {
+  it("starts and finishes without writing a video's workflow ledger", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const { REPO } = await import("./paths");
+    // The research runner's own key: not a video id, and the colon is no folder name on Windows.
+    const key = "research:test-ledger";
+    try {
+      expect(() => startJob(key, "research")).not.toThrow();
+      finishJob(key, "done");
+      expect(currentJob(key)?.status).toBe("done");
+      expect(fs.existsSync(path.join(REPO, "projects", key))).toBe(false);
+    } finally {
+      registry.jobs.delete(key);
+    }
   });
 });

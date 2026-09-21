@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
-import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs } from "./agent-cli";
+import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
 import { createStreamParser, short, type AgentEvent } from "./agent-stream";
-import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { REPO } from "./paths";
+import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
+import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
 import { readState, setStage, styleName, updateState } from "./videos";
+import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
 
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
 
@@ -20,11 +24,7 @@ const ALLOWED = [
   "Read", "Edit", "Write", "Glob", "Grep", "TodoWrite", "Task", "Agent",
   ...shellPatterns([
     "cd *", "node tools/*",
-    "npm run build", "npm run verify", "npm run build && npm run verify",
-    "node tts-elevenlabs/tts.mjs generate * --dry-run",
-    "node tts-elevenlabs/tts.mjs --help*",
     "ls *", "mkdir *", "cp *", "mv *", "wc *", "head *", "sort *",
-    "ffprobe *", "ffmpeg *", "node_modules/ffmpeg-static/ffmpeg *",
   ]),
 ];
 const DENIED = [
@@ -34,10 +34,21 @@ const DENIED = [
 ];
 
 const STAGE_TASK: Record<AgentStage, string> = {
-  cues: "Stage 1 · cues: chép/đọc kịch bản, đọc feedback và video cũ (nếu có), viết cues.js (lời nguyên văn), voice.js rỗng, pronounce.json nếu cần, rồi chạy tts --dry-run để kiểm tra. KHÔNG dựng cảnh.",
-  scenes: "Stage 3 · scenes: giọng đã được ghi và gắn (voice.js có mốc từng từ, cues.js đã có frames/speech thật). Dựng toàn bộ cảnh theo đúng thời lượng này, build + verify, chụp ảnh QA vào projects/<id>/qa/ và tự sửa lỗi thấy được.",
-  deliver: "Stage 5 · deliver: MP4 và transcript đã có. Viết file chương, PROMPTS.md, kiểm tra lần cuối (build + verify).",
+  cues: "Stage 1 · cues: đọc kịch bản và improvement plan, viết cues.js (lời nguyên văn), voice.js rỗng, pronounce.json nếu cần. KHÔNG dựng cảnh. Runner tự chạy TTS dry-run (miễn phí) sau khi bạn dừng để bắt speaker/delivery sai.",
+  scenes: "Stage 3 · scenes: giọng đã được ghi và gắn (voice.js có mốc từng từ, cues.js đã có frames/speech thật). Chỉ dựng/sửa toàn bộ cảnh theo đúng thời lượng này. Runner sẽ build, verify, chụp ảnh và giao một phiên QA độc lập (chỉ đọc) sau khi bạn dừng.",
+  deliver: "Stage 5 · deliver: MP4 và transcript đã có. Chỉ viết file chương và PROMPTS.md. Runner chịu final gate.",
 };
+
+function feedbackContext(id: string, stage: AgentStage) {
+  const items = readFeedback(REPO, id).filter((item: { stage: string; status: string }) =>
+    item.stage === stage && ["open", "planned", "applied"].includes(item.status));
+  if (!items.length) return "Không có feedback đang mở cho stage này.";
+  return [
+    "Improvement plan đang mở:",
+    ...items.map((item: { id: string; severity: string; message: string; evidence?: string; acceptance: string }) =>
+      `- ${item.id} [${item.severity}]${item.evidence ? ` (${item.evidence})` : ""}: ${item.message} | Nghiệm thu: ${item.acceptance}`),
+  ].join("\n");
+}
 
 function stagePrompt(id: string, stage: AgentStage, base: string) {
   const { state } = readState(id);
@@ -48,16 +59,34 @@ function stagePrompt(id: string, stage: AgentStage, base: string) {
     `Yêu cầu của video: \`projects/${id}/REQUEST.md\`. Style: \`styles/${r.style}.json\` (luật của style được ưu tiên).`,
     `Việc cần làm lần này — ${STAGE_TASK[stage].replace("<id>", id)}`,
     `Preview server (dùng làm <base> khi chụp QA): ${base}/ds`,
-    "Chỉ làm stage này rồi dừng. Không chạy tts.mjs generate (trừ --dry-run), không đọc .env, không git commit/push, không /design-sync.",
+    feedbackContext(id, stage),
+    "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync.",
     "Kết thúc bằng một bản tóm tắt ngắn bằng tiếng Việt: đã làm gì, điểm cần người dùng xem, câu hỏi còn mở.",
   ].join("\n");
 }
 
-function feedbackPrompt(stage: AgentStage, message: string) {
+function feedbackPrompt(id: string, stage: AgentStage, message: string) {
   return [
     `Góp ý của người dùng cho stage "${stage}" (Video Studio):`,
     `"""${message.trim()}"""`,
-    "Sửa theo góp ý, chỉ trong phạm vi stage này. Chạy lại kiểm tra cần thiết (build + verify, chụp lại ảnh QA nếu là stage scenes), rồi dừng và tóm tắt ngắn bằng tiếng Việt.",
+    feedbackContext(id, stage),
+    "Sửa theo góp ý, chỉ trong phạm vi stage này. Runner sẽ chạy mọi gate deterministic và QA ảnh; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt.",
+  ].join("\n");
+}
+
+type FocusItem = { id: string; severity: string; scope?: string; code?: string; message: string; evidence?: string; acceptance?: string };
+
+/**
+ * A fix round the user picked from the review's findings: only those, each with the still it is about
+ * and its acceptance check. Skipped findings are not mentioned — the user already decided on them.
+ */
+function focusPrompt(stage: AgentStage, items: FocusItem[], note?: string) {
+  return [
+    `Người dùng đã rà kết quả review chéo cho stage "${stage}" và chọn ${items.length} lỗi dưới đây để sửa.`,
+    "Chỉ sửa đúng những lỗi này; đừng đổi các cảnh khác. Ảnh của mỗi cảnh ở `projects/<id>/qa/auto/cue-NN.png`.",
+    ...items.map((item) => `- ${item.id} [${item.severity}] ${item.scope || ""}${item.code ? ` · ${item.code}` : ""}: ${item.message}${item.evidence ? ` | Bằng chứng: ${item.evidence}` : ""}${item.acceptance ? ` | Nghiệm thu: ${item.acceptance}` : ""}`),
+    ...(note?.trim() ? ["Ghi chú thêm của người dùng:", `"""${note.trim()}"""`] : []),
+    "Runner sẽ build, verify, chụp ảnh và review lại sau khi bạn dừng; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt: đã sửa gì ở từng lỗi.",
   ].join("\n");
 }
 
@@ -68,20 +97,30 @@ function saveSession(id: string, provider: AgentProvider, sessionId: string) {
   });
 }
 
-export function sanitizedAgentEnv() {
-  const env = { ...process.env };
-  // The Studio's paid TTS credential must never enter either agent process.
-  for (const key of Object.keys(env)) if (key.startsWith("ELEVENLABS_")) delete env[key];
-  return env;
+/** What the workflow ledger keeps about one agent run (`recordJobMetrics`). */
+interface AgentMetrics {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
+  turns?: number;
+  toolCalls: number;
+  model?: string;
+}
+
+/** The model a CLI is told to use for video stages; unset leaves it to the CLI's own default. */
+function configuredModel(provider: AgentProvider) {
+  const name = { claude: "STUDIO_CLAUDE_MODEL", codex: "STUDIO_CODEX_MODEL", antigravity: "STUDIO_ANTIGRAVITY_MODEL" }[provider];
+  return process.env[name]?.trim() || undefined;
 }
 
 /** How each CLI is started for a video stage: binary, arguments, and what goes on stdin. */
-function invocation(provider: AgentProvider, prompt: string, sessionId: string | null) {
-  if (provider === "codex") return { bin: process.env.CODEX_BIN || "codex", args: codexExecArgs(sessionId), input: prompt };
-  if (provider === "antigravity") return { bin: process.env.ANTIGRAVITY_BIN || "agy", args: antigravityExecArgs(sessionId), input: antigravityStdin(prompt) };
+function invocation(provider: AgentProvider, prompt: string, sessionId: string | null, model: string | undefined) {
+  if (provider === "codex") return { bin: process.env.CODEX_BIN || "codex", args: codexExecArgs(sessionId, model), input: prompt };
+  if (provider === "antigravity") return { bin: process.env.ANTIGRAVITY_BIN || "agy", args: antigravityExecArgs(sessionId, model), input: antigravityStdin(prompt) };
   return {
     bin: process.env.CLAUDE_BIN || "claude",
-    args: claudeExecArgs(sessionId ?? randomUUID(), Boolean(sessionId), ALLOWED, DENIED),
+    args: claudeExecArgs(sessionId ?? randomUUID(), Boolean(sessionId), ALLOWED, DENIED, model),
     input: prompt,
   };
 }
@@ -100,7 +139,10 @@ function resultLine(provider: AgentProvider, e: Extract<AgentEvent, { type: "res
 async function runProvider(id: string, provider: AgentProvider, prompt: string, sessionId: string | null) {
   const label = agentProviderLabel(provider);
   const parse = createStreamParser(provider);
-  const { bin, args, input } = invocation(provider, prompt, sessionId);
+  const model = configuredModel(provider);
+  const { bin, args, input } = invocation(provider, prompt, sessionId, model);
+  // Claude names the model it ran in its init line; Codex and agy never say, so record what was asked for.
+  const metrics: AgentMetrics = { toolCalls: 0, ...(provider === "claude" ? {} : { model: model || "(mặc định CLI, chưa rõ)" }) };
   let ok = false;
   let terminal = false;
   let tools = 0;
@@ -111,8 +153,10 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
       // Claude's stderr is a failure; the other two use stderr for ordinary diagnostics.
       if (stream === "stderr") return log(id, provider === "claude" ? "error" : "system", short(line, 400));
       for (const e of parse(line)) {
-        if (e.type === "session") saveSession(id, provider, e.id);
-        else if (e.type === "say") log(id, "agent", e.text);
+        if (e.type === "session") {
+          saveSession(id, provider, e.id);
+          if (e.model) metrics.model = e.model;
+        } else if (e.type === "say") log(id, "agent", e.text);
         else if (e.type === "tool") {
           tools++;
           log(id, "tool", e.detail);
@@ -123,6 +167,13 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
           terminal = true;
           ok = e.ok;
           log(id, e.ok ? "result" : "error", resultLine(provider, e));
+          if (e.usage) {
+            metrics.inputTokens = e.usage.input;
+            metrics.cachedInputTokens = e.usage.cacheRead;
+            metrics.outputTokens = e.usage.output;
+          }
+          if (e.costUsd !== undefined) metrics.costUsd = e.costUsd;
+          if (e.turns !== undefined) metrics.turns = e.turns;
         }
       }
     },
@@ -130,30 +181,90 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
   if (!ok && !terminal && provider !== "claude" && !wasStopped(id)) {
     log(id, "error", `${label} kết thúc với mã ${code} nhưng không có sự kiện ${provider === "codex" ? "turn.completed" : "result"}.`);
   }
-  return { ok, code };
+  metrics.toolCalls = tools;
+  return { ok, code, metrics };
 }
 
 /** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
-export async function runAgent(id: string, stage: AgentStage, base: string, message?: string) {
+export async function runAgent(id: string, stage: AgentStage, base: string, message?: string, opts: { focus?: string[] } = {}) {
   const { state } = readState(id);
   const provider = state.agent.provider;
   const providerLabel = agentProviderLabel(provider);
-  const prompt = message ? feedbackPrompt(stage, message) : stagePrompt(id, stage, base);
-  startJob(id, stage);
+  const focus: FocusItem[] = opts.focus?.length
+    ? readFeedback(REPO, id).filter((item: FocusItem) => opts.focus!.includes(item.id))
+    : [];
+  for (const item of focus) updateFeedback(REPO, id, item.id, { status: "planned" });
+  const feedback = message && !focus.length ? recordFeedback(REPO, id, {
+    stage,
+    source: "user",
+    severity: "major",
+    message,
+    owner: "coding-agent",
+  }) : null;
+  const prompt = focus.length ? focusPrompt(stage, focus, message) : message ? feedbackPrompt(id, stage, message) : stagePrompt(id, stage, base);
+  const fixing = focus.length ? `sửa ${focus.length} lỗi review` : message ? "sửa theo góp ý" : null;
+  startJob(id, stage, { actor: provider, mode: "agent", label: fixing ? `${stage} feedback` : stage });
   setStage(id, stage, "running");
-  setProgress(id, null, message ? `${providerLabel} đang sửa theo góp ý…` : `${providerLabel} đang làm việc…`);
-  log(id, "system", message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
+  beginHarness(id, stage, "agent", HARNESS_STEPS[stage]);
+  stepStart(id, "agent", fixing ? `${providerLabel} · ${fixing}` : providerLabel);
+  setProgress(id, null, fixing ? `${providerLabel} đang ${fixing}…` : `${providerLabel} đang làm việc…`);
+  log(id, "system", focus.length
+    ? `Góp ý gửi agent (${stage}) · ${providerLabel}: sửa ${focus.map((item) => `${item.scope || item.id} · ${item.code || item.severity}`).join(", ")}${message ? ` — ${short(message, 200)}` : ""}`
+    : message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
 
   const result = await runProvider(id, provider, prompt, state.agent.sessionId);
+  recordJobMetrics(id, result.metrics);
 
   if (wasStopped(id)) {
     setStage(id, stage, "error", "Đã dừng agent.");
     log(id, "system", "Đã dừng agent.");
+    endHarness(id, "stopped");
     finishJob(id, "stopped");
     return false;
   }
-  const success = result.ok && result.code === 0;
-  setStage(id, stage, success ? (stage === "deliver" ? "done" : "review") : "error", success ? null : `${providerLabel} kết thúc với mã ${result.code}.`);
+  let success = result.ok && result.code === 0;
+  let failureMessage = `${providerLabel} kết thúc với mã ${result.code}.`;
+  if (success) stepDone(id, "agent", [providerLabel, result.metrics.toolCalls ? `${result.metrics.toolCalls} thao tác` : ""].filter(Boolean).join(" · "));
+  else stepError(id, "agent", failureMessage);
+  if (success && feedback) updateFeedback(REPO, id, feedback.id, { status: "applied" });
+  // Picked findings wait for the review that runs next; one it still sees reopens (ledger), one it no
+  // longer sees is verified. A failed agent turn leaves them planned, so the user can send them again.
+  if (success) for (const item of focus) updateFeedback(REPO, id, item.id, { status: "applied" });
+  if (success && stage === "cues") {
+    try {
+      await runCuesGate(id);
+    } catch (error) {
+      success = false;
+      failureMessage = error instanceof Error ? error.message : String(error);
+      log(id, "error", failureMessage);
+    }
+  }
+  if (success && stage === "scenes") {
+    try {
+      await runSceneQa(id, base);
+    } catch (error) {
+      success = false;
+      failureMessage = error instanceof Error ? error.message : String(error);
+      log(id, "error", failureMessage);
+    }
+  }
+  if (success && stage === "deliver") {
+    try {
+      await runFinalGate(id);
+      updateFeedbackWhere(
+        REPO,
+        id,
+        (item: { stage: string; status: string }) => item.stage === "deliver" && ["open", "planned", "applied"].includes(item.status),
+        { status: "verified", evidence: "Final gate (build + verify) đã xanh." },
+      );
+    } catch (error) {
+      success = false;
+      failureMessage = error instanceof Error ? error.message : String(error);
+      log(id, "error", failureMessage);
+    }
+  }
+  setStage(id, stage, success ? (stage === "deliver" ? "done" : "review") : "error", success ? null : failureMessage);
+  endHarness(id, success ? "done" : wasStopped(id) ? "stopped" : "error", failureMessage);
   finishJob(id, success ? "done" : "error");
   return success;
 }

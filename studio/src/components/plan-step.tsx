@@ -6,8 +6,11 @@ import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, T
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { inferDay } from "@/lib/day";
-import type { AgentProvider, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
+import type { AgentProvider, ReviewSettings, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
+import { agentProviderLabel } from "@/lib/agent-providers";
+import { DEFAULT_REVIEW } from "@/lib/review";
 import { AgentName } from "./agent-mark";
+import { ReviewControl } from "./review-control";
 import { SourcePickerField } from "./source-picker";
 import { BASE_TEMPLATE_PATH, moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
 import { StylePicker, StyleShowcase } from "./style-showcase";
@@ -32,6 +35,7 @@ function videoIdError(value: string) {
 export interface PlanDraft {
   id: string;
   agentProvider: AgentProvider;
+  review: ReviewSettings;
   request: VideoRequest;
   script: { name: string; content: string } | null;
 }
@@ -40,6 +44,7 @@ export interface PlanDraft {
 export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude"): PlanDraft => ({
   id: "",
   agentProvider,
+  review: { ...DEFAULT_REVIEW },
   request: { style, modules: [], day: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
@@ -115,7 +120,7 @@ function useModules() {
   return modules;
 }
 
-export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, unavailable }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean }) {
+export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, unavailable, installedAgents }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean; installedAgents: AgentProvider[] }) {
   const modules = useModules();
   const style = styles.find((s) => s.id === draft.request.style);
   const formRef = useRef<HTMLDivElement>(null);
@@ -332,10 +337,11 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
       }]} />
       <Form.Item className="vs-scope" label="Phạm vi">
         <div className="vs-scope-options">
-          <Checkbox checked disabled>Dựng cảnh + QA</Checkbox>
+          <Checkbox checked disabled>Dựng cảnh + kiểm tra</Checkbox>
           {SCOPE_LABELS.map(([key, label]) => <Checkbox key={key} checked={draft.request.scope[key]} disabled={busy} onChange={(e) => set({ scope: { ...draft.request.scope, [key]: e.target.checked } })}>{label}</Checkbox>)}
         </div>
       </Form.Item>
+      <ReviewControl author={draft.agentProvider} value={draft.review} installed={installedAgents} disabled={busy} onChange={(review) => setDraft((current) => ({ ...current, review }))} />
       <Collapse className="vs-prompt" items={[{
         key: "prompt",
         label: <span><FolderOpenOutlined /> Prompt</span>,
@@ -363,6 +369,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
       { key: "feedback", label: "Feedback bản cũ", children: r.feedbackDir || "—" },
       { key: "video", label: "Video cũ", children: r.oldVideoDir || "—" },
       { key: "modules", label: "Tính năng nội dung", children: r.modules.length ? moduleNamesFrom(modules, r.modules).join(", ") : "—" },
+      { key: "review", label: "Review chéo", children: state.review.enabled ? `Bật · ${state.review.provider === "auto" ? "tự chọn người review" : agentProviderLabel(state.review.provider)}` : "Tắt" },
       { key: "notes", label: "Ghi chú", children: r.notes || "—" },
     ]} />
     {style && <StyleShowcase style={style} />}

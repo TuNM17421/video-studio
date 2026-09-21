@@ -66,15 +66,23 @@ export function PlayButton({ voice, state, onClick }: { voice: VoiceDef; state: 
  * Pick the narrator from the committed catalog (voices.json), or paste any ElevenLabs id for a voice that
  * is not in it yet — the catalog will never cover everything you want to try.
  */
-export function VoicePicker({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {
+export function useVoiceCatalog() {
   const [catalog, setCatalog] = useState<VoiceCatalog | null>(null);
-  const preview = usePreview();
-
   useEffect(() => {
     let alive = true;
     void api<VoiceCatalog>("/api/voices").then((c) => { if (alive) setCatalog(c); }).catch(() => {});
     return () => { alive = false; };
   }, []);
+  return catalog;
+}
+
+/**
+ * `custom={false}` leaves the "ID khác" card out of the grid — the caller puts the id field with its other
+ * advanced settings, where it does not sit level with the four real choices.
+ */
+export function VoicePicker({ value, onChange, disabled, custom = true }: { value: string; onChange: (id: string) => void; disabled?: boolean; custom?: boolean }) {
+  const catalog = useVoiceCatalog();
+  const preview = usePreview();
 
   const voices = catalog?.voices || [];
   const known = voices.some((v) => v.id === value);
@@ -94,7 +102,7 @@ export function VoicePicker({ value, onChange, disabled }: { value: string; onCh
           <small>{[v.gender, v.summary].filter(Boolean).join(" · ")}</small>
         </span>
       </Radio>)}
-      <Radio value={OTHER} className={`vs-voice-option is-other ${selection === OTHER ? "is-selected" : ""}`}>
+      {custom && <Radio value={OTHER} className={`vs-voice-option is-other ${selection === OTHER ? "is-selected" : ""}`}>
         <span className="vs-voice-copy">
           <strong>ID khác</strong>
           <small>Giọng chưa có trong voices.json — dán voice id lấy từ ElevenLabs.</small>
@@ -110,11 +118,11 @@ export function VoicePicker({ value, onChange, disabled }: { value: string; onCh
             autoComplete="off"
           />
         </span>
-      </Radio>
+      </Radio>}
     </Radio.Group>
 
     {preview.element}
 
-    {catalog?.sampleText && <p className="vs-voice-note">Các mẫu đều đọc: “{catalog.sampleText}”</p>}
+    {catalog?.sampleText && <Tooltip title={`“${catalog.sampleText}”`}><p className="vs-voice-note">Các mẫu cùng đọc một đoạn ngắn, nên nghe so được với nhau.</p></Tooltip>}
   </div>;
 }

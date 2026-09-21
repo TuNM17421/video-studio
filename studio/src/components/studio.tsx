@@ -1,19 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircleFilled, CloseOutlined, ExportOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
-import { Button, Empty, Steps, Tag, Tooltip } from "antd";
+import { CloseOutlined, ExportOutlined, LockOutlined } from "@ant-design/icons";
+import { Button, Collapse, Empty, Steps, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import { inferDay } from "@/lib/day";
-import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
+import type { AgentConfig, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
+import { agentProviderLabel } from "@/lib/agent-providers";
+import { resolveReviewer } from "@/lib/review";
 import { STUDIO_STEP_EVENT } from "@/lib/tours";
 import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
 import { PageAgentBinding } from "./page-agent-binding";
 import { ProductionState } from "./production-state";
-import { CuesStep, RenderStep, ScenesStep, VoiceStep } from "./steps";
+import { StageBadge } from "./agent-panel";
+import { CuesStep } from "./steps/cues-step";
+import { RenderStep } from "./steps/render-step";
+import { ScenesStep } from "./steps/scenes-step";
+import { StepBar, type StepNav } from "./steps/shared";
+import { VoiceStep } from "./steps/voice-step";
 
 /** Ba nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả ba là sai với hai cái kia. */
 const VOICE_SOURCE_LABEL: Record<VoiceSource, string> = {
@@ -37,28 +44,36 @@ function complete(step: Step, d: VideoDetail | null) {
   return step === "plan" ? true : step === "cues" ? s.cues === "done" : step === "voice" ? s.voice === "done" : step === "scenes" ? s.scenes === "done" : s.render === "done" && s.deliver === "done";
 }
 
-function WorkflowNavigation({ step, detail, onChange }: { step: Step; detail: VideoDetail | null; onChange: (step: Step) => void }) {
-  if (!detail) return null;
-  const index = STEPS.findIndex((item) => item.id === step);
-  const current = STEPS[index];
-  const previous = STEPS[index - 1];
-  const next = STEPS[index + 1];
-  const ready = complete(step, detail);
-  const guidance = next
-    ? ready ? `Đã xong ${current.title}. Bạn có thể tiếp tục.` : `Hoàn tất ${current.title} để mở bước tiếp theo.`
-    : ready ? "Luồng sản xuất đã hoàn tất." : "Bước cuối · hoàn tất render và bàn giao.";
+/** Where a step stands, as one status: render and deliver are one step on the page. */
+function stepStatus(step: Step, d: VideoDetail): StageStatus | null {
+  const s = d.state.stages;
+  if (step === "plan") return null;
+  if (step !== "render") return s[step];
+  // Rendered but not handed over yet is still "done" for the MP4; the bar says what is missing.
+  if (s.render === "done") return s.deliver === "idle" ? "done" : s.deliver;
+  return s.render;
+}
 
-  return <nav className="vs-gate-navigation" aria-label="Điều hướng giữa các bước sản xuất">
-    {previous
-      ? <Button className="vs-gate-navigation-back" icon={<LeftOutlined />} onClick={() => onChange(previous.id)}>Quay lại: {previous.title}</Button>
-      : <span aria-hidden="true" />}
-    <span className={`vs-gate-navigation-status ${ready ? "is-ready" : "is-locked"}`} aria-live="polite">
-      {ready ? <CheckCircleFilled /> : <LockOutlined />}{guidance}
-    </span>
-    {next
-      ? <Button className="vs-gate-navigation-next" type="primary" disabled={!ready} icon={<RightOutlined />} iconPlacement="end" onClick={() => onChange(next.id)}>Tiếp: {next.title}</Button>
-      : <span aria-hidden="true" />}
-  </nav>;
+/** The steps either side of `step`: the bar's Quay lại / Tiếp lead there. */
+function neighbours(step: Step) {
+  const index = STEPS.findIndex((item) => item.id === step);
+  return { previous: STEPS[index - 1], next: STEPS[index + 1] };
+}
+
+/**
+ * Cost and automation of this video's runs, folded to one line: it is for tuning the workflow, not for the
+ * decision in front of the user — what the checks found lives in each step's Kiểm tra tự động panel.
+ */
+function WorkflowHealth({ detail }: { detail: VideoDetail }) {
+  const report = detail.workflow;
+  if (!report.runs.total) return null;
+  const tokens = report.usage.inputTokens + report.usage.outputTokens;
+  return <div className="vs-workflow-tiles">
+    <div><span>Lượt chạy</span><strong>{report.runs.total}</strong><small>{report.runs.deterministic} lượt không cần agent · {Math.round(report.automationRatio * 100)}% tự động</small></div>
+    <div><span>Token agent</span><strong>{tokens.toLocaleString("vi-VN")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt · ${report.usage.costUsd.toFixed(2)}</small></div>
+    <div><span>Lượt lỗi</span><strong>{report.runs.failures}</strong><small>trên {report.runs.total} lượt</small></div>
+    <div><span>Tốn token nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><small>stage dùng nhiều token agent nhất</small></div>
+  </div>;
 }
 
 /** First step that still needs work. */
@@ -74,7 +89,7 @@ function applySetupToDraft(current: PlanDraft, list: StyleDef[], config: AgentCo
   const next = list.length && !list.some((style) => style.id === current.request.style)
     ? emptyDraft(list[list.length - 1].id, config.defaultProvider)
     : current;
-  return { ...next, agentProvider: config.defaultProvider };
+  return { ...next, agentProvider: config.defaultProvider, review: { ...config.review.defaults } };
 }
 
 /** One exact 1920×1080 frame (the scene kit's ?frame= capture mode), scaled down to the panel width. */
@@ -99,9 +114,11 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
   const id = detail?.state.id || draft.id;
   const scenes = detail?.artifacts.scenes;
   const cues = detail?.cues;
-  const running = detail?.state && (Object.entries(detail.state.stages) as [StageId, string][]).find(([, v]) => v === "running");
-  const review = detail?.state && (Object.entries(detail.state.stages) as [StageId, string][]).find(([, v]) => v === "review");
-  const agentStatus = running ? `Đang chạy · ${running[0]}` : review ? `Chờ duyệt · ${review[0]}` : detail ? "Đang chờ" : "—";
+  const stages = detail ? Object.entries(detail.state.stages) as [StageId, StageStatus][] : [];
+  const running = stages.find(([, v]) => v === "running");
+  const review = stages.find(([, v]) => v === "review");
+  const agentStatus = running ? `Đang chạy · ${running[0]}` : review ? `Chờ duyệt · ${review[0]}` : stages.every(([, v]) => v === "done") ? "Hoàn tất" : "Chờ bước tiếp";
+  const source = detail?.state.voiceBound?.source ?? detail?.state.voice.source ?? "elevenlabs";
   const provider = detail?.state.agent.provider || draft.agentProvider;
   // a settled frame of the first narrated câu (the scene kit renders one exact frame for ?frame=)
   const first = cues?.cues.find((c) => !c.silent);
@@ -122,16 +139,38 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
       <h3>{request.title || id || "Chưa đặt tên"}</h3>
       <p>{request.day || "Chưa chọn ngày"} · {style?.name || "Chưa chọn style"}</p>
     </div>
-    <dl className="project-facts">
-      <div><dt>Agent</dt><dd><AgentName provider={provider} /></dd></div>
-      <div><dt>Trạng thái</dt><dd>{detail ? agentStatus : "Chưa tạo"}</dd></div>
-      <div><dt>Số câu</dt><dd>{cues?.cues.length ?? "—"}</dd></div>
-      <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>
-      <div><dt>Nguồn giọng</dt><dd>{VOICE_SOURCE_LABEL[detail?.state.voice.source ?? "elevenlabs"]}</dd></div>
-      {/* Key chỉ có nghĩa với ElevenLabs; hai nguồn kia không đụng tới nó nên đừng bắt nhìn. */}
-      {(detail?.state.voice.source ?? "elevenlabs") === "elevenlabs" && <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>}
-    </dl>
+    {/* Facts the step on the left already shows stay folded; the frame and the player are what this panel is for. */}
+    {detail
+      ? <Collapse className="vs-preview-facts" size="small" items={[{
+          key: "facts",
+          label: <span>Thông số <span className="quiet-label">{cues?.cues.length ?? "—"} câu · {formatFrames(cues?.voiceDuration ?? cues?.duration)}</span></span>,
+          children: <>
+            <dl className="project-facts">
+              <div><dt>Trạng thái</dt><dd>{agentStatus}</dd></div>
+              <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>
+              <div><dt>Nguồn giọng</dt><dd>{VOICE_SOURCE_LABEL[source]}</dd></div>
+              {/* Key chỉ có nghĩa với ElevenLabs; hai nguồn kia không đụng tới nó nên đừng bắt nhìn. */}
+              {source === "elevenlabs" && <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>}
+            </dl>
+            <WorkflowHealth detail={detail} />
+          </>,
+        }]} />
+      : <dl className="project-facts">
+          <div><dt>Agent</dt><dd><AgentName provider={provider} /></dd></div>
+          <div><dt>Trạng thái</dt><dd>Chưa tạo</dd></div>
+        </dl>}
   </aside>;
+}
+
+/** The agent is fixed when the video is created: one line under the title, not a card beside it. */
+function AgentLine({ detail }: { detail: VideoDetail }) {
+  const review = detail.state.review;
+  const reviewer = resolveReviewer(detail.state.agent.provider, review, detail.installedAgents);
+  return <p className="vs-agent-line">
+    Agent dựng <strong><AgentName provider={detail.state.agent.provider} /></strong> <LockOutlined aria-label="đã khoá" />
+    <span aria-hidden="true"> · </span>
+    Review chéo <strong>{!review.enabled ? "tắt" : reviewer.ok ? agentProviderLabel(reviewer.provider) : "chưa chọn được"}</strong>
+  </p>;
 }
 
 export default function Studio() {
@@ -142,7 +181,7 @@ export default function Studio() {
   const [workflowTooltip, setWorkflowTooltip] = useState<Step | null>(null);
   const [styles, setStyles] = useState<StyleDef[]>([]);
   const [draft, setDraft] = useState<PlanDraft>(emptyDraft("lesson-lab"));
-  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true });
+  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true, review: { defaults: { enabled: true, provider: "auto" }, installed: [] } });
   const [setupReady, setSetupReady] = useState(false);
   const [setupLoading, setSetupLoading] = useState(true);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -171,10 +210,16 @@ export default function Studio() {
   const { hasKey, setHasKey } = useKeyStatus();
   const editorPanel = useRef<HTMLElement>(null);
 
+  // A step picked by the user scrolls its panel into view; the ref is only touched in the effect, so the
+  // callbacks handed to the step bar stay free of refs.
+  const [scrollNonce, setScrollNonce] = useState(0);
   const goToStep = useCallback((target: Step) => {
     setStep(target);
-    requestAnimationFrame(() => editorPanel.current?.scrollIntoView({ block: "start" }));
+    setScrollNonce((n) => n + 1);
   }, []);
+  useEffect(() => {
+    if (scrollNonce) requestAnimationFrame(() => editorPanel.current?.scrollIntoView({ block: "start" }));
+  }, [scrollNonce]);
 
   // The practice tour (components/tour.tsx) opens each production step of the sample video in turn.
   useEffect(() => {
@@ -245,7 +290,7 @@ export default function Studio() {
   async function create() {
     if (!setupReady) return;
     await act(async () => {
-      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, request: draft.request, script: draft.script } });
+      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, review: draft.review, request: draft.request, script: draft.script } });
       await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
       window.history.pushState(null, "", `/?id=${draft.id}`);
       setAutoStep(false);
@@ -254,7 +299,13 @@ export default function Studio() {
   }
   const stop = () => { if (id) void act(() => api(`/api/videos/${id}/stop`, { method: "POST", json: {} })); };
   const running = job?.status === "running";
-  const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop } : null;
+  const { previous, next } = neighbours(step);
+  // Tiếp only appears once this step is complete — until then the step's own action is the primary one.
+  const nav: StepNav = {
+    back: previous && { label: previous.title, onClick: () => goToStep(previous.id) },
+    next: next && { label: next.title, onClick: () => goToStep(next.id), ready: complete(step, detail) },
+  };
+  const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop, nav } : null;
   const current = STEPS.find((s) => s.id === step)!;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
   const pageProvider = detail?.state.agent.provider ?? draft.agentProvider;
@@ -279,17 +330,21 @@ export default function Studio() {
     };
   });
 
-  return <Shell page={id ? "videos" : "new"} hasKey={hasKey}>
+  return <Shell page={id ? "videos" : "new"}>
     <div className="page-heading vs-page-heading">
-      <div><div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div><h1>{detail?.state.request.title || id || "Video mới"}</h1></div>
-      <PageAgentBinding
+      <div>
+        <div className="eyebrow"><span className="tiny-mark" /> {id ? detail?.state.request.day || "Video" : "Video mới"}</div>
+        <h1>{detail?.state.request.title || id || "Video mới"}</h1>
+        {detail && <AgentLine detail={detail} />}
+      </div>
+      {!id && <PageAgentBinding
         provider={pageProvider}
         selectionLocked={agentConfig.selectionLocked}
         immutable={Boolean(id)}
         loading={setupLoading || Boolean(id && !detail && !loadError)}
         disabled={busy || setupLoading || !setupReady}
         onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
-      />
+      />}
     </div>
     <div className="vs-production-rail" data-tour="studio.rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
@@ -316,13 +371,12 @@ export default function Studio() {
       : <ProductionState className="vs-production-state" status="idle" title="Video được làm ngoài Video Studio" detail="Bạn chỉ có thể xem tệp và kết quả của video này." />)}
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
-        <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
-        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
+        <div className="panel-heading vs-step-heading"><div><h2>{current.title}</h2></div>{detail && stepStatus(step, detail) && <StageBadge status={stepStatus(step, detail)!} />}</div>
+        {step === "plan" && (detail ? <><PlanSummary state={detail.state} styles={styles} /><StepBar nav={nav} tone="done" status="Kế hoạch đã chốt khi tạo video" /></> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}
         {step === "render" && stepProps && <RenderStep {...stepProps} />}
-        <WorkflowNavigation step={step} detail={detail} onChange={goToStep} />
       </section>
       <Preview detail={detail} styles={styles} draft={draft} hasKey={hasKey} />
     </div>

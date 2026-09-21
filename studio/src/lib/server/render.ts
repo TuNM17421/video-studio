@@ -18,6 +18,8 @@ export async function renderVideo(id: string, base: string) {
   const { background, quiz } = state.music;
   startJob(id, "render");
   setStage(id, "render", "running");
+  // Opens this run in the shared log — the scenes gate also starts with "Build design system".
+  log(id, "system", `Bắt đầu render · phụ đề ${state.captions ? "có" : "không"}`);
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
     log(id, "system", label);
     setProgress(id, null, label);
