@@ -2,7 +2,9 @@ import type { MusicChoice } from "./music";
 
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "research" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
+import type { ImagesView } from "./images";
+
+export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
@@ -341,6 +343,8 @@ export interface VideoDetail {
   findings: QaFindingItem[];
   /** Feedback that stops the Duyệt button right now (the same rule the approve API applies). */
   blocking: Record<"cues" | "scenes", number>;
+  /** Image suggestions (capability `images`); null when the video does not use it. */
+  images: ImagesView | null;
 }
 
 export interface VideoSummary {

@@ -21,6 +21,8 @@ export interface StepProps {
   act: (fn: () => Promise<unknown>) => Promise<void>;
   stop: () => void;
   nav: StepNav;
+  /** Reload the video without the busy state `act` sets — for panels that poll a job of their own. */
+  refresh?: () => Promise<void>;
 }
 
 export const post = (url: string, json: unknown) => api(url, { method: "POST", json });

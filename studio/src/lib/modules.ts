@@ -11,7 +11,7 @@ export interface ModuleDef {
   id: string;
   name: string;
   summary: string;
-  /** Glyph trên card: "dialogue" · "quiz" có glyph riêng, giá trị khác dùng glyph chung. */
+  /** Glyph trên card: "dialogue" · "quiz" · "mascot" · "image" có glyph riêng, giá trị khác dùng glyph chung. */
   icon: string;
   /** Tài liệu người viết kịch bản phải theo khi bật năng lực này — chính là file đã khai ra nó. */
   template: string;

@@ -8,6 +8,7 @@ import type { DryRun, VideoDetail, VoiceSettings, VoiceSource } from "@/lib/type
 import { AgentLog, JobProgress, stageLogs } from "../agent-panel";
 import { ProductionState } from "../production-state";
 import { useVoiceCatalog, VoicePicker } from "../voice-picker";
+import { ImagesPanel } from "./images-panel";
 import { post, StepBar, type StepProps } from "./shared";
 import { ImportPanel } from "./voice-import";
 import { LocalModelPanel } from "./voice-local";
@@ -204,7 +205,7 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
   </ol>;
 }
 
-export function VoiceStep({ detail, logs, job, busy, act, stop, nav, hasKey, setHasKey }: StepProps & { hasKey: boolean; setHasKey: (v: boolean) => void }) {
+export function VoiceStep({ detail, logs, job, busy, act, stop, nav, refresh, hasKey, setHasKey }: StepProps & { hasKey: boolean; setHasKey: (v: boolean) => void }) {
   const status = detail.state.stages.voice;
   const [settings, setSettings] = useState<VoiceSettings>(detail.state.voice);
   // Voice settings can change after a server-side job refreshes this video.
@@ -241,6 +242,8 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, nav, hasKey, set
         {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
         <AgentLog logs={runLogs} open={status === "running"} />
       </>}
+      {/* Ảnh được chọn trong lúc giọng đang thu: hai việc không phụ thuộc nhau. */}
+      <ImagesPanel detail={detail} act={act} refresh={refresh} />
     </div>
     <StepBar
       nav={nav}

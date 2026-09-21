@@ -144,7 +144,7 @@ cho phán đoán. `.claude/skills/research-script/SKILL.md` là nguồn chuẩn;
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
 quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ
-bản — hiện có `dialogue.md`, `quiz.md` và `mascot.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
+bản — hiện có `dialogue.md`, `quiz.md`, `mascot.md` và `images.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
 `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
 code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
@@ -190,6 +190,19 @@ media`, commit hai bảng + `media/manifest.json` (xem `assets/mascot/griffin/RE
 Griffin trong video là **năng lực chọn thêm** (`templates/modules/mascot.md`, card "Video có linh vật Griffin" ở
 bước Kế hoạch): bật thì kịch bản chọn vai *Đi cùng* hoặc *Dẫn* và đánh dấu câu nào có Griffin; tắt thì REQUEST.md
 ghi rõ không dùng `Griffin` / `GriffinBadge` — agent không tự thêm linh vật.
+
+## Ảnh tư liệu (đề xuất ảnh)
+Năng lực chọn thêm `images` (`templates/modules/images.md`, card "Video có ảnh tư liệu"): animation vẫn là mặc
+định, Studio chỉ **đề xuất** vài ảnh thật (người/sự kiện lịch sử, hiện vật, hình kinh điển) cho đúng những câu cần,
+**người dựng video duyệt**. Duyệt Lời & cue là tự chạy, song song với Giọng đọc, dưới job riêng `images:<id>`
+(`studio/src/lib/server/images.ts`) — không chặn bước nào; chỗ chưa quyết = animation. Luồng và định dạng file là
+của skill `.claude/skills/image-suggest/` và `tools/image-{search,check,apply}.mjs`: agent chọn chỗ (`triage.json`) →
+code tìm trên Wikimedia Commons + Openverse, lọc giấy phép theo `images.policy.json` (thương mại: **không NC/ND**, không
+ảnh không rõ giấy phép) → agent nhìn thumbnail xếp hạng (`suggest.json`) → panel "Ảnh đề xuất" ghi `decisions.json` →
+`image-apply` tải ảnh vào `<video>/img/` và sinh `<video>/images.js` (`src` tính từ gốc design system). Cảnh dùng
+`PhotoCard` (`components/media/`) cho kind `use`, vẽ lại cho kind `reference`. Agent chỉ được ghi đúng một file mỗi
+chặng (luật `Write`+`Edit` — Claude Code xét quyền ghi theo luật Edit). Openverse ẩn danh ~200 lượt/ngày
+(`OPENVERSE_TOKEN` nếu cần hơn).
 
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),

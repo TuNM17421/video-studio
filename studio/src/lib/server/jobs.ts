@@ -90,7 +90,8 @@ export function startJob(
   // The workflow ledger lives in projects/<video id>/.studio. A research run is not a video: its job key
   // (`research:<rid>`) is no folder under projects/ — on Windows the colon makes mkdir throw, elsewhere it
   // would leave a stray "video" in the list. Research keeps its own run log in research/<rid>/.
-  const workflow = kind === "research" ? null : startWorkflowRun(REPO, id, {
+  // Image suggestions run beside the video's own job under `images:<id>` — the same folder problem.
+  const workflow = kind === "research" || kind === "images" ? null : startWorkflowRun(REPO, id, {
     stage: kind,
     actor: meta.actor || "system",
     mode: meta.mode || "deterministic",

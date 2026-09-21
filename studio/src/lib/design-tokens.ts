@@ -175,6 +175,7 @@ export const STUDIO_LAYOUT = [
   { token: "step.bar", value: "64 px", usage: "Thanh quyết định dính đáy mỗi bước: trạng thái, hành động chính, Quay lại / Tiếp" },
   { token: "finding.still", value: "280 px", usage: "Ảnh cảnh của lỗi cần xử lý đủ lớn để thấy lỗi mà không phải mở" },
   { token: "finding.still.compact", value: "128 px", usage: "Ảnh nhỏ cho lỗi minor và lỗi đã xử lý" },
+  { token: "image.candidate", value: "176 px", usage: "Thẻ ảnh đề xuất: đủ nhận ra người / hiện vật trong thumbnail, ba ảnh một hàng trong bàn dựng" },
   { token: "mascot.matrix.cell", value: "84 px", usage: "Ô ảnh của bảng tư thế × biểu cảm (Thư viện · Mascot): đủ nhận ra nét mặt, bảy cột vẫn vừa khung" },
   { token: "tour.panel", value: "440 px", usage: "Khung lời thoại của tour hướng dẫn: đủ cho Griffin bên trái và hai câu ngắn bên phải" },
   { token: "tour.mascot", value: "104 px", usage: "Chiều cao Griffin trong khung tour — nhận ra nét mặt mà không lấn chữ" },

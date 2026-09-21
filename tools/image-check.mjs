@@ -3,15 +3,19 @@
  * Soát dữ liệu đề xuất ảnh của một video — cùng một lệnh cho Studio và cho agent chạy không qua Studio.
  *
  *   node tools/image-check.mjs <thư mục video> [--stage triage|suggest|decisions|images] [--work <dir>] [--json]
+ *                                              [--stamp]
  *
  * Không có `--stage` thì soát mọi file đang có. Kết quả ghi vào `check.json` của thư mục làm việc và in ra;
  * mã thoát 0 = đạt, 1 = có problem, 2 = gọi sai.
+ *
+ * `--stamp`: triage.json đạt thì ghi dấu vân tay lời đọc (`cuesHash`) vào nó — agent không tự tính được, còn
+ * Studio cần nó để biết lúc lời đổi sau khi đã chọn chỗ. Một chỗ tính duy nhất là `cuesHash` ở lib.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readPolicy } from './lib/image-license.mjs';
-import { checkDecisions, checkImages, checkSuggest, checkTriage, imagePaths, loadCues, readCandidates, readJson, writeJson } from './lib/image-suggest.mjs';
+import { checkDecisions, checkImages, checkSuggest, checkTriage, cuesHash, imagePaths, loadCues, readCandidates, readJson, writeJson } from './lib/image-suggest.mjs';
 
 const STAGES = ['triage', 'suggest', 'decisions', 'images'];
 const args = process.argv.slice(2);
@@ -48,7 +52,9 @@ function add(name, result) {
 if (wants('triage')) {
   if (triage) {
     const { cues, sections } = await loadCues(dir);
-    add('triage', checkTriage({ triage, cues, sections, policy }));
+    const result = checkTriage({ triage, cues, sections, policy });
+    add('triage', result);
+    if (args.includes('--stamp') && !result.problems.length) writeJson(P.triage, { ...triage, cuesHash: cuesHash(cues) });
   } else if (stage) add('triage', { problems: ['không có triage.json'], warnings: [] });
 }
 if (wants('suggest')) {
