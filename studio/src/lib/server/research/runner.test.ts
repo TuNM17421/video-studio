@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { blankClaim, type Claim } from "../../research";
-import { claudeResearchArgs, codexResearchArgs } from "../agent-cli";
+import { claudeStepArgs, codexStepArgs } from "../agent-cli";
 import { batches, cleanClaims, mergeGate2Decisions, withProvenance } from "./runner";
 
 const claim = (id: string, patch: Partial<Claim> = {}): Claim => ({ ...blankClaim(id), text: `claim ${id}`, question: `hỏi ${id}`, ...patch });
@@ -40,21 +40,21 @@ describe("cờ CLI của một chặng research", () => {
   const call = { tools: ["Read", "Write"], allowed: ["Read", "Write"], web: false, shell: false, model: "sonnet", effort: "low" as const };
 
   it("Claude: không phiên, không MCP, chỉ công cụ của chặng, chặn web và shell khi chặng không cần", () => {
-    const args = claudeResearchArgs(call);
+    const args = claudeStepArgs(call);
     for (const flag of ["--no-session-persistence", "--strict-mcp-config", "--include-partial-messages"]) expect(args).toContain(flag);
     expect(args.slice(args.indexOf("--tools"), args.indexOf("--tools") + 2)).toEqual(["--tools", "Read,Write"]);
     expect(args.slice(args.indexOf("--model"), args.indexOf("--model") + 2)).toEqual(["--model", "sonnet"]);
     const denied = args.slice(args.indexOf("--disallowedTools") + 1);
     expect(denied).toEqual(expect.arrayContaining(["WebSearch", "WebFetch", "Bash", "PowerShell"]));
-    const web = claudeResearchArgs({ ...call, web: true, shell: true, model: null });
+    const web = claudeStepArgs({ ...call, web: true, shell: true, model: null });
     expect(web).not.toContain("--model");
     expect(web.slice(web.indexOf("--disallowedTools") + 1)).not.toContain("WebSearch");
   });
 
   it("Codex: tắt tìm web và mạng trong sandbox trừ khi chặng cần", () => {
-    expect(codexResearchArgs(call)).toContain('web_search="disabled"');
-    expect(codexResearchArgs(call).join(" ")).not.toContain("network_access");
-    const web = codexResearchArgs({ ...call, web: true, shell: true });
+    expect(codexStepArgs(call)).toContain('web_search="disabled"');
+    expect(codexStepArgs(call).join(" ")).not.toContain("network_access");
+    const web = codexStepArgs({ ...call, web: true, shell: true });
     expect(web).toContain('web_search="live"');
     expect(web).toContain("sandbox_workspace_write.network_access=true");
   });

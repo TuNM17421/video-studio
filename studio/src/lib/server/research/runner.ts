@@ -2,10 +2,10 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Claim, ClaimCheck, ClaimKind, Difficulty, Gate2Decision, Priority, ResearchStage, ResearchState, ScriptCheck, ScriptIssue } from "../../research";
+import type { Claim, ClaimKind, Difficulty, Gate2Decision, Priority, ResearchStage, ResearchState, ScriptCheck, ScriptIssue } from "../../research";
 import { batches, difficultyOf, gate2Waiting, RUN_RESULT_LABEL } from "../../research";
 import type { AgentProvider } from "../../types";
-import type { ResearchCall } from "../agent-cli";
+import type { StepCall } from "../agent-cli";
 import { short } from "../agent-stream";
 import { finishJob, isRunning, registry, startJob, stopJob, wasStopped } from "../jobs";
 import { HttpError, REPO } from "../paths";
@@ -62,7 +62,7 @@ export const WRITABLE: Record<StepSpec["step"], (rid: string) => string[]> = {
   edit: (rid) => [`${runRel(rid)}/checks/edit.json`],
 };
 
-function call(rid: string, step: StepSpec["step"], provider: AgentProvider, effort: ResearchCall["effort"]): ResearchCall {
+function call(rid: string, step: StepSpec["step"], provider: AgentProvider, effort: StepCall["effort"]): StepCall {
   const model = modelFor(step, provider);
   // Chữ của trang gốc (`sources/<sid>/page.txt`) là thứ phần soát đối chiếu trích đoạn. Agent mà ghi được vào
   // đó thì nó "chứng minh" trích đoạn bằng chính chữ nó viết ra — cả tính năng này chỉ còn là lời hứa. Nên

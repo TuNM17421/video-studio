@@ -69,12 +69,13 @@ export function codexExecArgs(sessionId: string | null, model?: string) {
 // ── research ("Đóng gói kịch bản") ───────────────────────────────────────────────
 
 /**
- * What one research step may do, said once and translated per CLI. Where a CLI cannot enforce a line
+ * What one headless agent step may do (a research step, an image-suggest step…), said once and translated
+ * per CLI. Where a CLI cannot enforce a line
  * (agy has no tool allowlist and no web switch), the step's instructions say it and the Studio's checks
  * catch what slips through — every quote is re-checked against the original page, every file against
  * its schema.
  */
-export interface ResearchCall {
+export interface StepCall {
   /** Built-in tools the agent sees at all (Claude `--tools`): fewer tool definitions, fewer tokens per turn. */
   tools: string[];
   /** Claude permission rules that run without asking (`dontAsk` denies everything else). */
@@ -86,18 +87,18 @@ export interface ResearchCall {
   effort: "low" | "medium" | "high";
 }
 
-const RESEARCH_DENIED = [
+const STEP_DENIED = [
   "Read(**/.env)", "Read(**/.env.*)",
   "NotebookEdit", "Task", "Agent", "DesignSync", "RemoteTrigger", "CronCreate", "SendMessage",
 ];
 
 /**
- * Claude for one research step: no session to resume (each step starts clean and small), no MCP servers
+ * Claude for one agent step: no session to resume (each step starts clean and small), no MCP servers
  * (their tool schemas are paid for on every turn), only the tools the step needs, and partial messages
  * so the Studio can tell a long write from a stalled one.
  */
-export function claudeResearchArgs(call: ResearchCall) {
-  const denied = [...RESEARCH_DENIED, ...(call.web ? [] : ["WebSearch", "WebFetch"]), ...(call.shell ? [] : ["Bash", "PowerShell"])];
+export function claudeStepArgs(call: StepCall) {
+  const denied = [...STEP_DENIED, ...(call.web ? [] : ["WebSearch", "WebFetch"]), ...(call.shell ? [] : ["Bash", "PowerShell"])];
   return [
     "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
     "--permission-mode", "dontAsk", "--no-session-persistence", "--strict-mcp-config",
@@ -114,11 +115,11 @@ export function claudeResearchArgs(call: ResearchCall) {
 }
 
 /**
- * Codex for one research step. Web search is off unless the step needs it; a step that runs
+ * Codex for one agent step. Web search is off unless the step needs it; a step that runs
  * `node tools/page.mjs` needs network inside the sandbox, which `workspace-write` blocks by default.
  * These `-c` keys follow the Codex CLI reference and have not been run on a machine with Codex yet.
  */
-export function codexResearchArgs(call: ResearchCall) {
+export function codexStepArgs(call: StepCall) {
   return [
     "exec", "--json", "--sandbox", "workspace-write",
     "-c", 'approval_policy="never"',
@@ -131,10 +132,10 @@ export function codexResearchArgs(call: ResearchCall) {
 }
 
 /**
- * Antigravity for one research step: no allowlist or web switch exists. Effort is not passed — agy rejects
+ * Antigravity for one agent step: no allowlist or web switch exists. Effort is not passed — agy rejects
  * `--effort` for models that have no matching effort variant, and the model is the user's choice.
  */
-export function antigravityResearchArgs(call: ResearchCall) {
+export function antigravityStepArgs(call: StepCall) {
   return [...antigravityExecArgs(null), ...(call.model ? ["--model", call.model] : [])];
 }
 
