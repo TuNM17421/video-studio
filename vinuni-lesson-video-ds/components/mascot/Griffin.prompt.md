@@ -25,12 +25,12 @@ tối đa một Griffin.
 
 ## Có gì
 
-- **Dáng có biểu cảm** (`mood` đổi mặt ngay trên thân): `stand` (đứng, cánh xếp) · `sit` (ngồi) · `wings`
-  (đứng, hai cánh giơ cao) · `turn` (ba phần tư, cánh mở — các biểu cảm của bộ này lệch dáng nhau nhiều hơn,
-  đổi mặt trông như một cử động nhỏ).
-- **Động tác** (hiện mới vẽ một biểu cảm — `neutral`, vui mắt mở): `wave` (giơ cánh phải — thay cho "giơ tay"), `welcome` (dang
-  cánh chào đón), `cheer` (hai cánh giơ, vui), `rest` (ngồi nghỉ), `walk-left` / `walk-right` (đi chéo —
-  tự nhún nhịp bước; tự dịch `x` bằng `interpolate` để đi vào khung).
+- **Dáng có biểu cảm** (`mood` đổi mặt ngay trên thân): `stand` (đứng, cánh xếp) · `wings` (đứng, hai cánh giơ
+  cao — vui/reo thì `wings` + `happy`) · `walk-left` / `walk-right` (đi chéo ba phần tư, cánh mở — tự nhún nhịp
+  bước; tự dịch `x` bằng `interpolate` để đi vào khung; `walk-right` là `walk-left` lật ngang; các biểu cảm của
+  bộ này lệch dáng nhau nhiều hơn, đổi mặt trông như một cử động nhỏ).
+- **Động tác** (hiện mới vẽ một biểu cảm — `neutral`, vui mắt mở): `wave` (giơ cánh phải — thay cho "giơ tay"),
+  `welcome` (dang cánh chào đón), `rest` (ngồi nghỉ).
 - `mood`: `neutral` `happy` `wink` `surprised` `thinking` (nhìn lên) `sad` `stern` (`angry` = `stern`).
 - `prop` (bay chéo phía trên bên phải đầu, ngang mào — `flip` thì sang trái): `lightbulb` `question` `exclamation` `sparkle`.
 - Chuyển động: `enter` (bật vào), `motion` `idle` / `float` / `none`, `hops`, `tilt`, `flip`.

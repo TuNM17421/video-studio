@@ -20,7 +20,7 @@ export default function S08() {
   return (
     <Scene n={N} frame={frame}>
       <Headline frame={frame} at={[T.line, T.line + 8]} lines={[{ text: 'Đến lượt bạn!', color: C.red }, { text: 'Mở Video mới và thử ngay' }]} />
-      <Griffin x={1320} y={930} h={580} frame={frame} pose="cheer" hops={[T.hop]} prop={[{ at: T.hop, name: 'sparkle' }]} />
+      <Griffin x={1320} y={930} h={580} frame={frame} pose="wings" mood="happy" hops={[T.hop]} prop={[{ at: T.hop, name: 'sparkle' }]} />
     </Scene>
   );
 }

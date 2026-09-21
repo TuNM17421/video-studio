@@ -6,8 +6,10 @@
     "(0–1, để đặt đạo cụ), walk = tự nhún nhịp bước, moods = biểu cảm → ảnh. Biểu cảm ĐẦU TIÊN là ảnh gốc để",
     "căn các ảnh khác và là ảnh mặc định khi cảnh gọi một biểu cảm tư thế chưa có.",
     "Thêm biểu cảm = thêm một dòng vào moods rồi chạy lại script.",
+    "mirror = tư thế lật ngang từ một tư thế khác (dùng đủ biểu cảm của tư thế đó, không khai moods).",
     "props: file = ảnh trong 08_accessories_props, k = hệ số cỡ so với đạo cụ khác,",
-    "dot = vẽ thêm dấu chấm dưới thân (đường kính theo bề ngang thân) — bộ gốc vẽ ! và ? thiếu dấu chấm."
+    "dot = vẽ thêm dấu chấm dưới thân (đường kính theo bề ngang thân) — bộ gốc vẽ ! và ? thiếu dấu chấm.",
+    "badges: chỉnh riêng từng ảnh huy hiệu — dy = số px (theo ảnh gốc 02_faces) chèn trong suốt phía trên, hạ mặt xuống cho ngang các huy hiệu khác."
   ],
   "moods": {
     "neutral": "Bình thường",
@@ -33,20 +35,6 @@
         "stern": "griffin_generated_images/09_stern_serious"
       }
     },
-    "sit": {
-      "label": "Ngồi",
-      "group": "Tư thế",
-      "hx": 0.4,
-      "moods": {
-        "neutral": "griffin_generated_images(1)/griffin_generated_images/08_expression_calm",
-        "happy": "griffin_generated_images(1)/griffin_generated_images/09_expression_happy_eyes_closed",
-        "wink": "griffin_generated_images(1)/griffin_generated_images/10_expression_wink",
-        "surprised": "griffin_generated_images(1)/griffin_generated_images/11_expression_surprised",
-        "thinking": "griffin_generated_images(1)/griffin_generated_images/12_expression_looking_up_side",
-        "sad": "griffin_generated_images(1)/griffin_generated_images/13_expression_sad_looking_down",
-        "stern": "griffin_generated_images(1)/griffin_generated_images/14_expression_stern_serious"
-      }
-    },
     "wings": {
       "label": "Giơ cánh",
       "group": "Tư thế",
@@ -61,10 +49,11 @@
         "stern": "griffin_mascot_generated_images/08_stern_serious"
       }
     },
-    "turn": {
-      "label": "Ba phần tư",
+    "walk-left": {
+      "label": "Đi sang trái",
       "group": "Tư thế",
       "hx": 0.38,
+      "walk": true,
       "moods": {
         "neutral": "griffin_mascot_all_generated/04_calm_eyes",
         "happy": "griffin_mascot_all_generated/05_happy_closed_eyes",
@@ -75,13 +64,12 @@
         "stern": "griffin_mascot_all_generated/11_stern_serious"
       }
     },
-    "cheer": {
-      "label": "Reo vui",
-      "group": "Động tác",
-      "hx": 0.5,
-      "moods": {
-        "neutral": "griffin_generated_images(1)/griffin_generated_images/01_wings_up_cheerful"
-      }
+    "walk-right": {
+      "label": "Đi sang phải",
+      "group": "Tư thế",
+      "hx": 0.62,
+      "walk": true,
+      "mirror": "walk-left"
     },
     "welcome": {
       "label": "Chào đón",
@@ -106,24 +94,6 @@
       "moods": {
         "neutral": "griffin_generated_images(1)/griffin_generated_images/07_sitting_wings_folded_tail_right"
       }
-    },
-    "walk-left": {
-      "label": "Đi sang trái",
-      "group": "Động tác",
-      "hx": 0.35,
-      "walk": true,
-      "moods": {
-        "neutral": "griffin_generated_images(1)/griffin_generated_images/03_three_quarter_left_walking"
-      }
-    },
-    "walk-right": {
-      "label": "Đi sang phải",
-      "group": "Động tác",
-      "hx": 0.62,
-      "walk": true,
-      "moods": {
-        "neutral": "griffin_generated_images(1)/griffin_generated_images/04_three_quarter_right_walking"
-      }
     }
   },
   "props": {
@@ -146,6 +116,11 @@
     "sparkle": {
       "label": "Lấp lánh",
       "file": "sparkle"
+    }
+  },
+  "badges": {
+    "thinking": {
+      "dy": 16
     }
   }
 }
