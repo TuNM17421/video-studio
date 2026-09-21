@@ -3913,6 +3913,13 @@ button.vs-tile:hover {
   outline: 3px solid var(--vu-border-focus) !important;
   outline-offset: 2px;
 }
+/* An input inside an affix wrapper (password, prefix/suffix icon, counted textarea) shows its focus on
+   the wrapper above; its own ring drew a second blue box inside the first. */
+.ant-input-affix-wrapper .ant-input:focus-visible,
+.ant-input-affix-wrapper input:focus-visible,
+.ant-input-affix-wrapper textarea:focus-visible {
+  outline: none !important;
+}
 
 /* ── trang Hướng dẫn ───────────────────────────────────────────────────────── */
 /* Hình mang nghĩa, chữ chỉ chú thích — nên hình được cho chỗ rộng, chữ bị ép ngắn. */
