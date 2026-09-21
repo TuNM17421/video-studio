@@ -4772,6 +4772,10 @@ details.vs-flow-more[open] > summary {
   align-self: start;
   white-space: nowrap;
 }
+/* A compact card is one row: its control ("Sửa luôn", "Mở lại") sits on the card's vertical centre. */
+.vs-finding.is-compact .vs-finding-control {
+  align-self: center;
+}
 .vs-finding-group h4 .quiet-label {
   margin-left: 6px;
   font-weight: var(--vu-font-regular);

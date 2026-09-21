@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { App, ConfigProvider, theme } from "antd";
 import type { ThemeConfig } from "antd";
 import viVN from "antd/locale/vi_VN";
-import { STUDIO_COLORS } from "@/lib/design-tokens";
+import { STUDIO_COLORS, STUDIO_SEGMENTED } from "@/lib/design-tokens";
 
 const { brand, lesson, neutral, status } = STUDIO_COLORS;
 
@@ -65,6 +65,7 @@ const studioTheme: ThemeConfig = {
     Modal: { borderRadiusLG: 8 },
     Progress: { defaultColor: brand.primary, remainingColor: lesson.rail },
     Radio: { buttonCheckedBg: lesson.surface, buttonSolidCheckedBg: brand.primary },
+    Segmented: { ...STUDIO_SEGMENTED },
     Select: { activeBorderColor: brand.primary, hoverBorderColor: lesson.data },
     Table: { headerBg: neutral[50], headerColor: neutral[700], borderColor: neutral[200] },
     Tabs: { inkBarColor: brand.secondary, itemActiveColor: brand.primary, itemSelectedColor: brand.primary },

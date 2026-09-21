@@ -692,17 +692,15 @@
 .workflowNavigation {
   margin: 22px 22px 0;
   padding: 14px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   border: 1px solid var(--vu-border-subtle);
   border-radius: var(--vu-radius-sm);
   background: var(--vu-surface-subtle);
 }
-.workflowNavigation > :global(.ant-btn):first-child { justify-self: start; }
-.workflowNavigation > :global(.ant-btn):last-child { justify-self: end; }
-.workflowNavigation > span { display: inline-flex; align-items: center; gap: 7px; color: var(--vu-text-muted); font-size: var(--vu-text-2xs); white-space: nowrap; }
+.workflowNavigation > span { flex: 1 1 auto; display: inline-flex; align-items: center; gap: 7px; color: var(--vu-text-secondary); font-size: var(--vu-text-xs); white-space: nowrap; }
 .workflowNavigation > span svg { color: var(--vu-green-700); }
 .formSpecimen { margin-top: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .formSpecimen label { display: grid; gap: 7px; color: var(--vu-text-secondary); font-size: 12px; font-weight: 600; }
@@ -710,6 +708,14 @@
 .formSpecimen > :global(.ant-checkbox-wrapper),
 .switchLabel { align-self: center; display: flex; align-items: center; gap: 9px; }
 .componentPanel :global(.ant-segmented) { margin-top: 22px; width: calc(100% - 44px); }
+.segmentedRows { margin: 22px 22px 0; display: grid; gap: 14px; }
+.segmentedRows label { display: grid; justify-items: start; gap: 7px; color: var(--vu-text-secondary); font-size: 12px; font-weight: 600; }
+.segmentedRows :global(.ant-segmented) { margin: 0; width: auto; }
+.segmentedSpec { margin: 20px 22px 0; display: grid; gap: 8px; }
+.segmentedSpec > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; font-size: 12px; }
+.segmentedSpec dt { color: var(--vu-blue-900); font-weight: 700; }
+.segmentedSpec dd { margin: 0; display: grid; gap: 2px; color: var(--vu-text-secondary); }
+.segmentedSpec code { color: var(--vu-text-muted); font-family: var(--vu-font-utility); font-size: 10px; }
 
 .productionState {
   margin-top: 20px;

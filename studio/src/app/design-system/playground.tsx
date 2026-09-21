@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircleFilled, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { STUDIO_SEGMENTED_SPEC } from "@/lib/design-tokens";
 import { App, Button, Checkbox, Input, Segmented, Select, Switch, Tag } from "antd";
 import { AGENT_PROVIDER_OPTIONS } from "@/lib/agent-providers";
 import type { StageStatus } from "@/lib/types";
@@ -12,6 +13,9 @@ export function DesignSystemPlayground() {
   const { message } = App.useApp();
   const [status, setStatus] = useState<StageStatus>("review");
   const [motionRun, setMotionRun] = useState(0);
+  const [source, setSource] = useState("elevenlabs");
+  const [decision, setDecision] = useState("fix");
+  const [filter, setFilter] = useState("all");
 
   return <div className={styles.playground}>
     <article className={styles.componentPanel}>
@@ -22,9 +26,9 @@ export function DesignSystemPlayground() {
         <Button danger onClick={() => { void message.warning("Thao tác nhạy cảm cần xác nhận."); }}>Dừng tác vụ</Button>
         <Button disabled>Chưa đủ điều kiện</Button>
       </div>
-      <nav className={styles.workflowNavigation} aria-label="Ví dụ điều hướng giữa các bước sản xuất">
-        <Button icon={<LeftOutlined />}>Quay lại: Giọng đọc</Button>
-        <span><CheckCircleFilled />Đã xong Dựng cảnh</span>
+      <nav className={styles.workflowNavigation} aria-label="Ví dụ thanh quyết định của một bước">
+        <span><CheckCircleFilled />Đã duyệt dựng cảnh</span>
+        <Button icon={<LeftOutlined />}>Giọng đọc</Button>
         <Button type="primary" icon={<RightOutlined />} iconPlacement="end">Tiếp: Render</Button>
       </nav>
       <div className={styles.formSpecimen}>
@@ -49,6 +53,27 @@ export function DesignSystemPlayground() {
         { value: "error", label: "Lỗi" },
       ]} />
       <ProductionState className={styles.productionState} status={status} />
+    </article>
+
+    <article className={styles.componentPanel}>
+      <header><span>Nút chuyển</span><code>Segmented · STUDIO_SEGMENTED</code></header>
+      <div className={styles.segmentedRows}>
+        <label>Nguồn giọng<Segmented value={source} onChange={(value) => setSource(String(value))} options={[
+          { value: "elevenlabs", label: "ElevenLabs" },
+          { value: "import", label: "Audio có sẵn" },
+          { value: "local", label: "Model local" },
+        ]} /></label>
+        <label>Quyết định cho một lỗi<Segmented size="small" value={decision} onChange={(value) => setDecision(String(value))} options={[
+          { value: "fix", label: "Sửa" },
+          { value: "skip", label: "Bỏ qua" },
+        ]} /></label>
+        <label>Lọc, có mục tắt<Segmented size="small" value={filter} onChange={(value) => setFilter(String(value))} options={[
+          { value: "all", label: "Tất cả" },
+          { value: "flagged", label: "Có lỗi (3)" },
+          { value: "skipped", label: "Đã bỏ qua (0)", disabled: true },
+        ]} /></label>
+      </div>
+      <dl className={styles.segmentedSpec}>{STUDIO_SEGMENTED_SPEC.map((row) => <div key={row.part}><dt>{row.part}</dt><dd><code>{row.token}</code><span>{row.usage}</span></dd></div>)}</dl>
     </article>
 
     <article className={`${styles.componentPanel} ${styles.motionPanel}`}>

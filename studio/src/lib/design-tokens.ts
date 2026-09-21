@@ -43,6 +43,30 @@ export const STUDIO_COLORS = {
   },
 } as const;
 
+/**
+ * Nút chuyển (Ant Segmented) — nguồn duy nhất cho mọi Segmented trong Studio: nguồn giọng, Sửa | Bỏ qua,
+ * Tất cả | Có lỗi, Phụ đề Có | Không. Phần được chọn là nền brand.primary chữ trắng — cùng tín hiệu "đang
+ * chọn" với nút primary và cổng đang mở trên rail; nền trắng trên rãnh xám từng làm lựa chọn gần như vô hình.
+ * ui-provider.tsx đưa các giá trị này vào theme của Ant, nên không component nào phải tự viết CSS.
+ */
+export const STUDIO_SEGMENTED = {
+  trackBg: STUDIO_COLORS.neutral[100],
+  itemColor: STUDIO_COLORS.neutral[700],
+  itemHoverColor: STUDIO_COLORS.brand.primary,
+  itemHoverBg: STUDIO_COLORS.lesson.surface,
+  itemActiveBg: STUDIO_COLORS.lesson.rail,
+  itemSelectedBg: STUDIO_COLORS.brand.primary,
+  itemSelectedColor: STUDIO_COLORS.neutral[0],
+} as const;
+
+export const STUDIO_SEGMENTED_SPEC = [
+  { part: "Rãnh", token: "neutral.100", usage: "Nền chung của cả nhóm lựa chọn" },
+  { part: "Mục thường", token: "neutral.700", usage: "Chữ của lựa chọn chưa chọn" },
+  { part: "Hover", token: "lesson.surface · brand.primary", usage: "Nền xanh nhạt, chữ xanh — báo là bấm được" },
+  { part: "Đang chọn", token: "brand.primary · neutral.0", usage: "Nền xanh dương VinUni, chữ trắng; không dùng đỏ (đỏ dành cho lỗi)" },
+  { part: "Tắt", token: "neutral.500", usage: "Lựa chọn không dùng được lúc này, vd. Sửa khi bước không chờ duyệt" },
+] as const;
+
 export const STUDIO_TYPOGRAPHY = [
   {
     role: "Display & brand",
