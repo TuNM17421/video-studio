@@ -47,6 +47,16 @@ order and ask the user before spending ElevenLabs credit (show the dry-run first
 - Copy the script to `projects/<id>/kich-ban-goc.md` if it is not there yet. Scripts follow
   `templates/kich-ban-co-ban.md`; every capability named in REQUEST.md adds its own
   `templates/modules/<id>.md` on top — read those files, they carry the rules for that capability.
+- **Check the script against the template before building cues**, whatever it came from:
+  `node tools/script-check.mjs projects/<id>/kich-ban-goc.md`. Same command the script-packaging pipeline
+  runs, so both sides agree on what a valid script is. Fix every `✗` before building cues — a number spoken
+  in **Lời** with no **Trên màn hình** line, a delivery that is not in `voices.json`, a proper name spelled
+  out syllable by syllable ("Cát Gi Pi Ti") all become defects in the recorded voice, which is expensive to
+  redo. One `✗` is different: "kịch bản không theo mẫu hiện tại" means the file is in the pre-template format
+  (`**Lời đọc nguyên văn:**` blocks with timecodes, as in the original Day 2 scripts). Then convert the whole
+  file to the template in one pass, or ask the user — do not patch it câu by câu.
+  A `- **Nguồn:** slide:4, c3` line on a câu comes from the packaging pipeline: keep it in the script, never
+  put it in `text`, and never read it aloud. So does `- **Nguồn kịch bản:**` in the header.
   The mascot `Griffin` is one of them (`mascot`): use `Griffin` / `GriffinBadge` only when REQUEST.md turns it on,
   and only on the câu the script marks with a **Griffin** line.
 - If the request gives a feedback folder or old videos: read the feedback files; for old MP4s extract a few

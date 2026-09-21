@@ -150,6 +150,15 @@ bản — hiện có `dialogue.md`, `quiz.md` và `mascot.md`. Frontmatter của
 code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
 id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem `templates/modules/README.md`.
 
+Mẫu này là **chỗ bàn giao** giữa hai pipeline (đóng gói kịch bản sinh ra, dựng video nhận vào), nên nó được
+soát bằng code, **một lệnh cho cả hai bên**: `node tools/script-check.mjs <kịch bản .md>` (thêm
+`--run research/<rid>` thì soát cả phần căn cứ: câu dẫn nguồn nào, con số *nghe thấy* có trong slide hay
+finding không). Bảng "mục nào bắt buộc" nằm trong chính `templates/kich-ban-co-ban.md`. Hai dòng chỉ pipeline
+đóng gói mới sinh ra — `- **Nguồn:** slide:4, c3` ở mỗi câu và `- **Nguồn kịch bản:**` ở phần đầu — là mục
+hợp lệ của mẫu: bên dựng video **giữ nguyên, không đọc thành tiếng, không đưa vào `text` của cue**. Kịch bản
+đời trước (khối `**Lời đọc nguyên văn:**` kèm mốc giờ, như bộ Day 2) bị báo bằng **đúng một** dòng "không
+theo mẫu hiện tại" — chuyển cả file, đừng vá từng câu.
+
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
 Mỗi cue khai `speaker` (tên/id một **nhân vật** — hoặc một giọng, cho video một người dẫn) và `delivery` (kiểu đọc trong
