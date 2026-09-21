@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Claim, ClaimCheck, ClaimKind, Difficulty, Gate2Decision, Priority, ResearchStage, ResearchState, ScriptCheck, ScriptIssue } from "../../research";
-import { batches, difficultyOf, RUN_RESULT_LABEL } from "../../research";
+import { batches, difficultyOf, gate2Waiting, RUN_RESULT_LABEL } from "../../research";
 import type { AgentProvider } from "../../types";
 import type { ResearchCall } from "../agent-cli";
 import { short } from "../agent-stream";
@@ -220,7 +220,7 @@ async function doResearch(rid: string) {
   }
   const evidence = readEvidence(rid);
   const decisions = readState(rid).gates.gate2?.decisions;
-  const failing = readClaims(rid).map((c) => ({ claim: c, why: gate2Reason(c, evidence[c.id], decisions) })).filter((f) => f.why);
+  const failing = gate2Waiting(readClaims(rid), evidence, decisions);
   if (!failing.length) {
     const decided = decisions;
     updateState(rid, (s) => {
@@ -237,24 +237,6 @@ async function doResearch(rid: string) {
   });
   researchLog(rid, "system", `Cổng 2: chờ bạn quyết định — ${failing.map((f) => `${f.claim.id} (${f.why})`).join(", ")}.`);
   return false;
-}
-
-/**
- * Vì sao một claim phải dừng ở cổng 2, hay null nếu nó đi tiếp được.
- *
- * Không chỉ "trượt soát": `insufficient` **qua** được soát bằng chứng (luật "phải có trích đoạn" và luật số
- * nguồn đều miễn cho verdict đó, đúng như thiết kế — người duyệt có quyền ghi nhận một ý không đủ nguồn).
- * Nhưng nếu nó tự qua thì một lượt agent không có web cho ra bốn finding `insufficient` sẽ mở cổng 2 với dòng
- * "mọi claim đạt soát", và người duyệt không bao giờ thấy màn hình chọn. Cảnh báo nặng cũng vậy: "kết luận ok
- * nhưng có trích đoạn phản bác" hay "dữ kiện hay đổi mà không nguồn nào ghi ngày" bay thẳng qua cổng, trong khi
- * đó đúng là lúc cần một người nhìn. Claim người duyệt đã quyết định rồi thì không hỏi lại.
- */
-function gate2Reason(claim: Claim, ev: ClaimCheck | undefined, decisions?: Record<string, Gate2Decision>): string | null {
-  if (!ev?.ok) return ev?.missing ? "chưa có kết quả research" : "trượt soát bằng chứng";
-  if (decisions?.[claim.id]) return null;
-  if (ev.verdict === "insufficient") return "agent báo không tìm đủ nguồn";
-  const heavy = claim.priority === "high" || claim.timeSensitive;
-  return heavy && ev.warnings?.length ? ev.warnings[0] : null;
 }
 
 const problemsOf = (report: ScriptCheck | null): ScriptIssue[] => report?.issues?.filter((i) => i.level === "problem") ?? [];
@@ -506,12 +488,32 @@ export function approveClaims(rid: string, raw: unknown) {
   startAdvance(rid);
 }
 
+/**
+ * Quyết định cổng 2 dồn qua các lần dừng: chỉ nhận quyết định cho claim đang chờ, giữ quyết định cũ của claim
+ * khác, và không lưu "Research lại" — kết quả mới phải được xét lại từ đầu.
+ */
+export function mergeGate2Decisions(before: Record<string, Gate2Decision>, waiting: string[], decisions: Record<string, Gate2Decision>) {
+  const merged: Record<string, Gate2Decision> = { ...before };
+  for (const id of waiting) {
+    if (decisions[id] === "retry") delete merged[id];
+    else if (decisions[id]) merged[id] = decisions[id];
+  }
+  return merged;
+}
+
 export async function decideGate2(rid: string, decisions: Record<string, Gate2Decision>) {
   const state = readState(rid);
   assertWaiting(state, "gate2");
   const evidence = readEvidence(rid);
   const claims = readClaims(rid);
-  const failing = claims.filter((c) => !evidence[c.id]?.ok);
+  const before = state.gates.gate2?.decisions ?? {};
+  // Đúng danh sách cổng này đang chờ (cùng hàm bảng chọn dùng), không phải "claim trượt soát": claim qua soát mà
+  // `insufficient` hay mang cảnh báo nặng cũng dừng ở đây, và quyết định cho nó phải được nhận.
+  const waiting = gate2Waiting(claims, evidence, before).map((w) => w.claim);
+  const missing = waiting.filter((c) => !decisions[c.id]);
+  if (missing.length) throw new HttpError(400, `Chưa chọn cách xử lý cho ${missing.map((c) => c.id).join(", ")}.`);
+  const decide = (c: Claim) => (waiting.includes(c) ? decisions[c.id] : undefined);
+  const passed = (c: Claim) => Boolean(evidence[c.id]?.ok);
   const keep: Claim[] = [];
   const dropped: string[] = [];
   // Chữ của claim bị bỏ phải giữ lại: `claims.json` được ghi lại không còn dòng đó và `dropClaimResults` xoá
@@ -519,35 +521,47 @@ export async function decideGate2(rid: string, decisions: Record<string, Gate2De
   // viết lại nguyên si, kèm `**Nguồn:** slide:N` như một giấy thông hành.
   const droppedClaims: { id: string; text: string; slides: number[] }[] = [];
   for (const c of claims) {
-    const d = failing.includes(c) ? decisions[c.id] : undefined;
+    const d = decide(c);
     if (d === "drop") { dropped.push(c.id); droppedClaims.push({ id: c.id, text: c.text, slides: c.slides ?? [] }); continue; }
     keep.push(c);
-    if (d === "accept") {
+    // Claim đã qua soát thì "ghi nhận" là giữ nguyên kết quả của nó; chỉ claim trượt soát mới cần finding thay thế.
+    if (d === "accept" && !passed(c)) {
       writeJson(path.join(runDir(rid), "claims", c.id, "finding.json"), {
         claim: c.id, verdict: "insufficient", answer: "Chưa có nguồn đủ tin cậy cho điều này.",
         reason: "Người duyệt ghi nhận không đủ nguồn ở cổng 2.", sources: [], evidence: [],
       });
     }
   }
+  // Research lại một claim đã qua soát: vòng research chỉ nhặt claim chưa đạt, nên kết quả cũ phải được dọn — như
+  // nút "Research lại claim này" — không thì nó đi thẳng tới lại cổng 2 với đúng kết quả đó.
+  const redo = waiting.filter((c) => decisions[c.id] === "retry" && passed(c)).map((c) => c.id);
   writeJson(path.join(runDir(rid), "claims.json"), { claims: keep });
-  dropClaimResults(rid, dropped);
+  dropClaimResults(rid, [...dropped, ...redo]);
   // Claim ghi nhận "không đủ nguồn" phải được soát lại ngay, không thì vòng research coi nó vẫn trượt và
   // đi tìm lại — đúng việc người duyệt vừa bảo đừng làm.
-  const accepted = failing.filter((c) => decisions[c.id] === "accept").map((c) => c.id);
+  const accepted = waiting.filter((c) => decisions[c.id] === "accept" && !passed(c)).map((c) => c.id);
   if (accepted.length && !(await verify(rid, ["--stage", "evidence", "--claims", accepted.join(","), "--no-fetch"])).report) {
     throw new HttpError(500, "Không soát lại được các claim vừa ghi nhận — thử lại.");
   }
+  // Quyết định dồn qua các lần dừng ở cổng: ghi đè thì claim đã quyết lần trước mất quyết định và bị hỏi lại.
+  // "Research lại" thì không lưu — kết quả mới phải được xét lại từ đầu, kể cả khi nó vẫn không đủ nguồn.
+  const merged = mergeGate2Decisions(before, waiting.map((c) => c.id), decisions);
   updateState(rid, (s) => {
-    for (const c of failing) {
+    for (const c of waiting) {
       if (decisions[c.id] === "retry") s.attempts[c.id] = MAX_ATTEMPTS - 1;
-      if (decisions[c.id] === "accept") s.attempts[c.id] = MAX_ATTEMPTS;
+      if (decisions[c.id] === "accept" && !passed(c)) s.attempts[c.id] = MAX_ATTEMPTS;
       if (decisions[c.id] === "drop") delete s.attempts[c.id];
     }
-    const before = s.gates.gate2?.dropped ?? [];
-    s.gates.gate2 = { at: new Date().toISOString(), auto: false, decisions, ...(before.length || droppedClaims.length ? { dropped: [...before, ...droppedClaims] } : {}) };
+    if (redo.length) s.noReuse = [...new Set([...(s.noReuse ?? []), ...redo])];
+    const droppedBefore = s.gates.gate2?.dropped ?? [];
+    s.gates.gate2 = {
+      at: new Date().toISOString(), auto: false,
+      ...(Object.keys(merged).length ? { decisions: merged } : {}),
+      ...(droppedBefore.length || droppedClaims.length ? { dropped: [...droppedBefore, ...droppedClaims] } : {}),
+    };
     s.stage = "research";
   });
-  researchLog(rid, "system", `Cổng 2: ${Object.entries(decisions).map(([id, d]) => `${id} → ${d}`).join(", ")}`);
+  researchLog(rid, "system", `Cổng 2: ${waiting.map((c) => `${c.id} → ${decisions[c.id]}`).join(", ") || "không còn claim nào chờ"}`);
   startAdvance(rid);
 }
 
