@@ -22,9 +22,12 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   const blocked = PREREQ[stage](state);
   if (blocked) throw new HttpError(400, blocked);
   if (message !== undefined && !message.trim()) throw new HttpError(400, "Góp ý đang trống.");
+  if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy.");
   const base = baseUrl(req);
   void runAgent(id, stage, base, message).catch((error) => {
-    log(id, "error", error instanceof Error ? error.message : String(error));
+    const messageText = error instanceof Error ? error.message : String(error);
+    log(id, "error", messageText);
+    if (isRunning(id)) return;
     setStage(id, stage, "error", "Không chạy được agent.");
   });
   return Response.json({ started: true }, { status: 202 });

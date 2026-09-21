@@ -12,6 +12,8 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { isRefFile, LocalCastPicker, RefFileField } from "./local-cast";
 import { MusicPicker } from "./music-picker";
 import { ProductionState } from "./production-state";
+import { ReviewControl } from "./review-control";
+import { HarnessPanel } from "./harness-panel";
 import { SourcePickerField } from "./source-picker";
 import { VoicePicker } from "./voice-picker";
 
@@ -37,7 +39,8 @@ interface QaItem {
 
 function qaItem(path: string): QaItem {
   const file = path.split("/").pop() || path;
-  const match = file.match(/^s(\d+)(?:-f(\d+))?\.(?:png|jpe?g)$/i);
+  // sNN[-fNNN].png shot by hand, cue-NN.png shot by the scene gate (qa/auto/).
+  const match = file.match(/^(?:s|cue-)(\d+)(?:-f(\d+))?\.(?:png|jpe?g)$/i);
   return {
     path,
     file,
@@ -85,7 +88,21 @@ function QaLightbox({ items, index, onClose, onMove }: { items: QaItem[]; index:
   </Modal>;
 }
 
-function QaGallery({ paths }: { paths: string[] }) {
+/** Worst open cross-review severity per scene, for a dot on its thumbnail. */
+function findingMarks(findings: VideoDetail["findings"]) {
+  const rank = { blocker: 0, major: 1, minor: 2 } as const;
+  const marks = new Map<number, "blocker" | "major" | "minor">();
+  for (const f of findings) {
+    if (!["open", "planned", "applied"].includes(f.status)) continue;
+    const n = Number(f.scope?.match(/cue-0*(\d+)/)?.[1] ?? NaN);
+    if (Number.isNaN(n)) continue;
+    const had = marks.get(n);
+    if (!had || rank[f.severity] < rank[had]) marks.set(n, f.severity);
+  }
+  return marks;
+}
+
+function QaGallery({ paths, marks = new Map() }: { paths: string[]; marks?: Map<number, "blocker" | "major" | "minor"> }) {
   const [mode, setMode] = useState<"keyframes" | "all">("keyframes");
   const [scene, setScene] = useState("all");
   const [page, setPage] = useState(0);
@@ -131,7 +148,7 @@ function QaGallery({ paths }: { paths: string[] }) {
       <label className="vs-qa-filter">Cảnh<Select value={scene} onChange={changeScene} options={[{ value: "all", label: "Tất cả cảnh" }, ...scenes.map((value) => ({ value: String(value), label: sceneLabel(value) })), ...(hasOther ? [{ value: "other", label: "Ảnh kiểm tra tổng" }] : [])]} /></label>
       <span className="vs-qa-count" aria-live="polite">Hiển thị {first}–{last} / {filtered.length}</span>
     </div>
-    <ul className="vs-qa">{visible.map((item) => <li key={item.path}><Button type="text" title={item.file} aria-label={`Mở ${item.scene === null ? item.file : sceneLabel(item.scene)}`} onClick={() => setZoomPath(item.path)}><img src={fileUrl(item.path)} alt="" loading="lazy" /><span><strong>{item.scene === null ? "Ảnh tổng" : sceneLabel(item.scene)}</strong><small>{item.frame === null ? item.file.replace(/\.(?:png|jpe?g)$/i, "") : `frame ${String(item.frame).padStart(3, "0")}`}</small></span></Button></li>)}</ul>
+    <ul className="vs-qa">{visible.map((item) => <li key={item.path}><Button type="text" title={item.file} aria-label={`Mở ${item.scene === null ? item.file : sceneLabel(item.scene)}`} onClick={() => setZoomPath(item.path)}><img src={fileUrl(item.path)} alt="" loading="lazy" />{item.scene !== null && marks.has(item.scene) && <i className={`vs-qa-mark is-${marks.get(item.scene)}`} title={`Có lỗi ${marks.get(item.scene)} từ review chéo`} />}<span><strong>{item.scene === null ? "Ảnh tổng" : sceneLabel(item.scene)}</strong><small>{item.frame === null ? item.file.replace(/\.(?:png|jpe?g)$/i, "") : `frame ${String(item.frame).padStart(3, "0")}`}</small></span></Button></li>)}</ul>
     {pageCount > 1 && <nav className="vs-qa-pagination" aria-label="Phân trang ảnh QA">
       <Pagination simple current={safePage + 1} pageSize={QA_PAGE_SIZE} total={filtered.length} showSizeChanger={false} onChange={(next) => setPage(next - 1)} />
     </nav>}
@@ -215,6 +232,7 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
       <JobProgress job={job?.kind === "cues" ? job : null} onStop={stop} />
       {status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy agent</Button></Empty>}
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "cues" }))}>Chạy lại</Button>} />}
+      <HarnessPanel run={detail.harness.cues} />
       <AgentSummary logs={runLogs} />
       <CueList detail={detail} />
       {status === "done" && <ScriptExport detail={detail} busy={busy} act={act} />}
@@ -224,7 +242,7 @@ export function CuesStep({ detail, logs, job, busy, act, stop }: StepProps) {
     <div className="panel-footer">
       <span />
       {status === "review"
-        ? <Button type="primary" disabled={busy} icon={<CheckCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/approve`, { stage: "cues" }))}>Duyệt lời & cue</Button>
+        ? <span className="vs-approve">{detail.blocking.cues > 0 && <span className="vs-approve-hint">Còn {detail.blocking.cues} góp ý chưa xử lý</span>}<Button type="primary" disabled={busy || detail.blocking.cues > 0} icon={<CheckCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/approve`, { stage: "cues" }))}>Duyệt lời & cue</Button></span>
         : status === "done" ? <Tag color="success" icon={<CheckCircleFilled />}>Đã duyệt</Tag> : <span />}
     </div>
   </>;
@@ -789,24 +807,43 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, hasKey, setHasKe
 export function ScenesStep({ detail, logs, job, busy, act, stop }: StepProps) {
   const id = detail.state.id;
   const status = detail.state.stages.scenes;
-  const runLogs = stageLogs(logs, /agent · scenes|agent \(scenes\)/);
+  const runLogs = stageLogs(logs, /agent · scenes|agent \(scenes\)|Review lại dựng cảnh/);
   const voiced = detail.state.stages.voice === "done";
   return <>
     <div className="vs-step-body">
       <div className="vs-step-status"><StageBadge status={status} />{detail.qa.length > 0 && <span className="quiet-label">{detail.qa.length} ẢNH QA</span>}</div>
-      <JobProgress job={job?.kind === "scenes" ? job : null} onStop={stop} />
+      <JobProgress job={job?.kind === "scenes" || job?.kind === "review" ? job : null} onStop={stop} />
+      {voiced && status !== "done" && <ReviewControl
+        author={detail.state.agent.provider}
+        value={detail.state.review}
+        installed={detail.installedAgents}
+        disabled={busy || status === "running"}
+        onChange={(review) => act(() => post(`/api/videos/${id}/review`, review))}
+        onRerun={() => act(() => post(`/api/videos/${id}/review`, { action: "run" }))}
+        rerunDisabled={!["review", "error"].includes(status)}
+      />}
       {!voiced && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tạo giọng đọc trước" />}
       {voiced && status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy"><Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Bắt đầu dựng cảnh</Button></Empty>}
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} action={<Button size="small" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }))}>Chạy lại</Button>} />}
+      <HarnessPanel
+        run={detail.harness.scenes}
+        findings={detail.findings}
+        qa={detail.qa}
+        reviewEnabled={detail.state.review.enabled}
+        blocking={detail.blocking.scenes}
+        actions={voiced && ["review", "error"].includes(status) && !busy
+          ? { canFix: true, decide: (payload) => act(() => post(`/api/videos/${id}/findings`, payload)) }
+          : undefined}
+      />
       <AgentSummary logs={runLogs} />
-      {detail.qa.length > 0 && <QaGallery paths={detail.qa} />}
+      {detail.qa.length > 0 && <QaGallery paths={detail.qa} marks={findingMarks(detail.findings)} />}
       {(status === "review" || status === "done") && detail.state.stages.render !== "running" && <FeedbackBox disabled={busy} placeholder="Ví dụ: cảnh 12 đổi Gate sang StopGate; cảnh 20 chữ bị tràn khung…" onSend={(message) => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes", message }))} />}
       <AgentLog logs={runLogs} open={status === "running"} />
     </div>
     <div className="panel-footer">
       <span />
       {status === "review"
-        ? <Button type="primary" disabled={busy} icon={<CheckCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/approve`, { stage: "scenes" }))}>Duyệt dựng cảnh</Button>
+        ? <span className="vs-approve">{detail.blocking.scenes > 0 && <span className="vs-approve-hint">Còn {detail.blocking.scenes} lỗi blocker/major — xem Kiểm tra tự động</span>}<Button type="primary" disabled={busy || detail.blocking.scenes > 0} icon={<CheckCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/approve`, { stage: "scenes" }))}>Duyệt dựng cảnh</Button></span>
         : status === "done" ? <Tag color="success" icon={<CheckCircleFilled />}>Đã duyệt</Tag> : <span />}
     </div>
   </>;
@@ -841,6 +878,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop }: StepProps) {
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
+      <HarnessPanel run={detail.harness.deliver} />
       {ready && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
         {path ? <CheckCircleFilled className="is-ok" /> : <span className="vs-dot" />}
         <span>{label}</span>

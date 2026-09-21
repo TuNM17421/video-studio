@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleFilled, CloseOutlined, ExportOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
-import { Button, Empty, Steps, Tag, Tooltip } from "antd";
+import { Button, Collapse, Empty, Steps, Tag, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
@@ -60,6 +60,32 @@ function WorkflowNavigation({ step, detail, onChange }: { step: Step; detail: Vi
   </nav>;
 }
 
+/**
+ * Cost and automation of this video's runs, folded to one line: it is for tuning the workflow, not for the
+ * decision in front of the user — what the checks found lives in each step's Kiểm tra tự động panel.
+ */
+function WorkflowHealth({ detail }: { detail: VideoDetail }) {
+  const report = detail.workflow;
+  if (!report.runs.total) return null;
+  const tokens = report.usage.inputTokens + report.usage.outputTokens;
+  const line = [
+    `${report.runs.total} lượt chạy`,
+    `tự động ${Math.round(report.automationRatio * 100)}%`,
+    `${tokens.toLocaleString("vi-VN")} token`,
+    report.usage.costUsd ? `$${report.usage.costUsd.toFixed(2)}` : null,
+  ].filter(Boolean).join(" · ");
+  return <Collapse className="vs-workflow-health" size="small" items={[{
+    key: "health",
+    label: <span className="vs-workflow-line"><strong>Chi phí & lượt chạy</strong><span className="mono">{line}</span></span>,
+    children: <div className="vs-workflow-tiles">
+      <div><span>Tự động</span><strong>{Math.round(report.automationRatio * 100)}%</strong><small>{report.runs.deterministic}/{report.runs.total} lượt không cần agent</small></div>
+      <div><span>Token agent</span><strong>{tokens.toLocaleString("vi-VN")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt · ${report.usage.costUsd.toFixed(4)}</small></div>
+      <div><span>Lượt lỗi</span><strong>{report.runs.failures}</strong><small>trên {report.runs.total} lượt</small></div>
+      <div><span>Tốn token nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><small>stage dùng nhiều token agent nhất</small></div>
+    </div>,
+  }]} />;
+}
+
 /** First step that still needs work. */
 function nextStep(d: VideoDetail): Step {
   const s = d.state.stages;
@@ -73,7 +99,7 @@ function applySetupToDraft(current: PlanDraft, list: StyleDef[], config: AgentCo
   const next = list.length && !list.some((style) => style.id === current.request.style)
     ? emptyDraft(list[list.length - 1].id, config.defaultProvider)
     : current;
-  return { ...next, agentProvider: config.defaultProvider };
+  return { ...next, agentProvider: config.defaultProvider, review: { ...config.review.defaults } };
 }
 
 /** One exact 1920×1080 frame (the scene kit's ?frame= capture mode), scaled down to the panel width. */
@@ -139,7 +165,7 @@ export default function Studio() {
   const [workflowTooltip, setWorkflowTooltip] = useState<Step | null>(null);
   const [styles, setStyles] = useState<StyleDef[]>([]);
   const [draft, setDraft] = useState<PlanDraft>(emptyDraft("lesson-lab"));
-  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true });
+  const [agentConfig, setAgentConfig] = useState<AgentConfig>({ defaultProvider: "claude", selectionLocked: true, review: { defaults: { enabled: true, provider: "auto" }, installed: [] } });
   const [setupReady, setSetupReady] = useState(false);
   const [setupLoading, setSetupLoading] = useState(true);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -224,7 +250,7 @@ export default function Studio() {
   async function create() {
     if (!setupReady) return;
     await act(async () => {
-      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, request: draft.request, script: draft.script } });
+      await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, review: draft.review, request: draft.request, script: draft.script } });
       await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
       window.history.pushState(null, "", `/?id=${draft.id}`);
       setAutoStep(false);
@@ -287,6 +313,7 @@ export default function Studio() {
         items={workflowItems}
       />
     </div>
+    {detail && <WorkflowHealth detail={detail} />}
     {setupError && <ProductionState className="vs-production-state" status="error" title="Không tải được cấu hình Studio" detail={setupError} action={<Button size="small" onClick={() => { void loadSetup(); }}>Thử lại</Button>} />}
     {error && <ProductionState className="vs-production-state" status="error" title="Thao tác chưa hoàn tất" detail={error} action={<Button type="text" size="small" aria-label="Đóng thông báo" icon={<CloseOutlined />} onClick={() => setError(null)} />} />}
     {loadError && <ProductionState className="vs-production-state" status="error" title="Không tải được video" detail={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}
@@ -296,7 +323,7 @@ export default function Studio() {
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
         <div className="panel-heading"><div><h2>{current.title}</h2></div><Tag className="pill-label">BƯỚC {STEPS.indexOf(current) + 1}</Tag></div>
-        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} />)}
+        {step === "plan" && (detail ? <PlanSummary state={detail.state} styles={styles} /> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}

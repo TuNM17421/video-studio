@@ -2,12 +2,21 @@ import type { MusicChoice } from "./music";
 
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
+export type JobKind = StageId | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
   defaultProvider: AgentProvider;
   selectionLocked: boolean;
+  /** Cross-review defaults for new videos, and which CLIs this machine actually has. */
+  review: { defaults: ReviewSettings; installed: AgentProvider[] };
+}
+
+/** Cross-review of scene stills by a separate read-only session (lib/review.ts). Changeable any time. */
+export interface ReviewSettings {
+  enabled: boolean;
+  /** `auto` = an installed CLI other than the authoring one; otherwise that exact CLI. */
+  provider: "auto" | AgentProvider;
 }
 
 export interface AgentBinding {
@@ -163,6 +172,7 @@ export interface VideoState {
   music: MusicChoice;
   /** Burn the navy subtitle bar into the MP4 (render step; off = render.mjs --no-captions). */
   captions: boolean;
+  review: ReviewSettings;
   lastError: string | null;
   /**
    * A finished video shipped with the repo for the tour's practice mode (projects/mau-huong-dan): shown with
@@ -231,6 +241,75 @@ export interface Artifacts {
   prompts: string | null;
 }
 
+export interface WorkflowFeedback {
+  id: string;
+  stage: string;
+  source: string;
+  severity: "blocker" | "major" | "minor";
+  message: string;
+  status: "open" | "planned" | "applied" | "verified" | "wontfix";
+  recurrence: number;
+  acceptance: string;
+}
+
+export interface WorkflowReport {
+  runs: { total: number; running: number; agent: number; deterministic: number; failures: number };
+  automationRatio: number;
+  usage: { inputTokens: number; cachedInputTokens: number; outputTokens: number; costUsd: number; toolCalls: number; measuredRuns: number };
+  byStage: Record<string, { runs: number; agentTokens: number; durationMs: number; failures: number }>;
+  byModel: Record<string, { runs: number; tokens: number; costUsd: number; failures: number }>;
+  byMachine: Record<string, { runs: number; durationMs: number; failures: number }>;
+  mostExpensiveStage: string | null;
+  feedback: { open: number; blocker: number; major: number; minor: number; items: WorkflowFeedback[] };
+  files: { runs: string; feedback: string; plan: string };
+}
+
+/** One step of the automated checks around an agent stage (lib/server/harness.ts). */
+export type HarnessStepId = "agent" | "dry-run" | "build" | "verify" | "stills" | "review";
+export type HarnessStepStatus = "pending" | "running" | "done" | "error" | "skipped";
+export interface HarnessStep {
+  id: HarnessStepId;
+  label: string;
+  status: HarnessStepStatus;
+  startedAt?: number;
+  finishedAt?: number;
+  /** "4 ảnh", "Codex", or the reason it failed. */
+  detail?: string;
+}
+export type HarnessStage = "cues" | "scenes" | "deliver";
+/** The latest run of the checks for one stage; persisted in .studio/harness/<stage>.json. */
+export interface HarnessRun {
+  stage: HarnessStage;
+  /** `agent` = an agent turn then the gates; `review` = gates + review only (Chạy lại review). */
+  kind: "agent" | "review";
+  status: "running" | "done" | "error" | "stopped";
+  startedAt: number;
+  finishedAt?: number;
+  steps: HarnessStep[];
+  review?: { provider: AgentProvider; runId: string; verdict: "pass" | "needs_changes"; summary: string };
+}
+
+/** A cross-review finding as the ledger holds it now (status moves as it is fixed or skipped). */
+export interface QaFindingItem {
+  id: string;
+  severity: "blocker" | "major" | "minor";
+  code?: string;
+  scope?: string;
+  message: string;
+  evidence?: string;
+  acceptance?: string;
+  status: "open" | "planned" | "applied" | "verified" | "wontfix";
+  recurrence: number;
+  qaProvider?: string;
+  runId?: string | null;
+  /** The review run that no longer saw it (set when QA verifies it). */
+  resolvedBy?: string;
+  /** Why the user skipped it (status wontfix), and when. */
+  skipReason?: string | null;
+  decidedAt?: string;
+  lastSeenAt: string;
+}
+
 export interface VideoDetail {
   state: VideoState;
   managed: boolean;
@@ -241,6 +320,14 @@ export interface VideoDetail {
   logs: LogEntry[];
   dryRun: DryRun | null;
   importReport: ImportReport | null;
+  workflow: WorkflowReport;
+  /** CLIs installed on this machine — who can be picked to cross-review. */
+  installedAgents: AgentProvider[];
+  harness: Partial<Record<HarnessStage, HarnessRun>>;
+  /** Every cross-review finding on the scenes stage, whatever its status. */
+  findings: QaFindingItem[];
+  /** Feedback that stops the Duyệt button right now (the same rule the approve API applies). */
+  blocking: Record<"cues" | "scenes", number>;
 }
 
 export interface VideoSummary {

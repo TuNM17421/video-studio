@@ -48,6 +48,7 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     cues: "Lời & cue",
     voice: "Giọng đọc",
     scenes: "Dựng cảnh",
+    review: "Review lại dựng cảnh",
     render: "Render MP4",
     deliver: "Bàn giao",
     "dry-run": "Kiểm tra giọng",
