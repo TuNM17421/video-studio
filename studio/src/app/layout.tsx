@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, IBM_Plex_Mono, Montserrat } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { ThemeProvider } from "next-themes";
 import { UiProvider } from "@/components/ui-provider";
 import "./vinuni-tokens.css";
 import "./globals.css";
@@ -36,5 +37,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const fonts = `${montserrat.variable} ${beVietnamPro.variable} ${ibmPlexMono.variable}`;
-  return <html lang="vi" className={fonts}><body><AntdRegistry><UiProvider>{children}</UiProvider></AntdRegistry></body></html>;
+  // `data-theme` nằm trên <html> chứ không phải <body>: đó là nơi :root khai toàn bộ biến màu, là thứ duy
+  // nhất phủ được cả vùng cuộn quá đà lẫn các portal antd dựng ở cuối <body>. next-themes chèn một script
+  // chạy trước khi trang vẽ để đặt sẵn thuộc tính đó — không có nó thì mỗi lần tải lại sẽ loé trắng một
+  // nhịp. Chính script đó cũng khiến HTML máy chủ dựng khác HTML trình duyệt, nên cần suppressHydrationWarning.
+  return <html lang="vi" className={fonts} suppressHydrationWarning>
+    <body>
+      <AntdRegistry>
+        <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <UiProvider>{children}</UiProvider>
+        </ThemeProvider>
+      </AntdRegistry>
+    </body>
+  </html>;
 }

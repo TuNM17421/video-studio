@@ -5,14 +5,18 @@ import { BookOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from 
 import { Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "./theme-toggle";
+import { StudioTour } from "./tour";
 
 type Page = "new" | "library" | "videos" | "guide";
-export type LibrarySection = "styles" | "components" | "videos";
+export type LibrarySection = "styles" | "components" | "characters" | "mascot" | "videos";
 
-/** The library's three sections are sidebar children, not tabs on the page. */
+/** The library's sections are sidebar children, not tabs on the page. */
 export const LIBRARY_SECTIONS: { id: LibrarySection; label: string }[] = [
   { id: "styles", label: "Style" },
   { id: "components", label: "Component" },
+  { id: "characters", label: "Nhân vật" },
+  { id: "mascot", label: "Mascot" },
   { id: "videos", label: "Video mẫu" },
 ];
 export const librarySectionPath = (section: LibrarySection) => `/library/${section}`;
@@ -77,13 +81,13 @@ export function Shell({ page, section, children }: { page: Page; section?: Libra
     if (event.detail > 0) event.currentTarget.blur();
   };
   const navigation = [
-    { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới">Video mới</Link> },
-    { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video">Các video</Link> },
-    { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn">Hướng dẫn</Link> },
+    { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới" data-tour="nav.new">Video mới</Link> },
+    { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video" data-tour="nav.videos">Các video</Link> },
+    { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn" data-tour="nav.guide">Hướng dẫn</Link> },
     {
       key: "library",
       icon: <BookOutlined />,
-      label: <Link href={librarySectionPath("styles")} title="Thư viện">Thư viện</Link>,
+      label: <Link href={librarySectionPath("styles")} title="Thư viện" data-tour="nav.library">Thư viện</Link>,
       children: LIBRARY_SECTIONS.map(({ id, label }) => ({
         key: sectionKey(id),
         label: <Link href={librarySectionPath(id)} title={label}>{label}</Link>,
@@ -111,11 +115,13 @@ export function Shell({ page, section, children }: { page: Page; section?: Libra
         onClick={({ key }) => { if (sidebarCollapsed && PAGE_ROUTES[key]) router.push(PAGE_ROUTES[key]); }}
       />
       <div className="sidebar-bottom">
+        <ThemeToggle />
         <div className="sidebar-footer"><span>VIDEO STUDIO</span></div>
       </div>
     </Layout.Sider>
     <Layout className="workspace">
       <Layout.Content id="main-content" className="main-content">{children}</Layout.Content>
     </Layout>
+    <StudioTour />
   </Layout>;
 }

@@ -56,7 +56,7 @@ export function DesignSystemPlayground() {
     </article>
 
     <article className={styles.componentPanel}>
-      <header><span>Nút chuyển</span><code>Segmented · STUDIO_SEGMENTED</code></header>
+      <header><span>Nút chuyển</span><code>Segmented · segmentedTheme()</code></header>
       <div className={styles.segmentedRows}>
         <label>Nguồn giọng<Segmented value={source} onChange={(value) => setSource(String(value))} options={[
           { value: "elevenlabs", label: "ElevenLabs" },

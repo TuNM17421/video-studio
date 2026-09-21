@@ -8,6 +8,7 @@ import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib
 import type { AgentConfig, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { resolveReviewer } from "@/lib/review";
+import { STUDIO_STEP_EVENT } from "@/lib/tours";
 import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
@@ -199,6 +200,19 @@ export default function Studio() {
     if (scrollNonce) requestAnimationFrame(() => editorPanel.current?.scrollIntoView({ block: "start" }));
   }, [scrollNonce]);
 
+  // The practice tour (components/tour.tsx) opens each production step of the sample video in turn.
+  useEffect(() => {
+    const open = (event: Event) => {
+      const target = (event as CustomEvent<Step>).detail;
+      if (STEPS.some((s) => s.id === target) && (target === "plan" || detail)) {
+        setAutoStep(false);
+        setStep(target);
+      }
+    };
+    window.addEventListener(STUDIO_STEP_EVENT, open);
+    return () => window.removeEventListener(STUDIO_STEP_EVENT, open);
+  }, [detail]);
+
   const loadSetup = useCallback(async () => {
     setSetupLoading(true);
     setSetupError(null);
@@ -311,7 +325,7 @@ export default function Studio() {
         onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
       />}
     </div>
-    <div className="vs-production-rail">
+    <div className="vs-production-rail" data-tour="studio.rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
       <Steps
         className="workflow vs-workflow"
@@ -331,9 +345,11 @@ export default function Studio() {
     {setupError && <ProductionState className="vs-production-state" status="error" title="Không tải được cấu hình Studio" detail={setupError} action={<Button size="small" onClick={() => { void loadSetup(); }}>Thử lại</Button>} />}
     {error && <ProductionState className="vs-production-state" status="error" title="Thao tác chưa hoàn tất" detail={error} action={<Button type="text" size="small" aria-label="Đóng thông báo" icon={<CloseOutlined />} onClick={() => setError(null)} />} />}
     {loadError && <ProductionState className="vs-production-state" status="error" title="Không tải được video" detail={loadError} action={<Button size="small" onClick={() => { void refresh(); }}>Tải lại</Button>} />}
-    {detail && !detail.managed && <ProductionState className="vs-production-state" status="idle" title="Video được làm ngoài Video Studio" detail="Bạn chỉ có thể xem tệp và kết quả của video này." />}
+    {detail && !detail.managed && (detail.state.sample
+      ? <ProductionState className="vs-production-state" tour="studio.sample" status="idle" title="Video mẫu của chế độ tập" detail="Một video đã đi đủ năm bước, để bạn xem từng bước trông thế nào khi xong. Chỉ xem — không chạy lại được bước nào." />
+      : <ProductionState className="vs-production-state" status="idle" title="Video được làm ngoài Video Studio" detail="Bạn chỉ có thể xem tệp và kết quả của video này." />)}
     <div className="editor-layout">
-      <section ref={editorPanel} className="editor-panel" aria-label={current.title}>
+      <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
         <div className="panel-heading vs-step-heading"><div><h2>{current.title}</h2></div>{detail && stepStatus(step, detail) && <StageBadge status={stepStatus(step, detail)!} />}</div>
         {step === "plan" && (detail ? <><PlanSummary state={detail.state} styles={styles} /><StepBar nav={nav} tone="done" status="Kế hoạch đã chốt khi tạo video" /></> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}

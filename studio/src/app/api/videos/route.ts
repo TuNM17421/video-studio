@@ -4,6 +4,7 @@ import type { AgentProvider, VideoRequest, VideoState } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { SILENT } from "@/lib/music";
 import { normalizeReview } from "@/lib/review";
+import { defaultBackground } from "@/lib/server/music";
 import { readAgentConfig, resolveAgentProvider, reviewDefaults } from "@/lib/server/agent-config";
 import { handle } from "@/lib/server/http";
 import { assertId, DAY_RE, exists, HttpError, projectDir, STYLES, videoDir } from "@/lib/server/paths";
@@ -51,8 +52,8 @@ export const POST = handle(async (req: Request) => {
     id, createdAt: now, updatedAt: now, request, agent: { provider, sessionId: null },
     stages: { cues: "idle", voice: "idle", scenes: "idle", render: "idle", deliver: "idle" },
     voice: { ...newVoice(), ...(body.voiceId ? { voiceId: String(body.voiceId) } : {}) },
-    // Both tracks are chosen at render; the plan only says whether the video has a quiz.
-    music: { ...SILENT },
+    // Both tracks are chosen at render; the bed starts on the catalog's default, the quiz track on none.
+    music: { ...SILENT, background: defaultBackground() },
     captions: true,
     review: normalizeReview(body.review, reviewDefaults()),
     lastError: null,

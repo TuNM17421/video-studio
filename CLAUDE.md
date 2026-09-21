@@ -80,10 +80,24 @@ cho màu, bộ chữ, token bố cục, mức nhấn của luồng sản xuất 
 Lưu ý: đây là design system **của giao diện Studio**, khác với design system của video bài giảng
 (`vinuni-lesson-video-ds/lib/tokens.js`, 9 màu, dùng khi dựng cảnh). Đừng lẫn hai bên.
 
+### Tour hướng dẫn (Griffin dẫn đường)
+Lời thoại và điểm chỉ của tour nằm ở `studio/src/lib/tours.ts` (dữ liệu thuần); `components/tour.tsx` chạy
+bằng antd `Tour`, tìm phần tử theo `data-tour="…"` (đừng chỉ bằng class CSS), bỏ bước không có trên màn
+hình, nhớ "đã xem" theo `version` trong localStorage. Sửa lời một tour thì tăng `version`. Tour chỉ **chỉ
+vào** nút tốn credit / chạy agent, không bao giờ bấm hộ. Nút Griffin ở góc phải mở lại tour của trang.
+**Video mẫu của chế độ tập** là `mau-huong-dan` (Griffin kể năm bước, 8 câu): một video đã đi đủ năm bước,
+`state.json` có `"sample": true` nên Studio mở ở chế độ **chỉ xem** (API chặn agent/giọng/render như với video
+làm ngoài Studio). Phần chữ nằm trong git dù `projects/`, `videos/`, `voice/out/` bị ignore — đã `git add -f`
+từng file, sửa thì add lại; phần nặng (`voice.wav`, MP4, ảnh QA) ở R2 `samples/mau-huong-dan/…`, tải về bằng
+`npm run sample` (`tools/sample-fetch.mjs`). Tour `practice` (nút Griffin → "Chế độ tập", có ở mọi trang) mở
+`/?id=mau-huong-dan` rồi đi qua năm bước: bước tour khai `studioStep`, `tour.tsx` phát sự kiện
+`video-studio:tour-step` và trang video tự mở bước đó. Dựng lại video mẫu thì đẩy lại ba loại file đó vào
+`media/files/samples/<id>/` rồi `npm run media`.
+
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
 quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ
-bản — hiện có `dialogue.md` và `quiz.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
+bản — hiện có `dialogue.md`, `quiz.md` và `mascot.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
 `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
 code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
@@ -107,6 +121,19 @@ nhân vật ra hai giọng trong cùng một lượt; mặc định mỗi nhân 
 `--cast` in trước dàn vai (miễn phí), `--speaker "Tú=<giọng|đường dẫn file>"` đổi giọng một vai — nhận cả
 một file mẫu nằm trên máy, file ở nguyên chỗ đó chứ không đẩy lên R2, lời của mẫu lấy từ `.txt` cùng tên
 hoặc do Whisper nghe.
+Xem danh sách nhân vật tại Studio → **Thư viện · Nhân vật** (`/library/characters`): thẻ thoại do design system vẽ
+(`ui_kits/lesson-video/demos/character.html?name=&tone=&side=&avatar=`), tên dùng được trong `speaker`, giọng mượn.
+
+## Linh vật Griffin (Thư viện · Mascot)
+Component `Griffin` / `GriffinBadge` (`components/mascot/`) vẽ linh vật từ ảnh trên **kho media R2**
+(`mascot/griffin/<tên>.<vân tay>.png`). Ảnh và hai bảng tư thế (`griffinPoses.js`, `assets/mascot/griffin/poses.json`
+— giữ base URL và tên file) đều **sinh** bởi `tools/griffin-assets.py` từ bộ ảnh gốc của nhóm thiết kế theo
+`tools/griffin-assets.json`; đừng sửa tay. Bổ sung biểu cảm = thêm một dòng vào json, chạy lại script, `npm run
+media`, commit hai bảng + `media/manifest.json` (xem `assets/mascot/griffin/README.md`). Studio →
+**Thư viện · Mascot** (`/library/mascot`) xem thử bằng trang `demos/mascot.html` của design system.
+Griffin trong video là **năng lực chọn thêm** (`templates/modules/mascot.md`, card "Video có linh vật Griffin" ở
+bước Kế hoạch): bật thì kịch bản chọn vai *Đi cùng* hoặc *Dẫn* và đánh dấu câu nào có Griffin; tắt thì REQUEST.md
+ghi rõ không dùng `Griffin` / `GriffinBadge` — agent không tự thêm linh vật.
 
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),
@@ -114,7 +141,10 @@ hoặc do Whisper nghe.
 `tools/lib/music.mjs` suy gain từ `lufs` về mức −32 LUFS (nhạc nền) / −28 LUFS (nhạc quiz), và tải file về
 `assets/music/` lần đầu dùng. Thêm bản mới = đẩy file lên R2, thêm key vào `media/manifest.json`, thêm mục
 vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
-- **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`.
+- **Nhạc nền** chọn ở bước Render (quyết định lúc hoàn thiện) → `render.mjs --music-track <id>`. Bản đánh dấu
+  `"default": true` trong `music.json` (hiện là `bg-goc`, "bg (bản gốc)") là mặc định: video mới trong Studio
+  chọn sẵn nó, và `render.mjs` không có `--music-track` cũng dùng nó; muốn im thì `--music-track none` (Studio luôn
+  gửi rõ lựa chọn).
 - **Nhạc quiz** cũng chỉ chọn ở bước Render (ô chọn hiện khi `cues.js` có câu `quiz: true`). Bước Kế hoạch
   chỉ có ô tick **"Video có quiz"** — đủ để REQUEST.md dặn agent đánh dấu `quiz: true` lúc viết `cues.js`,
   dù chưa biết dùng bài nhạc nào. Cờ này chỉ đặt ở **khoảng chờ người xem suy nghĩ** (cue `silent`, lúc

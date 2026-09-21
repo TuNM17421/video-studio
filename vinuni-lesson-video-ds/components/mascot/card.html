@@ -1,0 +1,49 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Mascot · Griffin VinUni" subtitle="Griffin: 4 dáng × 7 biểu cảm (stand · wings · walk-left · walk-right) + 3 động tác (vẫy cánh, chào đón, ngồi nghỉ) · GriffinBadge" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Mascot</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 300px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var moods = VK.GRIFFIN_MOODS;
+  // every set cycles through the seven moods, one every 34 frames, each set a little out of step
+  function cycle(offset) {
+    return moods.map(function (m, i) { return { at: i * 34 + offset, name: m }; }).concat([{ at: 0, name: moods[0] }]);
+  }
+  var sets = [['stand', 120, 0], ['wings', 350, 8], ['walk-left', 600, 16], ['walk-right', 850, 24]];
+  var gestures = ['wave', 'welcome', 'rest'];
+  VK.mountCard('#root', {
+    width: 1400, height: 600, duration: 238,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        sets.map(function (s) {
+          return h(VK.Fragment, { key: s[0] },
+            h(VK.Griffin, { x: s[1], y: 285, h: 250, pose: s[0], mood: cycle(s[2]), frame: f }),
+            h(VK.SvgText, { x: s[1], y: 318, size: 19, weight: 700, color: C.textMuted }, s[0]));
+        }),
+        gestures.map(function (g, i) {
+          return h(VK.Fragment, { key: g },
+            h(VK.Griffin, { x: 110 + i * 190, y: 555, h: 190, pose: g, frame: f }),
+            h(VK.SvgText, { x: 110 + i * 190, y: 588, size: 19, weight: 700, color: C.textMuted }, g));
+        }),
+        moods.map(function (m, i) {
+          return h(VK.GriffinBadge, { key: m, x: 1030 + (i % 4) * 92 + (i > 3 ? 46 : 0), y: 90 + Math.floor(i / 4) * 96, r: 40, mood: m, tone: m === 'stern' ? 'red' : 'accent' });
+        }),
+        h(VK.SvgText, { x: 1190, y: 272, size: 19, weight: 600, color: C.textMuted }, 'GriffinBadge · 7 biểu cảm')
+      );
+    }
+  });
+</script>
+</body>
+</html>

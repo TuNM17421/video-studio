@@ -104,6 +104,7 @@ cd video-studio
 npm install              # dependency, link design system vào node_modules, build dist/vk.js
 npm run setup            # tải Chromium dùng để chụp frame và render (một lần)
 npm run studio:install   # cài Video Studio (một lần)
+npm run sample           # tải bản thu, MP4 và ảnh QA của video mẫu (chế độ tập của tour hướng dẫn)
 
 npm run build && npm run verify   # kết thúc bằng "all checks passed" là cài đúng
 ```
@@ -156,7 +157,7 @@ npm run studio           # http://127.0.0.1:3100 — chỉ nghe trên máy này
 |---|---|---|
 | Video mới | `/` | Chọn style, nhập kịch bản, bật năng lực, tạo video |
 | Các video | `/videos` | Mở lại video đang làm dở |
-| Thư viện | `/library` | Xem style, toàn bộ component (tài liệu `.prompt.md`) và video mẫu |
+| Thư viện | `/library` | Xem style, toàn bộ component (tài liệu `.prompt.md`), nhân vật (`voices.json → characters`, kèm thẻ thoại xem thử và nghe thử giọng) và video mẫu |
 | Design system | `/design-system` | Token giao diện của chính Studio |
 | Hướng dẫn | `/guide` | Hướng dẫn dùng Studio |
 
@@ -496,6 +497,7 @@ video giữ trên máy:
 | `npm run tts:check` | Kiểm tra key và giọng ElevenLabs, không tốn ký tự |
 | `npm run voices` | In danh mục giọng và kiểu đọc |
 | `npm run media` | Đẩy media lên R2 (chủ bucket) |
+| `npm run sample` | Tải phần nặng của video mẫu `mau-huong-dan` từ R2 (bản thu, MP4, ảnh QA) |
 | `npm run test:tools` | Test của `tools/` |
 | `npm run doctor` | Kiểm tra môi trường, không sửa máy |
 | `npm run workflow -- report --video <id>` | Báo cáo lượt chạy, token, feedback của một video |

@@ -32,7 +32,14 @@ export function listModules(): ModuleDef[] {
     const id = file.slice(0, -3);
     // README.md and anything else that is not a valid id is documentation, not a capability.
     if (!ID.test(id)) continue;
-    const meta = frontMatter(fs.readFileSync(path.join(DIR, file), "utf8"));
+    let text: string;
+    try {
+      text = fs.readFileSync(path.join(DIR, file), "utf8");
+    } catch {
+      // Removed between readdir and read (someone deleting a capability while the studio runs): skip it.
+      continue;
+    }
+    const meta = frontMatter(text);
     if (!meta.name) continue;
     list.push({
       id,

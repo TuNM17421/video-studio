@@ -221,7 +221,7 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
               className="vs-production-state"
               status="error"
               title="Sinh giọng thất bại"
-              detail={last ? last.text.split(/\r?\n/).filter(Boolean).map((line, i) => <div key={i}>{line}</div>) : "Xem nhật ký bên dưới."}
+              detail={last ? last.text.split(/\r?\n/).filter(Boolean).map((line, i) => <span key={i}>{line}<br /></span>) : "Xem nhật ký bên dưới."}
             />;
           })()}
           {!voiceReady && installed && <small className="vs-local-log vs-local-hint">{cast?.problems.length ? cast.problems[0].split(/\r?\n/)[0] : "Chọn một giọng ở bước 2 trước."}</small>}

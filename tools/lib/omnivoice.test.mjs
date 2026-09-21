@@ -7,6 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { batchSizeFor, castLocal, deviceFrom, FILE_PENDING, looksLikeFile, refFailCache, refFromFile, refStatus, torchArgs } from './omnivoice.mjs';
+import { readVoices } from './voices.mjs';
 
 const NVIDIA_3060 = 'NVIDIA GeForce RTX 3060 Laptop GPU, 6144';
 const NVIDIA_4090 = 'NVIDIA GeForce RTX 4090, 24564';
@@ -95,31 +96,53 @@ test('Mac Apple Silicon đi theo đúng ngưỡng chật/rộng của bộ nhớ
 // Các test dưới đây đọc voices.json thật của repo, vì đó chính là thứ quyết định ai mượn giọng ai —
 // một bản giả sẽ kiểm đúng cái nó tự bịa ra.
 
+// Dàn vai hiện tại: Griffin mượn Nhật Phong, Mai Anh mượn Viên, Tới (bí danh Lucas) mượn Đô Trịnh, Tú tạm mượn Nhật Phong.
 const HOI_THOAI = [
-  { n: 1, text: 'Chào các bạn.', speaker: 'Tú' },
-  { n: 2, text: 'Bắt đầu từ đâu?', speaker: 'Lucas', delivery: 'hoi' },
+  { n: 1, text: 'Chào các bạn.', speaker: 'Griffin' },
+  { n: 2, text: 'Bắt đầu từ đâu?', speaker: 'Mai Anh', delivery: 'hoi' },
   { n: 3, silent: 2 },
-  { n: 4, text: 'Từ vòng lặp.', speaker: 'Tú' },
+  { n: 4, text: 'Từ vòng lặp.', speaker: 'Griffin' },
+];
+const HOI_LUCAS = [
+  { n: 1, text: 'Chào các bạn.', speaker: 'Griffin' },
+  { n: 2, text: 'Bắt đầu từ đâu?', speaker: 'Lucas' },
 ];
 
 test('mỗi nhân vật mượn đúng giọng voices.json đã gán, không phải giọng mặc định của video', () => {
   const cast = castLocal(HOI_THOAI);
   assert.equal(cast.dialogue, true);
-  assert.equal(cast.roles.length, 2, 'Tú nói hai câu nhưng vẫn là một vai');
-  const [tu, lucas] = cast.roles;
-  assert.equal(tu.voiceName, 'Nhật Phong');
-  assert.equal(lucas.voiceName, 'Đô Trịnh');
-  assert.notEqual(tu.voiceId, lucas.voiceId, 'hai nhân vật phải ra hai giọng khác nhau');
-  assert.deepEqual(tu.cues, [1, 4]);
+  assert.equal(cast.roles.length, 2, 'Griffin nói hai câu nhưng vẫn là một vai');
+  const [griffin, maiAnh] = cast.roles;
+  assert.equal(griffin.voiceName, 'Nhật Phong');
+  assert.equal(maiAnh.voiceName, 'Viên');
+  assert.notEqual(griffin.voiceId, maiAnh.voiceId, 'hai nhân vật phải ra hai giọng khác nhau');
+  assert.deepEqual(griffin.cues, [1, 4]);
   assert.ok(cast.ok);
 });
 
 test('bí danh trong kịch bản trỏ về đúng nhân vật, kèm mặt và phía của nhân vật đó', () => {
   // Day 04 gọi Tới là "Lucas" — thẻ hội thoại phải mang mặt của Tới, không phải một vai mới.
-  const lucas = castLocal(HOI_THOAI).roles[1];
+  const lucas = castLocal(HOI_LUCAS, { speakers: { Lucas: 'Đô Trịnh' } }).roles[1];
   assert.equal(lucas.character, 'toi');
   assert.equal(lucas.name, 'Lucas', 'tên hiện lên là tên kịch bản gọi');
   assert.ok(lucas.avatar, 'phải có avatar để thẻ hội thoại vẽ được');
+});
+
+test('nhân vật chưa có giọng: báo lỗi gọi đúng tên vai, và đọc được khi được giao một giọng', (t) => {
+  // Danh mục thật đổi theo thời gian — lấy một vai đang chưa có giọng, không cố định tên.
+  const mute = readVoices().characters.find((c) => !c.voice);
+  if (!mute) return t.skip('mọi nhân vật trong voices.json đều đã có giọng');
+  const cues = [
+    { n: 1, text: 'Chào các bạn.', speaker: 'Griffin' },
+    { n: 2, text: 'Bắt đầu từ đâu?', speaker: mute.name },
+  ];
+  const bare = castLocal(cues);
+  assert.match(bare.roles[1].error, new RegExp(`"${mute.name}" chưa được gán giọng`));
+  assert.equal(bare.ok, false, 'không sinh khi một vai chưa có giọng');
+  assert.equal(bare.roles[0].error, null, 'vai có giọng không bị vạ lây');
+  const given = castLocal(cues, { speakers: { [mute.name]: 'Đô Trịnh' } });
+  assert.equal(given.roles[1].voiceName, 'Đô Trịnh');
+  assert.equal(given.roles[1].error, null);
 });
 
 test('câu khoảng lặng không sinh audio, và kiểu đọc đổi tốc độ của riêng câu đó', () => {
@@ -132,7 +155,7 @@ test('câu khoảng lặng không sinh audio, và kiểu đọc đổi tốc đ�
 test('đổi giọng cho riêng một vai, các vai khác giữ nguyên', () => {
   // Gọi vai bằng tên kịch bản, bằng id nhân vật hay bằng tên nhân vật đều phải trúng.
   for (const key of ['Lucas', 'toi', 'Tới']) {
-    const cast = castLocal(HOI_THOAI, { speakers: { [key]: 'Cẩm Hồng' } });
+    const cast = castLocal(HOI_LUCAS, { speakers: { [key]: 'Cẩm Hồng' } });
     assert.equal(cast.roles[1].voiceName, 'Cẩm Hồng', `khai bằng "${key}"`);
     assert.equal(cast.roles[1].picked, true);
     assert.equal(cast.roles[0].voiceName, 'Nhật Phong', 'vai còn lại không bị đụng tới');
@@ -143,21 +166,21 @@ test('một đường dẫn file được hiểu là mẫu giọng, một cái t
   assert.ok(looksLikeFile('D:/giong/mau.wav'));
   assert.ok(looksLikeFile('mau.mp3'));
   assert.ok(!looksLikeFile('Nhật Phong'), 'tên giọng không có gạch chéo và không có đuôi audio');
-  const cast = castLocal(HOI_THOAI, { speakers: { 'Tú': 'D:/giong/tu.wav' } });
+  const cast = castLocal(HOI_THOAI, { speakers: { Griffin: 'D:/giong/griffin.wav' } });
   assert.equal(cast.roles[0].source, 'file');
   assert.equal(cast.roles[1].source, 'catalog', 'vai kia vẫn lấy mẫu từ kho media');
 });
 
 test('chọn "giọng từ file" mà chưa chọn file thì là lỗi chặn sinh, không lặng lẽ rơi về giọng vừa bỏ', () => {
-  // Panel từng để lọt: Tú chọn Cẩm Hồng rồi đổi sang "giọng từ file", bỏ trống ô — lượt sinh vẫn đọc bằng Cẩm Hồng.
-  const cast = castLocal(HOI_THOAI, { speakers: { 'Tú': FILE_PENDING } });
-  const tu = cast.roles[0];
-  assert.equal(tu.source, 'file');
-  assert.equal(tu.picked, true);
-  assert.equal(tu.voiceId, null, 'không được mang giọng nào của danh mục');
-  assert.match(tu.error, /chưa chọn file/);
+  // Panel từng để lọt: một vai chọn Cẩm Hồng rồi đổi sang "giọng từ file", bỏ trống ô — lượt sinh vẫn đọc bằng Cẩm Hồng.
+  const cast = castLocal(HOI_THOAI, { speakers: { Griffin: FILE_PENDING } });
+  const griffin = cast.roles[0];
+  assert.equal(griffin.source, 'file');
+  assert.equal(griffin.picked, true);
+  assert.equal(griffin.voiceId, null, 'không được mang giọng nào của danh mục');
+  assert.match(griffin.error, /chưa chọn file/);
   assert.equal(cast.ok, false, 'phải chặn lượt sinh');
-  assert.ok(cast.problems.some((p) => p.includes('Tú') && /chưa chọn file/.test(p)), 'lỗi phải gọi đúng tên vai');
+  assert.ok(cast.problems.some((p) => p.includes('Griffin') && /chưa chọn file/.test(p)), 'lỗi phải gọi đúng tên vai');
   assert.equal(cast.roles[1].error, null, 'vai còn lại không bị vạ lây');
 });
 
@@ -196,7 +219,7 @@ test('tên nhân vật lạ dừng lượt sinh, thay vì lặng lẽ đọc b�
 });
 
 test('giọng không có trong danh mục cũng bị chặn: model local cần một mẫu để nhân bản', () => {
-  const cast = castLocal(HOI_THOAI, { speakers: { 'Tú': 'Giọng Không Tồn Tại' } });
+  const cast = castLocal(HOI_THOAI, { speakers: { Griffin: 'Giọng Không Tồn Tại' } });
   assert.equal(cast.ok, false);
   assert.match(cast.roles[0].error, /không có giọng/);
 });

@@ -30,7 +30,8 @@
       "media": "audio/nen/bg.wav",
       "seconds": 392,
       "summary": "WAV PCM 44,1 kHz stereo — bản tham chiếu, nặng 66 MB",
-      "lufs": -15.4
+      "lufs": -15.4,
+      "default": true
     }
   ],
   "quiz": [

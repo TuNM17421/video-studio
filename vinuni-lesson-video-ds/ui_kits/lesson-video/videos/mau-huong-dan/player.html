@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Review player cho Mẫu · Griffin kể năm bước làm video (không phải thẻ design-system): play / scrub / nhảy tới từng câu.
+     ?frame=N đóng băng một frame ở tỉ lệ 1:1 để chụp. -->
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mẫu · Griffin kể năm bước làm video — player</title>
+<link rel="stylesheet" href="../../../../styles.css" />
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body { background: var(--vu-blue-900); }
+  #root { position: relative; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../../dist/vk.js"></script>
+<script>VK.mountSceneById('#root', 'mau-huong-dan');</script>
+</body>
+</html>

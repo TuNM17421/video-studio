@@ -10,7 +10,7 @@
   top: 0;
   z-index: 20;
   border-bottom: 1px solid var(--vu-border-subtle);
-  background: rgb(255 255 255 / 94%);
+  background: color-mix(in srgb, var(--vu-surface-card) 94%, transparent);
   backdrop-filter: blur(14px);
 }
 
@@ -215,7 +215,7 @@
   grid-template-columns: 42px 1fr;
   align-items: start;
   gap: 14px;
-  color: rgb(255 255 255 / 62%);
+  color: color-mix(in srgb, var(--vu-neutral-0) 62%, transparent);
 }
 
 .heroRail li:not(:last-child)::after {
@@ -224,7 +224,7 @@
   bottom: -4px;
   left: 15px;
   width: 2px;
-  background: rgb(255 255 255 / 15%);
+  background: color-mix(in srgb, var(--vu-neutral-0) 15%, transparent);
   content: "";
 }
 
@@ -250,15 +250,15 @@
 }
 
 .heroRail .complete { color: var(--vu-blue-200); opacity: var(--vu-emphasis-complete); }
-.heroRail .complete span { border-color: var(--vu-blue-400); background: var(--vu-brand-primary); color: white; opacity: 1; }
+.heroRail .complete span { border-color: var(--vu-blue-400); background: var(--vu-brand-primary); color: var(--vu-neutral-0); opacity: 1; }
 .heroRail .complete:not(:last-child)::after { background: var(--vu-blue-500); }
-.heroRail .current { color: white; opacity: var(--vu-emphasis-active); }
+.heroRail .current { color: var(--vu-neutral-0); opacity: var(--vu-emphasis-active); }
 .heroRail .current span { border-color: var(--vu-brand-secondary); box-shadow: 0 0 0 5px rgb(199 33 39 / 20%); opacity: 1; }
 
 .heroSignal > p {
   margin: 26px 0 0;
   padding-top: 20px;
-  border-top: 1px solid rgb(255 255 255 / 15%);
+  border-top: 1px solid color-mix(in srgb, var(--vu-neutral-0) 15%, transparent);
   color: var(--vu-blue-200);
   font-size: 13px;
   line-height: 1.6;
@@ -274,7 +274,7 @@
   overflow-x: auto;
   border: 1px solid var(--vu-border-subtle);
   border-radius: var(--vu-radius-md);
-  background: rgb(255 255 255 / 96%);
+  background: color-mix(in srgb, var(--vu-surface-card) 96%, transparent);
   box-shadow: var(--vu-shadow-xs);
   scrollbar-width: thin;
 }
@@ -392,9 +392,11 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  border: 1px solid rgb(11 42 77 / 10%);
+  border: 1px solid color-mix(in srgb, var(--vu-lesson-ink) 10%, transparent);
   border-radius: var(--vu-radius-sm);
-  color: var(--vu-neutral-800);
+  /* Nền ô là mã màu cố định (--swatch), không đổi theo chế độ — nên chữ cũng phải cố định, như nhãn đè lên
+     ảnh preview. Dùng thang màu thường thì ở chế độ tối thành chữ sáng trên ô sáng. */
+  color: var(--vu-media-chip-text);
   background: var(--swatch);
 }
 
@@ -561,7 +563,7 @@
 .radiusScale code { color: var(--vu-text-muted); font-family: var(--vu-font-utility); font-size: 10px; }
 
 .elevationScale { grid-template-columns: repeat(3, 1fr); align-items: center; }
-.elevationScale span { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-md); color: var(--vu-text-secondary); font-size: 11px; background: white; }
+.elevationScale span { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-md); color: var(--vu-text-secondary); font-size: 11px; background: var(--vu-surface-card); }
 .elevationScale span:nth-child(2) { box-shadow: var(--vu-shadow-md); }
 .elevationScale span:nth-child(3) { border-color: var(--vu-brand-primary); box-shadow: var(--vu-shadow-focus); }
 
@@ -726,7 +728,7 @@
 .motionTrack { position: absolute; top: 33px; right: 5%; left: 5%; height: 3px; overflow: hidden; background: var(--vu-blue-100); }
 .motionTrack span { display: block; width: 100%; height: 100%; transform-origin: left; background: var(--vu-brand-primary); animation: rail-progress 1.4s var(--vu-ease-standard) both; }
 .motionGates { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); }
-.motionGates i { width: 32px; height: 32px; justify-self: center; display: grid; place-items: center; border: 2px solid var(--vu-blue-200); border-radius: 50%; color: var(--vu-brand-primary); background: white; font-family: var(--vu-font-utility); font-size: 10px; font-style: normal; font-weight: 600; animation: gate-pulse 1.4s var(--vu-ease-standard) both; }
+.motionGates i { width: 32px; height: 32px; justify-self: center; display: grid; place-items: center; border: 2px solid var(--vu-blue-200); border-radius: 50%; color: var(--vu-brand-primary); background: var(--vu-surface-card); font-family: var(--vu-font-utility); font-size: 10px; font-style: normal; font-weight: 600; animation: gate-pulse 1.4s var(--vu-ease-standard) both; }
 .motionGates i:nth-child(2) { animation-delay: 140ms; }
 .motionGates i:nth-child(3) { animation-delay: 280ms; }
 .motionGates i:nth-child(4) { animation-delay: 420ms; }
