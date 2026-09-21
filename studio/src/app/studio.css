@@ -5641,3 +5641,6 @@ details.vs-flow-more[open] > summary {
 .vs-image-rejected summary { cursor: pointer; }
 :root[data-theme="dark"] .vs-image-thumb img { filter: brightness(0.9); }
 :root[data-theme="dark"] .vs-image-thumb img:hover { filter: none; }
+.vs-image-confirm { display: grid; gap: 8px; max-width: 320px; }
+.vs-image-confirm p { margin: 0; }
+.vs-image-confirm .ant-select { width: 200px; }

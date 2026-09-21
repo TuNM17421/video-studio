@@ -144,7 +144,26 @@ export function pageMeta(html) {
   const published = isoDay(first(PUBLISHED_META)) ?? isoDay(ldValue('datePublished')) ?? isoDay(ldValue('dateCreated')) ?? isoDay(timeTag);
   const modified = isoDay(first(MODIFIED_META)) ?? isoDay(ldValue('dateModified'));
   const publisher = first(PUBLISHER_META) ?? ldValue('publisher');
-  return { title: title || null, publisher: publisher || null, published, modified };
+  return { title: title || null, publisher: publisher || null, published, modified, image: pageImage(metas, ld) };
+}
+
+const IMAGE_META = ['og:image:secure_url', 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src'];
+
+/**
+ * Ảnh đại diện trang tự khai (og:image, twitter:image, JSON-LD `image`) — chưa ghép với URL trang, có thể là
+ * đường dẫn tương đối. Bước đề xuất ảnh dùng nó làm ứng viên phụ từ đúng những trang research đã đọc.
+ */
+function pageImage(metas, ld) {
+  for (const k of IMAGE_META) {
+    const hit = metas.find(([name]) => name === k);
+    if (hit?.[1]) return hit[1];
+  }
+  for (const node of ld) {
+    const v = Array.isArray(node.image) ? node.image[0] : node.image;
+    const url = typeof v === 'string' ? v : v && typeof v === 'object' ? v.url ?? v.contentUrl : null;
+    if (typeof url === 'string' && url.trim()) return url.trim();
+  }
+  return null;
 }
 
 /**
@@ -247,7 +266,9 @@ async function fetchOnce(base, fetchImpl, lookup) {
     const raw = buf.toString('utf8');
     const html = /html|xml/i.test(type);
     const text = html ? pageText(raw) : raw;
-    const meta = html ? pageMeta(raw) : { title: null, publisher: null, published: null, modified: null };
+    const meta = html ? pageMeta(raw) : { title: null, publisher: null, published: null, modified: null, image: null };
+    // og:image hay là đường dẫn tương đối — ghép với chỗ thật sự được đọc (sau chuyển hướng).
+    if (meta.image) try { meta.image = new URL(meta.image, info.finalUrl).href; } catch { meta.image = null; }
     const thin = text.length < MIN_TEXT;
     return {
       ...info, ...meta, text, chars: text.length, ok: !thin,

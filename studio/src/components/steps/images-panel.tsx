@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircleFilled, ExportOutlined, LoadingOutlined, PictureOutlined, PlayCircleFilled, RedoOutlined, StopOutlined, WarningOutlined } from "@ant-design/icons";
-import { Button, Input, Popconfirm, Tag } from "antd";
+import { Button, Input, Popconfirm, Select, Tag } from "antd";
 import { fileUrl } from "@/lib/client";
-import { IMAGE_ACTION_LABEL, isShareAlike, licenseLabel, type ImageAction, type ImageCandidate, type ImageDecision, type ImagePick, type ImageSlot, type ImagesView } from "@/lib/images";
+import { CONFIRMABLE_LICENSES, IMAGE_ACTION_LABEL, isShareAlike, licenseLabel, type ConfirmableLicense, type ImageAction, type ImageCandidate, type ImageDecision, type ImagePick, type ImageSlot, type ImagesView } from "@/lib/images";
 import type { VideoDetail } from "@/lib/types";
 import { AgentLog } from "../agent-panel";
 import { ProductionState } from "../production-state";
@@ -17,16 +17,40 @@ const KIND_LABEL: Record<ImageSlot["kind"], string> = { use: "ảnh trong video"
 
 const cueRange = (cues: number[]) => (cues.length > 1 ? `Câu ${cues[0]}–${cues[cues.length - 1]}` : `Câu ${cues[0]}`);
 
+/**
+ * "Dùng trong video" cho ảnh lấy từ trang research: giấy phép không rõ, nên người dựng phải tự kiểm trên trang
+ * nguồn và chọn đúng giấy phép trang đó ghi — Studio không đoán thay.
+ */
+function ConfirmUse({ landingUrl, disabled, onConfirm }: { landingUrl: string | null; disabled: boolean; onConfirm: (license: ConfirmableLicense) => void }) {
+  const [license, setLicense] = useState<ConfirmableLicense | null>(null);
+  return <Popconfirm
+    title="Dùng ảnh chưa rõ giấy phép trong video?"
+    description={<div className="vs-image-confirm">
+      <p>Ảnh lấy từ trang nguồn research, trang không khai giấy phép. Chỉ dùng khi bạn đã kiểm trên{" "}
+        {landingUrl ? <a href={landingUrl} target="_blank" rel="noreferrer">trang nguồn</a> : "trang nguồn"} — chọn giấy phép trang đó ghi:</p>
+      <Select size="small" placeholder="Giấy phép đã kiểm" value={license ?? undefined} onChange={setLicense}
+        options={CONFIRMABLE_LICENSES.map((code) => ({ value: code, label: licenseLabel(code, null) }))} />
+    </div>}
+    okText="Dùng trong video" cancelText="Thôi" okButtonProps={{ disabled: !license }}
+    onConfirm={() => license && onConfirm(license)}
+  >
+    <Button size="small" type="text" disabled={disabled}>Dùng trong video…</Button>
+  </Popconfirm>;
+}
+
 /** Một ảnh: thumbnail, metadata của nguồn, và hai cách dùng. Chữ mô tả là của nguồn, `why` là của agent. */
-function CandidateCard({ c, pick, chosen, slotKind, disabled, onChoose }: {
+function CandidateCard({ c, pick, chosen, confirmed, slotKind, disabled, onChoose }: {
   c: ImageCandidate;
   pick?: ImagePick;
   chosen: ImageAction | null;
+  /** Giấy phép người dựng đã tự xác nhận khi chọn ảnh chưa rõ giấy phép này để dùng trong video. */
+  confirmed?: ConfirmableLicense;
   slotKind: ImageSlot["kind"];
   disabled: boolean;
-  onChoose: (action: "use" | "reference") => void;
+  onChoose: (action: "use" | "reference", license?: ConfirmableLicense) => void;
 }) {
-  const primary = slotKind === "reference" ? "reference" : "use";
+  // Ảnh từ trang research chưa rõ giấy phép: tham khảo là cách dùng chính, trong video phải xác nhận.
+  const primary = slotKind === "reference" || c.referenceOnly ? "reference" : "use";
   const secondary = primary === "use" ? "reference" : "use";
   const byline = [c.creator, c.date].filter(Boolean).join(" · ");
   return <li className={`vs-image-card${chosen ? " is-chosen" : ""}`}>
@@ -40,8 +64,9 @@ function CandidateCard({ c, pick, chosen, slotKind, disabled, onChoose }: {
       </span>}
       <strong title={c.description ?? undefined}>{c.title || c.id}</strong>
       {byline && <span className="quiet-label">{byline}</span>}
-      <span className="vs-image-license">
-        {licenseLabel(c.license, c.licenseVersion)}
+      <span className={`vs-image-license${c.referenceOnly && !confirmed ? " vs-image-warn" : ""}`}>
+        {confirmed ? `${licenseLabel(confirmed, null)} (bạn đã xác nhận)` : licenseLabel(c.license, c.licenseVersion)}
+        {c.research && <span title={`research/${c.research.rid} · nguồn ${c.research.sid}`}> · ảnh từ trang research ({c.research.claim})</span>}
         {isShareAlike(c.license) && <span title="Share-alike: tác phẩm phái sinh phải giữ cùng giấy phép"> · share-alike</span>}
         {c.lowRes && <span className="vs-image-warn"> · độ phân giải thấp</span>}
       </span>
@@ -50,7 +75,9 @@ function CandidateCard({ c, pick, chosen, slotKind, disabled, onChoose }: {
     </div>
     <div className="vs-image-actions">
       <Button size="small" type={chosen === primary ? "primary" : "default"} disabled={disabled} onClick={() => onChoose(primary)}>{IMAGE_ACTION_LABEL[primary]}</Button>
-      <Button size="small" type="text" disabled={disabled} onClick={() => onChoose(secondary)}>{secondary === "use" ? "Dùng trong video" : "Chỉ tham khảo"}</Button>
+      {secondary === "use" && c.referenceOnly
+        ? <ConfirmUse landingUrl={c.landingUrl} disabled={disabled} onConfirm={(license) => onChoose("use", license)} />
+        : <Button size="small" type="text" disabled={disabled} onClick={() => onChoose(secondary)}>{secondary === "use" ? "Dùng trong video" : "Chỉ tham khảo"}</Button>}
     </div>
   </li>;
 }
@@ -71,8 +98,8 @@ function SlotCard({ s, cueText, disabled, decide, research }: {
   // Ảnh người dựng tự chọn ngoài đề xuất vẫn phải hiện, kể cả khi danh sách "ảnh khác" đang gập.
   const chosenOther = others.find((c) => c.id === s.decision?.candidate);
   const shown = more ? others : chosenOther ? [chosenOther] : [];
-  const choose = (c: ImageCandidate, action: "use" | "reference") =>
-    decide({ action, candidate: c.id, ...(action === "use" && caption.trim() ? { caption: caption.trim() } : {}) });
+  const choose = (c: ImageCandidate, action: "use" | "reference", license?: ConfirmableLicense) =>
+    decide({ action, candidate: c.id, ...(action === "use" && caption.trim() ? { caption: caption.trim() } : {}), ...(license ? { license } : {}) });
   const status = s.decision ? DECISION_LABEL[s.decision.action] : "Chưa quyết · dùng animation";
   return <li className="vs-image-slot">
     <div className="vs-image-slot-head">
@@ -88,9 +115,11 @@ function SlotCard({ s, cueText, disabled, decide, research }: {
     {s.searchErrors.length > 0 && <p className="vs-image-warn">Lỗi khi tìm: {s.searchErrors.join(" · ")}</p>}
     {(picks.length > 0 || shown.length > 0) && <ul className="vs-image-grid">
       {picks.map((p) => <CandidateCard key={p.id} c={byId.get(p.id)!} pick={p} slotKind={s.kind} disabled={disabled}
-        chosen={s.decision?.candidate === p.id ? s.decision.action : null} onChoose={(a) => choose(byId.get(p.id)!, a)} />)}
+        chosen={s.decision?.candidate === p.id ? s.decision.action : null} confirmed={s.decision?.candidate === p.id ? s.decision.license : undefined}
+        onChoose={(a, l) => choose(byId.get(p.id)!, a, l)} />)}
       {shown.map((c) => <CandidateCard key={c.id} c={c} slotKind={s.kind} disabled={disabled}
-        chosen={s.decision?.candidate === c.id ? s.decision.action : null} onChoose={(a) => choose(c, a)} />)}
+        chosen={s.decision?.candidate === c.id ? s.decision.action : null} confirmed={s.decision?.candidate === c.id ? s.decision.license : undefined}
+        onChoose={(a, l) => choose(c, a, l)} />)}
     </ul>}
     <div className="vs-image-slot-foot">
       {others.length > 0 && <Button size="small" type="link" onClick={() => setMore(!more)}>{more ? "Ẩn ảnh khác" : `Xem ${others.length} ảnh khác agent không chọn`}</Button>}

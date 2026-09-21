@@ -202,7 +202,10 @@ code tìm trên Wikimedia Commons + Openverse, lọc giấy phép theo `images.p
 `image-apply` tải ảnh vào `<video>/img/` và sinh `<video>/images.js` (`src` tính từ gốc design system). Cảnh dùng
 `PhotoCard` (`components/media/`) cho kind `use`, vẽ lại cho kind `reference`. Agent chỉ được ghi đúng một file mỗi
 chặng (luật `Write`+`Edit` — Claude Code xét quyền ghi theo luật Edit). Openverse ẩn danh ~200 lượt/ngày
-(`OPENVERSE_TOKEN` nếu cần hơn).
+(`OPENVERSE_TOKEN` nếu cần hơn). Video đóng gói từ "Đóng gói kịch bản" (dòng `**Nguồn kịch bản:** … research/<rid>`)
+có thêm nguồn `research` (`tools/lib/image-research.mjs`): og:image của đúng những trang research đã dẫn cho câu đó.
+Giấy phép không rõ → `referenceOnly`: mặc định chỉ tham khảo; dùng trong video thì người dựng tự kiểm trang nguồn
+và chọn giấy phép (`decision.license`, images.js ghi `licenseConfirmedBy`).
 
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),

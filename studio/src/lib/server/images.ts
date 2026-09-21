@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { ImageCandidate, ImageDecision, ImagePick, ImageSlot, ImagesStatus, ImagesView } from "../images";
-import { IMAGES_MODULE } from "../images";
+import { CONFIRMABLE_LICENSES, IMAGES_MODULE } from "../images";
 import type { AgentProvider } from "../types";
 import type { StepCall } from "./agent-cli";
 import { runAgentStep, type StepOutcome } from "./agent-step";
@@ -414,6 +414,11 @@ export async function decideImage(id: string, slot: string, decision: ImageDecis
       if (!decision.candidate) throw new HttpError(400, "Chưa chọn ảnh.");
       clean.candidate = decision.candidate;
       if (decision.caption?.trim()) clean.caption = decision.caption.trim();
+      // Giấy phép người dựng tự xác nhận — chỉ có nghĩa khi dùng trong video; image-check soát nó với ứng viên.
+      if (decision.action === "use" && decision.license) {
+        if (!(CONFIRMABLE_LICENSES as readonly string[]).includes(decision.license)) throw new HttpError(400, "Giấy phép không hợp lệ.");
+        clean.license = decision.license;
+      }
     }
     next.slots[slot] = clean;
   } else delete next.slots[slot];

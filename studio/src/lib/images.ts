@@ -36,6 +36,12 @@ export interface ImageCandidate {
   thumb: string;
   lowRes: boolean;
   credit: string;
+  /**
+   * Ảnh đại diện của một trang research đã dẫn cho câu này (nguồn `research`): giấy phép không rõ, nên mặc định
+   * chỉ dùng làm tham khảo — muốn dùng trong video thì người dựng tự kiểm trên trang nguồn và chọn giấy phép.
+   */
+  referenceOnly?: boolean;
+  research?: { rid: string; sid: string; claim: string };
 }
 
 /** Ảnh agent chọn khi xếp hạng: `why` nói vì sao hợp với câu. */
@@ -49,7 +55,13 @@ export interface ImageDecision {
   action: ImageAction;
   candidate?: string;
   caption?: string;
+  /** Chỉ cho ảnh `referenceOnly` dùng trong video: giấy phép người dựng đã tự kiểm trên trang nguồn. */
+  license?: ConfirmableLicense;
 }
+
+/** Giấy phép người dựng được xác nhận cho ảnh từ trang research — đúng những gì images.policy.json cho phép. */
+export const CONFIRMABLE_LICENSES = ["pd", "cc0", "cc-by", "cc-by-sa"] as const;
+export type ConfirmableLicense = (typeof CONFIRMABLE_LICENSES)[number];
 
 /** Một chỗ trong video đáng có ảnh, cùng mọi thứ đã làm cho nó. */
 export interface ImageSlot {
@@ -96,7 +108,7 @@ export interface ImagesView {
 
 /** Giấy phép đọc cho người: "CC BY-SA 4.0", "Public domain". */
 export function licenseLabel(code: string, version: string | null) {
-  const names: Record<string, string> = { pd: "Public domain", cc0: "CC0", "cc-by": "CC BY", "cc-by-sa": "CC BY-SA" };
+  const names: Record<string, string> = { pd: "Public domain", cc0: "CC0", "cc-by": "CC BY", "cc-by-sa": "CC BY-SA", unknown: "Chưa rõ giấy phép" };
   const name = names[code] ?? code.toUpperCase();
   return version && code.startsWith("cc-") ? `${name} ${version}` : name;
 }
