@@ -35,7 +35,8 @@ agent chỉ để chạy lại cùng một lệnh.
   trong `qa/` không bị đụng.
 - Scene QA là một **phiên riêng, context sạch, chỉ đọc** — giá trị nằm ở đó, không ở tên nhà cung cấp.
   Lane chỉ nhận một packet tạm ngoài repo (để CLI không tự nạp `CLAUDE.md`/`AGENTS.md`): request,
-  improvement plan, output verify và ảnh still.
+  kịch bản gốc, `cues.js` (lời + mô tả màn hình từng câu — căn cứ để xét `off-script`), improvement plan,
+  output verify và ảnh still.
 - **Review chéo là công tắc của từng video** (`state.review = { enabled, provider }`), bật sẵn, đổi được
   bất cứ lúc nào ở form Kế hoạch hoặc bước Dựng cảnh — khác agent dựng cảnh, vốn bị khoá khi tạo video.
   `provider: auto` chọn CLI đã cài **khác** agent đang dựng (Antigravity → Codex → Claude); máy chỉ có một

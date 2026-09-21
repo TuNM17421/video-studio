@@ -225,8 +225,13 @@ export const autoQaDir = (id: string) => path.join(projectDir(id), "qa", "auto")
  */
 function qaPacket(id: string, verifyOutput: string, qaDir: string) {
   const packet = fs.mkdtempSync(path.join(os.tmpdir(), `video-studio-qa-${id}-`));
+  // The script and cues.js are what "on-screen text must come from the script" is checked against:
+  // without them the reviewer only has the captions, and every line that exists only in a cue's
+  // visual (allowed to differ from what is spoken) looks invented.
   for (const source of [
     path.join(projectDir(id), "REQUEST.md"),
+    path.join(projectDir(id), "kich-ban-goc.md"),
+    path.join(videoDir(id), "cues.js"),
     path.join(stateDir(id), "IMPROVEMENT-PLAN.md"),
   ]) {
     if (fs.existsSync(/* turbopackIgnore: true */ source)) {
@@ -245,7 +250,8 @@ function qaPrompt(id: string, modules: string[]) {
   const extra = moduleQaCriteria(modules);
   return [
     `Bạn là QA lane độc lập cho video ${id}. Chỉ đọc nội dung trong thư mục hiện tại.`,
-    "Mở REQUEST.md, IMPROVEMENT-PLAN.md nếu có, verify.txt và toàn bộ ảnh trong stills/.",
+    "Mở REQUEST.md, kich-ban-goc.md, cues.js, IMPROVEMENT-PLAN.md nếu có, verify.txt và toàn bộ ảnh trong stills/. Ảnh cue-NN.png là câu `n: NN` trong cues.js.",
+    "Chữ/số trên màn hình hợp lệ khi có trong lời đọc (`text`) HOẶC trong phần mô tả màn hình của đúng câu đó (`title`, `visual` trong cues.js; dòng **Trên màn hình** trong kich-ban-goc.md) — màn hình được phép khác lời đọc. Chỉ báo `off-script` khi không có ở cả hai nơi.",
     "Tiêu chí chung cho từng ảnh: chữ đọc được; chữ/khối không tràn, không bị xén, không chồng nhau; bố cục không trống hay dồn một góc; chữ/số trên màn hình không nằm ngoài kịch bản; cả chuỗi ảnh có nhịp và không lặp máy móc.",
     ...(extra.length ? [
       "Video bật thêm các năng lực dưới đây — soi thêm đúng những tiêu chí này, không tự đặt tiêu chí khác (vi phạm ghi code `module`):",
