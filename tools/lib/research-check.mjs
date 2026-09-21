@@ -244,34 +244,63 @@ export function checkFinding({ claim, finding, resolveSource, referenceDate }) {
 
 /** Con số đáng soát trên màn hình: có từ hai chữ số, hoặc kèm %, dấu thập phân. "Bước 1" thì bỏ qua. */
 const DATA_NUMBER = /\d[\d.,]*\d%?|\d%/g;
-const digitsOnly = (s) => s.replace(/[.,%]/g, '');
+/** Mọi con số trong chữ nguồn, kể cả số một chữ số — "3" trong "GPT-3" cũng là một con số đã biết. */
+const ANY_NUMBER = /\d[\d.,]*\d|\d/g;
+
+/** "0128" → "128", "3.50" → "3.5": một giá trị, một cách viết. */
+const canon = (s) => String(Number(s));
 
 /**
- * Con số `n` có thật sự xuất hiện trong `text` không — theo **ranh giới số**, không phải `includes`.
- * `'2015'.includes('15')` là true, nên một con số bịa nằm trong bất kỳ năm nào cũng coi như "có trong slide".
+ * Các giá trị một con số viết ra có thể mang — **từng con số một**, không gộp chữ số của cả đoạn.
+ *
+ * Bản cũ bỏ hết `.` `,` `%` khỏi toàn bộ chữ nguồn rồi mới tìm, nên "3.5" thành "35" và "1,2" thành "12": kịch
+ * bản đọc "ba mươi lăm phần trăm" hay ghi "35%" trong khi nguồn nói 3,5% vẫn qua — đúng con số bịa mà phép soát
+ * này có để bắt. Dấu phân cách được hiểu theo cả hai lối viết, và chỉ khi nó hợp lý:
+ * - hàng nghìn — mọi nhóm sau dấu đúng 3 chữ số: "128,000" = "128.000" = 128000;
+ * - thập phân — đúng một dấu: "3.5" = "3,5" = 3.5;
+ * - và từng nhóm riêng lẻ ("1,2,3" liệt kê, "GPT-3.5" có số 3), không bao giờ ghép chúng lại thành số mới.
  */
+export function numberForms(token) {
+  const t = String(token).replace(/%$/, '');
+  const parts = t.split(/[.,]/).filter(Boolean);
+  const forms = new Set(parts.map(canon));
+  if (parts.length > 1 && parts.slice(1).every((p) => p.length === 3)) forms.add(canon(parts.join('')));
+  if (parts.length === 2) forms.add(canon(`${parts[0]}.${parts[1]}`));
+  return forms;
+}
+
+/** Tập giá trị của mọi con số trong chữ slide + finding. */
+function numbersIn(text) {
+  const known = new Set();
+  for (const m of String(text ?? '').matchAll(ANY_NUMBER)) for (const f of numberForms(m[0])) known.add(f);
+  return known;
+}
+
+/**
+ * Con số trên màn hình có trong nguồn không. Viết có dấu thì theo cách hiểu hợp lý nhất của chính nó — "3.5%"
+ * là 3.5, "128,000" là 128000 — chứ không theo từng nhóm: nhóm "5" của "3.5" có trong nguồn không làm "3.5" có thật.
+ */
+function screenNumberKnown(known, token) {
+  const parts = String(token).replace(/%$/, '').split(/[.,]/).filter(Boolean);
+  if (parts.length === 1) return known.has(canon(parts[0]));
+  const whole = [];
+  if (parts.slice(1).every((p) => p.length === 3)) whole.push(canon(parts.join('')));
+  if (parts.length === 2) whole.push(canon(`${parts[0]}.${parts[1]}`));
+  return whole.some((f) => known.has(f));
+}
+
 /**
  * Con số nghe thấy có khớp một con số trong slide/finding không.
  *
  * Nguồn viết theo bậc ("100 triệu", "128K") còn lời đọc là giá trị đầy đủ (100 000 000), nên so cả giá trị lẫn
- * phần đầu của nó theo từng bậc: 100 000 000 → "100000000", "100000", "100". Khớp một dạng là đủ.
+ * phần đầu của nó theo từng bậc: 100 000 000 → 100000000, 100000, 100. Khớp một dạng là đủ.
  */
-function spokenNumberKnown(text, n) {
+function spokenNumberKnown(known, n) {
   const forms = new Set([String(n.value)]);
   for (const scale of [1e3, 1e6, 1e9]) {
     if (n.value % scale === 0) forms.add(String(n.value / scale));
   }
-  return [...forms].some((form) => hasNumber(text, form));
-}
-
-function hasNumber(text, n) {
-  if (!n) return false;
-  for (let at = text.indexOf(n); at !== -1; at = text.indexOf(n, at + 1)) {
-    const before = text[at - 1];
-    const after = text[at + n.length];
-    if (!/[0-9]/.test(before ?? '') && !/[0-9]/.test(after ?? '')) return true;
-  }
-  return false;
+  return [...forms].some((form) => known.has(canon(form)));
 }
 
 /**
@@ -286,7 +315,7 @@ export function checkScript({ markdown, deliveries, outline, claims, knownText }
   const script = parseScript(markdown);
   const { issues, stats } = lintScript(script, { deliveries });
   const add = (level, cue, line, message) => issues.push({ level, cue, line, message });
-  const known = digitsOnly(String(knownText ?? ''));
+  const known = numbersIn(knownText);
   const used = new Set();
   const usedClaims = new Set();
 
@@ -308,7 +337,7 @@ export function checkScript({ markdown, deliveries, outline, claims, knownText }
     }
     const screen = String(cue.fields['trên màn hình'] ?? '');
     for (const m of screen.matchAll(DATA_NUMBER)) {
-      if (!hasNumber(known, digitsOnly(m[0]))) add('warning', cue.n, cue.fieldLines['trên màn hình'] ?? cue.line, `con số "${m[0]}" trên màn hình không thấy trong slide hay finding nào`);
+      if (!screenNumberKnown(known, m[0])) add('warning', cue.n, cue.fieldLines['trên màn hình'] ?? cue.line, `con số "${m[0]}" trên màn hình không thấy trong slide hay finding nào`);
     }
     // Con số **người xem nghe thấy**. Không kiểm ở đây thì không kiểm ở đâu cả: luật lint bắt mọi chữ số trong
     // **Lời** viết thành chữ, nên vòng quét chữ số ngay trên không bao giờ nhìn tới lời đọc. Đo thật: sửa "một

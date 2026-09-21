@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fetchPage, isoDay, pageMeta, urlKey } from './fetch-page.mjs';
 import { findPassages, quoteInText } from './page-text.mjs';
 import { checkExtract, checkFinding, checkScript, publisherCount } from './research-check.mjs';
-import { factSlug, findingFromFact, isFresh, lookupFact, saveFact } from './research-facts.mjs';
+import { factForReuse, factSlug, findingFromFact, isFresh, lookupFact, saveFact } from './research-facts.mjs';
 import { readIndex, saveSource, sourceIdFor } from './research-store.mjs';
 import { lintScript, parseRefs, parseScript } from './script-lint.mjs';
 
@@ -326,4 +326,37 @@ test('checkScript nhắc slide chưa có câu nào và claim cần sửa mà kh�
   const r = checkScript({ markdown: SCRIPT, deliveries: DELIVERIES, outline, claims: { c1: { ok: true, verdict: 'fix' }, c2: { ok: true, verdict: 'wrong' } }, knownText: '128,000' });
   assert.deepEqual(r.coverage.missing, [4]);
   assert.ok(r.issues.some((i) => /c2/.test(i.message)));
+});
+
+test('dữ kiện tra ra theo câu hỏi (khoá đặt lại khác) vẫn qua được soát cờ dùng lại', () => {
+  // Tra nhận khoá *hoặc* câu hỏi; soát lại từng đòi khoá — nên lượt sau đặt khoá khác đi thì chính dữ kiện vừa
+  // dùng lại bị coi là cờ giả và claim đi research lại từ đầu.
+  const dir = tmpRun();
+  saveFact(dir, { claim: CLAIM, finding: finding(), sources: { s1: { url: SOURCES.s1.url } }, runId: 'bai-1', checkedAt: new Date(NOW).toISOString() });
+  const rekeyed = { ...CLAIM, id: 'c4', key: 'gpt4 max context length' };
+  const hit = lookupFact(dir, rekeyed, { now: NOW + DAY });
+  assert.ok(hit);
+  const reused = findingFromFact(rekeyed, hit);
+  assert.ok(factForReuse(dir, rekeyed, reused));
+  // cờ dùng lại vẫn phải khớp từng trường: đổi kết luận là cờ giả
+  assert.equal(factForReuse(dir, rekeyed, { ...reused, verdict: 'ok' }), null);
+  // và vẫn phải đúng điều đang hỏi: khoá khác *và* câu hỏi khác thì không nhận
+  assert.equal(factForReuse(dir, { ...rekeyed, question: 'GPT-4 ra mắt khi nào?' }, reused), null);
+});
+
+test('checkScript không ghép chữ số của nguồn: 3.5 không thành 35, 1,2 không thành 12', () => {
+  const outline = [{ slide: 1 }, { slide: 2 }];
+  const script = (loi, screen) => SCRIPT.replace(/- \*\*Lời:\*\* Nó đọc[^\n]*/, `- **Lời:** ${loi}`).replace('GPT-4 Turbo · 128,000 token', screen);
+  const run = (md, knownText) => checkScript({ markdown: md, deliveries: DELIVERIES, outline, claims: { c1: { ok: true, verdict: 'fix' } }, knownText });
+  const flagged = (r, re) => r.issues.some((i) => re.test(i.message));
+  // Nguồn nói 3.5% và 1,2 triệu — kịch bản đọc 35% hay ghi 35% / 12 là con số bịa, phải bị bắt.
+  const src = 'slide 2: tỉ lệ lỗi 3.5%, 1,2 triệu người dùng, GPT-3.5';
+  assert.ok(flagged(run(script('Tỉ lệ lỗi chỉ còn ba mươi lăm phần trăm với mô hình mới.', 'Tỉ lệ lỗi 35%'), src), /ba mươi lăm/));
+  assert.ok(flagged(run(script('Tỉ lệ lỗi đã giảm mạnh với mô hình mới này.', 'Tỉ lệ lỗi 35%'), src), /"35%"/));
+  assert.ok(flagged(run(script('Tỉ lệ lỗi đã giảm mạnh với mô hình mới này.', 'Người dùng: 12'), src), /"12"/));
+  // Viết đúng thì qua — kể cả cách viết khác của cùng giá trị (3,5 ↔ 3.5; 128.000 ↔ 128,000 ↔ 128K).
+  const same = run(script('Tỉ lệ lỗi đã giảm mạnh với mô hình mới này.', 'Tỉ lệ lỗi 3,5%'), src);
+  assert.ok(!flagged(same, /con số/), JSON.stringify(same.issues));
+  const thousands = run(script('Cửa sổ chứa được một trăm hai mươi tám nghìn token.', 'GPT-4 Turbo · 128.000 token'), 'slide 2: 128K token, 128,000');
+  assert.ok(!flagged(thousands, /con số|lời đọc nói/), JSON.stringify(thousands.issues));
 });
