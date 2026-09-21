@@ -133,8 +133,8 @@ function checkPictures(base, where) {
     const src = fs.readFileSync(imagesFile, 'utf8');
     for (const m of src.matchAll(/(?:^|[\s{,])['"]?(s\d+)['"]?\s*:\s*\{([^{}]*)\}/g)) {
       const body = m[2];
-      const file = (body.match(/\bsrc:\s*['"]([^'"]+)['"]/) || [])[1];
-      const kind = (body.match(/\bkind:\s*['"]([^'"]+)['"]/) || [])[1];
+      const file = (body.match(/\bsrc['"]?\s*:\s*['"]([^'"]+)['"]/) || [])[1];
+      const kind = (body.match(/\bkind['"]?\s*:\s*['"]([^'"]+)['"]/) || [])[1];
       slots.set(m[1], { file, kind });
       if (!file) problems.push(`${where}/images.js: ${m[1]} has no src`);
       else if (!localFile(file)) problems.push(`${where}/images.js: ${m[1]} src ${file} is not a design-system file (path from vinuni-lesson-video-ds/)`);
@@ -154,7 +154,7 @@ function checkPictures(base, where) {
         warnings.push(`${at}: PhotoCard in a video without images.js — only pictures the editor approved belong here`);
         continue;
       }
-      for (const [, slot] of [...props.matchAll(/IMAGES(?:\.(s\d+)|\[['"](s\d+)['"]\])/g)].map((x) => [x[0], x[1] || x[2]])) {
+      for (const slot of new Set([...props.matchAll(/IMAGES(?:\.(s\d+)|\[['"](s\d+)['"]\])/g)].map((x) => x[1] || x[2]))) {
         const def = slots.get(slot);
         if (!def) warnings.push(`${at}: PhotoCard uses ${slot}, which images.js does not list`);
         else if (def.kind && def.kind !== 'use') warnings.push(`${at}: PhotoCard shows ${slot}, a "${def.kind}" picture — redraw it instead of showing it`);
