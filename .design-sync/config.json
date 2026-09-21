@@ -103,6 +103,7 @@
     "Series": "../.design-sync/docs/Series.md",
     "Slider": "components/data/Slider.prompt.md",
     "SourceCard": "components/figures/SourceCard.prompt.md",
+    "PhotoCard": "components/media/PhotoCard.prompt.md",
     "SpeechBubble": "components/figures/Figures.prompt.md",
     "SplitPathIcon": "components/icons/Icons.prompt.md",
     "Spotlight": "components/marks/Spotlight.prompt.md",

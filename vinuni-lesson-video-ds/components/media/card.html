@@ -1,0 +1,36 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Media · ảnh tư liệu" subtitle="PhotoCard — ảnh đã được người dựng duyệt (images.js): contain / cover + focus, dòng ghi nguồn bắt buộc, zoom chậm tuỳ chọn" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Media</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 300px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var SRC = 'assets/samples/alan-turing-aged-16.jpg';
+  var CREDIT = 'Ảnh: có thể là A. R. Chaffin · Public domain · Wikimedia Commons';
+  VK.mountCard('#root', {
+    width: 1400, height: 600, duration: 240,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.PhotoCard, { x: 40, y: 30, w: 400, h: 540, src: SRC, imgW: 480, imgH: 654, caption: 'Alan Turing, khoảng 1928', credit: CREDIT, tag: true }),
+        h(VK.PhotoCard, { x: 480, y: 30, w: 460, h: 300, src: SRC, imgW: 480, imgH: 654, fit: 'cover', focus: [0.5, 0.3], kenBurns: VK.linearProgress(f, 0, 240), credit: CREDIT }),
+        h(VK.SvgText, { x: 710, y: 372, size: 19, weight: 600, color: C.textMuted }, "fit='cover' · focus [0.5, 0.3] · kenBurns"),
+        h(VK.Card, { x: 980, y: 30, w: 380, h: 300, label: 'CÂU ĐANG ĐỌC', lines: ['Năm 1950, Turing đặt', 'câu hỏi: máy có thể', 'suy nghĩ không?'] }),
+        h(VK.SvgText, { x: 710, y: 470, size: 19, weight: 600, color: C.textMuted }, 'ảnh là chủ thể của cảnh,'),
+        h(VK.SvgText, { x: 710, y: 498, size: 19, weight: 600, color: C.textMuted }, 'ý đang đọc nằm bên cạnh — không đè lên ảnh')
+      );
+    }
+  });
+</script>
+</body>
+</html>
