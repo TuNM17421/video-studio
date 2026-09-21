@@ -1,7 +1,8 @@
 /** CLI arguments are provider-specific; a binary swap alone is not compatible. */
-export function claudeExecArgs(sessionId: string, resume: boolean, allowed: string[], denied: string[]) {
+export function claudeExecArgs(sessionId: string, resume: boolean, allowed: string[], denied: string[], model?: string) {
   return [
     "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
+    ...(model ? ["--model", model] : []),
     ...(resume ? ["--resume", sessionId] : ["--session-id", sessionId]),
     "--allowedTools", ...allowed,
     "--disallowedTools", ...denied,
@@ -30,13 +31,14 @@ export function claudeExecArgs(sessionId: string, resume: boolean, allowed: stri
  */
 export const ANTIGRAVITY_TIMEOUT = "4h";
 
-export function antigravityExecArgs(sessionId: string | null) {
+export function antigravityExecArgs(sessionId: string | null, model?: string) {
   return [
     "--input-format", "stream-json",
     "--output-format", "stream-json",
     "--dangerously-skip-permissions",
     "--disable-slash-commands",
     "--print-timeout", ANTIGRAVITY_TIMEOUT,
+    ...(model ? ["--model", model] : []),
     ...(sessionId ? ["--conversation", sessionId] : []),
   ];
 }
@@ -46,10 +48,11 @@ export function antigravityStdin(prompt: string) {
   return `${JSON.stringify({ event: "user", message: { content: prompt } })}\n`;
 }
 
-export function codexExecArgs(sessionId: string | null) {
+export function codexExecArgs(sessionId: string | null, model?: string) {
   if (sessionId) {
     return [
       "exec", "resume", "--json",
+      ...(model ? ["-m", model] : []),
       "-c", 'approval_policy="never"',
       "-c", 'sandbox_mode="workspace-write"',
       sessionId, "-",
@@ -57,7 +60,64 @@ export function codexExecArgs(sessionId: string | null) {
   }
   return [
     "exec", "--json", "--sandbox", "workspace-write",
+    ...(model ? ["-m", model] : []),
     "-c", 'approval_policy="never"',
     "-",
   ];
+}
+
+/**
+ * Visual QA is a separate, read-only session with a clean context — the provider is secondary. Each
+ * adapter keeps the same guarantees in its own CLI's terms: no tool that writes or runs commands, and the
+ * report forced into QA_SCHEMA (`parseQaReport` re-checks it on our side either way).
+ */
+
+/** Claude: only the read tools exist in the session; structured output via `--json-schema`. */
+export function claudeQaArgs(schema: string, model?: string) {
+  return [
+    "-p", "--output-format", "json", "--permission-mode", "dontAsk",
+    ...(model ? ["--model", model] : []),
+    "--tools", "Read", "Glob", "Grep",
+    "--allowedTools", "Read", "Glob", "Grep",
+    "--disallowedTools", "Write", "Edit", "Bash", "PowerShell", "Read(**/.env)", "Read(**/.env.*)",
+    "--json-schema", schema,
+  ];
+}
+
+/**
+ * Codex: `read-only` sandbox instead of the authoring lane's `workspace-write`; the stills go in as image
+ * attachments (one `--image=` each, so the multi-value flag cannot swallow the `-` prompt argument), the
+ * schema as a file, and the final answer is read from `--output-last-message` rather than the event stream.
+ */
+export function codexQaArgs(schemaFile: string, lastMessageFile: string, images: string[], model?: string) {
+  return [
+    "exec", "--json", "--sandbox", "read-only", "--skip-git-repo-check",
+    ...(model ? ["-m", model] : []),
+    "-c", 'approval_policy="never"',
+    "--output-schema", schemaFile,
+    "--output-last-message", lastMessageFile,
+    ...images.map((image) => `--image=${image}`),
+    "-",
+  ];
+}
+
+/** Antigravity: read-only plan mode in its sandbox, schema-bound output. */
+export function antigravityQaArgs(schema: string, model?: string) {
+  return [
+    "--print",
+    "--input-format", "text",
+    "--output-format", "json",
+    "--mode", "plan",
+    "--sandbox",
+    ...(model ? ["--model", model] : []),
+    "--json-schema", schema,
+    "--print-timeout", "10m",
+  ];
+}
+
+/** Env for any agent process: the Studio's paid TTS credential never enters it. */
+export function sanitizedAgentEnv() {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (key.startsWith("ELEVENLABS_")) delete env[key];
+  return env;
 }

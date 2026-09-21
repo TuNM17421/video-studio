@@ -8,8 +8,9 @@
  *  · code uses only the 9 palette hex values; no Math.random / Date.now in scenes or components
  *  · scene captions are contiguous from 0 to the scene duration and ≤ 78 characters each
  *  · example videos (ui_kits/lesson-video/videos/<dir>/): required files present, caption pages
- *    ≤ 78 characters covering every cue exactly, and a smoke render of every 3rd frame (plus each cue's
- *    first and last frame) that must not throw or write NaN / undefined into an attribute.
+ *    ≤ 78 characters covering every cue exactly, `quiz: true` only on silent cues, and a smoke render of
+ *    every 3rd frame (plus each cue's first and last frame) that must not throw or write NaN / undefined
+ *    into an attribute.
  *    The smoke render needs esbuild + react-dom (same lookup as build.mjs); skipped if absent.
  */
 import fs from 'node:fs';
@@ -142,7 +143,7 @@ for (const dir of videoDirs) {
     }
     import { cueCaptions } from ${JSON.stringify(path.join(DS, 'lib/captions.js'))};
     import { ConfigContext, FrameContext } from ${JSON.stringify(path.join(DS, 'lib/player.jsx'))};
-    export { meta, CUES, cueCaptions };
+    export { meta, CUES, AUTHORED, cueCaptions };
     export const renderAt = (frame) =>
       renderToStaticMarkup(
         React.createElement(ConfigContext.Provider, { value: { fps: 30, width: 1920, height: 1080, durationInFrames: meta.duration } },
@@ -169,7 +170,7 @@ for (const dir of videoDirs) {
     problems.push(`${where} does not build or load: ${String(e.message || e).split('\n')[0]}`);
     continue;
   }
-  const { meta, CUES, cueCaptions, renderAt } = mod;
+  const { meta, CUES, AUTHORED, cueCaptions, renderAt } = mod;
   const last = CUES[CUES.length - 1];
   if (meta.duration !== last.end) problems.push(`${where}: meta.duration ${meta.duration} ≠ last cue end ${last.end}`);
   // captions
@@ -184,6 +185,14 @@ for (const dir of videoDirs) {
   for (const cue of CUES) {
     const said = caps.filter((c) => c.start >= cue.start && c.end <= cue.end).map((c) => c.text).join(' ');
     if (said !== cue.text.trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
+  }
+  // quiz flag — read from cues.js, not the timeline: `quiz` / `silent` are authored fields that retiming
+  // drops. The quiz bed replaces the background music over every flagged cue, so a flag on a spoken câu
+  // means the bed plays over the voice; catch it here, where the scene is still being authored.
+  for (const cue of AUTHORED) {
+    if (cue.quiz && !cue.silent && String(cue.text || '').trim()) {
+      problems.push(`${where}: câu ${cue.n} có lời đọc nhưng đánh dấu quiz: true — cờ này chỉ dành cho khoảng chờ im lặng (xem CLAUDE.md "Nhạc nền và nhạc quiz")`);
+    }
   }
   // smoke render
   const frames = new Set();

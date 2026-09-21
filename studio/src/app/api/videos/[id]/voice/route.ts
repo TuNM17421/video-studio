@@ -1,14 +1,13 @@
 import type { VoiceSettings, VoiceSource } from "@/lib/types";
 import { handle } from "@/lib/server/http";
-import { hasKaggleCreds } from "@/lib/server/kaggle-creds";
 import { isRunning, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { readState, setStage, updateState } from "@/lib/server/videos";
-import { dryRun, exportScript, generateVoice, generateVoiceKaggle, hasKey, importVoice, lastDryRun, lastImportReport, generateLocal, omnivoiceServer, omnivoiceStatus, scanImport, setupAlign, setupOmnivoice } from "@/lib/server/voice";
+import { dryRun, exportScript, generateVoice, hasKey, importVoice, lastDryRun, lastImportReport, generateLocal, omnivoiceCast, omnivoiceServer, omnivoiceStatus, scanImport, setupAlign, setupOmnivoice } from "@/lib/server/voice";
 
-type Action = "source" | "export-script" | "dry-run" | "generate" | "generate-kaggle" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-generate" | "align-setup";
+type Action = "source" | "export-script" | "dry-run" | "generate" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-cast" | "omnivoice-generate" | "align-setup";
 
-const SOURCES: VoiceSource[] = ["elevenlabs", "kaggle", "import", "local"];
+const SOURCES: VoiceSource[] = ["elevenlabs", "import", "local"];
 
 function settings(body: { settings?: VoiceSettings }, current: VoiceSettings): VoiceSettings {
   const s = body.settings;
@@ -20,10 +19,21 @@ function settings(body: { settings?: VoiceSettings }, current: VoiceSettings): V
     language: s.language,
     pause: Number(s.pause),
     importDir: String(s.importDir ?? current.importDir ?? "").trim(),
-    kaggleRefAudio: String(s.kaggleRefAudio ?? current.kaggleRefAudio ?? "").trim(),
-    kaggleRefText: String(s.kaggleRefText ?? current.kaggleRefText ?? ""),
-    kaggleSpeed: Number(s.kaggleSpeed ?? current.kaggleSpeed ?? 1.0),
+    speakers: cast(s.speakers ?? current.speakers),
   };
+}
+
+/** Giọng chọn riêng cho từng vai: chỉ nhận chuỗi, bỏ mọi khoá rỗng — nó sẽ thành đối số dòng lệnh. */
+function cast(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, string> = {};
+  for (const [who, voice] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof voice !== "string" || !voice.trim()) continue;
+    // Không có gạch nối "=" trong tên vai thì `--speaker "Tên=giọng"` mới tách lại đúng được.
+    if (who.includes("=")) continue;
+    out[who] = voice.trim();
+  }
+  return out;
 }
 
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -36,6 +46,11 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   const { state, managed } = readState(id);
   if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
   if (state.stages.cues !== "done") throw new HttpError(400, "Duyệt lời & cue trước.");
+  // Dàn vai chỉ đọc cues.js + voices.json, không đụng vào gì: trả lời được cả khi video đang sinh giọng,
+  // nếu không thì panel trắng bảng chọn giọng suốt lượt chạy dài nhất của cả luồng.
+  if (body.action === "omnivoice-cast") {
+    return Response.json(await omnivoiceCast(id, body.settings ? settings(body, state.voice) : state.voice));
+  }
   if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy.");
 
   // Remembering the chosen source must not demand a complete, valid setup for the other one.
@@ -72,8 +87,8 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     // Ghi giọng xuống state trước: nếu không, lần refresh kế tiếp kéo giọng cũ về và lượt sinh sau
     // lặng lẽ đọc bằng người khác. dry-run và scan-import cũng lưu theo cách này.
     const v = settings(body, state.voice);
-    updateState(id, (s) => { s.voice = { ...s.voice, voiceId: v.voiceId }; });
-    void generateLocal(id, v.voiceId)
+    updateState(id, (s) => { s.voice = { ...s.voice, voiceId: v.voiceId, speakers: v.speakers }; });
+    void generateLocal(id, v)
       .catch((error) => log(id, "error", error instanceof Error ? error.message : String(error)));
     return Response.json({ started: true }, { status: 202 });
   }
@@ -83,17 +98,6 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     void generateVoice(id).catch((error) => {
       log(id, "error", error instanceof Error ? error.message : String(error));
       setStage(id, "voice", "error", "Tạo giọng thất bại.");
-    });
-    return Response.json({ started: true }, { status: 202 });
-  }
-  // Push → poll → download → import → bind, all in one job; see kaggleCommand/generateVoiceKaggle for phases.
-  if (body.action === "generate-kaggle") {
-    if (!hasKaggleCreds()) throw new HttpError(400, "Nhập Kaggle username/key trước.");
-    // No separate "kiểm tra" step for this source — persist what is on screen right before starting.
-    updateState(id, (s) => { s.voice = settings(body, state.voice); });
-    void generateVoiceKaggle(id).catch((error) => {
-      log(id, "error", error instanceof Error ? error.message : String(error));
-      setStage(id, "voice", "error", "Tạo giọng bằng OmniVoice thất bại.");
     });
     return Response.json({ started: true }, { status: 202 });
   }

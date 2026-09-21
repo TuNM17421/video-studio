@@ -96,3 +96,12 @@ Thêm một dòng ở đầu kịch bản cho người dựng biết có bao nhi
 ```markdown
 - **Chỗ dừng:** ba chỗ, mỗi chỗ ba mươi giây.
 ```
+
+---
+
+## Tiêu chí QA
+
+Lượt QA ảnh chỉ đọc mục này khi video bật quiz (mã lỗi `module`).
+
+- Ảnh của khoảng chờ có vòng đếm ngược (`Countdown`) và vẫn giữ bối cảnh cùng câu hỏi trên màn hình.
+- Câu hỏi có đáp án thì câu mẫu được hỏi tới phải in sẵn trên màn hình, đọc được.

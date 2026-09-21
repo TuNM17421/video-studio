@@ -40,7 +40,7 @@ export default function DesignSystemPage() {
           <dl className={styles.heroFacts}>
             <div><dt>UI engine</dt><dd>Ant Design 6</dd></div>
             <div><dt>Grid</dt><dd>4 px</dd></div>
-            <div><dt>Theme</dt><dd>Light</dd></div>
+            <div><dt>Theme</dt><dd>Sáng / Tối</dd></div>
           </dl>
         </div>
         <div className={styles.heroSignal}>
@@ -161,7 +161,8 @@ export default function DesignSystemPage() {
           <li><strong>Đúng agent boundary:</strong> agent là lựa chọn cấp trang, xuất hiện trước luồng sản xuất; video mới cho chọn một lần, video đã tạo chỉ hiển thị trạng thái khóa.</li>
           <li><strong>Đúng capability grid:</strong> tính năng nội dung là collection card chọn nhiều; card mới tự xuống hàng, trạng thái chọn dùng dấu check cùng viền và nền, cấu hình phụ chỉ hiện khi tính năng tương ứng được bật.</li>
           <li><strong>Đúng navigation:</strong> sidebar desktop thu gọn thành rail 72 px; mỗi icon dùng điểm chạm 44 px, active state bao trọn điểm chạm và nhãn chuyển sang tooltip. Control thu gọn nằm trong header sidebar; khi rail đóng, logo nhường chỗ cho control mở rộng lúc hover hoặc focus. Trạng thái rail phải giữ nguyên khi đổi route, không nháy về sidebar mở. Mobile luôn hiển thị đầy đủ nhãn.</li>
-          <li><strong>Đúng đường đi:</strong> cuối mỗi cổng có Back và Next; Next vẫn hiện khi bị khóa và nói rõ điều kiện để tiếp tục.</li>
+          <li><strong>Đúng đường đi:</strong> mỗi cổng có một thanh quyết định dính đáy: trạng thái bên trái, rồi Quay lại, hành động của cổng và Tiếp. Tiếp chỉ hiện khi cổng đã xong; trước đó hành động của cổng (Duyệt, Tạo giọng, Render…) là nút chính duy nhất, và dòng trạng thái nói còn thiếu gì.</li>
+          <li><strong>Đúng nút chuyển:</strong> mọi Segmented lấy màu từ <code>segmentedTheme()</code> qua theme Ant, cả sáng lẫn tối — phần được chọn nền <code>brand.primary</code>, chữ <code>neutral.0</code> (trắng ở chế độ sáng); không tự viết CSS màu cho một Segmented riêng lẻ.</li>
           <li><strong>Đúng hierarchy:</strong> production flow dùng active 100%, completed 70%, future 35%; chữ trạng thái vẫn phải giữ contrast đọc được.</li>
           <li><strong>Đủ viewport:</strong> desktop 1440, laptop 1024 và mobile 390 không tràn hoặc mất thao tác.</li>
           <li><strong>Đủ tiếp cận:</strong> focus rõ, contrast đạt, touch target đủ lớn và reduced-motion hoạt động.</li>

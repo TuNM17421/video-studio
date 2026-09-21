@@ -32,7 +32,14 @@ export function listModules(): ModuleDef[] {
     const id = file.slice(0, -3);
     // README.md and anything else that is not a valid id is documentation, not a capability.
     if (!ID.test(id)) continue;
-    const meta = frontMatter(fs.readFileSync(path.join(DIR, file), "utf8"));
+    let text: string;
+    try {
+      text = fs.readFileSync(path.join(DIR, file), "utf8");
+    } catch {
+      // Removed between readdir and read (someone deleting a capability while the studio runs): skip it.
+      continue;
+    }
+    const meta = frontMatter(text);
     if (!meta.name) continue;
     list.push({
       id,
@@ -63,3 +70,19 @@ export const cleanModules = (value: unknown): string[] => {
   const known = new Set(listModules().map((m) => m.id));
   return [...new Set(value.filter((v): v is string => typeof v === "string" && known.has(v)))];
 };
+
+/** The `## Tiêu chí QA` section of a capability's file: what visual QA checks only when it is on. */
+function qaSection(text: string) {
+  const m = text.match(/^##\s+Tiêu chí QA\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
+  return m ? m[1].replace(/^\s*---\s*$/gm, "").trim() : "";
+}
+
+/** QA criteria of the chosen capabilities, as `{ name, criteria }`; capabilities without the section drop out. */
+export function moduleQaCriteria(ids: string[]) {
+  return ids.flatMap((id) => {
+    const m = moduleById(id);
+    if (!m) return [];
+    const criteria = qaSection(fs.readFileSync(path.join(REPO, m.template), "utf8"));
+    return criteria ? [{ name: m.name, criteria }] : [];
+  });
+}

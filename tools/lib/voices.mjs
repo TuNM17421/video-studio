@@ -63,6 +63,9 @@ export function castSpeaker(speaker) {
   );
   if (character) {
     const alias = (character.aliases || []).find((a) => String(a).toLowerCase() === lower);
+    // A character may be listed before anyone lends it a voice (its face is ready, the casting is not):
+    // it cannot speak yet, and saying so here stops the run before anything is billed.
+    if (!character.voice) throw new Error(`nhân vật "${character.name}" chưa được gán giọng trong voices.json — chọn nhân vật khác, hoặc báo dev gán giọng cho vai này.`);
     const voice = voices.find((v) => v.id === character.voice || v.name.toLowerCase() === String(character.voice).toLowerCase());
     if (!voice) throw new Error(`nhân vật "${character.name}" trỏ tới giọng "${character.voice}" không có trong voices.json.`);
     return {

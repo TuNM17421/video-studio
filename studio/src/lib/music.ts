@@ -2,9 +2,8 @@
  * Music the Studio can put under a video. The catalog itself is music.json at the repo root (shared with
  * the command line through tools/lib/music.mjs); the audio lives on the media bucket, never in git.
  *
- * The two choices are made at different moments on purpose: a background bed is a finishing decision, so
- * it sits on the render step, while quiz music has to be known while the script is written — the cues the
- * music plays over are marked `quiz: true` in cues.js by the agent that writes them.
+ * Both tracks are finishing decisions picked on the render step. Only *where* quiz music plays is settled
+ * early: the plan's "Video có quiz" tick makes the agent mark those cues `quiz: true` in cues.js.
  */
 export const NO_MUSIC = "none";
 
@@ -15,6 +14,8 @@ export interface MusicTrack {
   summary: string;
   /** Public URL on the media bucket, or null when the manifest does not list the key yet. */
   url: string | null;
+  /** The bed a new video starts with (music.json `"default": true`). */
+  isDefault?: boolean;
 }
 
 export interface MusicCatalog {

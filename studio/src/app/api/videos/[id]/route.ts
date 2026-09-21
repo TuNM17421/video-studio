@@ -1,10 +1,13 @@
 import type { VideoDetail } from "@/lib/types";
 import { handle } from "@/lib/server/http";
 import { currentJob, isRunning, logs } from "@/lib/server/jobs";
-import { assertId, HttpError, rel } from "@/lib/server/paths";
+import { assertId, HttpError, rel, REPO } from "@/lib/server/paths";
 import { trashVideo } from "@/lib/server/trash-video";
 import { lastDryRun, lastImportReport } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
+import { blockersFor, qaFindings, workflowReport } from "@/lib/server/workflow";
+import { harnessRuns } from "@/lib/server/harness";
+import { installedAgents } from "@/lib/server/agent-config";
 
 export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
@@ -19,6 +22,11 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     logs: logs(id).slice(-300),
     dryRun: lastDryRun(id),
     importReport: lastImportReport(id),
+    workflow: workflowReport(REPO, id) as VideoDetail["workflow"],
+    installedAgents: installedAgents(),
+    harness: harnessRuns(id),
+    findings: qaFindings(id),
+    blocking: { cues: blockersFor(id, "cues", state).length, scenes: blockersFor(id, "scenes", state).length },
   };
   return Response.json(detail);
 });

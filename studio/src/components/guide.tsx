@@ -1,6 +1,5 @@
 "use client";
 
-import { useKeyStatus } from "@/lib/client";
 import { ArtCues, ArtPlan, ArtRender, ArtRoles, ArtScenes, ArtVoice } from "./guide-art";
 import { Shell } from "./shell";
 
@@ -68,8 +67,7 @@ const FACTS = [
 ];
 
 export default function Guide() {
-  const { hasKey } = useKeyStatus();
-  return <Shell page="guide" hasKey={hasKey}>
+  return <Shell page="guide">
     <div className="page-heading">
       <div>
         <div className="eyebrow"><span className="tiny-mark" /> hướng dẫn</div>

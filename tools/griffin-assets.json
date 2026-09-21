@@ -1,0 +1,126 @@
+{
+  "_comment": [
+    "Nguồn ảnh của linh vật Griffin — tools/griffin-assets.py đọc file này.",
+    "Đường dẫn tính từ thư mục bộ gốc (VinUni_Griffin_Transparent_Parts/), không kèm .png.",
+    "Mỗi tư thế: label/group = tên và nhóm hiện ở Studio (Thư viện · Mascot), hx = tâm đầu theo bề ngang ảnh",
+    "(0–1, để đặt đạo cụ), walk = tự nhún nhịp bước, moods = biểu cảm → ảnh. Biểu cảm ĐẦU TIÊN là ảnh gốc để",
+    "căn các ảnh khác và là ảnh mặc định khi cảnh gọi một biểu cảm tư thế chưa có.",
+    "Thêm biểu cảm = thêm một dòng vào moods rồi chạy lại script.",
+    "mirror = tư thế lật ngang từ một tư thế khác (dùng đủ biểu cảm của tư thế đó, không khai moods).",
+    "props: file = ảnh trong 08_accessories_props, k = hệ số cỡ so với đạo cụ khác,",
+    "dot = vẽ thêm dấu chấm dưới thân (đường kính theo bề ngang thân) — bộ gốc vẽ ! và ? thiếu dấu chấm.",
+    "badges: chỉnh riêng từng ảnh huy hiệu — dy = số px (theo ảnh gốc 02_faces) chèn trong suốt phía trên, hạ mặt xuống cho ngang các huy hiệu khác."
+  ],
+  "moods": {
+    "neutral": "Bình thường",
+    "happy": "Vui",
+    "wink": "Nháy mắt",
+    "surprised": "Ngạc nhiên",
+    "thinking": "Suy nghĩ",
+    "sad": "Buồn",
+    "stern": "Nghiêm"
+  },
+  "poses": {
+    "stand": {
+      "label": "Đứng",
+      "group": "Tư thế",
+      "hx": 0.59,
+      "moods": {
+        "neutral": "griffin_generated_images/03_calm",
+        "happy": "griffin_generated_images/04_happy",
+        "wink": "griffin_generated_images/05_wink",
+        "surprised": "griffin_generated_images/06_surprised",
+        "thinking": "griffin_generated_images/07_looking_up",
+        "sad": "griffin_generated_images/08_sad_looking_down",
+        "stern": "griffin_generated_images/09_stern_serious"
+      }
+    },
+    "wings": {
+      "label": "Giơ cánh",
+      "group": "Tư thế",
+      "hx": 0.52,
+      "moods": {
+        "neutral": "griffin_mascot_generated_images/02_calm_open_eyes",
+        "happy": "griffin_mascot_generated_images/03_happy_closed_eyes",
+        "wink": "griffin_mascot_generated_images/04_wink_smile",
+        "surprised": "griffin_mascot_generated_images/05_surprised_wide_eyes",
+        "thinking": "griffin_mascot_generated_images/06_looking_up_side",
+        "sad": "griffin_mascot_generated_images/07_sad_looking_down",
+        "stern": "griffin_mascot_generated_images/08_stern_serious"
+      }
+    },
+    "walk-left": {
+      "label": "Đi sang trái",
+      "group": "Tư thế",
+      "hx": 0.38,
+      "walk": true,
+      "moods": {
+        "neutral": "griffin_mascot_all_generated/04_calm_eyes",
+        "happy": "griffin_mascot_all_generated/05_happy_closed_eyes",
+        "wink": "griffin_mascot_all_generated/06_wink",
+        "surprised": "griffin_mascot_all_generated/08_surprised_wide_eyes",
+        "thinking": "griffin_mascot_all_generated/09_looking_up_side",
+        "sad": "griffin_mascot_all_generated/10_sad_looking_down",
+        "stern": "griffin_mascot_all_generated/11_stern_serious"
+      }
+    },
+    "walk-right": {
+      "label": "Đi sang phải",
+      "group": "Tư thế",
+      "hx": 0.62,
+      "walk": true,
+      "mirror": "walk-left"
+    },
+    "welcome": {
+      "label": "Chào đón",
+      "group": "Động tác",
+      "hx": 0.5,
+      "moods": {
+        "neutral": "griffin_generated_images(1)/griffin_generated_images/05_front_wings_spread_welcoming"
+      }
+    },
+    "wave": {
+      "label": "Vẫy cánh",
+      "group": "Động tác",
+      "hx": 0.46,
+      "moods": {
+        "neutral": "griffin_generated_images(1)/griffin_generated_images/06_front_right_wing_wave"
+      }
+    },
+    "rest": {
+      "label": "Ngồi nghỉ",
+      "group": "Động tác",
+      "hx": 0.42,
+      "moods": {
+        "neutral": "griffin_generated_images(1)/griffin_generated_images/07_sitting_wings_folded_tail_right"
+      }
+    }
+  },
+  "props": {
+    "lightbulb": {
+      "label": "Bóng đèn",
+      "file": "lightbulb"
+    },
+    "question": {
+      "label": "Dấu hỏi",
+      "file": "question_mark",
+      "k": 1.3,
+      "dot": 0.62
+    },
+    "exclamation": {
+      "label": "Dấu chấm than",
+      "file": "exclamation",
+      "k": 1.3,
+      "dot": 0.72
+    },
+    "sparkle": {
+      "label": "Lấp lánh",
+      "file": "sparkle"
+    }
+  },
+  "badges": {
+    "thinking": {
+      "dy": 16
+    }
+  }
+}
