@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { clearKaggleCreds, hasKaggleCreds, kaggleEnv, kaggleUsername, parseKaggleJson, setKaggleCreds } from "./kaggle-creds";
+import { clearKaggleCreds, hasKaggleCreds, kaggleEnv, kaggleUsername, parseKaggleJson, redactKaggle, setKaggleCreds } from "./kaggle-creds";
+
+const LEGACY = "0123456789abcdef0123456789abcdef";
 
 describe("Kaggle credentials", () => {
   afterEach(() => { clearKaggleCreds(); });
@@ -16,14 +18,40 @@ describe("Kaggle credentials", () => {
     expect(() => parseKaggleJson("not json")).toThrow();
   });
 
-  it("stays empty until credentials are set, then reports them without echoing the key", () => {
+  it("stays empty until credentials are set, then hands a legacy key to the CLI as username/key", () => {
     expect(hasKaggleCreds()).toBe(false);
-    setKaggleCreds("thai", "abc123def456");
+    setKaggleCreds("thai", LEGACY);
     expect(hasKaggleCreds()).toBe(true);
     expect(kaggleUsername()).toBe("thai");
     const env = kaggleEnv();
     expect(env.KAGGLE_USERNAME).toBe("thai");
-    expect(env.KAGGLE_KEY).toBe("abc123def456");
+    expect(env.KAGGLE_KEY).toBe(LEGACY);
+    expect(env.KAGGLE_API_TOKEN).toBeUndefined();
+  });
+
+  it("passes a new-style access token as KAGGLE_API_TOKEN, not as a legacy key", () => {
+    setKaggleCreds("thai", "KGAT_abcdefghijklmnop");
+    const env = kaggleEnv();
+    expect(env.KAGGLE_API_TOKEN).toBe("KGAT_abcdefghijklmnop");
+    expect(env.KAGGLE_KEY).toBeUndefined();
+  });
+
+  it("isolates the CLI from credentials already on this machine", () => {
+    const before = process.env.KAGGLE_API_TOKEN;
+    process.env.KAGGLE_API_TOKEN = "someone-elses-token";
+    try {
+      setKaggleCreds("thai", LEGACY);
+      const env = kaggleEnv();
+      expect(env.KAGGLE_API_TOKEN).toBeUndefined();
+      expect(env.KAGGLE_CONFIG_DIR).toMatch(/\.venv-kaggle[\\/]config$/);
+    } finally {
+      if (before === undefined) delete process.env.KAGGLE_API_TOKEN; else process.env.KAGGLE_API_TOKEN = before;
+    }
+  });
+
+  it("redacts the key from log lines", () => {
+    setKaggleCreds("thai", LEGACY);
+    expect(redactKaggle(`401 for key ${LEGACY}`)).toBe("401 for key •••");
   });
 
   it("rejects a username with spaces or symbols outside kaggle's allowed set", () => {
@@ -36,7 +64,7 @@ describe("Kaggle credentials", () => {
   });
 
   it("clears back to no credentials", () => {
-    setKaggleCreds("thai", "abc123def456");
+    setKaggleCreds("thai", LEGACY);
     clearKaggleCreds();
     expect(hasKaggleCreds()).toBe(false);
   });

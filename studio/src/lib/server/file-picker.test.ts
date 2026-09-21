@@ -13,12 +13,6 @@ describe("desktop file picker", () => {
     expect(args).not.toContain("--directory");
     expect(args).toContain("--file-filter=Video | *.mp4 *.mov *.webm *.mkv *.avi");
   });
-
-  it("filters to WAV when choosing an OmniVoice reference sample", () => {
-    const args = filePickerArgs("file", "voice-ref");
-    expect(args).not.toContain("--directory");
-    expect(args).toContain("--file-filter=WAV | *.wav");
-  });
 });
 
 describe("windows file picker (PowerShell)", () => {

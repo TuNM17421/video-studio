@@ -1,15 +1,25 @@
 # OmniVoice trên Kaggle
 
-Xuất lời đã duyệt bằng `node tools/voice-export.mjs <video dir> --out projects/<id>/voice-script`. Mỗi dòng `voice-batch.jsonl` chứa `id`, `text`, `language_id`.
+Cùng model và cùng dàn vai với model local (`castLocal`), chạy trên một kernel private có GPU T4 của Kaggle.
+Trong Studio, server tự làm cả lượt (tab **Kaggle** ở bước Giọng đọc) — agent **không** đẩy kernel: mỗi lượt
+tiêu quota GPU tuần của thành viên, và credentials chỉ nằm trong RAM của Studio.
 
-Chuẩn bị WAV giọng mẫu và lời đọc **đúng với WAV** (đưa chuỗi trực tiếp hoặc `@ref.txt`). Tạo kernel:
+Khi thành viên tự chạy tay (đã có `kaggle` CLI — `npm run setup:kaggle` — và đã đăng nhập):
 
 ```sh
-KAGGLE_USERNAME=<tên Kaggle> node tools/voice-kaggle.mjs --batch projects/<id>/voice-script/voice-batch.jsonl --ref-audio <ref.wav> --ref-text @<ref.txt> --out <thư mục kernel> --speed 1.0
+KAGGLE_USERNAME=<tên> node tools/voice-kaggle.mjs --cues <video dir>/cues.js --out <thư mục kernel> [--voice <giọng|file>] [--speaker "Tú=<giọng|file>"]
+kaggle kernels push -p <thư mục kernel> --accelerator NvidiaTeslaT4
+kaggle kernels status <tên>/vs-<id>-voice          # chờ tới "COMPLETE"
+kaggle kernels output <tên>/vs-<id>-voice -p projects/<id>/voice-script/kaggle
+node tools/voice-import.mjs --cues <video dir>/cues.js --from projects/<id>/voice-script/kaggle/out --scan
 ```
 
-Tool tạo `run.py` và `kernel-metadata.json`. Khi người dùng đã chọn workflow Kaggle/OmniVoice, agent tự chạy private `push`, theo dõi status, tải `output` và retry cue lỗi; không dừng để hỏi lại từng bước. Khi push, **phải dùng `--accelerator NvidiaTeslaT4`**: P100 (`sm_60`) có thể lỗi `no kernel image is available` với PyTorch mới. Nếu không đặt `KAGGLE_USERNAME`, sửa `id` trong metadata trước khi push.
-
-`run.py` cài `omnivoice` và `soundfile`, giải mã WAV mẫu nhúng, sinh từng câu với `num_step=32`. Mặc định `--speed 1.0`: đọc nhanh hơn khiến OmniVoice nuốt mất từ đầu câu, cùng rủi ro đã gặp ở đường model local — chỉ đổi tốc độ khi người dùng chủ động yêu cầu. Audio ngắn hơn `số từ × 0,18 giây` được thử lại tối đa 3 lần; bản dài nhất được ghi thành `out/<id>.wav`. Mở/nghe và kiểm tra WAV trước khi nhập.
-
-Sau khi tải output, chạy `voice-import.mjs --scan` trực tiếp trên WAV gốc để Whisper đối chiếu từng cue. Cue dưới ngưỡng phải nghe/đọc transcript, sửa lời nếu cần và sinh lại riêng cue đó — đừng tự ý cắt gọt phần đầu bằng công cụ hậu kỳ để né kiểm tra.
+- Kernel mang tên theo mã video (`vs-<id>-voice`), nên hai video không đè lên nhau.
+- Video hội thoại: mỗi nhân vật mặc định mượn giọng `voices.json` đã gán; `--speaker` đổi giọng một vai.
+- Giọng trong danh mục được kernel tải từ kho media; file mẫu trên máy được nhúng (FLAC 24 kHz mono), tổng
+  dưới ~25 giây, cần `.txt` cùng tên hoặc Whisper để biết lời của mẫu.
+- Phải dùng T4 (`--accelerator NvidiaTeslaT4`): P100 (`sm_60`) lỗi `no kernel image is available` với torch mới.
+- `run.py` sinh bằng `omnivoice-infer-batch` như đường local; câu ngắn hơn `số từ × 0,18 giây` được sinh lại tối
+  đa hai lần, giữ bản dài nhất; thiếu câu thì kernel thoát lỗi.
+- Sau khi tải về, luôn `--scan` bằng Whisper; cue dưới ngưỡng thì nghe lại, sửa lời nếu cần và sinh lại — đừng
+  cắt gọt audio để né bước kiểm tra.

@@ -86,14 +86,3 @@ export function useKeyStatus() {
   useEffect(() => { void refresh(); }, [refresh]);
   return { hasKey, setHasKey, refresh };
 }
-
-/** Same shape as useKeyStatus, for the Kaggle username/key pair OmniVoice pushes with. */
-export function useKaggleStatus() {
-  const [hasKaggleCreds, setHasKaggleCreds] = useState(false);
-  const refresh = useCallback(async () => {
-    try { setHasKaggleCreds((await api<{ hasCreds: boolean }>("/api/kaggle-key")).hasCreds); } catch {}
-  }, []);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void refresh(); }, [refresh]);
-  return { hasKaggleCreds, setHasKaggleCreds, refresh };
-}

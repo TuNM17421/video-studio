@@ -21,9 +21,10 @@ import { ScenesStep } from "./steps/scenes-step";
 import { StepBar, type StepNav } from "./steps/shared";
 import { VoiceStep } from "./steps/voice-step";
 
-/** Ba nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả ba là sai với hai cái kia. */
+/** Bốn nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả bốn là sai với ba cái kia. */
 const VOICE_SOURCE_LABEL: Record<VoiceSource, string> = {
   elevenlabs: "ElevenLabs",
+  kaggle: "OmniVoice (Kaggle)",
   import: "Audio có sẵn",
   local: "Model local",
 };
@@ -148,7 +149,7 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
               <div><dt>Trạng thái</dt><dd>{agentStatus}</dd></div>
               <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>
               <div><dt>Nguồn giọng</dt><dd>{VOICE_SOURCE_LABEL[source]}</dd></div>
-              {/* Key chỉ có nghĩa với ElevenLabs; hai nguồn kia không đụng tới nó nên đừng bắt nhìn. */}
+              {/* Key chỉ có nghĩa với ElevenLabs; các nguồn khác không đụng tới nó nên đừng bắt nhìn. */}
               {source === "elevenlabs" && <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>}
             </dl>
             <WorkflowHealth detail={detail} />

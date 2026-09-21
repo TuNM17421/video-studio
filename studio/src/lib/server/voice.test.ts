@@ -1,69 +1,31 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { VoiceSettings } from "../types";
-import { parseKaggleStatus, resolveKaggleAudioDir, validateVoice } from "./voice";
+import { isKaggleDir, parseKernelStatus } from "./voice";
 
-const kaggleSettings = (overrides: Partial<VoiceSettings> = {}): VoiceSettings => ({
-  source: "kaggle",
-  voiceId: "",
-  model: "",
-  language: "",
-  pause: 1.4,
-  importDir: "",
-  kaggleRefAudio: "/tmp/ref.wav",
-  kaggleRefText: "Xin chào các bạn.",
-  kaggleSpeed: 1.0,
-  ...overrides,
-});
-
-describe("validateVoice — kaggle source", () => {
-  it("accepts a valid kaggle setup without demanding an ElevenLabs voice id", () => {
-    expect(() => validateVoice(kaggleSettings())).not.toThrow();
+describe("parseKernelStatus", () => {
+  it("reads both the plain and the KernelWorkerStatus enum form the CLI prints", () => {
+    expect(parseKernelStatus('thai/vs-a-voice has status "running"')).toBe("running");
+    expect(parseKernelStatus('thai/vs-a-voice has status "KernelWorkerStatus.COMPLETE"')).toBe("complete");
+    expect(parseKernelStatus('thai/vs-a-voice has status "KernelWorkerStatus.ERROR"\nFailure message: "x"')).toBe("error");
+    expect(parseKernelStatus('thai/vs-a-voice has status "KernelWorkerStatus.CANCEL_REQUESTED"')).toBe("cancelled");
+    expect(parseKernelStatus('thai/vs-a-voice has status "KernelWorkerStatus.NEW_SCRIPT"')).toBe("queued");
   });
 
-  it("rejects an empty reference text — nothing to match the clone against", () => {
-    expect(() => validateVoice(kaggleSettings({ kaggleRefText: "  " }))).toThrow();
+  it("does not mistake the word 'error' outside the status line for a failed kernel", () => {
+    // The first cut searched the whole output (stderr included) for "error", so a warning ended the run.
+    expect(parseKernelStatus('Warning: error reporting is deprecated\nthai/vs-error-voice has status "KernelWorkerStatus.RUNNING"')).toBe("running");
+    expect(parseKernelStatus("Warning: Looks like you're using an outdated API Version")).toBeNull();
   });
 
-  it("rejects a non-positive or absurdly high speed", () => {
-    expect(() => validateVoice(kaggleSettings({ kaggleSpeed: 0 }))).toThrow();
-    expect(() => validateVoice(kaggleSettings({ kaggleSpeed: 10 }))).toThrow();
-  });
-
-  it("still enforces the shared pause bound", () => {
-    expect(() => validateVoice(kaggleSettings({ pause: 9 }))).toThrow();
+  it("reports a status it does not know instead of guessing", () => {
+    expect(parseKernelStatus('x has status "KernelWorkerStatus.SOMETHING_NEW"')).toBe("unknown");
   });
 });
 
-describe("parseKaggleStatus", () => {
-  it("reads the status kaggle's CLI names in its free-text line", () => {
-    expect(parseKaggleStatus('kernel "thai/n5-01-voice" has status "complete"')).toBe("complete");
-    expect(parseKaggleStatus('kernel "thai/n5-01-voice" has status "running"')).toBe("running");
-    expect(parseKaggleStatus("KernelWorkerStatus.ERROR")).toBe("error");
-  });
-
-  it("returns null when the line names none of the known terms", () => {
-    expect(parseKaggleStatus("some unrelated log line")).toBeNull();
-  });
-});
-
-describe("resolveKaggleAudioDir", () => {
-  function tmp() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), "kaggle-dl-"));
-  }
-
-  it("prefers the run.py-written out/ subfolder when it has WAVs", () => {
-    const dir = tmp();
-    fs.mkdirSync(path.join(dir, "out"));
-    fs.writeFileSync(path.join(dir, "out", "01.wav"), "");
-    expect(resolveKaggleAudioDir(dir)).toBe(path.join(dir, "out"));
-  });
-
-  it("falls back to a flat download when there is no out/ subfolder", () => {
-    const dir = tmp();
-    fs.writeFileSync(path.join(dir, "01.wav"), "");
-    expect(resolveKaggleAudioDir(dir)).toBe(dir);
+describe("isKaggleDir", () => {
+  it("recognises the folder Studio downloads the kernel output into, on any OS", () => {
+    expect(isKaggleDir("/repo/projects/d2-01/voice-script/kaggle/out")).toBe(true);
+    expect(isKaggleDir("C:\\repo\\projects\\d2-01\\voice-script\\kaggle\\out")).toBe(true);
+    expect(isKaggleDir("/repo/projects/d2-01/voice-script/omnivoice")).toBe(false);
+    expect(isKaggleDir("/home/me/recorded")).toBe(false);
   });
 });
