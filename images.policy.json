@@ -1,0 +1,9 @@
+{
+  "note": "Chính sách ảnh cho tính năng đề xuất ảnh (tools/lib/image-license.mjs). Khoá học là hoạt động thương mại: loại mọi ảnh NC, ND, fair use và ảnh không rõ giấy phép. Bỏ \"cc-by-sa\" khỏi allow nếu không chấp nhận điều khoản share-alike.",
+  "allow": ["pd", "cc0", "cc-by", "cc-by-sa"],
+  "shareAlike": ["cc-by-sa"],
+  "minLongEdge": 800,
+  "maxSlots": 8,
+  "candidatesPerSlot": 12,
+  "sources": ["commons", "openverse"]
+}
