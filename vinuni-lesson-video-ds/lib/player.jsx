@@ -39,6 +39,34 @@ export function urlParams() {
 
 const clampFrame = (f, duration) => Math.max(0, Math.min(duration - 1, Math.round(f)));
 
+/** Pictures give up after this long: a broken or missing file must not hang a render. */
+const PICTURE_TIMEOUT_MS = 5000;
+const decoding = new Map(); // absolute URL → Promise, settled once that picture is decoded (or failed)
+const decoded = new Set(); //  absolute URLs already settled
+
+/**
+ * Resolves when every SVG <image> on the page is decoded — at once when all of them already were, so it
+ * only costs time on the first frame that shows a new picture.
+ */
+function picturesReady() {
+  if (typeof document === 'undefined') return null;
+  const pending = [];
+  for (const el of document.querySelectorAll('svg image')) {
+    const href = el.getAttribute('href') || el.getAttribute('xlink:href');
+    if (!href) continue;
+    const url = new URL(href, document.baseURI).href;
+    if (decoded.has(url)) continue;
+    if (!decoding.has(url)) {
+      const img = new Image();
+      img.src = url;
+      decoding.set(url, img.decode().catch(() => {}).then(() => decoded.add(url)));
+    }
+    pending.push(decoding.get(url));
+  }
+  if (!pending.length) return null;
+  return Promise.race([Promise.all(pending), new Promise((resolve) => setTimeout(resolve, PICTURE_TIMEOUT_MS))]);
+}
+
 /** Index of the last marker at or before frame f. */
 const markerIndex = (markers, f) => {
   let k = 0;
@@ -63,13 +91,19 @@ function useFit(ref, enabled) {
   return scale;
 }
 
-/** Mark the document ready once Montserrat is loaded (used by headless capture). */
+/** Mark the document ready once Montserrat is loaded and the first frame's pictures are decoded (headless capture). */
 export function markReady() {
   if (typeof document === 'undefined') return;
+  const flag = () => {
+    document.documentElement.dataset.vkReady = '1';
+  };
   const done = () =>
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
-        document.documentElement.dataset.vkReady = '1';
+        // the first commit is in the DOM by now, so its <image>s can be found
+        const pictures = picturesReady();
+        if (pictures) pictures.then(() => requestAnimationFrame(flag));
+        else flag();
       }),
     );
   if (document.fonts && document.fonts.load) {
@@ -107,14 +141,18 @@ export function Player({
     }
   }, [fixedFrame, duration]);
 
-  // Headless capture (tools/render.mjs): `await window.vkSetFrame(n)` resolves once frame n is painted.
+  // Headless capture (tools/render.mjs): `await window.vkSetFrame(n)` resolves once frame n is painted
+  // and every picture on it is decoded.
   useEffect(() => {
     if (!capture || typeof window === 'undefined') return undefined;
     window.vkDuration = duration;
-    window.vkSetFrame = (f) => {
+    window.vkSetFrame = async (f) => {
       // Commit synchronously (background capture tabs may not get animation frames), then give the
       // compositor one frame — or 50 ms if rAF is throttled — before the screenshot.
       flushSync(() => setFrame(clampFrame(f, duration)));
+      // Only the current scene is mounted (Series), so a picture in the next scene starts loading on its
+      // first frame — wait until it is decoded, or that frame is captured with an empty frame.
+      await picturesReady();
       return new Promise((resolve) => {
         let settled = false;
         const finish = () => {
