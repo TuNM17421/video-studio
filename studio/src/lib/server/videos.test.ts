@@ -31,6 +31,11 @@ describe("video agent binding migration", () => {
     expect(state.request.modules).toContain("quiz");
     expect(state.music.quiz).toBe("quiz-timer");
   });
+
+  it("keeps captions on for states saved before captions were optional", () => {
+    expect(normalizeVideoState(storedState).captions).toBe(true);
+    expect(normalizeVideoState({ ...storedState, captions: false }).captions).toBe(false);
+  });
 });
 
 describe("quiz request contract", () => {
@@ -40,5 +45,22 @@ describe("quiz request contract", () => {
     expect(markdown).toContain("## Quiz");
     expect(markdown).toContain("`quiz: true`");
     expect(markdown).toContain("chọn ở bước Render");
+  });
+});
+
+describe("mascot request contract", () => {
+  it("points the agent at Griffin only when the capability is on", () => {
+    const state = normalizeVideoState(storedState);
+    const on = requestMarkdown("d2-griffin", { ...state.request, modules: ["mascot"] }, "Claude");
+    expect(on).toContain("## Linh vật Griffin");
+    expect(on).toContain("templates/modules/mascot.md");
+    expect(on).toContain("`speaker: 'Griffin'`");
+  });
+
+  it("forbids Griffin when the capability is off, so the agent does not add it on its own", () => {
+    const state = normalizeVideoState(storedState);
+    const off = requestMarkdown("d2-plain", { ...state.request, modules: [] }, "Claude");
+    expect(off).toContain("**không** có linh vật");
+    expect(off).not.toContain("## Linh vật Griffin");
   });
 });

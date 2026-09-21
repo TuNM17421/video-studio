@@ -8,8 +8,11 @@
  *  · code uses only the 9 palette hex values; no Math.random / Date.now in scenes or components
  *  · scene captions are contiguous from 0 to the scene duration and ≤ 78 characters each
  *  · example videos (ui_kits/lesson-video/videos/<dir>/): required files present, caption pages
- *    ≤ 78 characters covering every cue exactly, and a smoke render of every 3rd frame (plus each cue's
- *    first and last frame) that must not throw or write NaN / undefined into an attribute.
+ *    ≤ 78 characters covering every cue exactly, `quiz: true` only on silent cues, and a smoke render of
+ *    every 3rd frame (plus each cue's first and last frame) that must not throw or write NaN / undefined
+ *    into an attribute.
+ *  · pictures in videos (PhotoCard): `src` is a design-system file given from its root (never http), every
+ *    PhotoCard has a `credit`, and the slots it uses exist in the video's images.js as kind `use`.
  *    The smoke render needs esbuild + react-dom (same lookup as build.mjs); skipped if absent.
  */
 import fs from 'node:fs';
@@ -118,12 +121,54 @@ const NODE_MODULES = [
   .filter(Boolean)
   .find((p) => fs.existsSync(path.join(p, 'esbuild')) && fs.existsSync(path.join(p, 'react-dom')));
 const videoReports = [];
+
+// Pictures (PhotoCard) in one video folder. Static, regex-based like the rest of this file: a PhotoCard
+// must show a local file with its credit, and only what the editor approved in images.js.
+// `src` is a path from the design-system root (lib/assets.js dsUrl), never a URL.
+const localFile = (src) => !/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(src) && fs.existsSync(path.join(DS, src.split(/[?#]/)[0]));
+function checkPictures(base, where) {
+  const imagesFile = path.join(base, 'images.js');
+  const slots = new Map();
+  if (fs.existsSync(imagesFile)) {
+    const src = fs.readFileSync(imagesFile, 'utf8');
+    for (const m of src.matchAll(/(?:^|[\s{,])['"]?(s\d+)['"]?\s*:\s*\{([^{}]*)\}/g)) {
+      const body = m[2];
+      const file = (body.match(/\bsrc['"]?\s*:\s*['"]([^'"]+)['"]/) || [])[1];
+      const kind = (body.match(/\bkind['"]?\s*:\s*['"]([^'"]+)['"]/) || [])[1];
+      slots.set(m[1], { file, kind });
+      if (!file) problems.push(`${where}/images.js: ${m[1]} has no src`);
+      else if (!localFile(file)) problems.push(`${where}/images.js: ${m[1]} src ${file} is not a design-system file (path from vinuni-lesson-video-ds/)`);
+    }
+  }
+  const sources = fs.readdirSync(base).filter((f) => /\.jsx?$/.test(f) && f !== 'images.js');
+  for (const f of sources) {
+    const code = fs.readFileSync(path.join(base, f), 'utf8');
+    for (const m of code.matchAll(/<PhotoCard\b([\s\S]*?)\/>/g)) {
+      const props = m[1];
+      const line = code.slice(0, m.index).split('\n').length;
+      const at = `${where}/${f}:${line}`;
+      if (!/\bcredit=/.test(props)) problems.push(`${at}: PhotoCard without credit`);
+      const literal = (props.match(/\bsrc=(?:\{\s*)?['"`]([^'"`]+)['"`]/) || [])[1];
+      if (literal && !localFile(literal)) problems.push(`${at}: PhotoCard src ${literal} must be a design-system file, as a path from vinuni-lesson-video-ds/ (no URLs)`);
+      if (!fs.existsSync(imagesFile)) {
+        warnings.push(`${at}: PhotoCard in a video without images.js — only pictures the editor approved belong here`);
+        continue;
+      }
+      for (const slot of new Set([...props.matchAll(/IMAGES(?:\.(s\d+)|\[['"](s\d+)['"]\])/g)].map((x) => x[1] || x[2]))) {
+        const def = slots.get(slot);
+        if (!def) warnings.push(`${at}: PhotoCard uses ${slot}, which images.js does not list`);
+        else if (def.kind && def.kind !== 'use') warnings.push(`${at}: PhotoCard shows ${slot}, a "${def.kind}" picture — redraw it instead of showing it`);
+      }
+    }
+  }
+}
 for (const dir of videoDirs) {
   const base = path.join(VIDEOS_DIR, dir);
   const where = `videos/${dir}`;
   for (const f of ['video.jsx', 'cues.js', 'card.html', 'player.html', 'STORYBOARD.md']) {
     if (!fs.existsSync(path.join(base, f))) problems.push(`${where} is missing ${f}`);
   }
+  checkPictures(base, where);
   if (!NODE_MODULES) {
     videoReports.push(`  ${dir}: smoke render skipped (esbuild + react-dom not found)`);
     continue;
@@ -142,7 +187,7 @@ for (const dir of videoDirs) {
     }
     import { cueCaptions } from ${JSON.stringify(path.join(DS, 'lib/captions.js'))};
     import { ConfigContext, FrameContext } from ${JSON.stringify(path.join(DS, 'lib/player.jsx'))};
-    export { meta, CUES, cueCaptions };
+    export { meta, CUES, AUTHORED, cueCaptions };
     export const renderAt = (frame) =>
       renderToStaticMarkup(
         React.createElement(ConfigContext.Provider, { value: { fps: 30, width: 1920, height: 1080, durationInFrames: meta.duration } },
@@ -169,7 +214,7 @@ for (const dir of videoDirs) {
     problems.push(`${where} does not build or load: ${String(e.message || e).split('\n')[0]}`);
     continue;
   }
-  const { meta, CUES, cueCaptions, renderAt } = mod;
+  const { meta, CUES, AUTHORED, cueCaptions, renderAt } = mod;
   const last = CUES[CUES.length - 1];
   if (meta.duration !== last.end) problems.push(`${where}: meta.duration ${meta.duration} ≠ last cue end ${last.end}`);
   // captions
@@ -184,6 +229,14 @@ for (const dir of videoDirs) {
   for (const cue of CUES) {
     const said = caps.filter((c) => c.start >= cue.start && c.end <= cue.end).map((c) => c.text).join(' ');
     if (said !== cue.text.trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
+  }
+  // quiz flag — read from cues.js, not the timeline: `quiz` / `silent` are authored fields that retiming
+  // drops. The quiz bed replaces the background music over every flagged cue, so a flag on a spoken câu
+  // means the bed plays over the voice; catch it here, where the scene is still being authored.
+  for (const cue of AUTHORED) {
+    if (cue.quiz && !cue.silent && String(cue.text || '').trim()) {
+      problems.push(`${where}: câu ${cue.n} có lời đọc nhưng đánh dấu quiz: true — cờ này chỉ dành cho khoảng chờ im lặng (xem CLAUDE.md "Nhạc nền và nhạc quiz")`);
+    }
   }
   // smoke render
   const frames = new Set();

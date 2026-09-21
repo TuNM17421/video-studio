@@ -280,8 +280,10 @@ Chi tiết connector, hạt, pulse, geometry guard: [`guidelines/motion-and-conn
   của bộ vẽ tay. Mọi prop `icon` và `<Icon name>` nhận cả hai bộ tên. Cần thêm tên → import + thêm vào `LINE_ICONS`.
 - **Logo**: `<Brand name>` (anthropic, claude, gemini, meta, huggingface, github, python, mcp — bản vẽ Simple Icons
   CC0, nhãn hiệu thuộc chủ sở hữu, giữ màu gốc). OpenAI / Copilot chưa có — lấy từ brand kit chính thức.
-- **Không**: emoji, icon font, clip-art, ảnh stock, ảnh chụp. Hình từ paper (vd. Figure 2 "Attention
-  Is All You Need") hiển thị nguyên bản trong khung trắng, ghi nguồn.
+- **Không**: emoji, icon font, clip-art, ảnh stock, ảnh chụp tự chọn. Ngoại lệ duy nhất là **ảnh tư liệu
+  người dựng đã duyệt** (ảnh lịch sử, vật thể thật, hình từ paper như Figure 1 "Attention Is All You
+  Need") — liệt kê trong `images.js` của video, vẽ bằng `PhotoCard` với dòng ghi nguồn, hiển thị nguyên
+  bản (không lọc màu, không chữ đè). Animation vẫn là mặc định; agent không tự tìm hay thêm ảnh.
 
 ---
 
@@ -322,6 +324,12 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | table | `DataTable` | bảng hiện từng hàng, ô trạng thái (đạt · chặn · chờ · chưa thử · lỗi), cột TRƯỚC/SAU |
 | context | `Envelope`, `ContextBudget`, `ContextTray`, `FilingCabinet` | gói gửi đi / không gửi, thanh ngân sách ngữ cảnh có phần dư, khay ngữ cảnh, tủ hồ sơ ngoài |
 | figures | `Magnifier`, `SourceCard` | kính lúp soi dòng, thẻ nguồn trích đoạn (đã đối chiếu / không có nguồn) |
+| media | `PhotoCard` | ảnh tư liệu đã được người dựng duyệt (`images.js`): nền trắng, ghi nguồn bắt buộc, `contain`/`cover`, zoom chậm |
+| teaching | `MisconceptionCard`, `AnalogyBridge`, `CompareSplit` | "nhiều người nghĩ / thực ra" có gạch đỏ, phép so sánh đời thường ↔ khái niệm, hai bản đặt cạnh nhau + câu chốt khác biệt |
+| structure | `LayerStack`, `Timeline`, `ConceptMap` | các lớp của một hệ thống (một lớp tiêu điểm), mốc thời gian tô dần, bản đồ khái niệm có quan hệ được đặt tên |
+| structure | `Matrix2x2`, `Iceberg` | lưới quyết định 2 × 2 có một ô được chọn, phần nổi / phần chìm |
+| data | `Gauge`, `RangeBand`, `UnitGrid` | đồng hồ bán nguyệt có ngưỡng, ước lượng kèm khoảng dao động, đếm bằng ô (18 trên 60) |
+| marks | `Spotlight` | làm mờ cả khung trừ một vùng để dẫn mắt, không dịch chuyển gì |
 
 Helpers mới: `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
 (`@remotion/paths`, d3-shape/scale/interpolate, flubber, dagre: `curvePath`, `pointOnPath`, `drawOn`, `morphPath`, `layoutGraph`).

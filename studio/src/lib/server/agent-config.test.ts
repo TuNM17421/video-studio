@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readAgentConfig, resolveAgentProvider } from "./agent-config";
+import { readAgentConfig, resolveAgentProvider, reviewDefaults } from "./agent-config";
 
 describe("Studio agent configuration", () => {
   it("keeps Claude as the backward-compatible default", () => {
@@ -26,5 +26,16 @@ describe("Studio agent configuration", () => {
     const locked = { defaultProvider: "claude" as const, selectionLocked: true };
     expect(resolveAgentProvider(undefined, locked)).toBe("claude");
     expect(() => resolveAgentProvider("codex", locked)).toThrow(/khóa agent/);
+  });
+});
+
+describe("cross-review defaults", () => {
+  it("is on with an automatic reviewer unless configured", () => {
+    expect(reviewDefaults({})).toEqual({ enabled: true, provider: "auto" });
+  });
+
+  it("follows STUDIO_REVIEW and STUDIO_QA_PROVIDER", () => {
+    expect(reviewDefaults({ STUDIO_REVIEW: "0", STUDIO_QA_PROVIDER: "codex" })).toEqual({ enabled: false, provider: "codex" });
+    expect(() => reviewDefaults({ STUDIO_QA_PROVIDER: "gemini" })).toThrow();
   });
 });

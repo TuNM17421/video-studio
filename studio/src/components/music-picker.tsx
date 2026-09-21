@@ -34,7 +34,7 @@ export function MusicPicker({ tracks, value, onChange, disabled, label, noneLabe
         onChange={(id) => { setPlaying(null); onChange(id); }}
         options={[
           { value: NO_MUSIC, label: noneLabel },
-          ...tracks.map((track) => ({ value: track.id, label: `${track.name} · ${trackLength(track.seconds)}` })),
+          ...tracks.map((track) => ({ value: track.id, label: `${track.name} · ${trackLength(track.seconds)}${track.isDefault ? " · mặc định" : ""}` })),
         ]}
       />
       <Button

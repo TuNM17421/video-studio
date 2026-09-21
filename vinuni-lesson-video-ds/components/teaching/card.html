@@ -1,0 +1,42 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Teaching · misconception, analogy, side-by-side" subtitle="MisconceptionCard strike → correction · AnalogyBridge arc · CompareSplit with verdict pill (each ~3.7 s)" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Teaching</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 360px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, W = VK.fadeWindow, A = VK.appear, S = VK.smooth;
+  VK.mountCard('#root', {
+    width: 1400, height: 720, duration: 330,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h('g', { opacity: W(f, 0, 110, 12) },
+          h(VK.MisconceptionCard, { x: 200, y: 150, w: 1000, strike: S(f, 30, 50), reveal: A(f, 60),
+            wrong: { title: 'MÔ HÌNH TRA CỨU CÂU TRẢ LỜI', sub: 'có sẵn trong một kho dữ liệu' },
+            right: { title: 'MÔ HÌNH DỰ ĐOÁN TỪNG MẢNH CHỮ', sub: 'theo xác suất, không tra bảng' } })),
+        h('g', { opacity: W(f, 110, 220, 12) },
+          h(VK.AnalogyBridge, { x: 40, y: 280, w: 1320, reveal: A(f, 130), bridge: S(f, 150, 180),
+            everyday: { title: 'HỎI ĐƯỜNG', sub: 'người lạ đoán ý bạn' },
+            concept: { title: 'PROMPT', sub: 'mô hình đoán ý bạn' } })),
+        h('g', { opacity: W(f, 220, 330, 12) },
+          h(VK.CompareSplit, { x: 40, y: 150, w: 1320, h: 440,
+            leftReveal: A(f, 225), rightReveal: A(f, 245), verdictReveal: A(f, 265),
+            left: { tag: 'BẢN A', title: 'PROMPT NGẮN', lines: ['trả lời chung chung', 'thiếu ràng buộc'] },
+            right: { tag: 'BẢN B', title: 'PROMPT CÓ VÍ DỤ', lines: ['bám định dạng', 'ít lệch yêu cầu'] },
+            verdict: 'KHÁC NHAU Ở RÀNG BUỘC' }))
+      );
+    }
+  });
+</script>
+</body>
+</html>

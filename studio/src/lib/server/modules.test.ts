@@ -6,9 +6,9 @@ import { REPO } from "./paths";
 import { normalizeVideoState, requestMarkdown } from "./videos";
 
 describe("capability catalog read from templates/modules", () => {
-  it("lists dialogue and quiz from their files, not README", () => {
+  it("lists every capability from its file, not README", () => {
     const ids = listModules().map((m) => m.id);
-    expect(ids).toEqual(["dialogue", "quiz"]);
+    expect(ids).toEqual(["dialogue", "quiz", "mascot"]);
     const dialogue = listModules()[0];
     expect(dialogue.name).toBe("Video có hội thoại");
     expect(dialogue.template).toBe("templates/modules/dialogue.md");

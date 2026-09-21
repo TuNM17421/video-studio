@@ -19,10 +19,16 @@ interface StoredTrack {
   summary?: string;
   media: string;
   lufs?: number;
+  default?: boolean;
 }
 
 function toTrack(t: StoredTrack): MusicTrack {
-  return { id: t.id, name: t.name, seconds: t.seconds ?? 0, summary: t.summary ?? "", url: mediaAsset(t.media)?.url ?? null };
+  return { id: t.id, name: t.name, seconds: t.seconds ?? 0, summary: t.summary ?? "", url: mediaAsset(t.media)?.url ?? null, isDefault: t.default === true };
+}
+
+/** The background bed a new video starts with: the track marked `"default": true` in music.json. */
+export function defaultBackground(): string {
+  return musicCatalog().background.find((t) => t.isDefault)?.id ?? NO_MUSIC;
 }
 
 export function musicCatalog(): MusicCatalog {

@@ -61,6 +61,10 @@ Cần một vai chưa có? **Báo dev**, và nói rõ cần cái nào:
 - **Nhân vật mới dùng giọng đã có** — một cái tên, một ảnh, chọn một giọng sẵn có. Nhanh, không tốn credit.
 - **Giọng mới** — clone trên ElevenLabs, mẫu 10 giây, đẩy lên kho media. Tốn credit và lâu hơn.
 
+Cả ba nguồn giọng đều đọc được hội thoại. Model local nhân bản mỗi nhân vật từ mẫu giọng của người đó, và
+nhận thêm một file mẫu nằm trên máy cho giọng chưa có trong danh mục — nhưng nhân vật thì vẫn phải có
+trong `voices.json` trước đã.
+
 Hai nhân vật không được dùng chung một giọng — người xem sẽ nghe hai người nói y hệt nhau.
 
 ---
@@ -85,3 +89,13 @@ chỉ áp dụng trong một chuỗi câu **cùng người nói**. Nghĩa là: *
 
 `--dry-run` của mẫu cơ bản với video hội thoại còn in thêm **dàn vai**: từng câu ai đọc, giọng nào. Nhân
 vật sai thì dừng ngay tại đây.
+
+---
+
+## Tiêu chí QA
+
+Lượt QA ảnh chỉ đọc mục này khi video bật hội thoại (mã lỗi `module`).
+
+- Tối đa hai thẻ hội thoại trên màn hình cùng lúc.
+- Mỗi nhân vật giữ một màu và một phía suốt video; thẻ có avatar thì mặt nằm dưới đuôi thẻ, đúng phía người nói.
+- Thẻ và mặt nằm trong vùng nội dung y 250–960 — tính cả phần mặt thò xuống dưới thẻ.

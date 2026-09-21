@@ -5,13 +5,6 @@
   gap: 9px;
   margin-left: 8px;
 }
-.vs-key-status {
-  cursor: default;
-}
-.vs-key-status:hover {
-  background: transparent;
-  color: var(--muted);
-}
 .vs-workflow {
   grid-template-columns: repeat(5, 1fr);
 }
@@ -146,10 +139,12 @@
   max-width: calc(100% - 8px);
   overflow: hidden;
   padding: 2px 4px;
-  border: 1px solid var(--vu-blue-100);
+  /* Ba màu đứng yên: nhãn này nằm đè lên ảnh preview nướng sẵn nền sáng, nên nó phải giữ nguyên ở chế
+     độ tối. Dùng thang màu bình thường thì chữ lật thành sáng mà nền vẫn trắng — không đọc được. */
+  border: 1px solid var(--vu-media-chip-border);
   border-radius: 3px;
-  background: rgb(255 255 255 / 92%);
-  color: var(--vu-blue-900);
+  background: color-mix(in srgb, var(--vu-media-chip-surface) 92%, transparent);
+  color: var(--vu-media-chip-text);
   font-family: var(--vu-font-utility);
   font-size: var(--vu-text-2xs);
   font-weight: var(--vu-font-medium);
@@ -508,7 +503,7 @@ button.vs-tile:hover {
   font-weight: var(--vu-font-medium);
   line-height: 16px;
 }
-.vs-agent-warning.ant-alert {
+.vs-agent-warning {
   flex: 1 0 100%;
   margin-top: var(--vu-space-2);
 }
@@ -545,6 +540,9 @@ button.vs-tile:hover {
 }
 .vs-validation-message.is-ok {
   color: var(--vu-green-700);
+}
+.vs-validation-message.is-warn {
+  color: var(--vu-amber-700);
 }
 .field input[aria-invalid="true"],
 .field input[aria-invalid="true"]:hover,
@@ -635,7 +633,7 @@ button.vs-tile:hover {
 }
 
 /* Cảnh báo máy yếu nằm ngay dưới tiêu đề, trước khi người dùng kịp bấm cài. */
-.vs-local-warning.ant-alert {
+.vs-local-warning {
   margin: 14px 18px 0;
 }
 
@@ -682,7 +680,7 @@ button.vs-tile:hover {
 .vs-local-step.is-now .vs-local-num {
   border-color: var(--vu-blue-700);
   background: var(--vu-blue-700);
-  color: #fff;
+  color: var(--vu-text-inverse);
 }
 .vs-local-step.is-done .vs-local-num {
   border-color: var(--vu-green-700);
@@ -764,18 +762,6 @@ button.vs-tile:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 39 dòng câu sẽ nuốt cả bước 4, nên gấp lại — nhưng tự bung khi có câu lỗi, vì lúc đó nó là thứ
-   người dùng cần nhìn chứ không phải thứ để giấu. */
-.vs-local-map > summary {
-  color: var(--vu-neutral-600);
-  cursor: pointer;
-  font-size: 12px;
-  list-style-position: inside;
-  margin-bottom: var(--vu-space-2);
-}
-.vs-local-map > summary:hover {
-  color: var(--vu-brand-primary);
-}
 /* Server Gradio là tiện ích ngoài luồng, nên gấp lại: mở ra mới thấy, không chen vào bốn bước. */
 .vs-local-extra {
   border-top: 1px solid var(--vu-neutral-200);
@@ -791,10 +777,32 @@ button.vs-tile:hover {
 .vs-local-extra > summary:hover {
   color: var(--vu-brand-primary);
 }
+/* Thân mục gập: mỗi ghi chú/cảnh báo một hàng, không chảy inline cạnh nhau như <small> mặc định. */
 .vs-local-extra > p {
+  margin: 8px 0 10px;
+  max-width: 78ch;
   color: var(--vu-neutral-500);
   font-size: 12px;
-  margin: 8px 0;
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-local-extra > small {
+  display: block;
+  margin-top: 10px;
+}
+.vs-local-actions > small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+/* Mục gập cuối thẻ là một dải chân, không phải một dòng chữ rơi khỏi lề: canh đúng lề trong của bốn bước
+   (18px, xem .vs-local-flow) và đổ nền nhạt để nó đọc như tiện ích bên lề luồng chính. Chỉ nhắm mục gập
+   là con trực tiếp của thẻ — mục gập "nhân bản từ file" nằm trong thân một bước không dính quy tắc này. */
+.vs-local > .vs-local-extra {
+  margin-top: 0;
+  padding: 12px 18px 14px;
+  background: var(--vu-neutral-50);
+}
+.vs-local > .vs-local-extra[open] {
+  padding-bottom: 18px;
 }
 .vs-source-picker {
   width: 100%;
@@ -1140,31 +1148,8 @@ button.vs-tile:hover {
 .vs-cue-list .vs-cue-text {
   white-space: normal;
 }
-
-/* ── voice ──────────────────────────────────────────────────────────────── */
-.vs-key-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 18px;
-  color: var(--vu-blue-700);
-}
 .vs-key-field {
   flex: 1;
-  margin: 0;
-}
-.vs-key-on {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text);
-  flex: 1;
-}
-.vs-key-on .connection-dot {
   margin: 0;
 }
 .vs-dry {
@@ -1280,9 +1265,6 @@ button.vs-tile:hover {
   font-size: 12px;
   border-bottom: 1px solid var(--line);
 }
-.vs-map-row.has-play {
-  grid-template-columns: 34px 132px minmax(0, 1fr) 54px 46px 30px;
-}
 .vs-map-row:last-child {
   border-bottom: 0;
 }
@@ -1341,16 +1323,6 @@ button.vs-tile:hover {
 }
 .vs-map-row.is-error .vs-map-match.is-weak {
   color: var(--vu-red-800);
-}
-.vs-map-play {
-  justify-self: end;
-}
-/* The button must not make its row taller than a row without one. */
-.vs-map-play .ant-btn {
-  height: auto;
-  min-width: 0;
-  padding: 0;
-  line-height: 1;
 }
 .vs-map-notes {
   grid-column: 2 / -1;
@@ -1412,7 +1384,20 @@ button.vs-tile:hover {
   color: var(--subtle);
 }
 
-/* ── music picker (background + quiz, render step) ───────────────────────── */
+/* ── captions + music pickers (render step) ─────────────────────────────── */
+.vs-captions-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vu-space-3);
+  margin-bottom: 18px;
+}
+.vs-captions-picker > small {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+}
 .vs-music-picker {
   min-width: 0;
   display: grid;
@@ -1499,7 +1484,7 @@ button.vs-tile:hover {
 }
 .vs-qa-mode button[aria-pressed="true"] {
   background: var(--vu-blue-800);
-  color: white;
+  color: var(--vu-text-inverse);
 }
 .vs-qa-filter {
   display: flex;
@@ -1996,44 +1981,6 @@ button.vs-tile:hover {
 .editor-panel {
   scroll-margin-top: var(--vu-space-6);
 }
-
-.vs-gate-navigation {
-  min-height: 76px;
-  padding: 14px 28px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  border-top: 1px solid var(--vu-border-subtle);
-  background: var(--vu-surface-subtle);
-}
-
-.vs-gate-navigation-back {
-  justify-self: start;
-}
-
-.vs-gate-navigation-next {
-  justify-self: end;
-}
-
-.vs-gate-navigation-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  color: var(--vu-text-muted);
-  font-size: var(--vu-text-2xs);
-  line-height: var(--vu-leading-normal);
-  text-align: center;
-}
-
-.vs-gate-navigation-status.is-ready svg {
-  color: var(--vu-green-700);
-}
-
-.vs-gate-navigation-status.is-locked svg {
-  color: var(--vu-neutral-500);
-}
 .vs-production-rail-head {
   min-height: var(--vu-workflow-header-height);
   padding: 0 20px;
@@ -2042,7 +1989,7 @@ button.vs-tile:hover {
   justify-content: space-between;
   gap: 18px;
   background: var(--vu-lesson-ink);
-  color: white;
+  color: var(--vu-text-inverse);
   font-family: var(--vs-font-display);
   font-size: 10px;
   font-weight: var(--vu-font-bold);
@@ -2060,6 +2007,28 @@ button.vs-tile:hover {
   margin: 0;
   border: 0;
   border-radius: 0;
+}
+.vs-workflow-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.vs-workflow-tiles > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.vs-workflow-tiles span,
+.vs-workflow-tiles small {
+  color: var(--vu-text-muted);
+  font-size: 11px;
+}
+.vs-workflow-tiles strong {
+  color: var(--vu-blue-900);
+  font-size: 17px;
+}
+@media (max-width: 900px) {
+  .vs-workflow-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .vs-showcase-details {
@@ -2112,7 +2081,7 @@ button.vs-tile:hover {
   place-items: center;
   border: 1px solid var(--vu-blue-200);
   border-radius: 4px;
-  background: white;
+  background: var(--vu-surface-card);
   font-family: var(--vs-font-utility);
 }
 .vs-showcase-details[open] .vs-details-action::after {
@@ -2475,8 +2444,59 @@ button.vs-tile:hover {
 .vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item-selected {
   border-left: 3px solid var(--vu-blue-700);
 }
-.vs-key-status .ant-badge {
+/* Nút chọn giao diện ở chân sidebar, cùng dáng một sidebar-item; giá trị đang chọn nằm bên phải. */
+.vs-theme-toggle {
+  cursor: pointer;
+}
+.vs-theme-value {
   margin-left: auto;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+}
+
+/* ── ảnh và khung xem trước ở chế độ tối ──────────────────────────────────────
+   Ảnh chụp component, ảnh QA và khung xem trước cảnh đều là nền trắng đã bake vào
+   pixel (hoặc là chính khung hình thật của MP4) — CSS không đổi được, và cũng
+   KHÔNG NÊN đổi: đó là màu thật của video.
+
+   Nên khung đựng ảnh preview là "tờ giấy" trắng cùng màu với ảnh: khung mà tối thì
+   phần ảnh không phủ kín hiện thành viền đen quanh một ô trắng. Chỉ đổi khi khung
+   đang chứa ảnh/khung hình — khung rỗng (Empty, icon thay ảnh) vẫn theo nền tối để
+   chữ của nó đọc được.
+
+   Cả tờ giấy (khung + ảnh + nhãn đè lên) hạ sáng một nhịp cho đỡ chói, và trả lại
+   đủ sáng khi rê chuột vào để xem kỹ. Bộ lọc đặt trên KHUNG chứ không trên ảnh:
+   đặt trên ảnh thì ảnh xám đi còn khung vẫn trắng, lộ ra một ô xám trong khung. */
+:root[data-theme="dark"] .vs-style-scene-frame,
+:root[data-theme="dark"] .vs-tile-image,
+:root[data-theme="dark"] .vs-preview-frame:has(> img, iframe),
+:root[data-theme="dark"] .vs-drawer-image {
+  border-color: var(--vu-media-chip-border);
+  background: var(--vu-media-surface);
+}
+/* Ảnh bìa trong khung VIDEO PREVIEW tự có nền (globals.css `.slide-visual > img`), phủ cả phần viền do
+   object-fit: contain chừa ra — nền đó cũng phải là giấy. */
+:root[data-theme="dark"] .vs-preview-frame > img {
+  background: var(--vu-media-surface);
+}
+:root[data-theme="dark"] .vs-style-scene-frame,
+:root[data-theme="dark"] .vs-tile-image,
+:root[data-theme="dark"] .vs-preview-frame:has(> img, iframe),
+:root[data-theme="dark"] .vs-drawer-image,
+:root[data-theme="dark"] .vs-qa img,
+:root[data-theme="dark"] .vs-finding-still img,
+:root[data-theme="dark"] iframe:not(.vs-preview-frame iframe) {
+  filter: brightness(0.9);
+  transition: filter var(--vu-duration-normal) var(--vu-ease-standard);
+}
+:root[data-theme="dark"] .vs-style-scene-frame:hover,
+:root[data-theme="dark"] .vs-tile-image:hover,
+:root[data-theme="dark"] .vs-preview-frame:hover,
+:root[data-theme="dark"] .vs-drawer-image:hover,
+:root[data-theme="dark"] .vs-qa img:hover,
+:root[data-theme="dark"] .vs-finding-still img:hover,
+:root[data-theme="dark"] iframe:hover {
+  filter: none;
 }
 
 @media (min-width: 681px) {
@@ -2566,7 +2586,7 @@ button.vs-tile:hover {
   .sidebar.ant-layout-sider-collapsed .sidebar-bottom {
     width: var(--vu-shell-sidebar-collapsed-width);
   }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status {
+  .sidebar.ant-layout-sider-collapsed .vs-theme-toggle {
     position: relative;
     width: var(--vu-shell-sidebar-rail-item);
     min-height: var(--vu-shell-sidebar-rail-item);
@@ -2577,17 +2597,6 @@ button.vs-tile:hover {
     border: 1px solid var(--vu-border-subtle);
     border-left-color: var(--vu-border-subtle);
     border-radius: var(--vu-radius-sm);
-  }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge {
-    position: absolute;
-    inset-block-start: 7px;
-    inset-inline-end: 7px;
-    margin-left: 0;
-    line-height: 0;
-  }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge-status-dot {
-    width: 6px;
-    height: 6px;
   }
 }
 
@@ -2682,7 +2691,7 @@ button.vs-tile:hover {
   border: 0;
   background: transparent;
 }
-.vs-script-field .ant-upload-drag {
+.vs-script-field .vs-drop .ant-upload-drag {
   min-height: var(--vu-capability-card-min-height);
   border-color: var(--vu-blue-300);
   background: var(--vu-blue-50);
@@ -2966,6 +2975,114 @@ button.vs-tile:hover {
   font-weight: 500;
   color: var(--vu-text-muted);
 }
+/* ── chọn giọng cho từng nhân vật (model local) ──────────────────────────── */
+/* Mỗi vai một hàng: mặt, tên, giọng. Đặt tên và giọng cạnh nhau để đọc được cả dàn vai theo chiều dọc,
+   vì câu hỏi thường gặp là "ai đang đọc bằng giọng nào", không phải "vai này có mấy tuỳ chọn". */
+.vs-cast-pick ul {
+  display: grid;
+  gap: var(--vu-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-cast-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-3);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-cast-row.is-error {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-cast-face {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-500);
+  font-size: 13px;
+}
+.vs-cast-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vs-cast-who {
+  display: grid;
+  min-width: 0;
+}
+.vs-cast-who strong {
+  color: var(--vu-blue-900);
+  font-size: var(--vu-text-sm);
+}
+.vs-cast-who small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-cast-voice {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-cast-voice .ant-select {
+  min-width: 190px;
+}
+/* Ô đường dẫn và ghi chú chiếm trọn hàng dưới: đường dẫn tuyệt đối dài hơn mọi cột ta có. */
+.vs-cast-file,
+.vs-cast-note {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.vs-cast-file .ant-input-affix-wrapper {
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-xs);
+}
+.vs-cast-file small,
+.vs-cast-note {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-cast-file small.is-error,
+.vs-cast-note.is-error {
+  color: var(--vu-red-700);
+}
+/* Thẻ chọn file nằm trong một hàng nhân vật: hạ xuống cỡ hai dòng; lối nhập tay là một dòng nhỏ bên dưới.
+   `.vs-cast-file small` ở trên bắt cả <small> trong thẻ — trả nó về cỡ chữ của thẻ. */
+.vs-cast-file .vs-source-picker {
+  min-height: 0;
+  padding: 10px 12px;
+}
+.vs-cast-file .vs-source-picker-copy small {
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.vs-cast-file .vs-source-manual {
+  margin-top: var(--vu-space-2);
+}
+.vs-cast-file .vs-cast-file-manual {
+  justify-self: start;
+  padding-inline: 0;
+}
+/* Người dẫn của video một giọng: bộ chọn thư viện là chính, file trên máy là lối rẽ — gập lại cho gọn. */
+.vs-local-body .vs-cast-other {
+  margin-top: var(--vu-space-2);
+}
+.vs-local-body .vs-cast-other .vs-cast-file {
+  margin-top: var(--vu-space-2);
+}
+
 /* ── voice picker ───────────────────────────────────────────────────────── */
 .vs-voice-picker {
   display: grid;
@@ -3205,21 +3322,11 @@ button.vs-tile:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.vs-workflow.ant-steps .vs-workflow-item-content {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--subtle);
-  font-size: var(--vu-text-2xs);
-  line-height: var(--vu-leading-snug);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .vs-workflow.ant-steps .ant-steps-item-rail {
   height: 1px;
   background: var(--vu-blue-100);
 }
 .vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-icon,
-.vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-content,
 .vs-workflow.ant-steps .ant-steps-item-wait .ant-steps-item-rail {
   opacity: var(--vu-emphasis-future);
 }
@@ -3254,6 +3361,9 @@ button.vs-tile:hover {
 .feedback.ant-alert .ant-alert-message {
   font-family: var(--vs-font-display);
   font-weight: var(--vu-font-bold);
+}
+.vs-production-state {
+  margin: 0 0 18px;
 }
 .step-empty.ant-empty {
   padding: 42px 24px;
@@ -3636,6 +3746,8 @@ button.vs-tile:hover {
     font-size: 15px;
   }
 
+
+
   .vs-sidebar-menu.ant-menu .ant-menu-title-content {
     min-width: 0;
     overflow: hidden;
@@ -3705,10 +3817,6 @@ button.vs-tile:hover {
     text-align: center;
     text-overflow: clip;
     white-space: normal;
-  }
-
-  .vs-workflow.ant-steps .vs-workflow-item-content {
-    display: none;
   }
 
   .vs-workflow.ant-steps .vs-workflow-item-icon {
@@ -3784,30 +3892,6 @@ button.vs-tile:hover {
     flex-direction: column;
   }
 
-  .vs-gate-navigation {
-    min-height: 0;
-    padding: 14px 17px 17px;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-
-  .vs-gate-navigation-status {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: start;
-    text-align: left;
-  }
-
-  .vs-gate-navigation-back,
-  .vs-gate-navigation-next {
-    width: 100%;
-    justify-self: stretch;
-  }
-
-  .vs-gate-navigation > span[aria-hidden="true"] {
-    display: none;
-  }
-
   .panel-footer .ant-btn-primary {
     width: 100%;
   }
@@ -3865,6 +3949,13 @@ button.vs-tile:hover {
 .ant-menu-item:focus-visible {
   outline: 3px solid var(--vu-border-focus) !important;
   outline-offset: 2px;
+}
+/* An input inside an affix wrapper (password, prefix/suffix icon, counted textarea) shows its focus on
+   the wrapper above; its own ring drew a second blue box inside the first. */
+.ant-input-affix-wrapper .ant-input:focus-visible,
+.ant-input-affix-wrapper input:focus-visible,
+.ant-input-affix-wrapper textarea:focus-visible {
+  outline: none !important;
 }
 
 /* ── trang Hướng dẫn ───────────────────────────────────────────────────────── */
@@ -4017,4 +4108,840 @@ button.vs-tile:hover {
   border-left: 3px solid var(--vu-amber-700);
   background: var(--vu-amber-50);
   color: var(--vu-amber-700) !important;
+}
+
+/* Cross-review switch (review-control.tsx): plan form and scenes step. */
+.vs-review {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-50);
+}
+.vs-review.is-on {
+  border-color: var(--vu-blue-200);
+  background: var(--vu-lesson-surface);
+}
+.vs-review.is-problem {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-review-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.vs-review-head > .anticon {
+  margin-top: 3px;
+  color: var(--vu-lesson-data);
+}
+.vs-review-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.vs-review-copy strong {
+  font-size: 13px;
+}
+.vs-review-copy small {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-review.is-problem .vs-review-copy small {
+  color: var(--vu-brand-secondary);
+}
+.vs-review-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding-left: 24px;
+}
+.vs-review-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-review-field .ant-select {
+  min-width: 180px;
+}
+
+/* Automated checks of a stage (harness-panel.tsx): live steps, review verdict, findings by scene. */
+.vs-harness {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-harness.is-running {
+  border-color: var(--vu-blue-200);
+}
+.vs-harness-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.vs-harness-head > .anticon {
+  color: var(--vu-lesson-data);
+}
+.vs-harness-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.vs-harness-head .ant-tag {
+  margin-inline-end: 0;
+}
+.vs-harness-meta {
+  margin-left: auto;
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+}
+.vs-harness-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-harness-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+}
+.vs-harness-steps li.is-running {
+  border-color: var(--vu-blue-300);
+  background: var(--vu-lesson-surface);
+}
+.vs-harness-steps li.is-done .vs-harness-icon { color: var(--vu-green-700); }
+.vs-harness-steps li.is-error {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-harness-steps li.is-error .vs-harness-icon { color: var(--vu-brand-secondary); }
+.vs-harness-steps li.is-running .vs-harness-icon { color: var(--vu-lesson-data); }
+.vs-harness-steps li.is-pending,
+.vs-harness-steps li.is-skipped {
+  color: var(--vu-neutral-500);
+}
+.vs-harness-icon {
+  margin-top: 1px;
+}
+.vs-harness-step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.vs-harness-step strong {
+  font-size: 12px;
+}
+.vs-harness-step small {
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.vs-harness-time {
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+}
+.vs-verdict {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--vu-green-50);
+}
+.vs-verdict > .anticon {
+  margin-top: 3px;
+  color: var(--vu-green-700);
+}
+.vs-verdict.is-needs_changes {
+  background: var(--vu-amber-50);
+}
+.vs-verdict.is-needs_changes > .anticon {
+  color: var(--vu-amber-700);
+}
+.vs-verdict strong {
+  font-size: 13px;
+}
+.vs-verdict p {
+  margin: 2px 0 0;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-group {
+  margin-top: 14px;
+}
+.vs-finding-group h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.vs-finding-note {
+  margin: 6px 0;
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-finding-group ul,
+.vs-finding-resolved ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-finding {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--vu-neutral-300);
+  border-radius: 6px;
+}
+.vs-finding.is-blocker { border-left-color: var(--vu-brand-secondary); }
+.vs-finding.is-major { border-left-color: var(--vu-amber-700); }
+.vs-finding.is-verified { opacity: 0.7; }
+.vs-finding-still .ant-image,
+.vs-finding-still img {
+  display: block;
+  width: 160px;
+  border-radius: 4px;
+}
+.vs-finding-nostill {
+  display: grid;
+  place-items: center;
+  width: 160px;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-500);
+  font-size: 11px;
+}
+.vs-finding-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.vs-finding-tags .ant-tag {
+  margin-inline-end: 0;
+}
+.vs-finding-scene,
+.vs-finding-code,
+.vs-finding-status {
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-code {
+  font-weight: 600;
+}
+.vs-finding-status {
+  color: var(--vu-lesson-data);
+}
+.vs-finding-message {
+  margin: 6px 0 4px;
+  font-size: 13px;
+}
+.vs-finding-accept {
+  margin: 0;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-evidence summary {
+  margin-top: 4px;
+  color: var(--vu-lesson-data);
+  font-size: 12px;
+  cursor: pointer;
+}
+.vs-finding-evidence p {
+  margin: 4px 0 0;
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-finding-resolved {
+  margin-top: 14px;
+}
+.vs-approve-hint {
+  color: var(--vu-amber-700);
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .vs-finding { grid-template-columns: 1fr; }
+}
+.vs-approve {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.vs-qa li .ant-btn {
+  position: relative;
+}
+.vs-qa-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--vu-neutral-0);
+  border-radius: 50%;
+  background: var(--vu-neutral-500);
+}
+.vs-qa-mark.is-blocker { background: var(--vu-brand-secondary); }
+.vs-qa-mark.is-major { background: var(--vu-amber-700); }
+.vs-finding-control {
+  margin-left: auto;
+}
+.vs-finding.is-wontfix {
+  border-left-color: var(--vu-neutral-300);
+}
+.vs-skip-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.vs-skip-reason label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-skip-reason .ant-select {
+  min-width: 170px;
+}
+.vs-skip-reason .ant-input {
+  flex: 1;
+  min-width: 200px;
+}
+.vs-triage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.vs-triage-bar .ant-input-textarea,
+.vs-triage-bar textarea {
+  flex-basis: 100%;
+}
+.vs-triage-summary {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+
+/* ── step frame: heading chip, agent line, sticky decision bar ──────────── */
+.vs-step-heading {
+  align-items: center;
+}
+.vs-step-heading .vs-badge {
+  margin-inline-end: 0;
+}
+.vs-agent-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-agent-line strong {
+  display: inline-flex;
+  align-items: center;
+  color: var(--vu-lesson-ink);
+}
+.vs-agent-line .anticon-lock {
+  color: var(--vu-neutral-500);
+}
+
+/* Sticks to the bottom of the viewport while the step is taller than it; the decision never scrolls away. */
+.vs-step-bar,
+.editor-panel .panel-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  min-height: var(--vu-step-bar-height);
+  padding: 12px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  border-top: 1px solid var(--vu-border-subtle);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--vu-neutral-0);
+  box-shadow: var(--vu-step-bar-shadow);
+}
+.vs-step-bar-state {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--vu-neutral-700);
+  font-size: var(--vu-text-sm);
+}
+.vs-step-bar-state > .anticon {
+  color: var(--vu-neutral-500);
+}
+.vs-step-bar-state > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-step-bar.is-done .vs-step-bar-state > .anticon { color: var(--vu-green-700); }
+.vs-step-bar.is-running .vs-step-bar-state > .anticon { color: var(--vu-lesson-data); }
+.vs-step-bar.is-review .vs-step-bar-state > .anticon { color: var(--vu-amber-700); }
+.vs-step-bar.is-error .vs-step-bar-state > .anticon,
+.vs-step-bar.is-error .vs-step-bar-state { color: var(--vu-red-700); }
+.vs-step-bar-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.vs-step-bar-tag.ant-tag {
+  margin-inline: 4px 0;
+  font-family: var(--vu-font-utility);
+}
+
+/* ── preview panel: frame first, facts folded ────────────────────────────── */
+.vs-preview-facts.ant-collapse {
+  margin: 0 18px 18px;
+  background: transparent;
+}
+.vs-preview-facts .project-facts {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.vs-preview-facts .vs-workflow-tiles {
+  grid-template-columns: 1fr;
+  margin-top: 12px;
+}
+
+/* ── shared "three steps" frame: prepare → check → bind ──────────────────── */
+.vs-flow {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.vs-flow-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px dashed var(--vu-border-subtle);
+}
+.vs-flow-step:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+.vs-flow-num {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--vu-brand-primary);
+  color: var(--vu-neutral-0);
+  font: var(--vu-font-bold) var(--vu-text-xs) var(--vu-font-brand);
+}
+.vs-flow-num.is-done {
+  background: var(--vu-green-50);
+  color: var(--vu-green-700);
+}
+.vs-flow-body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.vs-flow-body h4 {
+  margin: 3px 0 0;
+  color: var(--vu-lesson-ink);
+  font-size: var(--vu-text-sm);
+}
+.vs-flow-body > .ant-btn {
+  justify-self: start;
+}
+.vs-flow-hint {
+  margin-left: 6px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-regular);
+}
+.vs-flow-note {
+  margin: 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-flow-more.ant-collapse,
+details.vs-flow-more {
+  background: transparent;
+}
+details.vs-flow-more {
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: 6px;
+}
+details.vs-flow-more > summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-semibold);
+}
+details.vs-flow-more[open] > summary {
+  border-bottom: 1px solid var(--vu-border-subtle);
+}
+.vs-flow-more .ant-collapse-header .quiet-label {
+  margin-left: 8px;
+}
+.vs-tune .ant-form-item {
+  margin-bottom: 8px;
+}
+.vs-key-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-key-line .vs-key-field {
+  max-width: 320px;
+}
+.vs-source-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 18px;
+}
+
+/* ── voice result card ───────────────────────────────────────────────────── */
+.vs-voice-result {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: var(--radius);
+  background: var(--vu-blue-50);
+}
+.vs-voice-result h3 {
+  margin: 0;
+  color: var(--vu-lesson-ink);
+  font-size: var(--vu-text-md);
+}
+.vs-voice-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 0;
+}
+.vs-voice-facts div {
+  display: flex;
+  gap: 6px;
+  font-size: var(--vu-text-xs);
+}
+.vs-voice-facts dt {
+  color: var(--vu-text-muted);
+}
+.vs-voice-facts dd {
+  margin: 0;
+  color: var(--vu-lesson-ink);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-voice-master {
+  width: 100%;
+}
+.vs-voice-cues.ant-collapse {
+  background: var(--vu-neutral-0);
+}
+.vs-voice-cues ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-voice-cues li {
+  display: grid;
+  grid-template-columns: 28px 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--vu-text-xs);
+}
+.vs-voice-cue-n,
+.vs-voice-cue-time {
+  color: var(--vu-text-muted);
+}
+.vs-voice-redo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.vs-voice-redo small {
+  color: var(--vu-text-muted);
+}
+.vs-cast-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-cast-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 3px;
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-neutral-0);
+  font-size: var(--vu-text-xs);
+}
+.vs-cast-chips img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.vs-cast-chips small {
+  color: var(--vu-text-muted);
+}
+
+/* ── harness: one line when clean ────────────────────────────────────────── */
+.vs-harness.is-compact .vs-harness-head {
+  margin-bottom: 0;
+}
+.vs-harness-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--vu-text-xs);
+}
+.vs-harness-line li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vs-harness-line li.is-done > .anticon { color: var(--vu-green-700); }
+.vs-harness-line li.is-error > .anticon { color: var(--vu-red-700); }
+.vs-harness-line li.is-skipped { color: var(--vu-neutral-500); }
+.vs-harness-line small {
+  color: var(--vu-text-muted);
+}
+.vs-harness-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vs-verdict p.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vs-verdict .ant-btn-link {
+  padding: 0;
+  height: auto;
+  font-size: var(--vu-text-xs);
+}
+.vs-verdict-line {
+  margin: 10px 0 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-review-popover {
+  width: 340px;
+}
+.vs-review-popover .vs-review {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+/* ── findings: big still for what blocks, small for the rest ─────────────── */
+.vs-finding {
+  grid-template-columns: var(--vu-finding-still-width) minmax(0, 1fr) auto;
+  align-items: start;
+}
+.vs-finding-still .ant-image,
+.vs-finding-still img,
+.vs-finding-nostill {
+  width: var(--vu-finding-still-width);
+}
+.vs-finding.is-compact {
+  grid-template-columns: var(--vu-finding-still-compact-width) minmax(0, 1fr) auto;
+  align-items: center;
+}
+.vs-finding.is-compact .vs-finding-still .ant-image,
+.vs-finding.is-compact .vs-finding-still img,
+.vs-finding.is-compact .vs-finding-nostill {
+  width: var(--vu-finding-still-compact-width);
+}
+.vs-finding.is-compact .vs-finding-message {
+  margin: 2px 0 0;
+  font-size: var(--vu-text-xs);
+}
+.vs-finding-control {
+  align-self: start;
+  white-space: nowrap;
+}
+/* A compact card is one row: its control ("Sửa luôn", "Mở lại") sits on the card's vertical centre. */
+.vs-finding.is-compact .vs-finding-control {
+  align-self: center;
+}
+.vs-finding-group h4 .quiet-label {
+  margin-left: 6px;
+  font-weight: var(--vu-font-regular);
+}
+
+/* ── composer: the one way to talk to the scenes agent ───────────────────── */
+.vs-composer {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: var(--radius);
+  background: var(--vu-blue-50);
+}
+.vs-composer h4 {
+  margin: 0;
+  font-size: var(--vu-text-sm);
+}
+.vs-composer-picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-composer-picked li {
+  padding: 1px 10px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-neutral-0);
+  font-size: var(--vu-text-xs);
+}
+.vs-composer-picked li.is-skip {
+  border-color: var(--vu-border-subtle);
+  color: var(--vu-text-muted);
+}
+.vs-composer-warn {
+  color: var(--vu-red-700);
+}
+.vs-composer-later.ant-collapse,
+.vs-render-settings.ant-collapse,
+.vs-summary.ant-collapse,
+.vs-qa-section.ant-collapse {
+  margin-bottom: 18px;
+  background: var(--vu-neutral-0);
+}
+.vs-composer-later .vs-composer {
+  margin-top: 0;
+}
+
+/* ── folded summary and QA grid ──────────────────────────────────────────── */
+.vs-summary.ant-collapse {
+  padding: 0;
+  border: 1px solid var(--vu-blue-100);
+  border-left: 3px solid var(--vu-blue-700);
+}
+.vs-summary .ant-collapse-title {
+  min-width: 0;
+  overflow: hidden;
+}
+.vs-summary .vs-summary-heading {
+  margin-bottom: 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+.vs-summary-lead {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  margin-left: 6px;
+  color: var(--vu-text-muted);
+  font-weight: var(--vu-font-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-qa-section.ant-collapse {
+  overflow: visible;
+}
+.vs-qa-section .ant-collapse-content-box {
+  padding: 0 !important;
+}
+.vs-qa-label .quiet-label {
+  margin-left: 8px;
+}
+.vs-qa-section .vs-qa-toolbar {
+  align-items: center;
+}
+.vs-qa-count {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-lightbox-frames {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+@media (max-width: 760px) {
+  .vs-step-bar,
+  .editor-panel .panel-footer {
+    padding: 10px 16px;
+  }
+  .vs-step-bar-state {
+    flex-basis: 100%;
+  }
+  .vs-step-bar-actions {
+    flex-wrap: wrap;
+  }
+  .vs-finding,
+  .vs-finding.is-compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vs-finding-still .ant-image,
+  .vs-finding-still img,
+  .vs-finding-nostill {
+    width: 100%;
+  }
+}
+.vs-qa-section .vs-qa-toolbar > div:first-child {
+  flex: 0 0 auto;
 }

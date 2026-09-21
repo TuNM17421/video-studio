@@ -22,12 +22,19 @@ order: 10
 |---|---|---|
 | `name` | có | tên card, cũng là tên ghi vào `REQUEST.md` |
 | `summary` | có | một câu mô tả trên card |
-| `icon` | không | `dialogue` · `quiz` có glyph riêng; giá trị khác dùng glyph chung |
+| `icon` | không | `dialogue` · `quiz` · `mascot` có glyph riêng; giá trị khác dùng glyph chung |
 | `preview` | không | key video xem thử trên kho media (`media/manifest.json`); thiếu thì card không có nút xem thử |
 | `order` | không | số nhỏ đứng trước; mặc định 100 |
 
 Tên file (bỏ `.md`) là **id** của module, ghi vào `REQUEST.md` và `state.json`. Chỉ dùng chữ thường, số và
 gạch nối. **Đừng đổi tên file** của một module đã có video dùng — video cũ sẽ mất module đó.
+
+## Tiêu chí QA
+
+Mục `## Tiêu chí QA` (không bắt buộc) là những gì lượt QA ảnh phải soi **thêm** khi module này bật. Studio
+ghép tiêu chí chung (chữ đọc được, không tràn, không chồng, bố cục không trống, nhịp không lặp) với mục này
+của đúng những module đang bật — video không bật module thì QA không bao giờ thấy tiêu chí của nó. Viết
+mỗi tiêu chí là một điều nhìn thấy được trên ảnh tĩnh; thêm tiêu chí không cần sửa code.
 
 ## Khi nào vẫn cần dev
 
