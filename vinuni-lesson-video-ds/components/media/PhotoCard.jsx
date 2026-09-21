@@ -3,7 +3,6 @@ import { C } from '../../lib/tokens.js';
 import { textWidth } from '../../lib/geometry.js';
 import { dsUrl } from '../../lib/assets.js';
 import { SvgText } from '../text/Text.jsx';
-import { IllustrativeStamp } from '../labels/IllustrativeStamp.jsx';
 
 const PAD = 14; //          white mat between the card edge and the picture
 const CAPTION = 20; //      caption 20/700
@@ -38,8 +37,8 @@ const ALIGN = (v) => (v < 1 / 3 ? 'Min' : v > 2 / 3 ? 'Max' : 'Mid');
  * real object, a paper figure shown as published. Anatomy: white card (radius 22, 3 px dotInactive
  * stroke) · the picture on a 14 px white mat, clipped to radius 12, on a bgAlt field (visible where
  * `contain` letterboxes) · optional caption 20/700 · the credit line 14/600 muted, word-wrapped and never
- * cut (a long one takes room from the picture) — always drawn, the card is not allowed without one · optional tag pill top-right
- * ("ẢNH TƯ LIỆU"). `fit` 'contain' (default) never crops the subject; 'cover' fills the frame and keeps
+ * cut (a long one takes room from the picture) — always drawn, the card is not allowed without one. No
+ * "ẢNH TƯ LIỆU" label: the picture says so itself. `fit` 'contain' (default) never crops the subject; 'cover' fills the frame and keeps
  * `focus` in view — pass `imgW`/`imgH` (from images.js) for an exact focus, otherwise it snaps to
  * min/mid/max. `kenBurns` 0–1 is a slow zoom (≤ 6 %) toward `focus`, driven by the scene. The picture
  * is never filtered, tinted or given a fake-vintage frame. Static apart from `kenBurns` / `opacity`.
@@ -58,7 +57,6 @@ export function PhotoCard({
   imgW,
   imgH,
   kenBurns = 0,
-  tag,
   opacity = 1,
 }) {
   const clipId = `pc${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -115,7 +113,6 @@ export function PhotoCard({
           {ln}
         </SvgText>
       ))}
-      {tag ? <IllustrativeStamp x={x + w - PAD - 6} y={y + PAD + 6} label={typeof tag === 'string' ? tag : 'ẢNH TƯ LIỆU'} anchor="top-right" size={15} /> : null}
     </g>
   );
 }

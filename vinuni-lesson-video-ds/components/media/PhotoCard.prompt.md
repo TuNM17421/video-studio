@@ -11,7 +11,8 @@ comparison, a loop) — animation stays the default. A slot of kind `reference` 
 PhotoCard: Read the picture and redraw the idea with components.
 
 Anatomy: white card (radius 22, 3 px dotInactive) · picture on a 14 px mat, radius 12, bgAlt field
-behind `contain` letterboxing · caption 20/700 · credit 14/600 muted, wrapped, never cut · optional tag.
+behind `contain` letterboxing · caption 20/700 · credit 14/600 muted, wrapped, never cut. No "ẢNH TƯ LIỆU" / MINH HỌA label on
+or beside the picture — a real photo reads as one.
 
 ```jsx
 import { IMAGES } from './images.js';

@@ -22,7 +22,7 @@
     width: 1400, height: 600, duration: 240,
     render: function (f) {
       return h(VK.Fragment, null,
-        h(VK.PhotoCard, { x: 40, y: 30, w: 400, h: 540, src: SRC, imgW: 480, imgH: 654, caption: 'Alan Turing, khoảng 1928', credit: CREDIT, tag: true }),
+        h(VK.PhotoCard, { x: 40, y: 30, w: 400, h: 540, src: SRC, imgW: 480, imgH: 654, caption: 'Alan Turing, khoảng 1928', credit: CREDIT }),
         h(VK.PhotoCard, { x: 480, y: 30, w: 460, h: 300, src: SRC, imgW: 480, imgH: 654, fit: 'cover', focus: [0.5, 0.3], kenBurns: VK.linearProgress(f, 0, 240), credit: CREDIT }),
         h(VK.SvgText, { x: 710, y: 372, size: 19, weight: 600, color: C.textMuted }, "fit='cover' · focus [0.5, 0.3] · kenBurns"),
         h(VK.Card, { x: 980, y: 30, w: 380, h: 300, label: 'CÂU ĐANG ĐỌC', lines: ['Năm 1950, Turing đặt', 'câu hỏi: máy có thể', 'suy nghĩ không?'] }),

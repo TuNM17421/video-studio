@@ -22,8 +22,6 @@ export interface PhotoCardProps {
   imgH?: number;
   /** 0–1 progress of a slow zoom (at most 6 %) toward `focus`. Default 0. */
   kenBurns?: number;
-  /** Pill top-right: true → "ẢNH TƯ LIỆU", or a label. Default none. */
-  tag?: boolean | string;
   opacity?: number;
 }
 export declare const PhotoCard: FC<PhotoCardProps>;
