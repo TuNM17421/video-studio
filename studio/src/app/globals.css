@@ -122,7 +122,7 @@ dialog::backdrop {
   left: 12px;
   z-index: 100;
   background: var(--blue);
-  color: white;
+  color: var(--vu-text-inverse);
   padding: 12px 18px;
   border-radius: 10px;
 }
@@ -633,7 +633,7 @@ dialog::backdrop {
   height: 65px;
   border: 1px solid var(--vu-blue-100);
   border-radius: 7px;
-  background: white;
+  background: var(--vu-surface-card);
   box-shadow: var(--vu-shadow-sm);
 }
 .sheet-back {
@@ -701,8 +701,8 @@ dialog::backdrop {
   place-items: center;
   border-radius: 50%;
   background: var(--blue);
-  color: white;
-  border: 3px solid white;
+  color: var(--vu-text-inverse);
+  border: 3px solid var(--vu-surface-card);
   box-shadow: var(--vu-shadow-xs);
 }
 .upload-zone h3 {
@@ -1773,7 +1773,7 @@ dialog::backdrop {
   width: calc(100% - 32px);
   max-height: 90dvh;
   box-shadow: var(--vu-shadow-lg);
-  background: white;
+  background: var(--vu-surface-card);
   color: var(--text);
   overflow: hidden;
 }

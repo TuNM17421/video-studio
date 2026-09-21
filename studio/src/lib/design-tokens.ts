@@ -41,6 +41,69 @@ export const STUDIO_COLORS = {
     // the pale ground for danger; the danger ink itself is brand.secondary
     dangerSurface: "#fff2f2",
   },
+  /* Màu đứng yên. Ảnh preview của design system là PNG đã nướng sẵn nền sáng — chúng không đổi theo chế
+     độ tối, nên nhãn đè lên chúng cũng không được đổi, nếu không sẽ thành chữ sáng trên nền trắng. Đây
+     là nhóm duy nhất mà bảng tối cố ý chép y nguyên bảng sáng; đừng "sửa" cho khác đi. */
+  media: {
+    // the sheet a baked preview sits on: the PNG's own white, so the frame and the image read as one
+    surface: "#ffffff",
+    chipSurface: "#ffffff",
+    chipBorder: "#e0edf8",
+    chipText: "#0b2a4d",
+  },
+} as const;
+
+/**
+ * Cùng bộ vai trò, giá trị cho nền tối. Phải là màu thật chứ không phải biến CSS: antd suy khoảng sáu
+ * mươi token dẫn xuất từ mấy hạt giống này, nên nó cần số đọc được lúc dựng theme.
+ *
+ * Giữ đúng thứ tự vai trò của bản sáng (`neutral[0]` vẫn là "giấy", `neutral[900]` vẫn là "mực"), chỉ đảo
+ * hướng sáng/tối — khớp với khối `:root[data-theme="dark"]` trong vinuni-tokens.css. Đổi một bên thì phải
+ * đổi bên kia, nếu không giao diện antd sẽ lệch màu với phần CSS tự viết.
+ */
+export const STUDIO_COLORS_DARK = {
+  brand: {
+    primary: "#5fa3dc",
+    primaryHover: "#7fb8e8",
+    primaryActive: "#9acbf2",
+    secondary: "#f0666b",
+    secondaryHover: "#f58085",
+    secondaryActive: "#f89a9e",
+    infoSurface: "#1a2430",
+  },
+  lesson: {
+    ink: "#e3f0fb",
+    surface: "#141f2b",
+    rail: "#1c2c3d",
+    data: "#6bb0e4",
+  },
+  neutral: {
+    0: "#16181c",
+    50: "#1a1d21",
+    100: "#1f2226",
+    200: "#262a2f",
+    300: "#343940",
+    500: "#8b939c",
+    600: "#a7aeb6",
+    700: "#c5cbd2",
+    800: "#e4e8ec",
+    900: "#f5f7f9",
+  },
+  status: {
+    success: "#4fbf85",
+    successSurface: "#12241a",
+    warning: "#e0a63a",
+    warningSurface: "#26200f",
+    dangerSurface: "#2a1416",
+  },
+  /* Chép y nguyên bảng sáng — cố ý. Xem chú thích ở STUDIO_COLORS.media. */
+  media: {
+    // the sheet a baked preview sits on: the PNG's own white, so the frame and the image read as one
+    surface: "#ffffff",
+    chipSurface: "#ffffff",
+    chipBorder: "#e0edf8",
+    chipText: "#0b2a4d",
+  },
 } as const;
 
 export const STUDIO_TYPOGRAPHY = [
@@ -82,6 +145,10 @@ export const STUDIO_LAYOUT = [
   { token: "capability.card.min-height", value: "148 px", usage: "Giữ các card tính năng cân hàng dù nội dung và preview khác nhau" },
   { token: "capability.card.padding", value: "16 px", usage: "Giữ checkbox, glyph và mô tả tách khỏi viền chọn" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },
+  { token: "mascot.matrix.cell", value: "84 px", usage: "Ô ảnh của bảng tư thế × biểu cảm (Thư viện · Mascot): đủ nhận ra nét mặt, bảy cột vẫn vừa khung" },
+  { token: "tour.panel", value: "440 px", usage: "Khung lời thoại của tour hướng dẫn: đủ cho Griffin bên trái và hai câu ngắn bên phải" },
+  { token: "tour.mascot", value: "104 px", usage: "Chiều cao Griffin trong khung tour — nhận ra nét mặt mà không lấn chữ" },
+  { token: "tour.launcher", value: "56 px", usage: "Nút Griffin ở góc màn hình mở lại hướng dẫn của trang" },
 ] as const;
 
 export const STUDIO_WORKFLOW_EMPHASIS = [
@@ -121,4 +188,5 @@ export const STUDIO_MOTION = [
   { token: "fast", value: "120 ms", usage: "Hover, focus, trạng thái control" },
   { token: "normal", value: "180 ms", usage: "Panel, drawer, phản hồi thao tác" },
   { token: "slow", value: "240 ms", usage: "Chuyển cổng và production rail" },
+  { token: "idle", value: "2200 ms", usage: "Nhịp lặp chậm của Griffin trong tour (thở, đạo cụ bồng bềnh) — đủ chậm để không hút mắt khỏi chữ" },
 ] as const;

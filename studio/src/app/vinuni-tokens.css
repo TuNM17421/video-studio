@@ -107,6 +107,7 @@
   --vu-duration-fast: 120ms;
   --vu-duration-normal: 180ms;
   --vu-duration-slow: 240ms;
+  --vu-duration-idle: 2200ms;
   --vu-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /* Semantic aliases — use these in product UI. */
@@ -125,6 +126,13 @@
   --vu-border-default: var(--vu-neutral-300);
   --vu-border-strong: var(--vu-neutral-500);
   --vu-border-focus: var(--vu-brand-primary);
+
+  /* Màu đứng yên cho nhãn đè lên ảnh preview. Ảnh là PNG nướng sẵn nền sáng nên không đổi theo chế độ
+     tối — nhãn trên nó cũng không được đổi. Khối `[data-theme="dark"]` bên dưới cố ý khai lại y hệt. */
+  --vu-media-surface: #ffffff;
+  --vu-media-chip-surface: #ffffff;
+  --vu-media-chip-border: #e0edf8;
+  --vu-media-chip-text: #0b2a4d;
 
   /* Component aliases. */
   --vu-card-background: var(--vu-surface-card);
@@ -146,6 +154,8 @@
   --vu-select-indicator-size: 20px;
   --vu-select-indicator-inset: var(--vu-space-3);
   --vu-overlay-scrim: rgba(0, 0, 0, 0.56);
+  /* Phủ nhẹ lúc rê chuột lên nút đóng: nền sáng thì phủ đen, nền tối phải phủ trắng. */
+  --vu-overlay-hover: rgba(0, 0, 0, 0.08);
   --vu-z-overlay: 300;
   --vu-z-modal: 400;
   --vu-z-toast: 500;
@@ -168,6 +178,10 @@
   --vu-capability-card-min-height: 148px;
   --vu-capability-card-padding: var(--vu-space-4);
   --vu-preview-panel-width: 296px;
+  --vu-mascot-cell: 84px;
+  --vu-tour-panel: 440px;
+  --vu-tour-mascot: 104px;
+  --vu-tour-launcher: 56px;
   --vu-emphasis-active: 1;
   --vu-emphasis-complete: 0.7;
   --vu-emphasis-future: 0.35;
@@ -333,7 +347,7 @@
 .vu-alert__content { font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); }
 .vu-alert__body { display: grid; gap: var(--vu-space-2); min-width: 0; }
 .vu-alert__close, .vu-banner__close, .vu-dialog__close, .vu-toast__close { align-items: center; appearance: none; background: transparent; border: 0; border-radius: var(--vu-radius-sm); color: currentColor; cursor: pointer; display: inline-flex; height: var(--vu-control-sm); justify-content: center; margin: calc(var(--vu-space-2) * -1); padding: 0; width: var(--vu-control-sm); }
-.vu-alert__close:hover, .vu-banner__close:hover, .vu-dialog__close:hover, .vu-toast__close:hover { background: rgba(0, 0, 0, 0.08); }
+.vu-alert__close:hover, .vu-banner__close:hover, .vu-dialog__close:hover, .vu-toast__close:hover { background: var(--vu-overlay-hover); }
 .vu-alert__close:focus-visible, .vu-banner__close:focus-visible, .vu-dialog__close:focus-visible, .vu-toast__close:focus-visible { box-shadow: var(--vu-shadow-focus); outline: 0; }
 .vu-alert--compact { padding: var(--vu-space-3); }
 .vu-alert--info { background: var(--vu-blue-50); border-color: var(--vu-blue-300); color: var(--vu-blue-900); }
@@ -376,7 +390,90 @@
 .vu-empty { color: var(--vu-text-secondary); display: grid; justify-items: center; padding: var(--vu-space-12); text-align: center; }.vu-empty__icon { color: var(--vu-text-muted); font-size: 32px; }
 
 
-.vu-theme-dark { --vu-text-primary: var(--vu-neutral-0); --vu-text-secondary: var(--vu-neutral-300); --vu-text-muted: var(--vu-neutral-400); --vu-text-inverse: var(--vu-neutral-900); --vu-text-link: var(--vu-blue-200); --vu-surface-canvas: var(--vu-neutral-900); --vu-surface-subtle: #22262a; --vu-surface-card: #25292d; --vu-surface-brand: var(--vu-blue-500); --vu-surface-brand-hover: var(--vu-blue-400); --vu-border-subtle: #34393e; --vu-border-default: #4a5158; --vu-border-strong: var(--vu-neutral-400); --vu-border-focus: var(--vu-blue-200); background: var(--vu-surface-canvas); color: var(--vu-text-primary); }
+/* ── chế độ tối ───────────────────────────────────────────────────────────────
+   Cách làm: ĐẢO HƯỚNG của chính các thang màu, không chỉ đổi mười lăm alias ngữ
+   nghĩa. Lý do: trong giao diện này, 72% chỗ dùng màu gọi thẳng bậc thang
+   (`--vu-neutral-0` làm nền giấy, `--vu-blue-900` làm mực) chứ không qua alias —
+   nên chỉ lật alias thì bốn phần năm màn hình vẫn trắng. Đảo thang thì mọi chỗ
+   đang dùng đúng hướng sáng/tối tự đúng theo, và chỉ còn vài chỗ xung đột phải
+   sửa tay (xem `color: white` cứng trong studio.css/globals.css).
+
+   Bậc nào đang là "giấy" thì thành nền tối, bậc nào đang là "mực" thì thành chữ
+   sáng; khoảng cách giữa các bậc giữ nguyên nên tương phản không đổi. Màu thương
+   hiệu giữ sắc, chỉ nâng độ sáng cho đọc được trên nền tối. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Thương hiệu: giữ sắc xanh/đỏ, nâng sáng để đạt tương phản trên nền tối. */
+  --vu-brand-primary: #5fa3dc;
+  --vu-brand-primary-hover: #7fb8e8;
+  --vu-brand-primary-active: #9acbf2;
+  --vu-brand-secondary: #f0666b;
+  --vu-brand-secondary-hover: #f58085;
+  --vu-brand-secondary-active: #f89a9e;
+  --vu-brand-info-surface: #1a2430;
+
+  --vu-lesson-ink: #e3f0fb;
+  --vu-lesson-surface: #141f2b;
+  --vu-lesson-rail: #1c2c3d;
+  --vu-lesson-data: #6bb0e4;
+
+  /* Thang xanh đảo: 50 (nền nhạt nhất) ↔ 900 (mực đậm nhất). */
+  --vu-blue-50: #101a24;
+  --vu-blue-100: #16283a;
+  --vu-blue-200: #1e3a52;
+  --vu-blue-300: #2f5c85;
+  --vu-blue-400: #4685bb;
+  --vu-blue-500: #5fa3dc;
+  --vu-blue-600: #7cb8e6;
+  --vu-blue-700: #9acbf2;
+  --vu-blue-800: #c0e0f8;
+  --vu-blue-900: #e3f0fb;
+
+  --vu-red-50: #2a1416;
+  --vu-red-100: #3d1c1f;
+  --vu-red-500: #e35a60;
+  --vu-red-700: #f0666b;
+  --vu-red-800: #f89a9e;
+
+  /* Thang trung tính đảo: 0 (giấy trắng) ↔ 900 (mực đen). */
+  --vu-neutral-0: #16181c;
+  --vu-neutral-50: #1a1d21;
+  --vu-neutral-100: #1f2226;
+  --vu-neutral-200: #262a2f;
+  --vu-neutral-300: #343940;
+  --vu-neutral-400: #6e757d;
+  --vu-neutral-500: #8b939c;
+  --vu-neutral-600: #a7aeb6;
+  --vu-neutral-700: #c5cbd2;
+  --vu-neutral-800: #e4e8ec;
+  --vu-neutral-900: #f5f7f9;
+
+  --vu-green-50: #12241a;
+  --vu-green-700: #4fbf85;
+  --vu-amber-50: #26200f;
+  --vu-amber-700: #e0a63a;
+
+  /* Bóng đổ màu navy tan biến trên nền tối — đổi sang đen, và đậm hơn vì nền tối
+     nuốt bóng nhiều hơn nền sáng. */
+  --vu-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --vu-shadow-sm: 0 3px 8px -2px rgba(0, 0, 0, 0.45);
+  --vu-shadow-md: 0 10px 24px -8px rgba(0, 0, 0, 0.5);
+  --vu-shadow-lg: 0 18px 40px -12px rgba(0, 0, 0, 0.55);
+  --vu-shadow-focus: 0 0 0 4px rgba(95, 163, 220, 0.35);
+  --vu-overlay-scrim: rgba(0, 0, 0, 0.7);
+
+  --vu-overlay-hover: rgba(255, 255, 255, 0.1);
+
+  /* Y hệt bảng sáng — cố ý, không phải sót. Xem chú thích ở khối :root. */
+  --vu-media-surface: #ffffff;
+  --vu-media-chip-surface: #ffffff;
+  --vu-media-chip-border: #e0edf8;
+  --vu-media-chip-text: #0b2a4d;
+
+  background: var(--vu-surface-canvas);
+  color: var(--vu-text-primary);
+}
 
 @keyframes vu-spin { to { transform: rotate(360deg); } }
 @keyframes vu-pulse { 0%, 100% { background-position: 100% 0; } 50% { background-position: -100% 0; } }

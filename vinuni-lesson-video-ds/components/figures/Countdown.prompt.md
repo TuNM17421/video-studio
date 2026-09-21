@@ -1,6 +1,8 @@
 # Countdown
 
 Vòng đếm ngược cho **khoảng dừng** trong video có quiz: vành tròn vơi dần, số giây còn lại nằm giữa.
+Vành mang núm và nút bấm của đồng hồ bấm giờ (`clock`, mặc định bật) để người xem nhận ra ngay đó là
+đồng hồ; `clock={false}` cho vòng tròn trơn.
 
 ```jsx
 <Countdown x={960} y={560} seconds={30} frame={T} label="giây để suy nghĩ" />
@@ -16,8 +18,9 @@ người xem đang cần đọc.
 
 ## Khác `Stopwatch` chỗ nào
 
-`Stopwatch` quay một cây kim, hợp cho ý "thời gian đang trôi" trong cảnh minh hoạ. `Countdown` trả lời
-**còn bao lâu nữa** — đó mới là câu hỏi duy nhất người xem có trong một khoảng dừng. Đừng thay thế nhau.
+`Stopwatch` quay một cây kim, hợp cho ý "thời gian đang trôi" trong cảnh minh hoạ. `Countdown` cùng
+dáng đồng hồ bấm giờ nhưng trả lời **còn bao lâu nữa** — đó mới là câu hỏi duy nhất người xem có trong
+một khoảng dừng. Đừng thay thế nhau.
 
 ## Ràng buộc
 

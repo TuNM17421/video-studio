@@ -174,6 +174,11 @@ export interface VideoState {
   captions: boolean;
   review: ReviewSettings;
   lastError: string | null;
+  /**
+   * A finished video shipped with the repo for the tour's practice mode (projects/mau-huong-dan): shown with
+   * its real title and stages, but read-only — no agent, voice or render can be started on it.
+   */
+  sample?: boolean;
 }
 
 export interface LogEntry {
@@ -377,13 +382,18 @@ export interface VoiceDef {
 export interface CharacterDef {
   id: string;
   name: string;
-  /** Voice id it borrows. */
-  voice: string;
+  /** Voice id it borrows; null while no voice has been given to it (it cannot be cast yet). */
+  voice: string | null;
   /** Media key of the face. */
-  avatar?: string;
+  avatar?: string | null;
+  /** The face resolved against the media manifest; null when there is none or it was never pushed. */
+  avatarUrl?: string | null;
   side?: "left" | "right";
+  /** A hue name from the video design system's DialogueCard (accent, strong, red…), not a Studio color. */
   tone?: string;
   summary?: string;
+  /** Other names a script may write in `speaker` for this character. */
+  aliases?: string[];
 }
 
 export interface VoiceCatalog {

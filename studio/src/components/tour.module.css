@@ -1,0 +1,88 @@
+/* Onboarding tour (components/tour.tsx): Griffin beside the words, and the mascot button in the corner. */
+.tour:global(.ant-tour) { width: var(--vu-tour-panel); max-width: calc(100vw - var(--vu-space-8)); }
+.tour :global(.ant-tour-title) { color: var(--vu-blue-900); font-family: var(--vu-font-brand); font-size: var(--vu-text-md); }
+
+.step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--vu-space-4);
+}
+
+.step p {
+  margin: 0;
+  color: var(--vu-text-secondary);
+  font-family: var(--vu-font-body);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-relaxed);
+}
+
+.figure {
+  position: relative;
+  width: calc(var(--vu-tour-mascot) * 0.9);
+  height: var(--vu-tour-mascot);
+  display: grid;
+  place-items: end center;
+  animation: mascot-in var(--vu-duration-slow) var(--vu-ease-standard) both;
+  transform-origin: 50% 100%;
+}
+
+.body { max-width: 100%; max-height: 100%; display: block; animation: mascot-breathe var(--vu-duration-idle) ease-in-out var(--vu-duration-slow) infinite; transform-origin: 50% 100%; }
+
+.prop {
+  position: absolute;
+  top: 0;
+  right: calc(var(--vu-tour-mascot) * -0.12);
+  height: calc(var(--vu-tour-mascot) * 0.26);
+  animation: mascot-prop calc(var(--vu-duration-idle) * 0.8) ease-in-out infinite;
+}
+
+.progress { color: var(--vu-text-muted); font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+
+.launcher {
+  position: fixed;
+  right: var(--vu-space-6);
+  bottom: var(--vu-space-6);
+  z-index: var(--vu-z-overlay);
+  width: var(--vu-tour-launcher);
+  height: var(--vu-tour-launcher);
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--vu-brand-primary);
+  border-radius: 50%;
+  background: var(--vu-lesson-surface);
+  box-shadow: var(--vu-shadow-md);
+  color: var(--vu-brand-primary);
+  font-family: var(--vu-font-brand);
+  font-weight: var(--vu-font-bold);
+  cursor: pointer;
+  transition: transform var(--vu-duration-fast) var(--vu-ease-standard), box-shadow var(--vu-duration-fast) var(--vu-ease-standard);
+}
+
+.launcher img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.launcher:hover { transform: translateY(-2px) scale(1.04); box-shadow: var(--vu-shadow-lg); }
+.launcher:focus-visible { outline: none; box-shadow: var(--vu-shadow-focus); }
+
+/* the entrance mirrors the videos: a pop with a small squash, then slow breathing */
+@keyframes mascot-in {
+  0% { opacity: 0; transform: scale(0.6, 0.6); }
+  60% { opacity: 1; transform: scale(1.06, 0.94); }
+  100% { opacity: 1; transform: scale(1, 1); }
+}
+
+@keyframes mascot-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(0.995, 1.015); }
+}
+
+@keyframes mascot-prop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figure, .body, .prop { animation: none; }
+  .launcher { transition: none; }
+}
