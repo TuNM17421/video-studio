@@ -20,7 +20,9 @@ dung thì đổi tên, nên không cần xoá cache; ảnh cũ nằm lại trên
 **Ảnh nào là tư thế × biểu cảm nào** (kèm tên tiếng Việt, nhóm, đạo cụ) khai trong `tools/griffin-assets.json`.
 Script dựng ảnh và sinh luôn hai bảng: `components/mascot/griffinPoses.js` cho component và `poses.json` (thư
 mục này) cho Studio → **Thư viện · Mascot** (`/library/mascot`: xem thử từng tư thế × biểu cảm × đạo cụ, bảng
-ô nào đã vẽ, copy mã dùng trong cảnh). Không ai đọc danh sách chép tay, nên:
+ô nào đã vẽ). Không ai đọc danh sách chép tay, nên mọi bổ sung đều theo cùng một vòng: sửa
+`tools/griffin-assets.json` → chạy lại `tools/griffin-assets.py` với thư mục bộ gốc → `npm run media` đẩy ảnh lên
+R2 → `npm run build` → commit hai bảng + `media/manifest.json`. Bảng ở Studio và component tự đọc bộ ảnh mới.
 
 - **Thêm biểu cảm cho một tư thế** (vd. `wave` buồn): thêm `"sad": "<đường dẫn ảnh>"` vào `moods` của tư thế
   đó, chạy lại script, `npm run build`. Không sửa code.
@@ -32,7 +34,7 @@ mục này) cho Studio → **Thư viện · Mascot** (`/library/mascot`: xem th�
 
 | File | Nguồn trong bộ gốc |
 |---|---|
-| `<tư thế>-<mood>.png` | theo `tools/griffin-assets.json`: stand · sit · wings · turn đủ 7 biểu cảm; cheer · welcome · wave · rest · walk-left · walk-right mới có `neutral` (ảnh vẽ ngược chiều được tự lật) |
+| `<tư thế>-<mood>.png` | theo `tools/griffin-assets.json`: stand · wings · walk-left đủ 7 biểu cảm; walk-right = walk-left lật ngang (`mirror`); welcome · wave · rest mới có `neutral` (ảnh vẽ ngược chiều được tự lật) |
 | `face-<mood>.png` | cắt vuông từ `stand-<mood>`, nền `C.bgAlt` — avatar cho `DialogueCard` |
 | `badge-<mood>.png` | `02_faces/face_*` (`angry` → `stern`) — mặt của `GriffinBadge` |
 | `lightbulb.png`, `question_mark.png`… | `08_accessories_props/`, cắt sát; `!` và `?` được vẽ thêm dấu chấm (bộ gốc thiếu) |
@@ -40,9 +42,11 @@ mục này) cho Studio → **Thư viện · Mascot** (`/library/mascot`: xem th�
 `<mood>` = neutral · happy · wink · surprised · thinking (looking up) · sad · stern.
 
 Ảnh trong một bộ được căn khít vào ảnh `calm` của bộ đó (co giãn + dịch, ưu tiên chân), nên đổi biểu cảm
-là thay ảnh tại chỗ. Chúng vẫn là các bản vẽ riêng: độ chồng khớp sau khi căn ~0,92–0,97 (stand, sit,
-wings) và ~0,71–0,88 (turn). Component vì vậy đổi ảnh bằng nhát cắt kèm nhịp nhún, không chồng mờ.
+là thay ảnh tại chỗ. Chúng vẫn là các bản vẽ riêng: độ chồng khớp sau khi căn ~0,92–0,97 (stand,
+wings) và ~0,71–0,88 (walk-left). Component vì vậy đổi ảnh bằng nhát cắt kèm nhịp nhún, không chồng mờ.
 
 Không dùng từ bộ gốc: `01_main`, `03_bodies`, `07_face_parts` (nét vẽ bản 1, không viền, lệch với bộ mới),
-`griffin_generated_images/02_front_view` (tỉ lệ khác), các ảnh trùng giữa các thư mục.
+`griffin_generated_images/02_front_view` (tỉ lệ khác), các ảnh trùng giữa các thư mục, và các dáng trùng với dáng
+đã có: bộ ngồi `griffin_generated_images(1)/08–14` (≈ `stand`), `01_wings_up_cheerful` (≈ `wings`),
+`03/04_three_quarter_*_walking` (≈ `walk-left`, bộ có đủ biểu cảm).
 

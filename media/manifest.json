@@ -97,6 +97,12 @@
       "sha256": "96a39d27e2f93e42eb0c69b3a1f899116561bf0ff6b1b8ac7a3932bde781d868",
       "updated": "2026-09-19"
     },
+    "mascot/griffin/badge-thinking.da6a681183.png": {
+      "type": "image/png",
+      "bytes": 8837,
+      "sha256": "da6a6811838536bb82959f7a739eeb15482f9b137879c4b2e7624f4b04f2eb1a",
+      "updated": "2026-09-21"
+    },
     "mascot/griffin/badge-wink.0b1c47de7b.png": {
       "type": "image/png",
       "bytes": 8472,
@@ -307,17 +313,101 @@
       "sha256": "aa8b95f8a4e270a9666d3431ca5ba460b6ef8106b74c95cf0d999324a052c03b",
       "updated": "2026-09-19"
     },
+    "mascot/griffin/walk-left-happy.a499063126.png": {
+      "type": "image/png",
+      "bytes": 104802,
+      "sha256": "a49906312604d95ee8844e30506b8150bdde9cd98850e40d2f3880e12cada653",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-left-neutral.629654a49f.png": {
+      "type": "image/png",
+      "bytes": 79455,
+      "sha256": "629654a49fb9a1219a0281450ad3cba78f0efbc98848a449706ae53ee2d857cd",
+      "updated": "2026-09-21"
+    },
     "mascot/griffin/walk-left-neutral.e02b69a389.png": {
       "type": "image/png",
       "bytes": 93022,
       "sha256": "e02b69a389261d991afed276bd509b5a46a086bf240c343182fac6b2b62e7c35",
       "updated": "2026-09-19"
     },
+    "mascot/griffin/walk-left-sad.ad52bb9302.png": {
+      "type": "image/png",
+      "bytes": 84996,
+      "sha256": "ad52bb93027a35faa8d8f57433a36fd888f4914fd96e81f439a0dbbc0a796876",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-left-stern.428a7bda9b.png": {
+      "type": "image/png",
+      "bytes": 78683,
+      "sha256": "428a7bda9b60439ef3e66435f30a3fa1e9719f532e080a4fcc997709648452eb",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-left-surprised.64be38880d.png": {
+      "type": "image/png",
+      "bytes": 92184,
+      "sha256": "64be38880df2b3cdaab505486eba8d31b50b02f06d1a0632a3eabef02035f851",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-left-thinking.d76619b517.png": {
+      "type": "image/png",
+      "bytes": 75164,
+      "sha256": "d76619b517189792b0c2499648ea43a3692d3a6242af3f3b9a20a44d1779c48e",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-left-wink.aa8b95f8a4.png": {
+      "type": "image/png",
+      "bytes": 77758,
+      "sha256": "aa8b95f8a4e270a9666d3431ca5ba460b6ef8106b74c95cf0d999324a052c03b",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-right-happy.587566f627.png": {
+      "type": "image/png",
+      "bytes": 104886,
+      "sha256": "587566f627b82848b3d6c04eb6a21b12c6b68fb23b9195a8bed11f4435a311b8",
+      "updated": "2026-09-21"
+    },
     "mascot/griffin/walk-right-neutral.8b509fff38.png": {
       "type": "image/png",
       "bytes": 91611,
       "sha256": "8b509fff38ff6f8d021c42006e3cfa790dfa1c7f3aa3c992e97b56611eacee23",
       "updated": "2026-09-19"
+    },
+    "mascot/griffin/walk-right-neutral.b860daa07f.png": {
+      "type": "image/png",
+      "bytes": 79417,
+      "sha256": "b860daa07fe2d789c7582620a4a5147f450cdf576f0926bbf8bb8efc82e7e68f",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-right-sad.488bf1be8e.png": {
+      "type": "image/png",
+      "bytes": 84936,
+      "sha256": "488bf1be8ee409345c17dc718f001f02ae738e183cfdc14720bcf2e7840e983c",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-right-stern.438f2296ad.png": {
+      "type": "image/png",
+      "bytes": 78715,
+      "sha256": "438f2296adc4b9a51644e7f90c1167cc761f401e08643a6f15793987b8277b96",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-right-surprised.17efb0d562.png": {
+      "type": "image/png",
+      "bytes": 92239,
+      "sha256": "17efb0d562b8f95fc318dc1f1714c347f796ab8430806e960ada615ef9fc0f0d",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-right-thinking.d7675133df.png": {
+      "type": "image/png",
+      "bytes": 75085,
+      "sha256": "d7675133dff8487c1dc87215c3a85b03a61e1b68e31f47c9ead2c8527402070d",
+      "updated": "2026-09-21"
+    },
+    "mascot/griffin/walk-right-wink.ff3dfda383.png": {
+      "type": "image/png",
+      "bytes": 77738,
+      "sha256": "ff3dfda383b77efa7418353e4a612a4baaa2639e7f49f9a7ad58af1bb6544310",
+      "updated": "2026-09-21"
     },
     "mascot/griffin/wave-neutral.be66de6352.png": {
       "type": "image/png",

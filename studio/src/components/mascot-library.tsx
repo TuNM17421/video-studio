@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Alert, Checkbox, Radio, Segmented, Select, Typography } from "antd";
+import { Alert, Checkbox, Radio, Segmented, Select } from "antd";
 import { dsUrl } from "@/lib/client";
 import { mascotAsset, useMascotTable } from "@/lib/mascot";
 import styles from "./library.module.css";
@@ -13,17 +13,6 @@ const MOTIONS: { value: Motion; label: string }[] = [
   { value: "float", label: "Bồng bềnh" },
   { value: "none", label: "Tĩnh" },
 ];
-
-/** The JSX a scene would write for the current choice — defaults left out, as a scene would. */
-function snippet(pose: string, mood: string, prop: string, motion: Motion, hop: boolean) {
-  const attrs = ["x={1540}", "y={930}", "h={460}", "frame={T}"];
-  if (pose !== "stand") attrs.push(`pose="${pose}"`);
-  if (mood !== "neutral") attrs.push(`mood="${mood}"`);
-  if (prop) attrs.push(`prop="${prop}"`);
-  if (motion !== "idle") attrs.push(`motion="${motion}"`);
-  if (hop) attrs.push("hops={[spokenAt(1, '…')]}");
-  return `<Griffin ${attrs.join(" ")} />`;
-}
 
 /**
  * Library · Mascot: the Griffin pack as the design system draws it. The preview is a DS page (not a Studio
@@ -47,7 +36,6 @@ export function MascotLibrary() {
   const asset = (name: string) => (table ? mascotAsset(table, name) : "");
   const moodDrawn = !current || current.moods.includes(mood);
   const hash = new URLSearchParams({ pose, mood, prop: prop || "none", motion, hop: hop ? "1" : "0" });
-  const code = snippet(pose, mood, prop, motion, hop);
   const pick = (p: string, m?: string) => {
     setPose(p);
     if (m) setMood(m);
@@ -60,7 +48,7 @@ export function MascotLibrary() {
       <div>
         <span className={styles.sectionEyebrow}>Mascot index</span>
         <h1>Griffin VinUni</h1>
-        <p>Linh vật dẫn dắt ở mở bài, chuyển đoạn và kết bài. Chọn tư thế, biểu cảm và đạo cụ để xem đúng cách video vẽ, rồi copy đoạn mã vào cảnh.</p>
+        <p>Linh vật dẫn dắt ở mở bài, chuyển đoạn và kết bài. Chọn tư thế, biểu cảm và đạo cụ để xem đúng cách video vẽ.</p>
       </div>
       <span className={styles.catalogTotal}><strong>{table ? `${drawn}/${poses.length * moods.length}` : "—"}</strong> ảnh tư thế × biểu cảm</span>
     </header>
@@ -109,10 +97,6 @@ export function MascotLibrary() {
             <Segmented size="small" value={motion} onChange={(v) => setMotion(v as Motion)} options={MOTIONS} />
             <Checkbox checked={hop} onChange={(e) => setHop(e.target.checked)}>Nhảy một nhịp giữa vòng lặp</Checkbox>
           </fieldset>
-          <div className={styles.mascotCode}>
-            <span>Dùng trong cảnh</span>
-            <Typography.Paragraph className={styles.mascotSnippet} copyable={{ text: code, tooltips: ["Copy", "Đã copy"] }}>{code}</Typography.Paragraph>
-          </div>
         </div>
       </div>
 
@@ -171,10 +155,6 @@ export function MascotLibrary() {
         </div>
       </div>
 
-      <div className={styles.spareVoices}>
-        <h2>Bổ sung biểu cảm hay tư thế</h2>
-        <p>Thêm ảnh vào <code>tools/griffin-assets.json</code> (một dòng trong <code>moods</code> của tư thế), chạy lại <code>tools/griffin-assets.py</code> với thư mục bộ gốc, <code>npm run media</code> để đẩy ảnh lên R2, rồi <code>npm run build</code>. Bảng trên và component tự đọc bộ ảnh mới — xem <code>assets/mascot/griffin/README.md</code>.</p>
-      </div>
     </>}
   </section>;
 }

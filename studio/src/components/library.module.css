@@ -725,21 +725,6 @@
   line-height: var(--vu-leading-relaxed);
 }
 
-.mascotCode { display: grid; gap: var(--vu-space-1); }
-.mascotCode > span { color: var(--vu-text-muted); font-family: var(--vu-font-utility); font-size: var(--vu-text-2xs); text-transform: uppercase; letter-spacing: var(--vu-tracking-caps); }
-.mascotSnippet:global(.ant-typography) {
-  margin: 0;
-  padding: var(--vu-space-2) var(--vu-space-3);
-  border: 1px solid var(--vu-border-subtle);
-  border-radius: var(--vu-radius-sm);
-  background: var(--vu-surface-card);
-  color: var(--vu-lesson-ink);
-  font-family: var(--vu-font-utility);
-  font-size: var(--vu-text-xs);
-  line-height: var(--vu-leading-relaxed);
-  overflow-wrap: anywhere;
-}
-
 .mascotMatrix { padding: var(--vu-space-5) var(--vu-space-6); border-bottom: 1px solid var(--vu-border-subtle); }
 .mascotMatrixHead { margin-bottom: var(--vu-space-4); }
 
