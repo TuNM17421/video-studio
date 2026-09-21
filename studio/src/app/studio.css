@@ -5601,14 +5601,16 @@ details.vs-flow-more[open] > summary {
 }
 .vs-image-reason, .vs-image-none { margin: 4px 0 10px; font-size: var(--vu-text-xs); color: var(--vu-neutral-700); }
 .vs-image-warn { color: var(--vu-amber-700); font-size: var(--vu-text-xs); }
+/* Thẻ nằm ngang và chia đều hàng (auto-fit gộp cột trống): hai ảnh là hai nửa, không dồn trái để phải trống. */
 .vs-image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--vu-image-candidate-width), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--vu-image-card-min-width)), 1fr));
   gap: 10px;
 }
 .vs-image-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: var(--vu-image-candidate-width) minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -5616,15 +5618,21 @@ details.vs-flow-more[open] > summary {
   overflow: hidden;
 }
 .vs-image-card.is-chosen { border-color: var(--vu-brand-primary); box-shadow: 0 0 0 1px var(--vu-brand-primary); }
-.vs-image-thumb { display: block; aspect-ratio: 4 / 3; background: var(--vu-lesson-surface); }
+.vs-image-thumb {
+  grid-row: 1 / span 2;
+  display: block;
+  min-height: var(--vu-image-candidate-width);
+  background: var(--vu-lesson-surface);
+}
 .vs-image-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.vs-image-meta { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px 4px; font-size: var(--vu-text-xs); }
+.vs-image-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px 4px; font-size: var(--vu-text-xs); }
 .vs-image-meta .ant-tag { align-self: flex-start; margin-inline-end: 0; }
+.vs-image-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .vs-image-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vs-image-license { color: var(--vu-neutral-700); }
 .vs-image-why { margin: 2px 0 0; color: var(--vu-neutral-700); }
 .vs-image-source { align-self: flex-start; }
-.vs-image-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; padding: 6px 10px 10px; }
+.vs-image-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 12px 10px; }
 .vs-image-slot-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
 .vs-image-caption { display: flex; gap: 6px; }
 .vs-image-caption .ant-input { width: 240px; }

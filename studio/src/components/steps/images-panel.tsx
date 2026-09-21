@@ -34,8 +34,10 @@ function CandidateCard({ c, pick, chosen, slotKind, disabled, onChoose }: {
       <img src={fileUrl(c.thumb)} alt={c.title ?? c.id} loading="lazy" />
     </a>
     <div className="vs-image-meta">
-      {pick && <Tag color={pick.fit === "good" ? "success" : "default"}>{pick.fit === "good" ? "Hợp" : "Tạm được"}</Tag>}
-      {chosen && <Tag color="processing" icon={<CheckCircleFilled />}>{DECISION_LABEL[chosen]}</Tag>}
+      {(pick || chosen) && <span className="vs-image-tags">
+        {pick && <Tag color={pick.fit === "good" ? "success" : "default"}>{pick.fit === "good" ? "Hợp" : "Tạm được"}</Tag>}
+        {chosen && <Tag color="processing" icon={<CheckCircleFilled />}>{DECISION_LABEL[chosen]}</Tag>}
+      </span>}
       <strong title={c.description ?? undefined}>{c.title || c.id}</strong>
       {byline && <span className="quiet-label">{byline}</span>}
       <span className="vs-image-license">
