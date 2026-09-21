@@ -5,6 +5,7 @@ import { CheckCircleFilled, CloseOutlined, ExportOutlined, LeftOutlined, LockOut
 import { Button, Empty, Steps, Tag, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
+import { inferDay } from "@/lib/day";
 import type { AgentConfig, StageId, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { STUDIO_STEP_EVENT } from "@/lib/tours";
 import { AgentName } from "./agent-mark";
@@ -134,7 +135,9 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
 }
 
 export default function Studio() {
-  const id = useSearchParams().get("id");
+  const params = useSearchParams();
+  const id = params.get("id");
+  const fromResearch = params.get("fromResearch");
   const [step, setStep] = useState<Step>("plan");
   const [workflowTooltip, setWorkflowTooltip] = useState<Step | null>(null);
   const [styles, setStyles] = useState<StyleDef[]>([]);
@@ -147,6 +150,24 @@ export default function Studio() {
   const [error, setError] = useState<string | null>(null);
   const [autoStep, setAutoStep] = useState(true);
   const { detail, logs, job, error: loadError, refresh } = useVideo(id);
+
+  // "Tạo video từ kịch bản này" ở trang Đóng gói kịch bản: điền sẵn kịch bản đã duyệt vào form, như thể
+  // người dùng vừa chọn tệp. Mã video, style, ngày vẫn do người dùng chọn.
+  useEffect(() => {
+    if (id || !fromResearch) return;
+    let alive = true;
+    api<{ name: string; content: string; title: string }>(`/api/research/${encodeURIComponent(fromResearch)}/script`)
+      .then(({ name, content, title }) => {
+        if (!alive) return;
+        setDraft((current) => ({
+          ...current,
+          script: { name, content },
+          request: { ...current.request, scriptName: name, title: current.request.title || title, day: inferDay(name, content) ?? current.request.day },
+        }));
+      })
+      .catch((e: unknown) => { if (alive) setError(`Không lấy được kịch bản từ Đóng gói kịch bản: ${e instanceof Error ? e.message : String(e)}`); });
+    return () => { alive = false; };
+  }, [id, fromResearch]);
   const { hasKey, setHasKey } = useKeyStatus();
   const editorPanel = useRef<HTMLElement>(null);
 

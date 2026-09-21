@@ -1,10 +1,13 @@
 import { handle } from "@/lib/server/http";
-import { subscribeScout } from "@/lib/server/scout";
+import { subscribe } from "@/lib/server/jobs";
+import { assertRunId, jobKey } from "@/lib/server/research/store";
 
 export const dynamic = "force-dynamic";
 
-/** Từng lần agent gọi công cụ, gửi thẳng ra trang — đây là thứ dựng nên "flow" trên màn hình. */
-export const GET = handle(async (req: Request) => {
+/** Server-sent events của một lượt research: dòng nhật ký, tiến độ job, "trạng thái đổi — tải lại". */
+export const GET = handle(async (req: Request, ctx: { params: Promise<{ rid: string }> }) => {
+  const { rid } = await ctx.params;
+  assertRunId(rid);
   const encoder = new TextEncoder();
   let cleanup = () => {};
   const stream = new ReadableStream({
@@ -16,7 +19,7 @@ export const GET = handle(async (req: Request) => {
         try { controller.enqueue(encoder.encode(value)); }
         catch { closed = true; cleanup(); }
       };
-      const unsubscribe = subscribeScout((event) => enqueue(`data: ${JSON.stringify(event)}\n\n`));
+      const unsubscribe = subscribe(jobKey(rid), (data) => enqueue(`data: ${JSON.stringify(data)}\n\n`));
       const ping = setInterval(() => enqueue(": ping\n\n"), 15000);
       cleanup = () => {
         if (cleaned) return;

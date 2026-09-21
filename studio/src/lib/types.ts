@@ -2,7 +2,7 @@ import type { MusicChoice } from "./music";
 
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
+export type JobKind = StageId | "research" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {

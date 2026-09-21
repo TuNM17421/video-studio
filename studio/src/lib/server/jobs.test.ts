@@ -49,3 +49,21 @@ describe("job countdown", () => {
     expect(currentJob(ID)?.progress?.etaMs).toBeNull();
   });
 });
+
+describe("arguments through a Windows .cmd shim", () => {
+  it.runIf(process.platform === "win32")("reach the program exactly as passed, spaces, parentheses and quotes included", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vs shim "));
+    const shim = path.join(dir, "argv.cmd");
+    const out = path.join(dir, "argv.json");
+    // The shim forwards %* to node, exactly as npm's generated shims do.
+    fs.writeFileSync(shim, `@echo off\r\nnode -e "require('fs').writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))" "${out}" %*\r\n`);
+    const args = ["--allowedTools", "Read", "Bash(node tools/page.mjs *)", "Write(research/x/**)", "-c", 'approval_policy="never"', "a&b", "", "C:\\dir\\"];
+    const { run } = await import("./jobs");
+    const code = await run("test-shim", shim, args);
+    expect(code).toBe(0);
+    expect(JSON.parse(fs.readFileSync(out, "utf8"))).toEqual(args);
+  });
+});
