@@ -15,7 +15,7 @@ kể ở x 130–1330, Griffin đứng bên phải (chân y 930, cao 470) đổi
 | 05 | Bước 3 → Bước 4 | Dạng sóng giọng quét theo lời — tám đoạn dài đúng bằng tám câu đã đo; hàng cảnh bên dưới cùng độ dài, nét đứt nối ranh giới; bóng đèn ở "giọng thật" |
 | 06 | Bước 5 · Render | Hình, giọng, nhạc nền hiện khi được gọi tên rồi chảy vào "Một tệp video · MP4"; Griffin nhảy một nhịp |
 | 07 | Duyệt từng bước | Năm bước nhận dấu duyệt lần lượt từ "duyệt" tới "đi tiếp", được nối lại; "Không có gì chạy ngoài ý muốn"; Griffin giơ cánh |
-| 08 | Đến lượt bạn | Griffin `cheer` nhảy ở "lượt bạn" kèm lấp lánh; "Đến lượt bạn! · Mở Video mới và thử ngay" |
+| 08 | Đến lượt bạn | Griffin `wings` (vui) nhảy ở "lượt bạn" kèm lấp lánh; "Đến lượt bạn! · Mở Video mới và thử ngay" |
 
 Không có số liệu hay kết quả nào ngoài kịch bản. Dạng sóng ở câu 05 là độ dài thật của các câu, không phải
 số minh hoạ.

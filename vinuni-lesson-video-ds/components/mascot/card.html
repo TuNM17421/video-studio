@@ -1,4 +1,4 @@
-<!-- @dsCard group="Components" viewport="700x300" name="Mascot · Griffin VinUni" subtitle="Griffin: 4 dáng × 7 biểu cảm (stand · sit · wings · turn) + 6 động tác (vẫy cánh, chào đón, đi…) · GriffinBadge" -->
+<!-- @dsCard group="Components" viewport="700x300" name="Mascot · Griffin VinUni" subtitle="Griffin: 4 dáng × 7 biểu cảm (stand · wings · walk-left · walk-right) + 3 động tác (vẫy cánh, chào đón, ngồi nghỉ) · GriffinBadge" -->
 <!doctype html>
 <html lang="vi">
 <head>
@@ -21,8 +21,8 @@
   function cycle(offset) {
     return moods.map(function (m, i) { return { at: i * 34 + offset, name: m }; }).concat([{ at: 0, name: moods[0] }]);
   }
-  var sets = [['stand', 120, 0], ['sit', 330, 8], ['wings', 560, 16], ['turn', 810, 24]];
-  var gestures = ['wave', 'welcome', 'cheer', 'rest', 'walk-left', 'walk-right'];
+  var sets = [['stand', 120, 0], ['wings', 350, 8], ['walk-left', 600, 16], ['walk-right', 850, 24]];
+  var gestures = ['wave', 'welcome', 'rest'];
   VK.mountCard('#root', {
     width: 1400, height: 600, duration: 238,
     render: function (f) {

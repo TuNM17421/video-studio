@@ -1,9 +1,9 @@
 import type { FC } from 'react';
 
-/** Drawn with all seven moods: stand · sit · wings (wings raised) · turn (three-quarter, wings open). */
-export type GriffinSetPose = 'stand' | 'sit' | 'wings' | 'turn';
+/** Drawn with all seven moods: stand · wings (wings raised) · walk-left / walk-right (three-quarter walk, wings open; walk-right = walk-left mirrored). */
+export type GriffinSetPose = 'stand' | 'wings' | 'walk-left' | 'walk-right';
 /** Gestures — drawn so far with one mood (neutral); more are added in tools/griffin-assets.json. */
-export type GriffinGesture = 'wave' | 'welcome' | 'cheer' | 'rest' | 'walk-left' | 'walk-right';
+export type GriffinGesture = 'wave' | 'welcome' | 'rest';
 export type GriffinPose = GriffinSetPose | GriffinGesture;
 /** `angry` is accepted as an alias of `stern`. */
 export type GriffinMood = 'neutral' | 'happy' | 'wink' | 'surprised' | 'thinking' | 'sad' | 'stern' | 'angry';

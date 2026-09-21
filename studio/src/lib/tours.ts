@@ -11,7 +11,7 @@
  */
 
 export type TourMascot = {
-  /** A pose of the Griffin pack (stand, sit, wings, turn, wave, welcome, cheer…) — see Thư viện · Mascot. */
+  /** A pose of the Griffin pack (stand, wings, walk-left, walk-right, wave, welcome, rest) — see Thư viện · Mascot. */
   pose: string;
   mood: string;
   /** Optional prop drawn beside the head: lightbulb (a tip), exclamation (careful), question, sparkle. */
@@ -92,7 +92,7 @@ export const TOURS: TourDef[] = [
         target: "nav.library",
         title: "Thư viện: tra trước khi dựng",
         body: "Style, component, nhân vật, mascot và video mẫu — xem đúng như video sẽ vẽ, trước khi viết một dòng kịch bản.",
-        mascot: { pose: "sit", mood: "happy" },
+        mascot: { pose: "stand", mood: "happy" },
         placement: "right",
       },
       {
@@ -106,7 +106,7 @@ export const TOURS: TourDef[] = [
         target: "tour.launcher",
         title: "Cần mình thì gọi nhé",
         body: "Bấm vào mình ở góc màn hình để xem lại hướng dẫn, hoặc mở Chế độ tập: một video mẫu đã đi đủ năm bước.",
-        mascot: { pose: "cheer", mood: "neutral" },
+        mascot: { pose: "wings", mood: "happy" },
         placement: "left",
       },
     ],
@@ -222,7 +222,7 @@ export const TOURS: TourDef[] = [
         target: "nav.new",
         title: "Đến lượt bạn!",
         body: "Bấm Video mới ở thanh bên để làm video đầu tiên của bạn — mình sẽ đi cùng bạn ở trang Kế hoạch.",
-        mascot: { pose: "cheer", mood: "neutral" },
+        mascot: { pose: "wings", mood: "happy" },
         placement: "right",
       },
     ],

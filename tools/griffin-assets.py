@@ -104,6 +104,17 @@ def finish(images, names, outdir, prefix):
 os.makedirs(OUT, exist_ok=True)
 poses = {}
 for name, pose in CONFIG['poses'].items():
+    if pose.get('mirror'):
+        # a pose drawn as another one flipped left-right: every mood of that pose, mirrored
+        src = pose['mirror']
+        if src not in poses:
+            sys.exit(f'{name}: mirror "{src}" phải khai trước nó trong poses')
+        moods = poses[src]['moods']
+        for m in moods:
+            Image.open(f'{OUT}/{src}-{m}.png').transpose(Image.FLIP_LEFT_RIGHT).save(f'{OUT}/{name}-{m}.png', optimize=True)
+        poses[name] = {'label': pose['label'], 'group': pose['group'], 'w': poses[src]['w'], 'hx': pose['hx'], 'moods': moods, **({'walk': True} if pose.get('walk') else {})}
+        print(name, f'= {src} lật ngang', ', '.join(moods), sep='\n  ')
+        continue
     moods = list(pose['moods'])
     unknown = [m for m in moods if m not in MOODS]
     if unknown:
@@ -143,6 +154,12 @@ for m in MOODS:
 for m in MOODS:
     im = Image.open(f"{SRC}/02_faces/face_{'angry' if m == 'stern' else m}.png").convert('RGBA')
     im = im.crop(im.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox())
+    # a drawing that sits higher than the others gets transparent rows on top (griffin-assets.json → badges)
+    dy = CONFIG.get('badges', {}).get(m, {}).get('dy', 0)
+    if dy:
+        pad = Image.new('RGBA', (im.width, im.height + dy), (0, 0, 0, 0))
+        pad.paste(im, (0, dy))
+        im = pad
     save(im, f'{OUT}/badge-{m}.png')
 # props: from 08_accessories_props, trimmed. The pack draws `!` and `?` without their dot, so one is painted
 # under the stem in the drawing's own fill and outline (supersampled 4x for a clean edge).
