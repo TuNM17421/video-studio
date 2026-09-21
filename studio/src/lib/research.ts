@@ -281,6 +281,33 @@ export const GATE2_LABEL: Record<Gate2Decision, string> = {
   accept: "Ghi nhận không đủ nguồn",
 };
 
+/**
+ * Vì sao một claim phải dừng ở cổng 2, hay null nếu nó đi tiếp được.
+ *
+ * Không chỉ "trượt soát": `insufficient` **qua** được soát bằng chứng (luật "phải có trích đoạn" và luật số
+ * nguồn đều miễn cho verdict đó, đúng như thiết kế — người duyệt có quyền ghi nhận một ý không đủ nguồn).
+ * Nhưng nếu nó tự qua thì một lượt agent không có web cho ra bốn finding `insufficient` sẽ mở cổng 2 với dòng
+ * "mọi claim đạt soát", và người duyệt không bao giờ thấy màn hình chọn. Cảnh báo nặng cũng vậy: "kết luận ok
+ * nhưng có trích đoạn phản bác" hay "dữ kiện hay đổi mà không nguồn nào ghi ngày" bay thẳng qua cổng, trong khi
+ * đó đúng là lúc cần một người nhìn. Claim người duyệt đã quyết định rồi thì không hỏi lại.
+ */
+export function gate2Reason(claim: Claim, ev: ClaimCheck | undefined, decisions?: Record<string, Gate2Decision>): string | null {
+  if (!ev?.ok) return ev?.missing ? "chưa có kết quả research" : "trượt soát bằng chứng";
+  if (decisions?.[claim.id]) return null;
+  if (ev.verdict === "insufficient") return "agent báo không tìm đủ nguồn";
+  const heavy = claim.priority === "high" || claim.timeSensitive;
+  return heavy && ev.warnings?.length ? ev.warnings[0] : null;
+}
+
+/**
+ * Các claim đang chờ người duyệt ở cổng 2 — **một** danh sách cho cả máy chủ (dừng ở cổng, nhận quyết định)
+ * lẫn bảng chọn. Hai bên từng lọc khác nhau: máy chủ dừng cả claim qua soát mà `insufficient`, còn bảng chỉ
+ * liệt kê claim trượt soát — cổng mở ra với "0 claim", bấm Tiếp tục thì quay lại đúng cổng đó mãi.
+ */
+export function gate2Waiting(claims: Claim[], evidence: Record<string, ClaimCheck>, decisions?: Record<string, Gate2Decision>) {
+  return claims.map((claim) => ({ claim, why: gate2Reason(claim, evidence[claim.id], decisions) })).filter((w): w is { claim: Claim; why: string } => w.why !== null);
+}
+
 /** Claim mới người duyệt thêm ở cổng 1 — trường nào để trống thì máy chủ điền mặc định. */
 export function blankClaim(id: string): Claim {
   return { id, slides: [], text: "", question: "", kind: "technical", difficulty: "normal", timeSensitive: false, priority: "normal", key: "" };

@@ -7,7 +7,7 @@ import {
 import { Button, Input, Popconfirm, Segmented, Tag } from "antd";
 import { fileUrl } from "@/lib/client";
 import {
-  DIFFICULTY_LABEL, GATE2_LABEL, KIND_LABEL, RUN_RESULT_LABEL, STANCE_LABEL, VERDICT_LABEL,
+  DIFFICULTY_LABEL, GATE2_LABEL, gate2Waiting, KIND_LABEL, RUN_RESULT_LABEL, STANCE_LABEL, VERDICT_LABEL,
   type Gate2Decision, type ResearchView,
 } from "@/lib/research";
 import type { LogEntry } from "@/lib/types";
@@ -107,28 +107,35 @@ export function ClaimDetail({ view, cid, act, running }: { view: ResearchView; c
 // ── cổng 2 ────────────────────────────────────────────────────────────────────────
 
 export function Gate2Panel({ view, act }: { view: ResearchView; act: Act }) {
-  const failing = view.claims.filter((c) => !view.evidence[c.id]?.ok);
-  const [decisions, setDecisions] = useState<Record<string, Gate2Decision>>(() => Object.fromEntries(failing.map((c) => [c.id, "accept" as Gate2Decision])));
+  // Cùng danh sách máy chủ dừng ở cổng 2 — kể cả claim qua soát mà agent báo không đủ nguồn hay có cảnh báo nặng.
+  const waiting = gate2Waiting(view.claims, view.evidence, view.state.gates.gate2?.decisions);
+  const [decisions, setDecisions] = useState<Record<string, Gate2Decision>>(() => Object.fromEntries(waiting.map((w) => [w.claim.id, "accept" as Gate2Decision])));
   const [busy, setBusy] = useState(false);
   return <div className="vs-scout-review">
     <p className="vs-scout-review-lede">
-      {failing.length} claim vẫn chưa đạt soát bằng chứng sau hai lượt research. Chọn cho từng claim: research thêm một lượt, bỏ khỏi kịch bản,
-      hoặc ghi nhận là chưa đủ nguồn — kịch bản sẽ không khẳng định điều đó.
+      {waiting.length} claim cần bạn quyết định. Chọn cho từng claim: research thêm một lượt, bỏ khỏi kịch bản, hoặc giữ kết quả hiện có —
+      claim chưa đủ nguồn thì kịch bản sẽ không khẳng định điều đó.
     </p>
     <ul className="vs-scout-items">
-      {failing.map((c) => <li key={c.id} className="vs-scout-item vs-rs-decision">
-        <span className="vs-scout-sid mono">{c.id}</span>
-        <div className="vs-scout-item-body">
-          <strong>{c.text}</strong>
-          <ul className="vs-scout-problems">{(view.evidence[c.id]?.problems ?? ["chưa có kết quả"]).slice(0, 4).map((p, i) => <li key={i}>{p}</li>)}</ul>
-          <Segmented
-            size="small"
-            value={decisions[c.id]}
-            onChange={(v) => setDecisions({ ...decisions, [c.id]: v as Gate2Decision })}
-            options={(Object.keys(GATE2_LABEL) as Gate2Decision[]).map((d) => ({ value: d, label: GATE2_LABEL[d] }))}
-          />
-        </div>
-      </li>)}
+      {waiting.map(({ claim: c, why }) => {
+        const ev = view.evidence[c.id];
+        const notes = ev?.ok ? ev.warnings : ev?.problems;
+        // Claim đã qua soát với kết luận ok/fix/wrong thì "ghi nhận" là giữ kết luận đó, không phải "không đủ nguồn".
+        const keepLabel = ev?.ok && ev.verdict !== "insufficient" ? "Giữ kết quả" : GATE2_LABEL.accept;
+        return <li key={c.id} className="vs-scout-item vs-rs-decision">
+          <span className="vs-scout-sid mono">{c.id}</span>
+          <div className="vs-scout-item-body">
+            <strong>{c.text}</strong>
+            <ul className="vs-scout-problems">{[why, ...(notes ?? []).filter((n) => n !== why)].slice(0, 4).map((p, i) => <li key={i}>{p}</li>)}</ul>
+            <Segmented
+              size="small"
+              value={decisions[c.id]}
+              onChange={(v) => setDecisions({ ...decisions, [c.id]: v as Gate2Decision })}
+              options={(Object.keys(GATE2_LABEL) as Gate2Decision[]).map((d) => ({ value: d, label: d === "accept" ? keepLabel : GATE2_LABEL[d] }))}
+            />
+          </div>
+        </li>;
+      })}
     </ul>
     <div className="vs-scout-review-actions">
       <span />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blankClaim, type Claim } from "../../research";
 import { claudeResearchArgs, codexResearchArgs } from "../agent-cli";
-import { batches, cleanClaims, withProvenance } from "./runner";
+import { batches, cleanClaims, mergeGate2Decisions, withProvenance } from "./runner";
 
 const claim = (id: string, patch: Partial<Claim> = {}): Claim => ({ ...blankClaim(id), text: `claim ${id}`, question: `hỏi ${id}`, ...patch });
 
@@ -113,5 +113,15 @@ describe("dòng nguồn kịch bản khi bàn giao sang pipeline video", () => {
     const out = withProvenance("# Chỉ có tiêu đề\n\n- **Mục tiêu:** x.", line);
     expect(out.endsWith(line)).toBe(true);
     expect(out).toContain("- **Mục tiêu:** x.");
+  });
+});
+
+describe("quyết định cổng 2 dồn qua các lần dừng", () => {
+  it("giữ quyết định cũ, nhận quyết định mới, bỏ qua claim không chờ", () => {
+    expect(mergeGate2Decisions({ c1: "accept" }, ["c2"], { c2: "drop", c3: "accept" })).toEqual({ c1: "accept", c2: "drop" });
+  });
+
+  it("\"Research lại\" không được lưu — kể cả xoá quyết định cũ của claim đó", () => {
+    expect(mergeGate2Decisions({ c1: "accept", c2: "accept" }, ["c2"], { c2: "retry" })).toEqual({ c1: "accept" });
   });
 });

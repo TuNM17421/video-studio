@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { batches, blankClaim, outlineSummary, type Claim, type Difficulty } from "./research";
+import { batches, blankClaim, gate2Waiting, outlineSummary, type Claim, type ClaimCheck, type Difficulty } from "./research";
 
 // Độ khó của 12 claim trong một lượt thật (research/ai-llm-foundation-lms-2609211713): 5 khó, 3 vừa, 4 dễ.
 const DIFFICULTY: Record<string, Difficulty> = {
@@ -32,5 +32,27 @@ describe("tóm tắt dàn ý", () => {
   it("dàn ý rỗng hay chỉ một slide", () => {
     expect(outlineSummary([])).toBe("0 mục");
     expect(outlineSummary([{ slide: 5 }])).toBe("1 mục, slide 5");
+  });
+});
+
+describe("claim chờ ở cổng 2", () => {
+  const check = (claim: string, patch: Partial<ClaimCheck> = {}): ClaimCheck => ({
+    claim, ok: true, verdict: "ok", quotes: { total: 1, verified: 1, unverifiable: 0 }, problems: [], warnings: [], ...patch,
+  });
+  const claims = [blankClaim("c1"), blankClaim("c2"), { ...blankClaim("c3"), priority: "high" as const }, blankClaim("c4")];
+  const evidence = {
+    c1: check("c1", { ok: false, problems: ["trích đoạn không có trên trang"] }),
+    c2: check("c2", { verdict: "insufficient" }),
+    c3: check("c3", { warnings: ["kết luận ok nhưng có trích đoạn phản bác"] }),
+    c4: check("c4"),
+  };
+
+  it("gồm cả claim qua soát mà không đủ nguồn hoặc mang cảnh báo nặng — không chỉ claim trượt soát", () => {
+    // Trước đây bảng chọn chỉ liệt kê c1, còn máy chủ dừng vì cả c2, c3: cổng mở ra thiếu claim và không qua được.
+    expect(gate2Waiting(claims, evidence).map((w) => w.claim.id)).toEqual(["c1", "c2", "c3"]);
+  });
+
+  it("claim đã quyết định không bị hỏi lại, trừ khi vẫn trượt soát", () => {
+    expect(gate2Waiting(claims, evidence, { c1: "accept", c2: "accept", c3: "accept" }).map((w) => w.claim.id)).toEqual(["c1"]);
   });
 });
