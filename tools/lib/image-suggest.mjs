@@ -187,7 +187,9 @@ export function checkSuggest({ suggest, triage, candidatesBySlot, policy = DEFAU
       ids.add(p.id);
       if (!FITS.includes(p.fit)) problems.push(`${where}: ảnh ${p.id} — "fit" phải là ${FITS.join(' | ')}`);
       if (str(p.why).length < MIN_RANK_WHY_CHARS) problems.push(`${where}: ảnh ${p.id} — "why" quá ngắn`);
-      if (!licenseAllowed(c.license, policy).ok) problems.push(`${where}: ảnh ${p.id} có giấy phép không được dùng (${c.license})`);
+      // Ảnh từ trang research (giấy phép không rõ) được đề xuất như ảnh tham khảo; dùng trong video là việc người
+      // dựng tự xác nhận lúc duyệt.
+      if (!c.referenceOnly && !licenseAllowed(c.license, policy).ok) problems.push(`${where}: ảnh ${p.id} có giấy phép không được dùng (${c.license})`);
       if (c.lowRes) warnings.push(`${where}: ảnh ${p.id} độ phân giải thấp (${c.width}×${c.height})`);
     }
     for (const r of Array.isArray(s.rejected) ? s.rejected : []) {
@@ -200,6 +202,17 @@ export function checkSuggest({ suggest, triage, candidatesBySlot, policy = DEFAU
     if (!seen.has(slot) && (candidatesBySlot[slot]?.candidates?.length ?? 0) > 0) warnings.push(`slot ${slot}: có ứng viên nhưng chưa được xếp hạng`);
   }
   return { problems, warnings };
+}
+
+/**
+ * Giấy phép dùng để ghi công cho một lựa chọn. Ảnh có giấy phép từ nguồn giữ nguyên nó; ảnh từ trang research
+ * (không rõ) dùng giấy phép người dựng đã tự kiểm trên trang nguồn và chọn lúc duyệt (`decision.license`).
+ */
+export function effectiveLicense(candidate, decision) {
+  if (candidate?.referenceOnly && decision?.license) {
+    return { license: decision.license, licenseVersion: decision.licenseVersion ?? null, confirmedBy: 'người dựng video' };
+  }
+  return { license: candidate?.license, licenseVersion: candidate?.licenseVersion ?? null, confirmedBy: null };
 }
 
 /** Soát decisions.json — lựa chọn của người dựng video. */
@@ -217,7 +230,15 @@ export function checkDecisions({ decisions, triage, candidatesBySlot, suggest, p
     if (d.action === 'skip') continue;
     const c = byId(candidatesBySlot[slot]).get(d.candidate);
     if (!c) { problems.push(`${where}: ảnh ${d.candidate ?? '(trống)'} không có trong candidates/${slot}.json`); continue; }
-    if (!licenseAllowed(c.license, policy).ok) problems.push(`${where}: ảnh ${d.candidate} có giấy phép không được dùng (${c.license})`);
+    const lic = effectiveLicense(c, d);
+    if (c.referenceOnly && d.action === 'use' && !d.license) {
+      problems.push(`${where}: ảnh ${d.candidate} lấy từ trang research, chưa rõ giấy phép — chỉ dùng làm tham khảo, hoặc kiểm giấy phép trên trang nguồn rồi chọn nó khi duyệt`);
+    } else if (d.action === 'use' && !licenseAllowed(lic.license, policy).ok) {
+      problems.push(`${where}: ảnh ${d.candidate} có giấy phép không được dùng (${lic.license})`);
+    } else if (!c.referenceOnly && !licenseAllowed(c.license, policy).ok) {
+      problems.push(`${where}: ảnh ${d.candidate} có giấy phép không được dùng (${c.license})`);
+    }
+    if (d.license && !c.referenceOnly) warnings.push(`${where}: ảnh ${d.candidate} đã có giấy phép từ nguồn — bỏ qua giấy phép người dựng ghi`);
     if (!suggested.get(slot)?.has(d.candidate)) warnings.push(`${where}: ảnh ${d.candidate} không nằm trong đề xuất của agent — người dựng tự chọn`);
     if (d.caption != null && [...String(d.caption)].length > MAX_CAPTION_CHARS) problems.push(`${where}: chú thích dài quá ${MAX_CAPTION_CHARS} ký tự`);
   }

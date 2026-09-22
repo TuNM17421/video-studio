@@ -10,7 +10,8 @@
  *  · example videos (ui_kits/lesson-video/videos/<dir>/): required files present, caption pages
  *    ≤ 78 characters covering every cue exactly, `quiz: true` only on silent cues, and a smoke render of
  *    every 3rd frame (plus each cue's first and last frame) that must not throw or write NaN / undefined
- *    into an attribute.
+ *    into an attribute. A folder with cues.js but no video.jsx is a video before its scenes step: a
+ *    warning, not a problem.
  *  · pictures in videos (PhotoCard): `src` is a design-system file given from its root (never http), every
  *    PhotoCard has a `credit`, and the slots it uses exist in the video's images.js as kind `use`.
  *    The smoke render needs esbuild + react-dom (same lookup as build.mjs); skipped if absent.
@@ -165,6 +166,14 @@ function checkPictures(base, where) {
 for (const dir of videoDirs) {
   const base = path.join(VIDEOS_DIR, dir);
   const where = `videos/${dir}`;
+  // A video still before its scenes step (Studio has written cues.js / voice.js, nobody has built a scene yet)
+  // is work in progress, not a broken example: reporting it as a problem failed the scenes gate of every
+  // *other* video on the machine while one waited at the voice step.
+  if (!fs.existsSync(path.join(base, 'video.jsx')) && fs.existsSync(path.join(base, 'cues.js'))) {
+    warnings.push(`${where}: chưa dựng cảnh (có cues.js, chưa có video.jsx) — bỏ qua`);
+    videoReports.push(`  ${dir}: chưa dựng cảnh — bỏ qua`);
+    continue;
+  }
   for (const f of ['video.jsx', 'cues.js', 'card.html', 'player.html', 'STORYBOARD.md']) {
     if (!fs.existsSync(path.join(base, f))) problems.push(`${where} is missing ${f}`);
   }

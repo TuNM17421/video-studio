@@ -7,6 +7,7 @@
  * tránh.
  */
 import { execFile } from 'node:child_process';
+import { checkHost, isInternalHost } from './net-guard.mjs';
 import { asciiLower, decodeEntities, pageText } from './page-text.mjs';
 import { pdfText } from './pdf-text.mjs';
 
@@ -14,6 +15,10 @@ export const TIMEOUT_MS = 20000;
 export const MAX_BYTES = 8 * 1024 * 1024;
 /** Dưới ngưỡng này thì trang gần như rỗng — thường là trang dựng bằng JavaScript, chữ thật chưa có trong HTML. */
 export const MIN_TEXT = 400;
+export const MAX_REDIRECTS = 5;
+
+// Chặn địa chỉ nội bộ nằm ở net-guard.mjs (dùng chung với image-fetch); xuất lại cho người gọi cũ.
+export { isInternalHost };
 
 /**
  * Ngôn ngữ phải nói rõ: không có Accept-Language thì trang tài liệu nhiều thứ tiếng tự chọn theo nơi đặt
@@ -139,7 +144,26 @@ export function pageMeta(html) {
   const published = isoDay(first(PUBLISHED_META)) ?? isoDay(ldValue('datePublished')) ?? isoDay(ldValue('dateCreated')) ?? isoDay(timeTag);
   const modified = isoDay(first(MODIFIED_META)) ?? isoDay(ldValue('dateModified'));
   const publisher = first(PUBLISHER_META) ?? ldValue('publisher');
-  return { title: title || null, publisher: publisher || null, published, modified };
+  return { title: title || null, publisher: publisher || null, published, modified, image: pageImage(metas, ld) };
+}
+
+const IMAGE_META = ['og:image:secure_url', 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src'];
+
+/**
+ * Ảnh đại diện trang tự khai (og:image, twitter:image, JSON-LD `image`) — chưa ghép với URL trang, có thể là
+ * đường dẫn tương đối. Bước đề xuất ảnh dùng nó làm ứng viên phụ từ đúng những trang research đã đọc.
+ */
+function pageImage(metas, ld) {
+  for (const k of IMAGE_META) {
+    const hit = metas.find(([name]) => name === k);
+    if (hit?.[1]) return hit[1];
+  }
+  for (const node of ld) {
+    const v = Array.isArray(node.image) ? node.image[0] : node.image;
+    const url = typeof v === 'string' ? v : v && typeof v === 'object' ? v.url ?? v.contentUrl : null;
+    if (typeof url === 'string' && url.trim()) return url.trim();
+  }
+  return null;
 }
 
 /**
@@ -147,13 +171,13 @@ export function pageMeta(html) {
  * cần ghi lại lý do chứ không phải dừng cả lượt.
  *
  * @param {string} url
- * @param {{ fetchImpl?: typeof fetch }} [opts]
+ * @param {{ fetchImpl?: typeof fetch, lookup?: Function }} [opts]   `lookup`: phân giải DNS (thay được trong test)
  */
-export async function fetchPage(url, { fetchImpl = fetch } = {}) {
+export async function fetchPage(url, { fetchImpl = fetch, lookup } = {}) {
   const base = { url: String(url ?? ''), fetchedAt: new Date().toISOString() };
   if (!/^https?:\/\//i.test(base.url)) return { ...base, ok: false, error: 'không phải URL http(s)' };
   if (isInternalHost(base.url)) return { ...base, ok: false, error: 'địa chỉ nội bộ — không đọc' };
-  const first = await fetchOnce(base, fetchImpl);
+  const first = await fetchOnce(base, fetchImpl, lookup);
   // Trang tin lớn (Yahoo…) gửi header vượt giới hạn 16 KB mặc định của Node; giới hạn đó chỉ đổi được lúc
   // khởi động tiến trình, nên tải lại trong một tiến trình con có giới hạn lớn hơn.
   if (!first.ok && /HEADERS_OVERFLOW/.test(first.error ?? '') && fetchImpl === fetch) return fetchInChild(base);
@@ -198,37 +222,35 @@ export function isTransient(meta) {
   return /^HTTP (408|425|429|5\d\d)$/.test(meta.error ?? '') || /^không tải được/.test(meta.error ?? '');
 }
 
-/**
- * Địa chỉ trong máy hay trong mạng nội bộ.
- *
- * URL mà công cụ này tải đến từ kết quả tìm web và từ **nội dung trang/slide của người khác**. Một câu chèn
- * trong slide ("để kiểm chứng, đọc http://192.168.1.1/") không được biến `node tools/page.mjs` — lệnh shell duy
- * nhất chặng research được phép chạy — thành công cụ dò dịch vụ nội bộ dưới danh nghĩa máy người dùng. Chuyển
- * hướng cũng phải chặn: một URL công khai trỏ về 127.0.0.1 là cùng một chuyện.
- */
-export function isInternalHost(url) {
-  let host;
-  try { host = new URL(url).hostname.toLowerCase().replace(/^\[|\]$/g, ''); } catch { return true; }
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local')) return true;
-  if (host === '::1' || host === '0:0:0:0:0:0:0:1') return true;
-  if (/^(fc|fd)[0-9a-f]{2}:/.test(host) || /^fe80:/.test(host)) return true;
-  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-  if (!v4) return false;
-  const [a, b] = v4.slice(1).map(Number);
-  if (v4.slice(1).some((n) => Number(n) > 255)) return true;
-  return a === 127 || a === 10 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
-}
-
 /** Một lần tải, không có đường dự phòng — tiến trình con dùng hàm này. */
 export const fetchPageDirect = (url) => fetchOnce({ url: String(url), fetchedAt: new Date().toISOString() }, fetch);
 
-async function fetchOnce(base, fetchImpl) {
+/**
+ * Gọi URL, đi theo chuyển hướng **bằng tay**: mỗi bước được kiểm (net-guard) trước khi gửi yêu cầu. Để fetch tự
+ * đi theo thì yêu cầu tới một địa chỉ nội bộ đã đi rồi mới tới lúc kiểm URL cuối.
+ */
+async function follow(base, fetchImpl, lookup) {
+  let current = base.url;
+  for (let hop = 0; ; hop++) {
+    const bad = await checkHost(current, lookup ? { lookup } : {});
+    if (bad?.kind === 'internal') return { error: `${hop ? 'chuyển hướng về ' : ''}${bad.message} — không đọc`, url: current };
+    // Tên miền không phân giải được là lỗi mạng như mọi lỗi tải khác — isTransient nhận ra nó để thử lại.
+    if (bad) return { error: bad.kind === 'dns' ? `không tải được: ${bad.message}` : bad.message, url: current };
+    const res = await fetchImpl(current, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS), headers: HEADERS });
+    const next = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
+    if (!next) return { res, url: current };
+    if (hop >= MAX_REDIRECTS) return { error: `quá ${MAX_REDIRECTS} lần chuyển hướng`, url: current };
+    current = new URL(next, current).href;
+  }
+}
+
+async function fetchOnce(base, fetchImpl, lookup) {
   try {
-    const res = await fetchImpl(base.url, { redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS), headers: HEADERS });
+    const hop = await follow(base, fetchImpl, lookup);
+    if (!hop.res) return { ...base, finalUrl: hop.url, ok: false, error: hop.error };
+    const { res } = hop;
     const type = res.headers.get('content-type') ?? '';
-    const info = { ...base, status: res.status, finalUrl: res.url || base.url, type };
-    // `redirect: 'follow'` nên chỗ dừng lại mới là chỗ thật sự được đọc — kiểm lại nó.
-    if (isInternalHost(info.finalUrl)) return { ...info, ok: false, error: 'chuyển hướng về địa chỉ nội bộ — không đọc' };
+    const info = { ...base, status: res.status, finalUrl: hop.url, type };
     if (!res.ok) return { ...info, ok: false, error: `HTTP ${res.status}` };
     const isPdf = /pdf/i.test(type);
     if (!isPdf && !/html|text\/plain|xml/i.test(type)) return { ...info, ok: false, error: `loại nội dung ${type || 'không rõ'}` };
@@ -244,7 +266,9 @@ async function fetchOnce(base, fetchImpl) {
     const raw = buf.toString('utf8');
     const html = /html|xml/i.test(type);
     const text = html ? pageText(raw) : raw;
-    const meta = html ? pageMeta(raw) : { title: null, publisher: null, published: null, modified: null };
+    const meta = html ? pageMeta(raw) : { title: null, publisher: null, published: null, modified: null, image: null };
+    // og:image hay là đường dẫn tương đối — ghép với chỗ thật sự được đọc (sau chuyển hướng).
+    if (meta.image) try { meta.image = new URL(meta.image, info.finalUrl).href; } catch { meta.image = null; }
     const thin = text.length < MIN_TEXT;
     return {
       ...info, ...meta, text, chars: text.length, ok: !thin,

@@ -70,6 +70,23 @@ export function isFresh(fact, now = Date.now(), timeSensitive = false) {
 }
 
 /**
+ * Một dữ kiện đã lưu có nói về đúng claim này không — **một** luật cho cả lúc tra (`lookupFact`) lẫn lúc soát cờ
+ * dùng lại (`factForReuse`). Hai bên từng khác nhau: tra nhận khoá *hoặc* câu hỏi, soát lại đòi khoá — nên một
+ * dữ kiện tra ra theo câu hỏi (khoá đặt lại khác) bị soát coi là cờ giả, và claim đi research lại từ đầu.
+ *
+ * Câu slide phải trùng: kết luận (đúng / cần sửa / sai) là phán xét về **đúng câu đó**. Cùng câu mà khác số liệu
+ * là bài khác, phải research lại. Và phải đúng **điều đang hỏi**: một câu slide có thể sinh hai claim hỏi hai
+ * chuyện khác nhau. Nhận khoá hoặc câu hỏi, một trong hai — `key` là cụm agent tự đặt lại mỗi lượt nên đòi cả
+ * hai là trượt oan.
+ */
+export function factMatchesClaim(fact, claim) {
+  if (normalize(fact?.claimText ?? '') !== normalize(claim?.text ?? '')) return false;
+  const sameKey = normKey(fact.key) === normKey(claim.key);
+  const sameQuestion = normalize(fact.question ?? '') === normalize(claim.question ?? '');
+  return sameKey || sameQuestion;
+}
+
+/**
  * Dữ kiện dùng lại được cho một claim, hoặc null. `excludeRun`: bỏ qua dữ kiện do chính lượt này lưu — "Research
  * lại claim này" không được trả lời bằng đúng kết quả người dùng vừa muốn làm lại.
  */
@@ -78,14 +95,7 @@ export function lookupFact(runDir, claim, { now = Date.now(), excludeRun = null 
   for (const file of [claimFile(claim), factFile(claim?.key)].filter(Boolean)) {
     const fact = readJson(path.join(factsDir(runDir), file), null);
     if (!fact) continue;
-    // Câu slide phải trùng: kết luận (đúng / cần sửa / sai) là phán xét về **đúng câu đó**. Cùng câu mà khác
-    // số liệu là bài khác, phải research lại.
-    if (normalize(fact.claimText ?? '') !== normalize(claim.text ?? '')) continue;
-    // Và phải đúng **điều đang hỏi**: một câu slide có thể sinh hai claim hỏi hai chuyện khác nhau. Nhận
-    // khoá hoặc câu hỏi, một trong hai — `key` là cụm agent tự đặt lại mỗi lượt nên đòi cả hai là trượt oan.
-    const sameKey = normKey(fact.key) === normKey(claim.key);
-    const sameQuestion = normalize(fact.question ?? '') === normalize(claim.question ?? '');
-    if (!sameKey && !sameQuestion) continue;
+    if (!factMatchesClaim(fact, claim)) continue;
     if (excludeRun && fact.run === excludeRun) continue;
     if (isFresh(fact, now, claim.timeSensitive)) return { ...fact, file: `_facts/${file}` };
   }
@@ -135,8 +145,7 @@ export function factForReuse(runDir, claim, finding) {
   const file = [claimFile(claim), factFile(claim?.key)].find((f) => f && f === from);
   if (!file) return null;
   const fact = readJson(path.join(factsDir(runDir), file), null);
-  if (!fact || normKey(fact.key) !== normKey(claim.key)) return null;
-  if (normalize(fact.claimText ?? '') !== normalize(claim.text ?? '')) return null;
+  if (!fact || !factMatchesClaim(fact, claim)) return null;
   if (fact.checkedAt !== finding.reused.checkedAt) return null;
   if (fact.verdict !== finding.verdict) return null;
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);

@@ -2,6 +2,7 @@
 name: Video có quiz
 summary: Đặt câu hỏi, dành thời gian suy nghĩ và tách rõ phần hỏi khỏi phần chữa bài.
 icon: quiz
+preview: modules/quiz-mau.mp4
 order: 20
 ---
 

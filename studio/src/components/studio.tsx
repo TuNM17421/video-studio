@@ -306,7 +306,7 @@ export default function Studio() {
     back: previous && { label: previous.title, onClick: () => goToStep(previous.id) },
     next: next && { label: next.title, onClick: () => goToStep(next.id), ready: complete(step, detail) },
   };
-  const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop, nav } : null;
+  const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop, nav, refresh } : null;
   const current = STEPS.find((s) => s.id === step)!;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
   const pageProvider = detail?.state.agent.provider ?? draft.agentProvider;
