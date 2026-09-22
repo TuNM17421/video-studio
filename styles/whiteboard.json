@@ -19,13 +19,8 @@
     "mascot"
   ],
   "rules": [
-    "Cả video là MỘT tấm bảng, không cắt cảnh: video.jsx vẽ một SceneFrame (header={false}, eyebrow qua overlay, phụ đề cueCaptions toàn cục) chứa <Whiteboard frame marks camera />, không dùng Series. Mẫu: ui_kits/lesson-video/videos/n2-00-bang-trang/ (board.js, video.jsx).",
-    "board.js dựng bằng createBoard({ timeline: TIMELINE, spokenAt }) từ components/whiteboard/board.js: draw(at, mark) cho bút vẽ một thứ một lúc (nét sau tự chờ nét trước), say(câu, cụm từ) cho mốc theo lời, look(frame, { x, y, w }) cho camera. Đưa board: { marks, camera, lag } vào meta của video.jsx để npm run verify kiểm tra nét vẽ ngoài khung, nét trễ và chữ quá nhỏ.",
-    "Mỗi câu 3–5 nét chính; chữ trên bảng là từ khoá ngắn, không chép cả câu (bút viết ~32 ký tự/giây). Cỡ chữ ≥ 40 px ở zoom 1; chữ chỉ đọc lúc lùi ra thì ≥ 110 px.",
-    "Mực: navy C.text cho chữ, xanh C.accent cho vật/luồng/mũi tên, đỏ C.red cho câu hỏi, điểm nhấn, vòng khoanh. Nền nhạt C.bgAlt / C.redSoft cho ô và vệt highlight. Không dùng màu vai trò của Lesson Lab.",
-    "Chữ tay (HAND, Pangolin) chỉ cho chữ viết trên bảng. Eyebrow, phụ đề, footer giữ Montserrat.",
-    "Bố cục: chia bảng thành vùng theo cấu trúc kịch bản (ví dụ hàng tiêu đề + một ô cho mỗi phần). Camera lia tới vùng mới trước nét đầu tiên của vùng (30–45 frame), lùi ra để nhắc đang ở đâu, và câu tổng kết lùi ra toàn bảng.",
-    "Lau bảng (erase) khi một đoạn đã xong và cần dùng lại chỗ đó; mọi nét trước đó trong vùng lau biến mất, nét sau vẽ đè lên.",
-    "id của mỗi nét là duy nhất và cố định (nó là seed của độ run nét vẽ); không đổi id của nét đã duyệt."
+    "Cả video là MỘT tấm bảng, không cắt cảnh: board.js (createBoard) + một SceneFrame chứa Whiteboard. Chi tiết dựng cảnh: styles/whiteboard.md.",
+    "Mỗi câu 3–5 nét, chữ trên bảng là từ khoá ngắn; mực navy / xanh / đỏ, chữ tay chỉ trên bảng, chrome giữ Montserrat.",
+    "Camera lia tới vùng mới trước nét đầu tiên; không vẽ khi camera còn chạy; câu tổng kết lùi ra toàn bảng."
   ]
 }

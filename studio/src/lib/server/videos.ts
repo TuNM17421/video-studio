@@ -8,6 +8,7 @@ import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
 import { BASE_TEMPLATE_PATH } from "../modules";
 import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
+import { styleGuideLine } from "./style-guides";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { isRunning } from "./jobs";
 import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
@@ -310,6 +311,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     "",
     `- Tên video: ${r.title || id}`,
     `- Style: ${styleName(r.style)} (\`styles/${r.style}.json\`)`,
+    ...(styleGuideLine(r.style) ? [`- ${styleGuideLine(r.style)}`] : []),
     `- Ngày: ${r.day}`,
     `- Kịch bản: \`projects/${id}/kich-ban-goc.md\`${r.scriptName ? ` (tệp gốc: ${r.scriptName})` : ""}`,
     `- Feedback bản cũ: ${r.feedbackDir ? `\`${r.feedbackDir}\`` : "không có"}`,

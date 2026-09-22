@@ -6,6 +6,7 @@ import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStoppe
 import { REPO } from "./paths";
 import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
 import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
+import { styleGuideLine } from "./style-guides";
 import { readState, setStage, styleName, updateState } from "./videos";
 import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
 
@@ -136,12 +137,13 @@ function stagePrompt(id: string, stage: AgentStage, base: string) {
     `Bạn đang chạy trong Video Studio (web local) cho video \`${id}\` (${r.day}, style ${styleName(r.style)}).`,
     "Dùng skill make-video: đọc `.claude/skills/make-video/SKILL.md` và làm đúng chỉ dẫn ở đó.",
     `Yêu cầu của video: \`projects/${id}/REQUEST.md\`. Style: \`styles/${r.style}.json\` (luật của style được ưu tiên).`,
+    styleGuideLine(r.style),
     `Việc cần làm lần này — ${STAGE_TASK[stage].replace("<id>", id)}`,
     `Preview server (dùng làm <base> khi chụp QA): ${base}/ds`,
     feedbackContext(id, stage),
     "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync.",
     "Kết thúc bằng một bản tóm tắt ngắn bằng tiếng Việt: đã làm gì, điểm cần người dùng xem, câu hỏi còn mở.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function feedbackPrompt(id: string, stage: AgentStage, message: string) {

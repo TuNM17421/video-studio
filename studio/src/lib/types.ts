@@ -447,6 +447,8 @@ export interface StyleDef {
    * dialogue card or quiz timer. The plan step greys their cards out and REQUEST.md never asks for them.
    */
   unsupportedModules?: string[];
+  /** How this style builds scenes: `styles/<id>.md` and the guides it extends, parent first (style-guides.ts). */
+  guides?: string[];
   /** Resolved from `extends`: the parent's palette / showcase, shown before this style's additions. */
   base?: { name: string; palette: PaletteColor[]; showcase: Showcase[] };
 }

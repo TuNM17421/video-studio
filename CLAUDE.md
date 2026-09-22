@@ -65,7 +65,10 @@ Local web UI over the same pipeline: the form writes REQUEST.md + `projects/<id>
 cues/scenes/deliver run headless `claude -p` (dontAsk, allowlist in `studio/src/lib/server/agent.ts`); the
 server itself runs TTS (key in RAM only), the audio import, voice-timing, render and transcript. It serves the design system at
 `/ds` (render/QA base). `STUDIO_TTS_MOCK=1` = silent mock voice for development. New styles = new
-`styles/*.json`, no code change.
+`styles/<id>.json` (palette, showcase, rules, `unsupportedModules`) + `styles/<id>.md` (how that style builds
+scenes, its reference video, `## Tiêu chí QA`; front matter `extends: <parent>` adds to the parent's guide),
+no code change. The skill `make-video` is the core every style shares; REQUEST.md and the agent prompt name
+the style's guides, and the QA lane adds their criteria.
 
 ### Giao diện Studio đi theo design system, không tự chế
 Mọi thay đổi UI/UX trong `studio/` phải theo **`studio/src/lib/design-tokens.ts`** — nguồn chuẩn duy nhất

@@ -58,6 +58,7 @@ export function buildPrompt(draft: PlanDraft, style?: StyleDef, modules: ModuleI
   return [
     `Dựng video ${id} (${r.day || "<ngày>"}) theo style ${style?.name || r.style} (styles/${r.style}.json).`,
     `Dùng skill make-video (.claude/skills/make-video/SKILL.md), thứ tự: cues → giọng → cảnh → render → bàn giao.`,
+    style?.guides?.length ? `Hướng dẫn dựng cảnh của style: ${style.guides.join(" rồi ")}.` : "",
     `Kịch bản: ${draft.script ? `projects/${id}/kich-ban-goc.md (chép từ ${draft.script.name})` : "<đường dẫn kịch bản>"}.`,
     r.title && `Tên video: ${r.title}.`,
     r.feedbackDir && `Feedback so với bản cũ: ${r.feedbackDir}`,

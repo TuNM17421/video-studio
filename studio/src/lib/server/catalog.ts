@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { CharacterDef, Library, LibraryGroup, StyleDef, VoiceCatalog, VoiceDef } from "../types";
 import { mediaAsset, styleSample } from "./media";
+import { styleGuides } from "./style-guides";
 import { DS, exists, REPO, STYLES } from "./paths";
 
 /** A styles/*.json as written on disk: `sampleVideo` is a media key there, a resolved asset in StyleDef. */
@@ -18,7 +19,7 @@ export function listStyles(): StyleDef[] {
   return raw
     .map((s): StyleDef => {
       const parent = s.extends ? byId.get(s.extends) : undefined;
-      const style = { ...s, sampleVideo: styleSample(s.id, s.sampleVideo) };
+      const style = { ...s, sampleVideo: styleSample(s.id, s.sampleVideo), guides: styleGuides(s.id) };
       return parent ? { ...style, base: { name: parent.name, palette: parent.palette, showcase: parent.showcase } } : style;
     })
     .sort((a, b) => a.order - b.order);

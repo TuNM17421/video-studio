@@ -72,3 +72,21 @@ describe("style capabilities", () => {
     expect(styleUnsupportedModules("no-such-style")).toEqual([]);
   });
 });
+
+describe("style guides", () => {
+  it("chains a guide to the one it extends, parent first", async () => {
+    const { styleGuides, styleQaCriteria } = await import("./style-guides");
+    expect(styleGuides("lesson-lab")).toEqual(["styles/lesson.md", "styles/lesson-lab.md"]);
+    // the whiteboard borrows Lesson's palette (JSON extends) but none of its scene rules
+    expect(styleGuides("whiteboard")).toEqual(["styles/whiteboard.md"]);
+    expect(styleGuides("no-such-style")).toEqual([]);
+    expect(styleQaCriteria("lesson-lab").map((c) => c.name)).toEqual(["Style · lesson", "Style · lesson-lab"]);
+  });
+
+  it("names the guides in REQUEST.md", () => {
+    const state = normalizeVideoState(storedState);
+    const md = requestMarkdown("wb", { ...state.request, style: "whiteboard" }, "Claude");
+    expect(md).toContain("`styles/whiteboard.md`");
+    expect(md).not.toContain("styles/lesson.md");
+  });
+});
