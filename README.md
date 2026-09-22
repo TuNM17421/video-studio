@@ -112,9 +112,17 @@ npm run build && npm run verify   # kết thúc bằng "all checks passed" là c
 Cài thêm theo nhu cầu:
 
 ```bash
-npm run setup:voice      # nhập audio tự thu hoặc do model local tạo: voice/.venv + Whisper small (~460 MB)
-npm run setup:omnivoice  # tự sinh giọng offline bằng OmniVoice: voice/.venv-omnivoice (1–4 GB + ~3,3 GB model)
+npm run setup:voice      # nhập audio tự thu hoặc do model local tạo: faster-whisper + Whisper small (~860 MB)
+npm run setup:omnivoice  # tự sinh giọng offline bằng OmniVoice (1–4 GB + ~3,3 GB model)
 ```
+
+> **Một bản cho cả máy.** Hai môi trường trên không cài theo từng checkout: có sẵn ở đâu thì dùng lại —
+> `voice/.venv` / `voice/.venv-omnivoice` của checkout này, thư mục dùng chung (`~/.cache/video-studio/`,
+> macOS `~/Library/Caches/video-studio/`, Windows `%LOCALAPPDATA%\video-studio\`), hoặc một worktree khác
+> của repo; model Whisper lấy luôn từ cache Hugging Face nếu đã có. Chỉ khi không thấy ở đâu cả mới cài,
+> và cài vào thư mục dùng chung. `node tools/setup-voice-align.mjs --where` cho biết đang dùng bản nào;
+> `--local` cài vào checkout như trước; `VOICE_ALIGN_VENV`, `OMNIVOICE_VENV`, `VOICE_ALIGN_CACHE`,
+> `VIDEO_STUDIO_HOME` chỉ định thẳng chỗ khác.
 
 > **Dùng OmniVoice cần cả hai lệnh:** `setup:omnivoice` để *sinh* giọng, `setup:voice` để *nhập* giọng đó vào
 > video. Kiểm tra máy có chạy nổi không bằng `node tools/setup-omnivoice.mjs --check`.

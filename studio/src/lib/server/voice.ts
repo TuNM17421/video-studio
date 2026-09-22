@@ -214,11 +214,13 @@ type ServerState = OmnivoiceStatus["server"];
 const NO_SERVER: ServerState = { running: false, pid: null, port: 7860, url: null, log: "voice/.omnivoice/server.log" };
 
 /**
- * Bước nhập soát từng file bằng Whisper, và Whisper sống ở `voice/.venv` — venv khác hẳn cái mà
- * OmniVoice dựng. Không hỏi trước thì người dùng sinh xong 40 câu (hàng chục phút GPU) mới đụng tường.
+ * Bước nhập soát từng file bằng Whisper, và Whisper sống trong venv riêng — khác hẳn venv mà OmniVoice
+ * dựng. Không hỏi trước thì người dùng sinh xong 40 câu (hàng chục phút GPU) mới đụng tường. Venv đó là một
+ * bản cho cả máy (tools/lib/shared-env.mjs): có ở checkout này, ở thư mục dùng chung hay ở một worktree khác
+ * đều tính — `--where` chỉ dò đường dẫn, không khởi động Python.
  */
-const alignInstalled = () =>
-  ["bin/python", "Scripts/python.exe"].some((p) => fs.existsSync(path.join(REPO, "voice/.venv", p)));
+const alignInstalled = async () =>
+  (await toolState<{ installed: boolean }>(["tools/setup-voice-align.mjs", "--where", "--json"], { installed: false })).installed;
 
 export async function omnivoiceStatus(): Promise<OmnivoiceStatus> {
   const [env, server] = await Promise.all([
@@ -235,7 +237,7 @@ export async function omnivoiceStatus(): Promise<OmnivoiceStatus> {
   return {
     ...env,
     venv: slash(env.venv),
-    align: alignInstalled(),
+    align: await alignInstalled(),
     server: { running: server.running, pid: server.pid, port: server.port, url: server.url, log: slash(server.log) },
   };
 }
@@ -247,7 +249,7 @@ export async function omnivoiceStatus(): Promise<OmnivoiceStatus> {
 export async function setupAlign(id: string) {
   startJob(id, "align-setup");
   setProgress(id, null, "Cài môi trường nhận diện giọng (Whisper)…");
-  log(id, "system", "Cài Whisper vào voice/.venv — bước nhập dùng nó để soát từng file có đúng câu không.");
+  log(id, "system", "Cài Whisper (một bản cho cả máy, dùng lại nếu đã có) — bước nhập dùng nó để soát từng file có đúng câu không.");
   const code = await run(id, process.execPath, ["tools/setup-voice-align.mjs"], {
     onLine: (line) => log(id, "output", line),
   });
@@ -363,7 +365,7 @@ export async function generateLocal(id: string, v: VoiceSettings) {
  * (hàng chục phút GPU) thành một job báo lỗi đỏ.
  */
 async function autoScan(id: string, dir: string) {
-  if (!alignInstalled()) {
+  if (!(await alignInstalled())) {
     log(id, "system", "Chưa cài môi trường nhận diện giọng nên bỏ qua bước kiểm tra. Cài xong thì bấm Kiểm tra lại ở bước 4.");
     return;
   }

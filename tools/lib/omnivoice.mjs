@@ -18,9 +18,14 @@ import { runAlign, venvPython as alignPython } from './voice-align.mjs';
 import { AUDIO_EXT, isAudioFile } from './voice-files.mjs';
 import { mediaUrl } from './media.mjs';
 import { castSpeaker, readVoices, resolveVoice, speedFor } from './voices.mjs';
+import { displayPath, findVenv, installDir, OMNIVOICE_VENV, venvBin as sharedVenvBin } from './shared-env.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const VENV = path.join(ROOT, 'voice/.venv-omnivoice');
+/**
+ * Venv của OmniVoice (1–4 GB): một bản cho cả máy, tìm như venv của Whisper (tools/lib/shared-env.mjs) —
+ * trong checkout này, thư mục dùng chung, rồi các worktree khác.
+ */
+export const omnivoiceVenv = () => findVenv(OMNIVOICE_VENV);
 export const MODEL_ID = 'k2-fsa/OmniVoice';
 export const SETUP_HINT = 'Chưa cài model local. Chạy: npm run setup:omnivoice';
 
@@ -28,11 +33,7 @@ const exe = (name) => (process.platform === 'win32' ? `${name}.exe` : name);
 
 /** Đường dẫn một lệnh trong venv, hoặc null nếu chưa có. */
 export function venvBin(name) {
-  for (const dir of ['bin', 'Scripts']) {
-    const p = path.join(VENV, dir, exe(name));
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
+  return sharedVenvBin(omnivoiceVenv()?.dir, name);
 }
 
 export const venvPython = () => venvBin('python');
@@ -451,8 +452,8 @@ export function omnivoiceStatus() {
   const bin = inferBatchBin();
   return {
     installed: Boolean(bin),
-    bin: bin ? path.relative(ROOT, bin) : null,
-    venv: path.relative(ROOT, VENV),
+    bin: bin ? displayPath(bin) : null,
+    venv: displayPath(omnivoiceVenv()?.dir ?? installDir(OMNIVOICE_VENV)),
     device: detectDevice(),
     modelId: MODEL_ID,
     modelGb: MODEL_GB,

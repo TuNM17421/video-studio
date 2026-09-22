@@ -1,6 +1,7 @@
 /**
- * Word timestamps for imported narration: run tools/voice-align/align.py in the repo's voice venv, then
- * map Whisper's words onto the locked cue text.
+ * Word timestamps for imported narration: run tools/voice-align/align.py in the Whisper venv, then
+ * map Whisper's words onto the locked cue text. The venv and the model are found through shared-env.mjs:
+ * one install per machine, reused by every checkout/worktree instead of ~860 MB each.
  *
  * Whisper transcribes what it hears; cues.js holds what was written. The two are close but never equal
  * (punctuation, numbers read as words, the odd misheard syllable), so `mapWords` aligns the two word
@@ -9,28 +10,28 @@
  * files are off by one — a file holding a different câu matches almost nothing.
  */
 import { spawn } from 'node:child_process';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FPS } from './voice-audio.mjs';
+import { findVenv, WHISPER_VENV, whisperModelCache } from './shared-env.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const VENV = path.join(ROOT, 'voice/.venv');
 export const ALIGN_PY = path.join(ROOT, 'tools/voice-align/align.py');
-export const MODEL_CACHE = path.join(ROOT, 'voice/cache/whisper');
 export const SETUP_HINT = 'Chưa cài môi trường nhận diện giọng. Chạy: npm run setup:voice';
+
+/** Where the Whisper venv is ({ dir, bin, from }), or null when no checkout on this machine has one. */
+export const alignVenv = () => findVenv(WHISPER_VENV);
 
 /** The venv interpreter, or null when `npm run setup:voice` has not been run on this machine. */
 export function venvPython() {
-  for (const p of [path.join(VENV, 'bin/python'), path.join(VENV, 'Scripts/python.exe')]) {
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
+  return alignVenv()?.bin ?? null;
 }
 
+/** download_root for faster-whisper: wherever the model already is, else the shared cache. */
+export const modelCache = (model = process.env.VOICE_ALIGN_MODEL || 'small') => whisperModelCache(model);
+
 /** Run align.py with `job` on stdin. Resolves { ok, result | error }; never throws for a bad exit. */
-export function runAlign(job, { onLine, check = false } = {}) {
-  const python = venvPython();
+export function runAlign(job, { onLine, check = false, python = venvPython() } = {}) {
   if (!python) return Promise.resolve({ ok: false, error: SETUP_HINT });
   return new Promise((resolve) => {
     const child = spawn(python, [ALIGN_PY, ...(check ? ['--check'] : [])], { cwd: ROOT });
@@ -46,7 +47,7 @@ export function runAlign(job, { onLine, check = false } = {}) {
       if (code !== 0) return resolve({ ok: false, error: err.trim().split('\n').pop() || `align.py exit ${code}` });
       try { resolve({ ok: true, result: JSON.parse(out) }); } catch { resolve({ ok: false, error: 'align.py trả về dữ liệu không đọc được.' }); }
     });
-    child.stdin.end(JSON.stringify({ cacheDir: MODEL_CACHE, ...job }));
+    child.stdin.end(JSON.stringify({ cacheDir: modelCache(job.model), ...job }));
   });
 }
 

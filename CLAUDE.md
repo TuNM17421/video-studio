@@ -10,8 +10,10 @@ Never keep a second copy of the design system in another folder. Commit before a
 the repo is pushed to GitHub (private), `.env`, audio, MP4, `node_modules`, `ds-bundle/` are ignored.
 
 Setup (see README "Setup lần đầu"): `npm install` (deps + links `node_modules/vinuni-lesson-video-ds`),
-`npm run setup` (playwright Chromium), `npm run setup:voice` (only for imported voice: `voice/.venv` +
-Whisper, see `docs/decisions/voice-align.md`), `tts-elevenlabs/.env` from `.env.example`. Tools find Chrome via
+`npm run setup` (playwright Chromium), `npm run setup:voice` (only for imported voice: faster-whisper venv +
+Whisper model, see `docs/decisions/voice-align.md`; like `setup:omnivoice` it is one install per machine —
+reused from this checkout, the shared `~/.cache/video-studio/`, another worktree or the HF cache, see
+`tools/lib/shared-env.mjs`), `tts-elevenlabs/.env` from `.env.example`. Tools find Chrome via
 `$CHROME` → playwright's Chromium → system Chrome, and ffmpeg via `$FFMPEG` → ffmpeg-static → `ffmpeg` on PATH.
 Read `vinuni-lesson-video-ds/README.md` (rules, tokens, components) and `vinuni-lesson-video-ds/SKILL.md`
 before designing anything.

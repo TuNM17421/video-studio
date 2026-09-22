@@ -249,7 +249,7 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
             <Button size="small" icon={<SearchOutlined />} loading={scanning} disabled={busy || !aligned} onClick={rescan}>Kiểm tra lại</Button>
           </div>}
 
-          {/* Whisper nằm ở voice/.venv, KHÁC venv của OmniVoice. Cài xong OmniVoice mà thiếu nó thì
+          {/* Whisper nằm trong venv riêng, KHÁC venv của OmniVoice. Cài xong OmniVoice mà thiếu nó thì
               sinh giọng vẫn chạy ngon rồi chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút. */}
           {status && !aligned && <ProductionState
             className="vs-local-warning"
