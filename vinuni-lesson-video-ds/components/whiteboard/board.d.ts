@@ -24,8 +24,10 @@ export interface Board {
   boxText(id: string, at: number | null, box: Rect, text: string, opts?: { size?: number; color?: string; fill?: string; boxColor?: string; dur?: number }): WhiteboardMark;
   /** Clock doodle (face + hands at `hour` o'clock); returns the hands mark. */
   clock(id: string, at: number | null, cx: number, cy: number, r: number, hour: number): WhiteboardMark;
-  /** Width of handwriting at `size` px. */
-  textWidth(text: string, size: number): number;
+  /** The board's handwriting font key. */
+  font: string;
+  /** Width of handwriting at `size` px (in the board's font unless `font` is given). */
+  textWidth(text: string, size: number, font?: string): number;
 }
 
 export declare function createBoard(opts: {
@@ -33,6 +35,8 @@ export declare function createBoard(opts: {
   timeline: { n: number; start: number }[];
   /** cues.js spokenAt (câu-local frames). */
   spokenAt: (n: number, phrase: string) => number;
+  /** Handwriting for the board's text (default 'playpen'); a mark's own `font` wins. */
+  font?: 'playpen' | 'shantell' | 'pangolin';
   /** Frames late before a beat is listed in `lag` (default 12). */
   lateAfter?: number;
   /** Frames the marker pauses between strokes (default 2). */

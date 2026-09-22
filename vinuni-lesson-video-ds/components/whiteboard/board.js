@@ -13,8 +13,9 @@
  */
 import { defaultDur, markBounds, toScreen } from './Whiteboard.jsx';
 import { handWidth } from './sketch.js';
+import { HAND_DEFAULT } from './handFonts.js';
 
-export function createBoard({ timeline, spokenAt, lateAfter = 12, gap = 2 }) {
+export function createBoard({ timeline, spokenAt, font = HAND_DEFAULT, lateAfter = 12, gap = 2 }) {
   const marks = [];
   const camera = [];
   const lag = [];
@@ -37,7 +38,8 @@ export function createBoard({ timeline, spokenAt, lateAfter = 12, gap = 2 }) {
     ids.add(mark.id);
     const want = at == null ? penFree : Math.round(at);
     const a = mark.pen === false ? want : Math.max(want, penFree);
-    const m = { ...mark, at: a };
+    // text marks carry their font, so layout, pen and checks agree without knowing the board
+    const m = mark.kind === 'text' && !mark.font ? { ...mark, font, at: a } : { ...mark, at: a };
     if (m.pen !== false) penFree = a + (m.dur ?? defaultDur(m)) + gap;
     if (at != null && a - want > lateAfter) lag.push({ id: m.id, late: a - want });
     marks.push(m);
@@ -62,7 +64,7 @@ export function createBoard({ timeline, spokenAt, lateAfter = 12, gap = 2 }) {
     return draw(null, { id: `${id}-hands`, kind: 'line', points: [{ x: cx, y: cy - r * 0.72 }, { x: cx, y: cy }, { x: cx + Math.cos(a) * r * 0.5, y: cy + Math.sin(a) * r * 0.5 }], dur: 8 });
   }
 
-  return { marks, camera, lag, start, say, draw, endOf, look, boxText, clock, textWidth: handWidth };
+  return { marks, camera, lag, font, start, say, draw, endOf, look, boxText, clock, textWidth: (text, size, f = font) => handWidth(text, size, f) };
 }
 
 /** Screen area a drawn mark must stay in: below the eyebrow, above the caption bar. */

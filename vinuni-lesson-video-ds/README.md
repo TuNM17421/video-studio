@@ -20,7 +20,7 @@ thumbnail, poster** đúng style của khoá học. Mọi kích thước là px 
    vàng đậm) chỉ cho nhãn vùng / viền / nền nhạt khi kịch bản mã hóa vai trò bằng màu. Không thêm hex khác,
    không gradient, không màu thương hiệu khác (trừ logo `Brand`). Tint, bóng, glow = chính các màu đó ở alpha.
 3. **Chữ**: chỉ **Montserrat 500 / 600 / 700** (có subset tiếng Việt). Monospace chỉ cho code.
-   Ngoại lệ duy nhất (lab): style bảng trắng viết chữ trên bảng bằng `HAND` (Pangolin); chrome vẫn Montserrat.
+   Ngoại lệ duy nhất (lab): style bảng trắng viết chữ trên bảng bằng chữ tay (`HAND` = Playpen Sans mặc định; Shantell Sans, Pangolin); chrome vẫn Montserrat.
 4. **Nghĩa của màu**: xanh `accent` = dữ liệu / trung tính / chưa xử lý · đỏ `red` = điểm nhấn / đã
    chọn / đã biến đổi / hành động / rủi ro / đáp án · `bgAlt` = thân thẻ và "cỗ máy kính" ·
    `dotInactive` = đường ray, divider, trạng thái chưa kích hoạt.
@@ -404,7 +404,7 @@ styles.css                      entry — chỉ @import (tokens + component CSS)
 README.md · SKILL.md            tài liệu này · điểm vào dạng Agent Skill
 tokens/colors_and_type.css      CSS variables, @font-face Montserrat, class vai trò chữ
 tokens/tokens.json              token dạng W3C design tokens
-fonts/                          Montserrat variable (OFL) + OFL.txt · Pangolin (OFL, chỉ style bảng trắng)
+fonts/                          Montserrat variable (OFL) + OFL.txt · Playpen Sans, Shantell Sans, Pangolin (OFL, chỉ style bảng trắng; đo bằng tools/hand-fonts.mjs)
 assets/icons/*.svg              20 icon nét tay (currentColor)
 lib/tokens.js                   C (9 màu), LAYOUT, SHADOW, alpha()
 lib/motion.js                   interpolate, spring, Easing (tương thích Remotion) + appear/pulse/fadeWindow/smooth

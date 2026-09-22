@@ -26,7 +26,9 @@ Video mẫu: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n2-00-bang-tran
   Chữ ≥ 40 px ở zoom 1; chữ chỉ đọc lúc lùi ra ≥ 110 px.
 - Mực: navy `C.text` cho chữ, xanh `C.accent` cho vật / luồng / mũi tên, đỏ `C.red` cho câu hỏi, điểm nhấn,
   vòng khoanh. Nền nhạt `C.bgAlt` / `C.redSoft`. Không dùng màu vai trò của Lesson Lab.
-- Chữ tay (`HAND`, Pangolin) chỉ cho chữ trên bảng; eyebrow, phụ đề, footer giữ Montserrat.
+- Chữ tay chỉ cho chữ trên bảng; eyebrow, phụ đề, footer giữ Montserrat. Ba font: `playpen` (Playpen Sans,
+  mặc định), `shantell` (Shantell Sans), `pangolin` (Pangolin) — chọn cho cả bảng bằng
+  `createBoard({ font })` hoặc cho một nét bằng `font:`. Thêm font: `tools/hand-fonts.mjs`.
 - **Camera**: lia tới vùng mới trước nét đầu tiên của vùng (30–45 frame); đừng vẽ khi camera còn đang chạy
   (verify báo nét ngoài khung). Lùi ra để nhắc đang ở đâu; câu tổng kết lùi ra toàn bảng.
 - **Lau bảng** (`erase`) khi một đoạn đã xong và cần chỗ; mọi nét trước đó trong vùng lau biến mất.

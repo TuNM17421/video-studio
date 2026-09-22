@@ -6,18 +6,21 @@
  */
 import { curvePath, getLength, getPointAtLength } from '../../lib/paths.js';
 import { rng } from '../../lib/text.js';
+import { HAND_DEFAULT, HAND_FONTS } from './handFonts.js';
 
-/** Pangolin advance widths, per 1000 units of font size (measured in Chromium, 2026-09-22). */
-const ADVANCE = { "0": 683, "1": 391, "2": 559, "3": 558, "4": 580, "5": 542, "6": 582, "7": 529, "8": 504, "9": 515, " ": 217, "!": 288, "\"": 406, "#": 624, "$": 542, "%": 736, "&": 626, "'": 198, "(": 334, ")": 336, "*": 463, "+": 567, ",": 254, "-": 426, ".": 219, "/": 359, ":": 267, ";": 278, "<": 566, "=": 596, ">": 546, "?": 442, "@": 797, "A": 649, "B": 566, "C": 617, "D": 627, "E": 520, "F": 602, "G": 663, "H": 633, "I": 282, "J": 479, "K": 603, "L": 564, "M": 720, "N": 676, "O": 635, "P": 552, "Q": 611, "R": 579, "S": 583, "T": 555, "U": 662, "V": 599, "W": 854, "X": 567, "Y": 581, "Z": 682, "[": 319, "\\": 391, "]": 300, "^": 424, "_": 617, "`": 236, "a": 465, "b": 491, "c": 508, "d": 490, "e": 493, "f": 406, "g": 503, "h": 469, "i": 178, "j": 230, "k": 417, "l": 238, "m": 888, "n": 566, "o": 537, "p": 472, "q": 468, "r": 357, "s": 447, "t": 403, "u": 503, "v": 450, "w": 675, "x": 500, "y": 427, "z": 521, "{": 332, "|": 312, "}": 386, "~": 654, "đ": 602, "Đ": 671, "…": 746, "–": 589, "—": 923, "“": 412, "”": 424, "‘": 266, "’": 237, "·": 323, "→": 1000 };
+const fontOf = (font) => HAND_FONTS[font] || HAND_FONTS[HAND_DEFAULT];
+const advance = (table, ch) => table[ch] ?? table[ch.normalize('NFD')[0]] ?? 520;
 
-const advance = (ch) => ADVANCE[ch] ?? ADVANCE[ch.normalize('NFD')[0]] ?? 520;
-
-/** Width of `text` in Pangolin at `size` px — accented Vietnamese letters take their base letter's width. */
-export function handWidth(text, size) {
+/** Width of `text` at `size` px in handwriting font `font` (a HAND_FONTS key; default HAND_DEFAULT). */
+export function handWidth(text, size, font = HAND_DEFAULT) {
+  const table = fontOf(font).advance;
   let w = 0;
-  for (const ch of String(text)) w += advance(ch);
-  return (w * size * 1.02) / 1000; // +2 %: ư/ơ horns and spacing the table does not see
+  for (const ch of String(text)) w += advance(table, ch);
+  return (w * size * 1.01) / 1000; // +1 %: kerning the per-glyph table does not see
 }
+
+/** CSS family + weight of a handwriting font key. */
+export const handFace = (font = HAND_DEFAULT) => ({ family: `'${fontOf(font).family}', 'Comic Sans MS', cursive`, weight: fontOf(font).weight });
 
 /** FNV-1a hash of a string → PRNG seed. */
 export function seedOf(id) {

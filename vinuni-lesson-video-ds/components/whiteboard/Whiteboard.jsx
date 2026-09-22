@@ -1,8 +1,9 @@
 import React from 'react';
-import { C, HAND, alpha } from '../../lib/tokens.js';
+import { C, alpha } from '../../lib/tokens.js';
 import { drawOn } from '../../lib/paths.js';
 import { clamp01 } from '../../lib/motion.js';
 import {
+  handFace,
   handWidth,
   penOnPath,
   seedOf,
@@ -19,6 +20,7 @@ import {
   sketchUnderline,
 } from './sketch.js';
 import { sketchDoodle } from './doodles.js';
+import { HAND_DEFAULT } from './handFonts.js';
 
 /*
  * Whiteboard — one persistent board for a whole video (whiteboard style, lab).
@@ -126,13 +128,13 @@ export function markPath(m) {
   return d;
 }
 
-/** Lines of a text mark with their left edge and width. */
-function textLayout(m) {
+/** Lines of a text mark with their left edge and width (`font`: the board's default handwriting). */
+function textLayout(m, font) {
   const size = m.size ?? 44;
   const lh = m.lineHeight ?? Math.round(size * 1.25);
   const lines = m.lines || [m.text];
   return lines.map((text, i) => {
-    const w = handWidth(text, size);
+    const w = handWidth(text, size, m.font ?? font);
     const anchor = m.anchor ?? 'start';
     const x0 = anchor === 'middle' ? m.x - w / 2 : anchor === 'end' ? m.x - w : m.x;
     return { text, w, x0, y: m.y + i * lh, size };
@@ -140,11 +142,11 @@ function textLayout(m) {
 }
 
 /** Board-space box { x0, y0, x1, y1 } a mark covers — what checkBoard tests against the camera. */
-export function markBounds(m) {
+export function markBounds(m, font) {
   const pad = (b, d) => ({ x0: b.x0 - d, y0: b.y0 - d, x1: b.x1 + d, y1: b.y1 + d });
   switch (m.kind) {
     case 'text': {
-      const rows = textLayout(m);
+      const rows = textLayout(m, font);
       return {
         x0: Math.min(...rows.map((r) => r.x0)),
         x1: Math.max(...rows.map((r) => r.x0 + r.w)),
@@ -192,9 +194,9 @@ export function markBounds(m) {
 }
 
 /** Pen tip position while `m` is at progress t. */
-function penAt(m, t) {
+function penAt(m, t, font) {
   if (m.kind === 'text') {
-    const rows = textLayout(m);
+    const rows = textLayout(m, font);
     const total = rows.reduce((s, r) => s + r.w, 0) || 1;
     let left = t * total;
     for (const r of rows) {
@@ -210,8 +212,9 @@ function penAt(m, t) {
   return d ? penOnPath(d, t) : null;
 }
 
-function TextMark({ m, t }) {
-  const rows = textLayout(m);
+function TextMark({ m, t, font }) {
+  const rows = textLayout(m, font);
+  const face = handFace(m.font ?? font);
   const total = rows.reduce((s, r) => s + r.w, 0) || 1;
   let shown = t >= 1 ? Infinity : t * total;
   const color = m.color ?? C.text;
@@ -220,7 +223,7 @@ function TextMark({ m, t }) {
     ? { fill: C.bg, stroke: color, strokeWidth: Math.max(2.5, (m.size ?? 44) * 0.045), strokeLinejoin: 'round', paintOrder: 'stroke' }
     : { fill: color };
   return (
-    <g {...paint} fontFamily={HAND} opacity={m.opacity}>
+    <g {...paint} fontFamily={face.family} fontWeight={m.weight ?? face.weight} opacity={m.opacity}>
       {rows.map((r, i) => {
         const visible = Math.max(0, Math.min(r.w, shown));
         shown -= r.w;
@@ -357,17 +360,17 @@ export function cameraAt(camera, frame) {
 }
 
 /** Where the marker is at `frame`: on the mark being drawn, travelling to the next one, or resting. */
-function penState(marks, frame) {
+function penState(marks, frame, font) {
   const drawn = marks.filter((m) => m.pen !== false && m.kind !== 'erase');
   let last = null;
   let next = null;
   for (const m of drawn) {
-    if (frame >= m.at && frame < markEnd(m)) return { ...penAt(m, progressOf(m, frame)), color: m.color ?? C.text, opacity: 1 };
+    if (frame >= m.at && frame < markEnd(m)) return { ...penAt(m, progressOf(m, frame), font), color: m.color ?? C.text, opacity: 1 };
     if (markEnd(m) <= frame && (!last || markEnd(m) > markEnd(last))) last = m;
     if (m.at > frame && (!next || m.at < next.at)) next = m;
   }
-  const from = last ? penAt(last, 1) : null;
-  const to = next ? penAt(next, 0) : null;
+  const from = last ? penAt(last, 1, font) : null;
+  const to = next ? penAt(next, 0, font) : null;
   const gap = last && next ? next.at - markEnd(last) : Infinity;
   if (from && to && gap <= 45) {
     const t = easeInOut(clamp01((frame - markEnd(last)) / gap));
@@ -386,7 +389,7 @@ export function toScreen(camera, frame, p) {
   return { x: SCREEN_CENTER.x + (p.x - cam.x) * scale, y: SCREEN_CENTER.y + (p.y - cam.y) * scale, scale };
 }
 
-export function Whiteboard({ frame, marks, camera, pen = true }) {
+export function Whiteboard({ frame, marks, camera, pen = true, font = HAND_DEFAULT }) {
   const cam = cameraAt(camera, frame);
   const scale = 1920 / cam.w;
   const tx = SCREEN_CENTER.x - cam.x * scale;
@@ -395,7 +398,7 @@ export function Whiteboard({ frame, marks, camera, pen = true }) {
   // Highlights sit under the ink; everything else keeps its drawing order (an erase covers what came before).
   const under = visible.filter((m) => m.kind === 'highlight');
   const over = visible.filter((m) => m.kind !== 'highlight');
-  const p = pen ? penState(marks, frame) : null;
+  const p = pen ? penState(marks, frame, font) : null;
   return (
     <g transform={`translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${scale.toFixed(5)})`}>
       {under.map((m) => (
@@ -403,7 +406,7 @@ export function Whiteboard({ frame, marks, camera, pen = true }) {
       ))}
       {over.map((m) => {
         const t = progressOf(m, frame);
-        if (m.kind === 'text') return <TextMark key={m.id} m={m} t={t} />;
+        if (m.kind === 'text') return <TextMark key={m.id} m={m} t={t} font={font} />;
         if (m.kind === 'erase') return <Erase key={m.id} m={m} t={t} scale={scale} />;
         return <StrokeMark key={m.id} m={m} t={t} />;
       })}

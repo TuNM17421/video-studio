@@ -152,12 +152,12 @@ boxText('p3-job', say(8, 'công việc ấy'), rect(3, 280, 490, 360, 120), 'Cô
 draw(null, { id: 'p3-user', kind: 'person', ...at(3, 150, 470), s: 30, dur: 22 });
 draw(say(8, 'hay không', -4), { id: 'p3-q', kind: 'text', ...at(3, 540, 430), text: '?', size: 110, color: C.red });
 
-boxText('p3-task', say(9, 'những việc'), rect(3, 930, 385, 240, 96), 'Từng việc', { size: 46 });
+boxText('p3-task', say(9, 'những việc'), rect(3, 920, 385, 260, 96), 'Từng việc', { size: 44 });
 draw(say(9, 'giao AI làm thay', -8), { id: 'p3-fork1', kind: 'arrow', points: [at(3, 1180, 410), at(3, 1240, 320), at(3, 1310, 280)], color: C.accent });
 boxText('p3-replace', null, rect(3, 1320, 220, 380, 110), 'AI làm thay', { size: 50 });
 draw(say(9, 'AI nên hỗ trợ', -8), { id: 'p3-fork2', kind: 'arrow', points: [at(3, 1180, 460), at(3, 1240, 540), at(3, 1310, 575)], color: C.accent });
 boxText('p3-assist', null, rect(3, 1320, 520, 380, 110), 'AI hỗ trợ', { size: 50 });
-draw(say(9, 'con người quyết định'), { id: 'p3-human', kind: 'text', ...at(3, 1320, 700), text: '→ con người quyết định', size: 42, color: C.red });
+draw(say(9, 'con người quyết định'), { id: 'p3-human', kind: 'text', ...at(3, 1720, 700), text: '→ con người quyết định', size: 40, color: C.red, anchor: 'end' });
 
 // ── câu 10–11 · part 4: fixed steps or AI picks the next · enough and fitting ─────────────────────
 look(start(10), { ...panelCenter(4), w: 1920 }, 32);
@@ -184,18 +184,18 @@ enterColumn(2, 5, 12);
 partTitle(5, start(12) + 30, 'Đánh giá kết quả AI và xử lý sai');
 boxText('p5-out', say(12, 'xác định', -2), rect(5, 60, 380, 280, 110), 'Kết quả AI', { size: 46, color: C.accent, boxColor: C.accent });
 draw(say(12, 'đạt yêu cầu', -10), { id: 'p5-a1', kind: 'arrow', points: [at(5, 350, 410), at(5, 420, 300), at(5, 470, 280)], color: C.accent });
-boxText('p5-ok', null, rect(5, 480, 220, 330, 100), 'Đạt yêu cầu', { size: 46 });
-draw(null, { id: 'p5-check', kind: 'check', ...at(5, 860, 312), s: 44, color: C.red });
+boxText('p5-ok', null, rect(5, 470, 220, 320, 100), 'Đạt yêu cầu', { size: 44 });
+draw(null, { id: 'p5-check', kind: 'check', ...at(5, 828, 300), s: 44, color: C.red });
 draw(say(12, 'kết quả sai', -16), { id: 'p5-a2', kind: 'arrow', points: [at(5, 350, 470), at(5, 420, 570), at(5, 470, 590)], color: C.red });
-boxText('p5-bad', null, rect(5, 480, 540, 330, 100), 'Sai → cần xử lý', { size: 44, color: C.red, boxColor: C.red });
+boxText('p5-bad', null, rect(5, 470, 540, 380, 100), 'Sai → cần xử lý', { size: 42, color: C.red, boxColor: C.red });
 
-draw(say(13, 'báo nhầm', -8), { id: 'p5-false', kind: 'text', ...at(5, 930, 318), text: 'AI báo nhầm', size: 46, color: C.red });
-draw(null, { id: 'p5-fa', kind: 'arrow', points: [at(5, 1210, 304), at(5, 1420, 304)], color: C.red });
+draw(say(13, 'báo nhầm', -8), { id: 'p5-false', kind: 'text', ...at(5, 930, 320), text: 'AI báo nhầm', size: 46, color: C.red });
+draw(null, { id: 'p5-fa', kind: 'arrow', points: [at(5, 950 + handWidth('AI báo nhầm', 46), 304), at(5, 1440, 304)], color: C.red });
 draw(say(13, 'một người cần giúp'), { id: 'p5-p1', kind: 'person', ...at(5, 1520, 220), s: 28, dur: 22 });
 draw(say(13, 'không gặp khó', -4), { id: 'p5-p1-t', kind: 'text', ...at(5, 1520, 420), text: 'không cần giúp', size: 40, anchor: 'middle' });
 draw(say(13, 'bỏ sót', -8), { id: 'p5-miss', kind: 'text', ...at(5, 930, 608), text: 'AI bỏ sót', size: 46, color: C.red });
-draw(null, { id: 'p5-ma', kind: 'arrow', points: [at(5, 1210, 594), at(5, 1420, 594)], color: C.textMuted, dash: '12 12', dur: 10 });
-draw(null, { id: 'p5-mx', kind: 'cross', ...at(5, 1315, 594), s: 34, color: C.red });
+draw(null, { id: 'p5-ma', kind: 'arrow', points: [at(5, 950 + handWidth('AI báo nhầm', 46), 594), at(5, 1440, 594)], color: C.textMuted, dash: '12 12', dur: 10 });
+draw(null, { id: 'p5-mx', kind: 'cross', ...at(5, (950 + handWidth('AI báo nhầm', 46) + 1440) / 2, 594), s: 34, color: C.red });
 draw(say(13, 'người thật sự'), { id: 'p5-p2', kind: 'person', ...at(5, 1520, 510), s: 28, dur: 22 });
 draw(null, { id: 'p5-p2-t', kind: 'text', ...at(5, 1520, 710), text: 'đang cần giúp', size: 40, anchor: 'middle', color: C.red });
 

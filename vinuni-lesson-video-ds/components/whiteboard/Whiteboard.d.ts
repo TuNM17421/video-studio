@@ -9,6 +9,9 @@ interface MarkBase {
   dur?: number;
   /** Default C.text (navy). Board ink: C.text, C.accent, C.red. */
   color?: string;
+  /** Text marks: handwriting font key ('playpen' default · 'shantell' · 'pangolin') and weight. */
+  font?: 'playpen' | 'shantell' | 'pangolin';
+  weight?: number;
   /** false = appears without the marker (panel frames, guides). */
   pen?: boolean;
   opacity?: number;
@@ -49,12 +52,14 @@ export interface WhiteboardProps {
   camera?: CameraKey[];
   /** Show the marker (default true). */
   pen?: boolean;
+  /** Handwriting for text marks without their own `font` (default 'playpen'; createBoard stamps it on every text mark). */
+  font?: 'playpen' | 'shantell' | 'pangolin';
 }
 export declare const Whiteboard: FC<WhiteboardProps>;
 export declare function defaultDur(mark: WhiteboardMark): number;
 export declare function cameraAt(camera: CameraKey[] | undefined, frame: number): { x: number; y: number; w: number };
 export declare function markPath(mark: WhiteboardMark): string | null;
 /** Board-space box a mark covers. */
-export declare function markBounds(mark: WhiteboardMark): { x0: number; y0: number; x1: number; y1: number };
+export declare function markBounds(mark: WhiteboardMark, font?: string): { x0: number; y0: number; x1: number; y1: number };
 /** Screen point of a board point at `frame` (+ the camera scale). */
 export declare function toScreen(camera: CameraKey[] | undefined, frame: number, p: { x: number; y: number }): { x: number; y: number; scale: number };

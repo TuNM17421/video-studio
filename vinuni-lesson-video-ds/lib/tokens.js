@@ -50,10 +50,11 @@ export const ROLE_OF = Object.freeze({
 
 export const FONT = "'Montserrat', 'Segoe UI', system-ui, sans-serif";
 /**
- * Whiteboard style only: the handwriting the marker writes on the board (Pangolin, OFL, Vietnamese).
+ * Whiteboard style only: the default handwriting the marker writes on the board (Playpen Sans, OFL,
+ * Vietnamese). Shantell Sans and Pangolin are the alternatives (components/whiteboard/handFonts.js).
  * Never for chrome — eyebrow, captions and footer stay FONT.
  */
-export const HAND = "'Pangolin', 'Comic Sans MS', cursive";
+export const HAND = "'Playpen Sans', 'Comic Sans MS', cursive";
 export const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 export const BRAND = 'VinUni · AI in Action 20K';
 
