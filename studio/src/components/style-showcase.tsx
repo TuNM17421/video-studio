@@ -6,12 +6,15 @@ import { SampleMedia } from "@/components/sample-media";
 import { fileUrl } from "@/lib/client";
 import type { PaletteColor, Showcase, StyleDef } from "@/lib/types";
 
-const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "structure", "system", "table", "teaching", "ui", "whiteboard"]);
+const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "structure", "system", "table", "teaching", "ui"]);
 
 const SIGNATURE_COMPONENTS = {
   lesson: ["GlassBox", "Flow", "ProbabilityBars"],
   lab: ["AgentLoop", "ChatWindow", "CodeBlock"],
+  whiteboard: ["Whiteboard"],
 } as const;
+
+const EYEBROWS = { lesson: "Học liệu cốt lõi", lab: "Hệ thống tác tử", whiteboard: "Bảng trắng vẽ tay" } as const;
 
 const SIGNATURE_LABELS: Record<string, string> = {
   cards: "Thẻ kiến thức",
@@ -20,10 +23,13 @@ const SIGNATURE_LABELS: Record<string, string> = {
   flow: "Luồng trực quan",
   loop: "Vòng lặp agent",
   ui: "Giao diện",
+  whiteboard: "Bảng vẽ tay",
 };
 
 function signatureOf(style: StyleDef) {
-  const variant = style.showcase.some((item) => LAB_GROUPS.has(item.group)) ? "lab" : "lesson";
+  const variant: keyof typeof EYEBROWS = style.showcase.some((item) => item.group === "whiteboard")
+    ? "whiteboard"
+    : style.showcase.some((item) => LAB_GROUPS.has(item.group)) ? "lab" : "lesson";
   const candidates = [...style.showcase, ...(style.base?.showcase || [])];
   const preferred = SIGNATURE_COMPONENTS[variant]
     .map((component) => candidates.find((item) => item.component === component))
@@ -33,9 +39,10 @@ function signatureOf(style: StyleDef) {
 
   return {
     variant,
-    eyebrow: variant === "lab" ? "Hệ thống tác tử" : "Học liệu cốt lõi",
+    eyebrow: EYEBROWS[variant],
     items,
-    tags: items.map((item) => SIGNATURE_LABELS[item.group] || item.component),
+    // two components of one group share a label — list it once (it is also the React key)
+    tags: [...new Set(items.map((item) => SIGNATURE_LABELS[item.group] || item.component))],
   };
 }
 

@@ -2,9 +2,34 @@
   "id": "whiteboard",
   "name": "Whiteboard Style (lab)",
   "order": 3,
-  "extends": "lesson",
   "summary": "Bảng trắng vẽ tay: một tấm bảng cho cả video, bút dạ viết chữ tay và vẽ nét theo lời đọc, lau bảng khi đổi phần, camera lia tới từng vùng và lùi ra xem toàn cảnh.",
-  "palette": [],
+  "palette": [
+    {
+      "hex": "#0b2a4d",
+      "name": "Navy",
+      "role": "mực chữ, nét chính"
+    },
+    {
+      "hex": "#1d6199",
+      "name": "Xanh",
+      "role": "mực vật, luồng, mũi tên"
+    },
+    {
+      "hex": "#c72127",
+      "name": "Đỏ",
+      "role": "câu hỏi, điểm nhấn, vòng khoanh"
+    },
+    {
+      "hex": "#f2f7fc",
+      "name": "Xanh nhạt",
+      "role": "nền ô, tờ giấy"
+    },
+    {
+      "hex": "#ffe0e1",
+      "name": "Hồng nhạt",
+      "role": "vệt highlight"
+    }
+  ],
   "showcase": [
     {
       "component": "Whiteboard",
