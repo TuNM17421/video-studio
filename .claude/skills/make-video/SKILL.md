@@ -92,7 +92,8 @@ and the matching `run finish`; this keeps token, time, machine, outcome and feed
 node tts-elevenlabs/tts.mjs generate --cues <video dir>/cues.js --pronounce projects/<id>/pronounce.json --out voice/out/<id> [--pause 1.4]
 node tools/voice-timing.mjs voice/out/<id>/voice.cues.json <video dir> --write-cues
 ```
-Giọng có thể không đến từ ElevenLabs: thành viên tự thu, hoặc dùng model local. Khi đó
+Giọng có thể không đến từ ElevenLabs: thành viên tự thu, dùng model local, hoặc OmniVoice trên GPU Kaggle
+(`voice-kaggle.md` cạnh file này). Khi đó
 `node tools/voice-export.mjs <video dir> --out projects/<id>/voice-script` xuất bản đọc và
 `node tools/voice-import.mjs --cues <video dir>/cues.js --from <thư mục audio>` (chạy `--scan` trước) dựng
 master từ một thư mục `01.wav, 02.wav …`. Kết quả và các bước sau giống hệt đường ElevenLabs.

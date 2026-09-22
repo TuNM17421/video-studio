@@ -177,6 +177,11 @@ nhân vật ra hai giọng trong cùng một lượt; mặc định mỗi nhân 
 `--cast` in trước dàn vai (miễn phí), `--speaker "Tú=<giọng|đường dẫn file>"` đổi giọng một vai — nhận cả
 một file mẫu nằm trên máy, file ở nguyên chỗ đó chứ không đẩy lên R2, lời của mẫu lấy từ `.txt` cùng tên
 hoặc do Whisper nghe.
+OmniVoice trên Kaggle (tab **Kaggle** của bước Giọng đọc) dùng đúng dàn vai đó: `tools/voice-kaggle.mjs` dựng
+một kernel private `vs-<id>-voice` (giọng danh mục tải từ R2, file mẫu nhúng FLAC), Studio đẩy/theo dõi/tải về
+`projects/<id>/voice-script/kaggle/out` rồi nhập như audio tự thu. Kaggle CLI ở `voice/.venv-kaggle`
+(`npm run setup:kaggle`); username/key chỉ ở RAM, CLI chạy với `KAGGLE_CONFIG_DIR` riêng để không lẫn tài
+khoản đã đăng nhập sẵn trên máy.
 Xem danh sách nhân vật tại Studio → **Thư viện · Nhân vật** (`/library/characters`): thẻ thoại do design system vẽ
 (`ui_kits/lesson-video/demos/character.html?name=&tone=&side=&avatar=`), tên dùng được trong `speaker`, giọng mượn.
 

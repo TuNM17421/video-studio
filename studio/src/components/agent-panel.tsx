@@ -58,6 +58,8 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     "omnivoice-setup": "Cài model local",
     "omnivoice-generate": "Sinh giọng bằng model local",
     "align-setup": "Cài môi trường nhận diện giọng",
+    "kaggle-setup": "Cài Kaggle CLI",
+    "kaggle-generate": "Sinh giọng trên Kaggle",
   };
   return <>
     <div className="job-progress" role="status">

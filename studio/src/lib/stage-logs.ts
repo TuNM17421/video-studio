@@ -4,7 +4,7 @@ import type { LogEntry } from "./types";
 export type LogStage = "cues" | "voice" | "scenes" | "render" | "deliver";
 const RUN_STARTS: [LogStage, RegExp][] = [
   ["cues", /agent · cues|agent \(cues\)/],
-  ["voice", /^Tạo giọng ·|^Nhập giọng ·|^Kiểm tra thư mục giọng|^Cài model local|^Cài Whisper|^Model local đã sinh/],
+  ["voice", /^Tạo giọng ·|^Nhập giọng ·|^Kiểm tra thư mục giọng|^Cài model local|^Cài Whisper|^Model local đã sinh|^OmniVoice trên Kaggle|^Cài Kaggle CLI/],
   ["scenes", /agent · scenes|agent \(scenes\)|^Review lại dựng cảnh/],
   ["render", /^Bắt đầu render/],
   ["deliver", /agent · deliver|agent \(deliver\)/],

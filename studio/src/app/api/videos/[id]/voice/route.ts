@@ -3,11 +3,11 @@ import { handle } from "@/lib/server/http";
 import { isRunning, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { readState, setStage, updateState } from "@/lib/server/videos";
-import { dryRun, exportScript, generateVoice, hasKey, importVoice, lastDryRun, lastImportReport, generateLocal, omnivoiceCast, omnivoiceServer, omnivoiceStatus, scanImport, setupAlign, setupOmnivoice } from "@/lib/server/voice";
+import { dryRun, exportScript, generateKaggle, generateVoice, hasKey, importVoice, kaggleStatus, lastDryRun, lastImportReport, generateLocal, omnivoiceCast, omnivoiceServer, omnivoiceStatus, scanImport, setupAlign, setupKaggle, setupOmnivoice } from "@/lib/server/voice";
 
-type Action = "source" | "export-script" | "dry-run" | "generate" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-cast" | "omnivoice-generate" | "align-setup";
+type Action = "source" | "export-script" | "dry-run" | "generate" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-cast" | "omnivoice-generate" | "align-setup" | "kaggle-status" | "kaggle-setup" | "kaggle-generate";
 
-const SOURCES: VoiceSource[] = ["elevenlabs", "import", "local"];
+const SOURCES: VoiceSource[] = ["elevenlabs", "kaggle", "import", "local"];
 
 function settings(body: { settings?: VoiceSettings }, current: VoiceSettings): VoiceSettings {
   const s = body.settings;
@@ -43,6 +43,8 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   // Trạng thái model local là của cả máy, không thuộc video nào: hỏi được cả khi video đang chạy job,
   // cả khi chưa duyệt cue. Chặn nó là panel trắng trơn giữa lúc đang cài.
   if (body.action === "omnivoice-status") return Response.json(await omnivoiceStatus());
+  // Kaggle CLI + credentials cũng là của cả máy/phiên Studio, không của riêng video nào.
+  if (body.action === "kaggle-status") return Response.json(await kaggleStatus());
   const { state, managed } = readState(id);
   if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
   if (state.stages.cues !== "done") throw new HttpError(400, "Duyệt lời & cue trước.");
@@ -89,6 +91,19 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     const v = settings(body, state.voice);
     updateState(id, (s) => { s.voice = { ...s.voice, voiceId: v.voiceId, speakers: v.speakers }; });
     void generateLocal(id, v)
+      .catch((error) => log(id, "error", error instanceof Error ? error.message : String(error)));
+    return Response.json({ started: true }, { status: 202 });
+  }
+  if (body.action === "kaggle-setup") {
+    void setupKaggle(id).catch((error) => log(id, "error", error instanceof Error ? error.message : String(error)));
+    return Response.json({ started: true }, { status: 202 });
+  }
+  // Như model local: sinh xong mới chỉ là một thư mục wav; bước Giọng đọc xong khi nhập xong (tự nhập
+  // nếu Whisper không thấy câu nào lỗi), nên hành động này không đụng trạng thái bước.
+  if (body.action === "kaggle-generate") {
+    const v = settings(body, state.voice);
+    updateState(id, (s) => { s.voice = { ...s.voice, voiceId: v.voiceId, speakers: v.speakers, pause: v.pause }; });
+    void generateKaggle(id, v)
       .catch((error) => log(id, "error", error instanceof Error ? error.message : String(error)));
     return Response.json({ started: true }, { status: 202 });
   }
