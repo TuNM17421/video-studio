@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Claim, ClaimCheck, ClaimKind, Difficulty, Gate2Decision, Priority, ResearchStage, ResearchState, ScriptCheck, ScriptIssue } from "../../research";
+import type { Claim, ClaimKind, Difficulty, Gate2Decision, Priority, ResearchStage, ResearchState, ScriptCheck, ScriptIssue } from "../../research";
 import { batches, difficultyOf, gate2Waiting, RUN_RESULT_LABEL } from "../../research";
 import type { AgentProvider } from "../../types";
 import type { ResearchCall } from "../agent-cli";
