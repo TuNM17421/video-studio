@@ -169,6 +169,7 @@ export const STUDIO_LAYOUT = [
   { token: "header.agent.min-height", value: "84 px", usage: "Giữ khối agent cân với heading ở trạng thái chọn và khóa" },
   { token: "header.agent.control", value: "224 px", usage: "Đủ chỗ cho tên provider, nhãn trạng thái (“Thử nghiệm”) và dấu mở danh sách" },
   { token: "capability.card.min", value: "280 px", usage: "Card tính năng tự chuyển từ hai cột xuống một cột khi không đủ chỗ" },
+  { token: "capability.grid.columns", value: "2 cột", usage: "Lưới card tính năng tối đa hai cột (2×2 với bốn năng lực) — không để card thứ tư đứng lẻ một hàng" },
   { token: "capability.card.min-height", value: "148 px", usage: "Giữ các card tính năng cân hàng dù nội dung và preview khác nhau" },
   { token: "capability.card.padding", value: "16 px", usage: "Giữ checkbox, glyph và mô tả tách khỏi viền chọn" },
   { token: "preview.panel", value: "296 px", usage: "Metadata theo cụm dọc, ưu tiên diện tích cho bàn dựng" },

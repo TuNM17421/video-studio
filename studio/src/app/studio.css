@@ -2787,7 +2787,9 @@ button.vs-tile:hover {
 }
 .vs-modules {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--vu-capability-card-min-width), 1fr));
+  /* Tối đa --vu-capability-grid-columns cột (2×2): mỗi cột ít nhất bằng phần của nó trong hàng, nên không bao
+     giờ thành ba cột với card thứ tư lẻ loi; hẹp hơn hai lần card tối thiểu thì xuống một cột. */
+  grid-template-columns: repeat(auto-fit, minmax(max(var(--vu-capability-card-min-width), calc((100% - (var(--vu-capability-grid-columns) - 1) * var(--vu-space-3)) / var(--vu-capability-grid-columns))), 1fr));
   gap: var(--vu-space-3);
   padding: var(--vu-space-4);
 }

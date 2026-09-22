@@ -175,6 +175,7 @@
   --vu-page-agent-min-height: 84px;
   --vu-page-agent-control-width: 224px;
   --vu-capability-card-min-width: 280px;
+  --vu-capability-grid-columns: 2;
   --vu-capability-card-min-height: 148px;
   --vu-capability-card-padding: var(--vu-space-4);
   --vu-preview-panel-width: 296px;

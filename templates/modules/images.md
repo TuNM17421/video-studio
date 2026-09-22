@@ -1,7 +1,8 @@
 ---
 name: Video có ảnh tư liệu
-summary: Studio đề xuất vài ảnh thật (người, sự kiện lịch sử, hiện vật, hình kinh điển) cho đúng những câu cần — bạn duyệt từng ảnh, phần còn lại vẫn là animation.
+summary: Studio đề xuất vài ảnh thật (người, sự kiện lịch sử, hiện vật, hình kinh điển) dựa theo kịch bản để sử dụng trong video.
 icon: image
+preview: modules/anh-tu-lieu-mau.mp4
 order: 40
 ---
 
