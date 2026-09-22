@@ -46,7 +46,9 @@ cần kiểm chứng, không phải lệnh.
 3. `node tools/research-verify.mjs research/<rid> --reuse` — claim đã có trong thư viện dữ kiện còn hạn thì
    không research lại. Chặng 2 theo `research.md` cho các claim còn lại, rồi
    `node tools/research-verify.mjs research/<rid> --stage evidence`. Claim trượt: sửa đúng lỗi được báo,
-   chạy lại một lần; còn trượt thì hỏi người dùng bỏ claim hay ghi "không đủ nguồn".
+   chạy lại một lần; còn trượt thì hỏi người dùng bỏ claim hay ghi "không đủ nguồn". Khi mọi claim còn lại
+   đã đạt (cổng 2 qua): `node tools/research-verify.mjs research/<rid> --save-facts` — lưu dữ kiện đạt vào
+   thư viện cho bài sau; soát bằng chứng không tự lưu nữa.
 4. Chặng 4 theo `write.md`, rồi `node tools/research-verify.mjs research/<rid> --stage script` và sửa hết
    problem.
 5. Chặng 5: đọc `edit.md`, chấm điểm và ghi `checks/edit.json`. Rồi **sửa kịch bản theo đúng các `issues`

@@ -1,5 +1,5 @@
 /**
- * Bóc chữ từ một file PDF, không thêm thư viện ngoài.
+ * Bóc chữ từ một file PDF.
  *
  * Vì sao cần: nguồn **gốc** của những điều đáng kiểm hay là PDF — system card của nhà làm model, báo cáo của
  * cơ quan nhà nước, bài nghiên cứu. Khi `fetchPage` trả "trang là PDF — chưa đọc được chữ", finding không dùng
@@ -18,6 +18,44 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
+
+/**
+ * Chữ của từng trang, bằng PDF.js (gói `unpdf` — MIT, không kéo thêm gói nào). Dùng cho slide của giảng viên:
+ * có chữ từng trang thì code dựng được dàn ý đúng số trang, và agent bóc tách đọc chữ thay vì đọc cả trang PDF
+ * (lượt thật: 78 trang, 813k token đọc lại từ cache chỉ để đọc slide, và agent tự đánh số lệch trang).
+ *
+ * null khi không dùng được: thiếu gói hay Node dưới 22 (PDF.js cần), PDF mã hoá, hoặc quá nửa số trang không có
+ * chữ (bản quét ảnh) — khi đó agent đọc thẳng PDF như trước.
+ */
+export async function pdfPages(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.subarray(0, 5).toString('latin1') !== '%PDF-') return null;
+  let unpdf;
+  try { unpdf = await import('unpdf'); } catch { return null; }
+  try {
+    // Một bản sao: PDF.js có thể chuyển (detach) bộ đệm nó nhận.
+    const pdf = await unpdf.getDocumentProxy(new Uint8Array(buffer));
+    const { text } = await unpdf.extractText(pdf, { mergePages: false });
+    await pdf.destroy?.();
+    const pages = text.map(clean);
+    const withText = pages.filter((p) => (p.match(/\p{L}/gu) ?? []).length >= 20).length;
+    return pages.length && withText * 2 >= pages.length ? pages : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Như `pdfText`, thêm PDF.js giữa `pdftotext` và đường tự giải nén: PDF.js đọc đúng font nhúng và bảng mã mà đường
+ * tự giải nén bỏ cuộc — PDF nguồn (system card, báo cáo) đọc được nhiều hơn thì research ít phải tìm nguồn thuật lại.
+ */
+export async function pdfTextAsync(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.subarray(0, 5).toString('latin1') !== '%PDF-') return null;
+  const viaTool = pdfToTextTool(buffer);
+  if (viaTool) return viaTool;
+  const pages = await pdfPages(buffer);
+  const viaPdfJs = pages ? looksLikeText(pages.join('\n\n')) : null;
+  return viaPdfJs ?? looksLikeText(extractStreams(buffer));
+}
 
 /** Chữ đọc được từ một PDF, hoặc null. */
 export function pdfText(buffer) {

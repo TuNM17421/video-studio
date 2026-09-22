@@ -140,7 +140,10 @@ export async function runAgentStep(host: StepHost, provider: AgentProvider, spec
           tools++;
           log("tool", e.detail);
           setProgress(key, null, `${label} · ${what} · ${tools} thao tác`);
-        } else if (e.type === "toolError" || e.type === "error") log("error", e.text);
+        // Lỗi của một lệnh công cụ (lệnh bị chặn, trang 403) là chuyện thường của một lượt, không phải lượt hỏng: ghi như
+        // một thao tác, để nhật ký và dải trạng thái không đỏ lên vì nó.
+        } else if (e.type === "toolError") log("tool", `Lỗi công cụ: ${e.text}`);
+        else if (e.type === "error") log("error", e.text);
         else if (e.type === "result") {
           ok = e.ok;
           text = e.text;

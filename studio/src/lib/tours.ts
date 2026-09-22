@@ -229,6 +229,50 @@ export const TOURS: TourDef[] = [
       },
     ],
   },
+  {
+    id: "research",
+    version: 1,
+    label: "Trang Đóng gói kịch bản",
+    routes: ["/research"],
+    auto: true,
+    steps: [
+      {
+        target: "research.strip",
+        title: "Đường đi của một lượt",
+        body: "Mỗi ô là một việc agent làm; hình thoi là chỗ Studio dừng lại chờ bạn. Bấm một ô để xem việc đó bên dưới.",
+        mascot: { pose: "stand", mood: "thinking" },
+        placement: "bottom",
+      },
+      {
+        target: "research.gate",
+        title: "Ba chỗ bạn quyết",
+        body: "Duyệt danh sách điều cần kiểm, quyết điều còn thiếu căn cứ, và duyệt kịch bản. Ngoài ba chỗ này Studio tự chạy.",
+        mascot: { pose: "stand", mood: "neutral", prop: "lightbulb" },
+        placement: "bottom",
+      },
+      {
+        target: "research.bar",
+        title: "Việc của bạn luôn ở đây",
+        body: "Thanh dưới cùng nói lượt đang làm gì và nút bạn cần bấm. Lúc agent chạy, bạn có thể rời trang.",
+        mascot: { pose: "wave", mood: "happy" },
+        placement: "top",
+      },
+      {
+        target: "research.details",
+        title: "Khi cần tra kỹ",
+        body: "Nhật ký agent, chi phí, file và nút làm lại một bước nằm trong Chi tiết.",
+        mascot: { pose: "stand", mood: "wink" },
+        placement: "bottom",
+      },
+      {
+        target: "research.new",
+        title: "Bắt đầu một lượt",
+        body: "Tải slide của giảng viên lên (.pdf hoặc .pptx) — Studio lo phần còn lại và gọi bạn ở từng hình thoi.",
+        mascot: { pose: "wings", mood: "happy" },
+        placement: "bottom",
+      },
+    ],
+  },
 ];
 
 export const tourById = (id: string) => TOURS.find((t) => t.id === id);

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { batches, blankClaim, gate2Waiting, outlineSummary, type Claim, type ClaimCheck, type Difficulty } from "./research";
+import { claimCap as toolsClaimCap } from "../../../tools/lib/research-check.mjs";
+import * as lint from "../../../tools/lib/script-lint.mjs";
+import { batches, blankClaim, claimCap, gate2Waiting, outlineSummary, placeEditIssues, RETRY_BATCH, SCRIPT_BUDGET, scriptBudget, type Claim, type ClaimCheck, type Difficulty, type EditIssue } from "./research";
 
 // Độ khó của 12 claim trong một lượt thật (research/ai-llm-foundation-lms-2609211713): 5 khó, 3 vừa, 4 dễ.
 const DIFFICULTY: Record<string, Difficulty> = {
@@ -54,5 +56,67 @@ describe("claim chờ ở cổng 2", () => {
 
   it("claim đã quyết định không bị hỏi lại, trừ khi vẫn trượt soát", () => {
     expect(gate2Waiting(claims, evidence, { c1: "accept", c2: "accept", c3: "accept" }).map((w) => w.claim.id)).toEqual(["c1"]);
+  });
+});
+
+describe("độ dài kịch bản theo số câu đã đặt", () => {
+  it("cùng con số với phần soát (tools/lib/script-lint.mjs) — prompt báo đúng mức code sẽ bắt", () => {
+    expect(SCRIPT_BUDGET.wordsPerCue).toBe(lint.WORDS_PER_CUE);
+    expect(SCRIPT_BUDGET.warnAbove).toBe(lint.LENGTH_WARN);
+    expect(SCRIPT_BUDGET.syllablesPerSecond).toBe(lint.SYLLABLES_PER_SECOND);
+  });
+
+  it("20 câu là khoảng 480 từ, gần ba phút lời đọc, tối đa 24 câu", () => {
+    expect(scriptBudget(20)).toEqual({ cues: 20, maxCues: 24, words: 480, minutes: 2.8 });
+  });
+});
+
+describe("góp ý biên tập gắn vào câu", () => {
+  const cues = [
+    { n: 1, text: "Mỗi lần bạn gõ một câu hỏi, mô hình không đọc từng chữ." },
+    { n: 2, text: "Nó đọc từng mảnh chữ, gọi là token, để so sánh với nhau." },
+    { n: 3, text: "Cửa sổ ngữ cảnh chứa được một trăm hai mươi tám nghìn token." },
+  ];
+  const note = (patch: Partial<EditIssue>): EditIssue => ({ cue: 1, type: "clarity", problem: "p", fix: "f", ...patch });
+
+  it("theo đoạn trích khi số câu đã dời sau lượt sửa; đoạn trích không còn ở đâu thì góp ý đã xử lý", () => {
+    const out = placeEditIssues(cues, [
+      note({ cue: 5, type: "clarity", quote: "gọi là token, để so sánh" }),
+      note({ cue: 2, type: "spoken", quote: "một câu văn đã bị viết lại hoàn toàn" }),
+      note({ cue: 3, type: "flow" }),
+      note({ cue: null, type: "hook" }),
+    ]);
+    // Bản cũ gắn theo số: góp ý "câu 5" mất hẳn, góp ý đã sửa vẫn hiện cạnh câu 2.
+    expect(out.byCue.get(2)?.map((i) => i.type)).toEqual(["clarity"]);
+    expect(out.byCue.get(3)?.map((i) => i.type)).toEqual(["flow"]);
+    expect(out.resolved.map((i) => i.type)).toEqual(["spoken"]);
+    expect(out.general.map((i) => i.type)).toEqual(["hook"]);
+  });
+
+  it("đoạn trích quá ngắn thì không dùng để dò — theo số câu", () => {
+    expect(placeEditIssues(cues, [note({ cue: 1, quote: "token" })]).byCue.get(1)).toHaveLength(1);
+  });
+});
+
+describe("số claim theo số câu", () => {
+  it("cùng phép tính với phần soát bóc tách (tools/lib/research-check.mjs)", () => {
+    for (const n of [1, 5, 8, 20, 21, 40, 60, 80]) expect(claimCap(n)).toBe(toolsClaimCap(n));
+  });
+
+  it("kịch bản 20 câu research tối đa 10 claim — lượt thật đặt 14, bốn claim không câu nào dùng", () => {
+    expect(claimCap(20)).toBe(10);
+  });
+});
+
+describe("lô research lại", () => {
+  it("từng cặp, kể cả claim dễ vốn đi lô sáu ở lần đầu", () => {
+    const easy = Array.from({ length: 5 }, (_, i) => ({ ...blankClaim(`c${i + 1}`), difficulty: "easy" as const }));
+    expect(batches(easy).map((b) => b.length)).toEqual([5]);
+    expect(batches(easy, RETRY_BATCH).map((b) => b.length)).toEqual([2, 2, 1]);
+  });
+
+  it("không bao giờ lớn hơn lô của độ khó (claim khó vẫn hai)", () => {
+    const hard = Array.from({ length: 3 }, (_, i) => ({ ...blankClaim(`c${i + 1}`), difficulty: "hard" as const }));
+    expect(batches(hard, 6).map((b) => b.length)).toEqual([2, 1]);
   });
 });

@@ -1,9 +1,13 @@
 # Chặng 2 · Research — kiểm từng claim trên web
 
 Chỉ làm các claim được giao. Prompt đã ghi sẵn nội dung và câu hỏi của từng claim — **không cần đọc
-`claims.json` hay liệt kê thư mục**; Write tự tạo thư mục `claims/<cid>/`. Chỉ khi prompt nói claim nào trượt
-soát lần trước thì mới đọc `claims/<cid>/feedback.json` của claim đó và sửa **đúng các lỗi ghi trong đó**.
-Lệnh shell duy nhất được phép là `node tools/page.mjs …` (chạy từ gốc repo, không cần `cd`).
+`claims.json` hay liệt kê thư mục**; Write tự tạo thư mục `claims/<cid>/`. Claim trượt soát lần trước thì prompt
+ghi sẵn lỗi, bảng nguồn và các trang lượt này đã tải — sửa **đúng các lỗi đó**, đừng research lại từ đầu.
+
+Hai lệnh shell được phép, chạy từ gốc repo và bắt đầu đúng bằng `node tools/…` — thêm `cd … &&`, `mkdir`,
+`cat`, `ls` là bị chặn và mất một lượt (đọc file bằng Read):
+- `node tools/page.mjs …` — đọc trang (bên dưới). Trong `--find` đừng dùng ký tự `$` (viết `2.50`, không `$2.50`).
+- `node tools/research-verify.mjs research/<rid> --stage evidence --dry --claims c1,c2` — tự soát (bước 5).
 
 ## Cách làm một claim — dừng ngay khi đủ nguồn
 
@@ -24,8 +28,14 @@ Lệnh shell duy nhất được phép là `node tools/page.mjs …` (chạy t�
    - `easy`: 1 nguồn `official` / `paper` / `reference`, hoặc 2 nơi xuất bản khác nhau.
    - `normal`, `hard`: 2 nơi xuất bản khác nhau, hoặc 1 nguồn `official`. Hai trang cùng một tên miền hay
      cùng một công ty là **một** nơi.
-   - `timeSensitive: true`: ít nhất một nguồn ủng hộ đăng/sửa trong 12 tháng (xem ngày lệnh in ra).
+   - `timeSensitive: true`: ít nhất một nguồn ủng hộ đăng/sửa trong 12 tháng (xem ngày lệnh in ra), **hoặc**
+     trang giá/tài liệu chính thức của đúng hãng trong claim (`official`) — không ghi ngày cũng được, đó là bản
+     hiện hành. Đừng thêm bài ra mắt cũ bên cạnh cho "đủ nguồn": nó chỉ kéo ngày của claim về quá khứ.
 4. **Ghi** `research/<rid>/claims/<cid>/finding.json` rồi sang claim kế.
+5. **Tự soát rồi mới dừng:** `node tools/research-verify.mjs research/<rid> --stage evidence --dry --claims <mã các
+   claim được giao>`. Lệnh không tải web, không ghi file — nó soát trích đoạn với trang đã tải, số nguồn, độ mới,
+   đúng như Studio soát sau đó. Sửa hết dòng ✗ rồi chạy lại, tối đa hai lần. Còn ✗ vì không tìm thêm được nguồn
+   thì ghi `insufficient` kèm `reason` — một finding trượt soát là cả một lượt research lại.
 
 ## finding.json
 

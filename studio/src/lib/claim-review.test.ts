@@ -37,7 +37,7 @@ const review = (id: string) => reviewClaim(byId(id), OUTLINE);
 
 describe("claim ở ý nào của slide", () => {
   it("chép nguyên văn thì khớp trọn", () => {
-    expect(review("c2").anchors).toEqual([{ slide: 8, inOutline: true, point: 0, score: 1, onHeading: false }]);
+    expect(review("c2").anchors).toEqual([{ slide: 8, inOutline: true, point: 0, score: 1, onSlide: true }]);
   });
 
   it("dấu nháy khác nhau giữa claim và dàn ý không làm lệch", () => {
@@ -76,7 +76,7 @@ describe("claim ở ý nào của slide", () => {
   });
 
   it("slide không có trong dàn ý thì nói rõ", () => {
-    expect(reviewClaim({ text: "Một điều gì đó", slides: [15] }, OUTLINE).anchors).toEqual([{ slide: 15, inOutline: false, point: null, score: 0, onHeading: false }]);
+    expect(reviewClaim({ text: "Một điều gì đó", slides: [15] }, OUTLINE).anchors).toEqual([{ slide: 15, inOutline: false, point: null, score: 0, onSlide: false }]);
   });
 
   it("một ý quá ngắn không được tính là nằm trong claim", () => {
@@ -90,7 +90,20 @@ describe("claim ở ý nào của slide", () => {
 
   it("claim nói đúng tiêu đề slide thì có trên slide, dù không khớp ý nào", () => {
     const a = reviewClaim({ text: "2024-2026 là bước ngoặt của AI", slides: [8] }, OUTLINE).anchors[0];
-    expect(a).toMatchObject({ point: null, onHeading: true });
+    expect(a).toMatchObject({ point: null, onSlide: true });
+  });
+
+  it("claim gộp hai ý mà dàn ý chép tách dòng vẫn có trên slide", () => {
+    // Lượt chạy lại cùng file: agent chép mốc thời gian thành 5 dòng, claim gộp hai dòng đầu.
+    const outline: OutlineSlide[] = [{ slide: 8, heading: "Từ AI cổ điển đến Agentic AI", points: ["1. Perceptron (1957)", "2. Deep Learning bùng nổ (2012)", "3. Transformer (2017)", "4. ChatGPT (2022)", "5. AI Agents (2024–26)"] }];
+    const c1 = reviewClaim({ text: "Mốc AI cổ điển: Perceptron ra đời năm 1957, Deep Learning bùng nổ năm 2012", slides: [8] }, outline);
+    expect(c1.anchors[0]).toMatchObject({ point: null, onSlide: true });
+    const c2 = reviewClaim({ text: "Transformer ra đời năm 2017, ChatGPT ra mắt năm 2022", slides: [8] }, outline);
+    expect(c2.anchors[0].onSlide).toBe(true);
+  });
+
+  it("gắn nhầm slide thì cả slide cũng không cứu — vẫn báo", () => {
+    expect(review("c12").anchors.find((a) => a.slide === 39)).toMatchObject({ point: null, onSlide: false });
   });
 
   it("tiêu đề khớp kéo claim về đúng slide khi nó dẫn hai slide", () => {
@@ -126,6 +139,12 @@ describe("con số trong claim", () => {
   it("báo số đúng như claim viết, không phải dạng đã chuẩn hoá", () => {
     const outline: OutlineSlide[] = [{ slide: 1, points: ["Chatbot 1000 lượt/ngày"] }];
     expect(reviewClaim({ text: "Chatbot 1,500 lượt/ngày, 1,500 người", slides: [1] }, outline).missingNumbers).toEqual(["1,500"]);
+  });
+
+  it("bỏ qua số nguyên một chữ số, vẫn soát số thập phân", () => {
+    const outline: OutlineSlide[] = [{ slide: 33, points: ["Token — khoảng 0.75 từ tiếng Anh, 0.5 từ tiếng Việt"] }];
+    expect(reviewClaim({ text: "1 token tương đương khoảng 0.75 từ tiếng Anh", slides: [33] }, outline).missingNumbers).toEqual([]);
+    expect(reviewClaim({ text: "1 token tương đương khoảng 0.8 từ tiếng Anh", slides: [33] }, outline).missingNumbers).toEqual(["0.8"]);
   });
 
   it("không soát số khi không slide nào được dẫn có trong dàn ý", () => {

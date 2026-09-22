@@ -3,14 +3,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Claim, ClaimKind, Difficulty, Gate2Decision, Priority, ResearchStage, ResearchState, ScriptCheck, ScriptIssue } from "../../research";
-import { batches, difficultyOf, gate2Waiting, RUN_RESULT_LABEL } from "../../research";
+import { batches, difficultyOf, gate2Waiting, RETRY_BATCH, RUN_RESULT_LABEL } from "../../research";
 import type { AgentProvider } from "../../types";
 import type { StepCall } from "../agent-cli";
 import { short } from "../agent-stream";
 import { finishJob, isRunning, registry, startJob, stopJob, wasStopped } from "../jobs";
 import { HttpError, REPO } from "../paths";
 import { resolveAgentBin, runStepAgent, type StepOutcome, type StepSpec } from "./agent";
-import { applyEditPrompt, editPrompt, extractPrompt, fixPrompt, researchPrompt, revisePrompt, writePrompt, type WriteContext } from "./prompts";
+import {
+  applyEditPrompt, editPrompt, extractPrompt, fixableIssues, fixPrompt, researchPrompt, revisePrompt, selfCheckCommand, writePrompt, type RetryNote, type WriteContext,
+} from "./prompts";
 import {
   assertEditable, clearFromExtract, clearScript, dropClaimResults, jobKey, readClaims, readEdit, readEvidence, readFinding, readOutline, readScript, readScriptCheck, readSources,
   readState, researchLog, runDir, runRel, updateState, writeJson,
@@ -38,9 +40,15 @@ const shell = (cmd: string) => [`Bash(${cmd})`, `PowerShell(${cmd})`];
  * (viết kịch bản) dùng model mặc định của người dùng; các chặng còn lại dùng model nhanh hơn để đỡ hạn mức.
  * `STUDIO_RESEARCH_MODELS='{"write":"opus"}'` đổi được từng chặng.
  */
-const CLAUDE_MODEL: Record<StepSpec["step"], string | null> = { extract: "sonnet", research: "sonnet", write: null, fix: "sonnet", edit: "sonnet" };
+const CLAUDE_MODEL: Record<ModelKey, string | null> = { extract: "sonnet", research: "sonnet", write: null, fix: "sonnet", edit: "sonnet", lint: "haiku" };
 
-function modelFor(step: StepSpec["step"], provider: AgentProvider) {
+/**
+ * `lint`: vòng đầu sửa lỗi định dạng (viết số thành chữ, thêm dòng Nguồn, đổi kiểu đọc lạ) — việc máy móc, code soát lại
+ * ngay sau đó, nên dùng model rẻ nhất; vòng hai vẫn còn lỗi thì lên `fix` (Sonnet).
+ */
+type ModelKey = StepSpec["step"] | "lint";
+
+export function modelFor(step: ModelKey, provider: AgentProvider) {
   if (provider !== "claude") return null;
   try {
     const custom = JSON.parse(process.env.STUDIO_RESEARCH_MODELS || "{}") as Record<string, string>;
@@ -54,30 +62,51 @@ function modelFor(step: StepSpec["step"], provider: AgentProvider) {
  * trang web của người khác, và một câu chèn trong đó ("ghi đè tools/page.mjs bằng…") không được biến thành lệnh
  * chạy trên máy. Đo thật: ghi vào `tools/` bị chặn, kể cả qua `node tools/page.mjs … > tools/x`.
  */
-export const WRITABLE: Record<StepSpec["step"], (rid: string) => string[]> = {
-  extract: (rid) => [`${runRel(rid)}/outline.json`, `${runRel(rid)}/claims.json`],
-  research: (rid) => [`${runRel(rid)}/claims/**`],
+/**
+ * Dàn ý do code dựng (có `input/slides.json`) thì agent bóc tách chỉ ghi claims.json: outline.json là của code, và
+ * phần soát dựng lại nó mỗi lần — agent không đánh số lệch trang được nữa.
+ */
+export const extractWritable = (rid: string, codeOutline: boolean) =>
+  codeOutline ? [`${runRel(rid)}/claims.json`] : [`${runRel(rid)}/outline.json`, `${runRel(rid)}/claims.json`];
+
+const hasCodeOutline = (rid: string) => fs.existsSync(path.join(runDir(rid), "input", "slides.json"));
+
+export const WRITABLE: Record<StepSpec["step"], (rid: string, claims?: string[]) => string[]> = {
+  extract: (rid) => extractWritable(rid, hasCodeOutline(rid)),
+  // Chỉ thư mục của đúng các claim trong lô: agent lô sau ghi được finding của claim đã soát xong thì nó đổi được
+  // con số của claim đó mà không lượt soát nào nhìn lại (verify còn soát lại finding bị ghi ngoài lô, cho mọi CLI).
+  research: (rid, claims) => (claims?.length ? claims.map((cid) => `${runRel(rid)}/claims/${cid}/**`) : [`${runRel(rid)}/claims/**`]),
   write: (rid) => [`${runRel(rid)}/output/**`],
   fix: (rid) => [`${runRel(rid)}/output/**`],
   edit: (rid) => [`${runRel(rid)}/checks/edit.json`],
 };
 
-function call(rid: string, step: StepSpec["step"], provider: AgentProvider, effort: StepCall["effort"]): StepCall {
-  const model = modelFor(step, provider);
+function call(rid: string, step: StepSpec["step"], provider: AgentProvider, effort: StepCall["effort"], claims?: string[], modelKey?: ModelKey): StepCall {
+  const model = modelFor(modelKey ?? step, provider);
   // Chữ của trang gốc (`sources/<sid>/page.txt`) là thứ phần soát đối chiếu trích đoạn. Agent mà ghi được vào
   // đó thì nó "chứng minh" trích đoạn bằng chính chữ nó viết ra — cả tính năng này chỉ còn là lời hứa. Nên
   // quyền ghi hẹp tới từng file của chặng: sources/, checks/evidence.json, state.json, claims.json đều chỉ đọc.
-  const write = WRITABLE[step](rid).flatMap((glob) => [`Write(${glob})`, `Edit(${glob})`]);
+  const write = WRITABLE[step](rid, claims).flatMap((glob) => [`Write(${glob})`, `Edit(${glob})`]);
   if (step === "research") {
     return {
       tools: ["WebSearch", "WebFetch", "Read", "Write", "Bash", "PowerShell"],
-      allowed: ["WebSearch", "WebFetch", "Read", ...write, ...shell("node tools/page.mjs *")],
+      allowed: ["WebSearch", "WebFetch", "Read", ...write, ...researchShell(rid)],
       web: true, shell: true, model, effort,
     };
   }
   if (step === "fix") return { tools: ["Read", "Edit", "Write"], allowed: ["Read", ...write], web: false, shell: false, model, effort };
   return { tools: ["Read", "Write", "Glob"], allowed: ["Read", "Glob", ...write], web: false, shell: false, model, effort };
 }
+
+/**
+ * Lệnh shell chặng research được chạy: đọc trang, và tự soát claim của lô trước khi dừng. Lệnh tự soát khoá đúng lượt
+ * và đúng `--dry` (research-verify từ chối `--dry` ghép với mọi chế độ ghi): tự soát trong phiên rẻ hơn hẳn một lượt
+ * research lại — lượt thật có 7/13 claim trượt lần đầu vì lỗi agent tự thấy được (trích đoạn ngắn, thiếu nguồn).
+ */
+export const researchShell = (rid: string) => [
+  ...shell("node tools/page.mjs *"),
+  ...shell(`${selfCheckCommand(rid, [])}*`),
+];
 
 /** Trần an toàn theo khối lượng — không phải thời gian dự kiến. */
 const PER_CLAIM_MS: Record<Difficulty, number> = { easy: 2 * MIN, normal: 4 * MIN, hard: 6 * MIN };
@@ -168,6 +197,8 @@ async function doResearch(rid: string) {
   // Claim người dùng bấm "Research lại" không được lấy từ thư viện cho tới khi agent đã thật sự làm lại nó —
   // kể cả khi lượt bị dừng hay lỗi giữa chừng rồi "Chạy tiếp".
   const skip = readState(rid).noReuse ?? [];
+  // Claim bị bắt research lại: dữ kiện chính lượt này đã lưu cho nó cũng không còn được tin — gỡ khỏi thư viện.
+  if (skip.length) await verify(rid, ["--forget-facts", "--claims", skip.join(",")]);
   const reused = await verify<{ reused: { claim: string; from: string }[] }>(rid, ["--reuse", ...(skip.length ? ["--skip", skip.join(",")] : [])]);
   if (reused.report?.reused?.length) {
     researchLog(rid, "result", `Dùng lại ${reused.report.reused.length} dữ kiện đã kiểm: ${reused.report.reused.map((r) => `${r.claim} ← ${r.from}`).join(", ")}`);
@@ -178,34 +209,34 @@ async function doResearch(rid: string) {
     const evidence = readEvidence(rid);
     const pending = readClaims(rid).filter((c) => !evidence[c.id]?.ok && (state.attempts[c.id] ?? 0) < MAX_ATTEMPTS);
     if (!pending.length) break;
-    const plan = batches(pending);
+    // Lần đầu theo lô của độ khó; lần làm lại từng cặp — ngữ cảnh lượt làm lại dài (lỗi, bảng nguồn, trang đọc lại).
+    const plan = [
+      ...batches(pending.filter((c) => !(state.attempts[c.id] ?? 0))),
+      ...batches(pending.filter((c) => (state.attempts[c.id] ?? 0) > 0), RETRY_BATCH),
+    ];
     // Không bao giờ để vòng lặp quay mà không có việc: nó không có await nào và sẽ khoá cả máy chủ.
     if (!plan.length) throw new Error(`Không chia được lô cho ${pending.map((c) => c.id).join(", ")}.`);
     for (const batch of plan) {
       if (wasStopped(jobKey(rid))) throw new Stopped();
       const ev = readEvidence(rid);
-      const retry: string[] = [];
+      const retry: RetryNote[] = [];
       for (const c of batch) {
         const file = path.join(runDir(rid), "claims", c.id, "feedback.json");
         const prev = ev[c.id];
         if (prev && !prev.ok && !prev.missing) {
           // Kèm bảng nguồn và các trang đã tải: không có nó thì lượt sửa đi tìm web lại từ đầu thay vì sửa
-          // đúng chỗ bộ soát đã chỉ ra — đo được 125 giây và 48k token cho một claim duy nhất.
-          writeJson(file, {
-            attempt: (state.attempts[c.id] ?? 0) + 1,
-            problems: prev.problems,
-            warnings: prev.warnings,
-            sources: prev.sources ?? [],
-            daTai: readSources(rid).map((s) => ({ id: s.id, url: s.url, publisher: s.publisher ?? null, published: s.published ?? null, ok: s.ok, error: s.error ?? null })),
-          });
-          retry.push(c.id);
+          // đúng chỗ bộ soát đã chỉ ra — đo được 125 giây và 48k token cho một claim duy nhất. Tất cả nằm trong prompt;
+          // feedback.json chỉ còn để người (hoặc agent chạy tay) xem lại.
+          const note = { claim: c.id, problems: prev.problems, warnings: prev.warnings, sources: prev.sources ?? [] };
+          writeJson(file, { attempt: (state.attempts[c.id] ?? 0) + 1, ...note });
+          retry.push(note);
         } else fs.rmSync(file, { force: true });
       }
       const effort = batch.every((c) => difficultyOf(c) === "easy") ? "low" : "medium";
       const capMs = 2 * MIN + batch.reduce((sum, c) => sum + PER_CLAIM_MS[difficultyOf(c)], 0);
       const outcome = await runStepAgent(rid, state.agent, {
-        step: "research", claims: batch.map((c) => c.id), call: call(rid, "research", state.agent, effort), idleMs: 4 * MIN, capMs,
-      }, researchPrompt(rid, batch, retry));
+        step: "research", claims: batch.map((c) => c.id), call: call(rid, "research", state.agent, effort, batch.map((c) => c.id)), idleMs: 4 * MIN, capMs,
+      }, researchPrompt(rid, batch, retry, retry.length ? readSources(rid) : []));
       // Kẹt hoặc vượt trần thì vẫn tính một lượt — agent có thể đã ghi được vài finding, phần soát sẽ phân xử.
       // Lỗi hẳn (chưa đăng nhập, hết hạn mức, không chạy được CLI) thì dừng: research chưa hề diễn ra.
       if (outcome.result !== "stalled" && outcome.result !== "cap") check(outcome, `research ${batch.map((c) => c.id).join(", ")}`);
@@ -223,6 +254,10 @@ async function doResearch(rid: string) {
   const failing = gate2Waiting(readClaims(rid), evidence, decisions);
   if (!failing.length) {
     const decided = decisions;
+    // Chỉ giờ — cổng 2 đã qua — dữ kiện đạt soát mới vào thư viện cho bài sau dùng lại: lưu sớm hơn thì claim người
+    // duyệt bỏ hay bắt research lại vẫn nằm trong thư viện và tự qua ở bài sau.
+    const facts = await verify<{ saved?: { claim: string; file: string }[] }>(rid, ["--save-facts"]);
+    if (facts.report?.saved?.length) researchLog(rid, "system", `Lưu ${facts.report.saved.length} dữ kiện đã kiểm vào thư viện cho bài sau dùng lại.`);
     updateState(rid, (s) => {
       // Qua được sau khi người duyệt đã quyết định ở cổng 2 thì giữ lại quyết định đó, đừng ghi thành "tự qua".
       s.gates.gate2 = decided ? { ...s.gates.gate2!, at: new Date().toISOString() } : { at: new Date().toISOString(), auto: true };
@@ -241,18 +276,29 @@ async function doResearch(rid: string) {
 
 const problemsOf = (report: ScriptCheck | null): ScriptIssue[] => report?.issues?.filter((i) => i.level === "problem") ?? [];
 
-/** Soát kịch bản; còn problem thì cho agent sửa đúng các dòng đó, tối đa hai vòng. */
-async function lintAndFix(state: ResearchState) {
+/**
+ * Soát kịch bản; còn problem thì cho agent sửa đúng các dòng đó, tối đa hai vòng.
+ *
+ * `fixLength: false` sau góp ý của người duyệt: họ bảo thêm ví dụ mà bài vượt mức đặt thì lượt rút gọn tự động sẽ
+ * xoá đúng phần họ vừa yêu cầu. Lỗi độ dài vẫn hiện ở cổng 3 — người duyệt quyết.
+ */
+async function lintAndFix(state: ResearchState, fixLength = true) {
   const rid = state.id;
   let v = await verify<ScriptCheck>(rid, ["--stage", "script"]);
   // Không có kịch bản thì công cụ trả `{ ok: false, error }` — một báo cáo, nhưng không có `issues`.
   if (!v.report || !Array.isArray(v.report.issues)) throw new Error("Chưa có kịch bản (output/kich-ban.md) — agent không ghi được file.");
   for (let round = 1; round <= 2 && !v.ok; round++) {
-    const issues = problemsOf(v.report);
-    researchLog(rid, "system", `Soát kịch bản: ${issues.length} lỗi định dạng — gửi agent sửa (vòng ${round}).`);
+    const issues = problemsOf(v.report).filter((i) => fixLength || i.code !== "length");
+    if (!issues.length) break;
+    // Rút cả bài về mức đặt là viết lại nhiều câu một lúc — không phải việc của lượt sửa lắt nhắt nỗ lực thấp.
+    const long = issues.some((i) => i.code === "length");
+    researchLog(rid, "system", long
+      ? `Soát kịch bản: dài quá mức đặt (${v.report?.stats.cues ?? "?"}/${state.options.cues} câu) và ${issues.length - 1} lỗi khác — gửi agent rút gọn (vòng ${round}).`
+      : `Soát kịch bản: ${issues.length} lỗi định dạng — gửi agent sửa (vòng ${round}).`);
     check(await runStepAgent(rid, state.agent, {
-      step: "fix", call: call(rid, "fix", state.agent, "low"), idleMs: 4 * MIN, capMs: 5 * MIN + issues.length * 30_000,
-    }, fixPrompt(rid, issues)), "sửa kịch bản");
+      step: "fix", call: call(rid, "fix", state.agent, long ? "medium" : "low", undefined, !long && round === 1 ? "lint" : undefined),
+      idleMs: 4 * MIN, capMs: long ? 5 * MIN + state.options.cues * 20_000 : 5 * MIN + issues.length * 30_000,
+    }, fixPrompt(rid, issues, state.options.cues)), long ? "rút gọn kịch bản" : "sửa kịch bản");
     v = await verify<ScriptCheck>(rid, ["--stage", "script"]);
   }
   const r = v.report && Array.isArray(v.report.issues) ? v.report : null;
@@ -301,19 +347,20 @@ async function doReview(state: ResearchState) {
   fs.rmSync(path.join(runDir(rid), "checks", "edit.json"), { force: true });
   check(await runStepAgent(rid, state.agent, {
     step: "edit", call: call(rid, "edit", state.agent, "medium"), idleMs: 4 * MIN, capMs: 3 * MIN + state.options.cues * 10_000,
-  }, editPrompt(rid, writeContext(rid))), "biên tập");
+  }, editPrompt(rid, writeContext(rid), { cues: readScriptCheck(rid)?.stats.cues ?? 0, target: state.options.cues })), "biên tập");
   const edit = readEdit(rid);
   if (!edit) researchLog(rid, "error", "Biên tập không ghi được checks/edit.json — chỉ sửa theo cảnh báo của code.");
-  const warnings = readScriptCheck(rid)?.issues.filter((i) => i.level === "warning") ?? [];
-  const items = (edit?.issues.length ?? 0) + warnings.length;
+  const scriptCheck = readScriptCheck(rid);
+  const issues = fixableIssues(scriptCheck);
+  const items = (edit?.issues.length ?? 0) + issues.length;
   if (items) {
-    researchLog(rid, "system", `Biên tập: ${edit?.issues.length ?? 0} góp ý · soát tự động: ${warnings.length} cảnh báo — gửi agent sửa một lượt.`);
+    researchLog(rid, "system", `Biên tập: ${edit?.issues.length ?? 0} góp ý · soát tự động: ${issues.length} lỗi/cảnh báo — gửi agent sửa một lượt.`);
     check(await runStepAgent(rid, state.agent, {
       step: "fix", call: call(rid, "fix", state.agent, "medium"), idleMs: 4 * MIN, capMs: 5 * MIN + items * 40_000,
-    }, applyEditPrompt(rid, edit, warnings)), "sửa theo biên tập");
+    }, applyEditPrompt(rid, edit, issues, { cues: scriptCheck?.stats.cues ?? 0, target: state.options.cues, ratio: scriptCheck?.length?.ratio })), "sửa theo biên tập");
     markLintPending(rid);
     await lintAndFix(state);
-  } else researchLog(rid, "result", "Biên tập: không có góp ý nào, soát tự động không có cảnh báo.");
+  } else researchLog(rid, "result", "Biên tập: không có góp ý nào, soát tự động không có gì cần sửa.");
   toGate3(rid);
 }
 
@@ -323,10 +370,10 @@ async function doRevise(state: ResearchState) {
   if (!state.lintPending) {
     check(await runStepAgent(state.id, state.agent, {
       step: "fix", call: call(state.id, "fix", state.agent, "medium"), idleMs: 4 * MIN, capMs: 10 * MIN,
-    }, revisePrompt(state.id, feedback, readEdit(state.id))), "sửa theo góp ý");
+    }, revisePrompt(state.id, feedback, readEdit(state.id), state.options.cues)), "sửa theo góp ý");
     markLintPending(state.id);
   }
-  await lintAndFix(state);
+  await lintAndFix(state, false);
   toGate3(state.id);
 }
 
@@ -478,7 +525,9 @@ export function approveClaims(rid: string, raw: unknown) {
     return before && before.text === c.text && before.question === c.question;
   }).map((c) => c.id));
   dropClaimResults(rid, [...new Set([...extracted.map((c) => c.id), ...claims.map((c) => c.id)])].filter((id) => !unchanged.has(id)));
-  writeJson(path.join(runDir(rid), "claims.json"), { claims });
+  // Giữ danh sách trang bỏ qua agent bóc tách ghi cạnh claim — dàn ý do code dựng lại đọc nó từ đây.
+  const skip = (JSON.parse(fs.readFileSync(path.join(runDir(rid), "claims.json"), "utf8")) as { skip?: unknown }).skip;
+  writeJson(path.join(runDir(rid), "claims.json"), { claims, ...(Array.isArray(skip) ? { skip } : {}) });
   updateState(rid, (s) => {
     s.gates.gate1 = { at: new Date().toISOString(), claims: claims.length };
     s.stage = "research";
@@ -613,6 +662,8 @@ export function rerun(rid: string, step: RerunStep, claims: string[] = [], agent
   const targets = claims.filter((c) => known.includes(c));
   if (step === "extract") clearFromExtract(rid);
   if (step === "research") dropClaimResults(rid, targets.length ? targets : known);
+  // Kết quả research đổi thì kịch bản viết trên kết quả cũ không còn đúng — hộp xác nhận cũng hứa "viết lại sau đó".
+  if (step === "research" && readScript(rid)) clearScript(rid);
   if (step === "write") clearScript(rid);
   updateState(rid, (s) => {
     s.stage = step;
@@ -624,7 +675,13 @@ export function rerun(rid: string, step: RerunStep, claims: string[] = [], agent
       for (const cid of list) delete s.attempts[cid];
       // Research lại = tìm mới, không lấy lại từ thư viện dữ kiện kết quả người dùng vừa muốn làm lại.
       s.noReuse = list;
+      // Chỉ bỏ quyết định cổng 2 của đúng các claim làm lại — quyết định của claim khác và danh sách ý đã bỏ vẫn giữ.
+      const g2 = s.gates.gate2;
+      const keep = Object.fromEntries(Object.entries(g2?.decisions ?? {}).filter(([cid]) => !list.includes(cid)));
       delete s.gates.gate2;
+      if (g2 && (Object.keys(keep).length || g2.dropped?.length)) {
+        s.gates.gate2 = { at: g2.at, auto: false, ...(Object.keys(keep).length ? { decisions: keep } : {}), ...(g2.dropped?.length ? { dropped: g2.dropped } : {}) };
+      }
       delete s.gates.gate3;
     }
     if (step === "write" || step === "review") delete s.gates.gate3;

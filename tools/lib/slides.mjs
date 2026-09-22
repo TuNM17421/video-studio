@@ -2,9 +2,10 @@
  * Slide của giảng viên → thứ agent đọc được. Node thuần, không thư viện: dùng được cả khi Studio nạp slide
  * lẫn khi agent chạy `/research-script` không qua Studio.
  *
- * PDF để nguyên: công cụ Read của agent đọc thẳng PDF, cả chữ lẫn hình và sơ đồ. PPTX thì không mở được,
- * nên bóc chữ và ghi chú của từng slide ra Markdown — hình trong PPTX không đi theo được, và người dùng
- * được nói rõ điều đó.
+ * PPTX: bóc chữ và ghi chú của từng slide ra Markdown — hình trong PPTX không đi theo được, và người dùng được
+ * nói rõ điều đó. PDF: chữ từng trang do PDF.js bóc (`pdfPages` trong pdf-text.mjs); trang ít chữ thì agent mở
+ * đúng trang đó trong PDF để xem hình. Có chữ từng trang thì **code dựng dàn ý** (`outlineFromSlides`), không
+ * để agent chép lại — rẻ hơn, và số trang đúng tuyệt đối.
  */
 import { inflateRawSync } from 'node:zlib';
 
@@ -147,13 +148,78 @@ export function pptxSlides(bytes) {
   });
 }
 
+/** Trang PDF thành slide: mỗi dòng chữ là một đoạn. */
+export function pdfSlides(pages) {
+  return pages.map((text, i) => ({
+    slide: i + 1,
+    paragraphs: String(text ?? '').split('\n').map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean),
+    notes: [],
+  }));
+}
+
+/**
+ * Bỏ dòng lặp lại ở nhiều trang — chân trang "Giảng viên (VinUni) AICB ∙ Ngày 1 02/04/2026 39 / 67", tên khoá học ở
+ * đầu trang. Không phải nội dung, mà chép vào dàn ý thì mỗi prompt viết kịch bản gánh thêm vài chục dòng giống nhau.
+ * Lặp ở từ 30% số trang (ít nhất 3 trang) mới tính. Dòng giống hệt nhau thì bỏ; dòng chỉ khác chữ số (số trang đổi từng
+ * trang) thì phải dài — chân trang thật dài cỡ 50 ký tự, còn "Bước 1", "Bước 2" là tiêu đề đánh số, phải giữ.
+ */
+export function stripRepeated(slides) {
+  const exact = (p) => p.toLowerCase().replace(/\s+/g, ' ').trim();
+  const shape = (p) => exact(p).replace(/\d+/g, '#');
+  const tally = (key) => {
+    const count = new Map();
+    for (const s of slides) for (const k of new Set(s.paragraphs.map(key))) count.set(k, (count.get(k) ?? 0) + 1);
+    return count;
+  };
+  const exactCount = tally(exact);
+  const shapeCount = tally(shape);
+  const limit = Math.max(3, Math.ceil(slides.length * 0.3));
+  const boilerplate = (p) => /^\d+\s*\/\s*\d+$/.test(p.trim())
+    || (exactCount.get(exact(p)) ?? 0) >= limit
+    || (p.length >= 20 && (shapeCount.get(shape(p)) ?? 0) >= limit);
+  return slides.map((s) => ({ ...s, paragraphs: s.paragraphs.filter((p) => !boilerplate(p)) }));
+}
+
+/** Slide gần như không có chữ — có thể mang nội dung bằng hình, agent nên mở trang đó mà xem. */
+export const isThin = (s) => s.paragraphs.join(' ').replace(/\s+/g, '').length < 40;
+
+const SKIP_HEADING = /^(hỏi\s*(&|và)\s*đáp|q\s*&\s*a|questions?\b|(xin\s+)?cảm ơn|thank(s| you)|mục lục|nội dung bài học|agenda)/i;
+const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+/**
+ * Dàn ý do code dựng từ chữ từng slide: tiêu đề là dòng đầu, ý là các dòng sau (kèm ghi chú của giảng viên). `skip`
+ * cho trang hỏi đáp/cảm ơn/mục lục, cộng các trang agent bóc tách liệt kê trong `claims.json → skip`.
+ */
+export function outlineFromSlides(title, slides, skip = []) {
+  const skipped = new Set(skip);
+  return {
+    title: String(title ?? ''),
+    pages: slides.length,
+    source: 'code',
+    outline: slides.map((s) => {
+      // Tiêu đề là dòng đầu có chữ thật — slide mở bằng một dấu "?" to thì dòng đó không phải tiêu đề.
+      const at = Math.max(0, s.paragraphs.findIndex((p) => (p.match(/\p{L}/gu) ?? []).length >= 3));
+      const first = s.paragraphs[at] ?? '';
+      const rest = s.paragraphs.filter((_, i) => i !== at);
+      const points = [...rest.slice(0, 12).map((p) => clip(p, 240)), ...(s.notes?.length ? [clip(`Ghi chú: ${s.notes.join(' ')}`, 400)] : [])];
+      // Trang cảm ơn hay kèm email, trang mục lục kèm vài mục — vẫn là trang bỏ qua; slide nội dung thì dài hơn thế.
+      const auto = SKIP_HEADING.test(first) && s.paragraphs.length <= 8;
+      return { slide: s.slide, heading: clip(first, 120), points, ...(auto || skipped.has(s.slide) ? { skip: true } : {}) };
+    }),
+  };
+}
+
 /** Chữ bóc được → `slide.md` cho agent đọc. */
-export function slidesMarkdown(name, slides) {
-  const lines = [`# ${name}`, '', `${slides.length} slide · chữ bóc từ PPTX (hình và sơ đồ không đi theo).`, ''];
+export function slidesMarkdown(name, slides, source = 'PPTX') {
+  const pdf = source === 'PDF';
+  const lines = [`# ${name}`, '', pdf
+    ? `${slides.length} trang · chữ bóc từ PDF (bỏ chân trang lặp lại). Hình và sơ đồ không đi theo — trang ít chữ ghi rõ để mở đúng trang đó trong input/slide.pdf.`
+    : `${slides.length} slide · chữ bóc từ PPTX (hình và sơ đồ không đi theo).`, ''];
   for (const s of slides) {
     lines.push(`## Slide ${s.slide}`, '');
     if (s.paragraphs.length) lines.push(...s.paragraphs.map((p) => `- ${p}`));
-    else lines.push('_(slide không có chữ — có thể chỉ có hình)_');
+    if (pdf && isThin(s)) lines.push(`_(ít chữ — có thể chỉ có hình: Read trang ${s.slide} của input/slide.pdf nếu cần)_`);
+    else if (!s.paragraphs.length) lines.push('_(slide không có chữ — có thể chỉ có hình)_');
     if (s.notes.length) lines.push('', `> Ghi chú của giảng viên: ${s.notes.join(' ')}`);
     lines.push('');
   }

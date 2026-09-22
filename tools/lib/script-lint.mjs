@@ -10,6 +10,15 @@
 
 /** Tốc độ đọc dùng để ước thời lượng, theo mẫu kịch bản: khoảng 2,9 tiếng mỗi giây. */
 export const SYLLABLES_PER_SECOND = 2.9;
+/**
+ * Số từ trung bình của một câu (một cảnh) khi tính độ dài theo số câu đã đặt. Đo trên các video đã làm: d2-01-lab
+ * (47 câu, đã QA) trung vị 22 từ, dài nhất 28; lượt research đầu tiên viết trung vị 33 từ nên dài gần gấp đôi dự kiến.
+ * Giữ khớp `SCRIPT_BUDGET` ở studio/src/lib/research.ts (có test).
+ */
+export const WORDS_PER_CUE = 24;
+/** Dài hơn mức đặt chừng này lần thì cảnh báo / thành lỗi phải sửa. */
+export const LENGTH_WARN = 1.2;
+export const LENGTH_FAIL = 1.5;
 const MAX_WORDS = 45;
 const MIN_WORDS = 3;
 
@@ -18,7 +27,9 @@ const MIN_WORDS = 3;
  * nên phải có dòng **Trên màn hình** mang con số đó, chỗ duy nhất phép soát đối chiếu được với slide và finding.
  * "một", "hai", "ba" đứng một mình thì bỏ qua: "một cách", "hai bên" quá thường trong lời nói.
  */
-const SPOKEN_NUMBER = /\b(mươi|trăm|nghìn|ngàn|triệu|tỉ|tỷ|phần trăm|phần nghìn|gấp \w+|một nửa|hai phần ba|ba phần tư)\b/iu;
+// Biên bằng `\p{L}` chứ không bằng `\b`: `\b` của JavaScript chỉ hiểu chữ ASCII, nên "tỷ" (kết thúc bằng ỷ) không
+// bao giờ khớp — "một tỷ người dùng" không có dòng màn hình vẫn lọt.
+const SPOKEN_NUMBER = /(?<!\p{L})(mươi|trăm|nghìn|ngàn|triệu|tỉ|tỷ|phẩy|phần trăm|phần nghìn|gấp \p{L}+|một nửa|hai phần ba|ba phần tư)(?!\p{L})/iu;
 
 const DIGIT_WORDS = {
   không: 0, một: 1, mốt: 1, hai: 2, ba: 3, bốn: 4, tư: 4, năm: 5, lăm: 5, nhăm: 5, sáu: 6, bảy: 7, bẩy: 7, tám: 8, chín: 9,
@@ -34,7 +45,10 @@ const SCALE_WORDS = { nghìn: 1e3, ngàn: 1e3, triệu: 1e6, tỉ: 1e9, tỷ: 1e
  * phép soát vẫn xanh. Đọc được số thì con số nghe thấy mới đối chiếu được với slide và finding như con số
  * trên màn hình.
  *
- * @returns {{ text: string, value: number, percent: boolean }[]}
+ * Số thập phân đọc bằng "phẩy" hay "chấm" ("hai phẩy năm", "Opus bốn chấm sáu", "một phẩy năm triệu") là một con
+ * số, không phải hai: đọc tách thì "một phẩy năm triệu người" thành 1 và 5 000 000 — sai cả hai.
+ *
+ * @returns {{ text: string, value: number, percent: boolean, decimal?: boolean }[]}
  */
 export function spokenNumbers(text) {
   const tokens = String(text ?? '').toLowerCase().normalize('NFC').split(/[^\p{L}]+/u).filter(Boolean);
@@ -48,6 +62,26 @@ export function spokenNumbers(text) {
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     const next = tokens[i + 1];
+    if ((t === 'phẩy' || t === 'chấm') && run.length && next && (next in DIGIT_WORDS || next === 'mười')) {
+      const whole = runValue(run);
+      const frac = [];
+      let j = i + 1;
+      while (j < tokens.length && (tokens[j] in DIGIT_WORDS || ['mười', 'mươi', 'linh', 'lẻ'].includes(tokens[j]))) frac.push(tokens[j++]);
+      // Phần sau dấu đọc từng chữ số ("hai lăm" = 25, "không năm" = 05) hay đọc như một số ("bảy mươi lăm" = 75).
+      const digitsOnly = frac.every((w) => w in DIGIT_WORDS);
+      const fracText = digitsOnly ? frac.map((w) => DIGIT_WORDS[w]).join('') : String(runValue(frac) ?? '');
+      const words = [...run, t, ...frac];
+      // Nhân bậc bằng số mũ trong chuỗi, không bằng phép nhân: 1.1 * 1e6 là 1100000.0000000002.
+      let exp = 0;
+      if (tokens[j] in SCALE_WORDS) { exp = Math.round(Math.log10(SCALE_WORDS[tokens[j]])); words.push(tokens[j++]); }
+      const value = Number(`${whole}.${fracText}e${exp}`);
+      let percent = false;
+      if (tokens[j] === 'phần' && tokens[j + 1] === 'trăm') { percent = true; j += 2; }
+      if (Number.isFinite(value)) out.push({ text: words.join(' '), value, percent, decimal: true });
+      run = [];
+      i = j - 1;
+      continue;
+    }
     // "… phần trăm" là đuôi của con số vừa đọc, không phải một con số mới ("trăm" ở đây không nhân với gì).
     if (t === 'phần' && next === 'trăm') {
       if (run.length) flush(true);
@@ -56,7 +90,7 @@ export function spokenNumbers(text) {
     }
     // "năm" vừa là số 5 vừa là "năm" trong "năm hai nghìn không trăm hai mươi hai". Là số 5 thì sau nó phải
     // là một bậc ("năm trăm", "năm mươi", "năm phần trăm"); còn lại là mốc thời gian, và nó ngắt con số trước.
-    if (t === 'năm' && !['trăm', 'mươi', 'phần', ...Object.keys(SCALE_WORDS)].includes(next ?? '')) {
+    if (t === 'năm' && !['trăm', 'mươi', 'phần', 'phẩy', 'chấm', ...Object.keys(SCALE_WORDS)].includes(next ?? '')) {
       if (run.length) flush(false);
       continue;
     }
@@ -91,6 +125,47 @@ function runValue(tokens) {
     cur = 0;
   }
   return any ? total + group + cur : null;
+}
+
+const UNIT_WORDS = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+
+/** 1–99 thành lời: 21 → "hai mươi mốt", 15 → "mười lăm", 24 → "hai mươi tư". */
+function smallNumberWords(n) {
+  if (n < 10) return UNIT_WORDS[n];
+  const tens = Math.floor(n / 10);
+  const unit = n % 10;
+  const head = tens === 1 ? 'mười' : `${UNIT_WORDS[tens]} mươi`;
+  if (!unit) return head;
+  const tail = unit === 5 ? 'lăm' : unit === 1 && tens > 1 ? 'mốt' : unit === 4 && tens > 1 ? 'tư' : UNIT_WORDS[unit];
+  return `${head} ${tail}`;
+}
+
+/** Thời lượng lời đọc bằng chữ, làm tròn nửa phút: 375 giây → "khoảng sáu phút rưỡi". */
+export function durationPhrase(seconds) {
+  if (!(seconds > 0)) return null;
+  if (seconds < 45) return 'dưới một phút';
+  const halves = Math.max(2, Math.round(seconds / 30));
+  const minutes = Math.floor(halves / 2);
+  if (minutes > 99) return null;
+  return `khoảng ${smallNumberWords(minutes)} phút${halves % 2 ? ' rưỡi' : ''}`;
+}
+
+/**
+ * Ghi lại dòng **Thời lượng dự kiến:** ở phần đầu theo độ dài lời đọc thật. Người viết đoán con số này trước khi
+ * viết và không ai sửa sau các lượt cắt/gộp: lượt thật ghi "bốn phút rưỡi" cho một kịch bản đọc hơn sáu phút, và
+ * dòng đó đi thẳng sang pipeline video. Chỉ thay dòng đã có (không thêm dòng, để số dòng các lỗi khác vẫn đúng).
+ * Trả kịch bản mới, hoặc null nếu không có dòng đó hay dòng đã đúng.
+ */
+export function syncDuration(markdown, seconds) {
+  const phrase = durationPhrase(seconds);
+  if (!phrase) return null;
+  const md = String(markdown ?? '');
+  const firstSection = md.search(/^##\s/m);
+  const m = /^([ \t]*-[ \t]*\*\*Thời lượng dự kiến:?\*\*:?[ \t]*)([^\r\n]*)/m.exec(md);
+  if (!m || (firstSection !== -1 && m.index > firstSection)) return null;
+  const line = `${m[1]}${phrase}.`;
+  if (m[0] === line) return null;
+  return md.slice(0, m.index) + line + md.slice(m.index + m[0].length);
 }
 /** Quá chừng này câu liền nhau cùng một kiểu đọc thì giọng đều đều — lỗi đã gặp thật ở bộ Day 02. */
 const SAME_DELIVERY_RUN = 6;
@@ -193,13 +268,17 @@ export function deliveryResolver(deliveries) {
  * Soát kịch bản theo mẫu cơ bản.
  *
  * @param {ReturnType<typeof parseScript>} script
- * @param {{ deliveries: Record<string, {label?: string}> }} ctx
- * @returns {{ issues: { level: 'problem'|'warning', cue: number|null, line: number|null, message: string }[],
+ * @param {{ deliveries: Record<string, {label?: string}>, terms?: Set<string> }} ctx — `terms`: viết tắt có trên slide
+ *   (LLM, API…) — thuật ngữ của chính bài giảng, giữ trong lời đọc chứ không bắt viết thành lời.
+ * `code` của một vấn đề (nếu có) để máy phân loại: `pronounce` là việc của bước làm video (khai pronounce.json) — sửa
+ * kịch bản không giải quyết được, nên pipeline research không gửi nó cho agent sửa.
+ *
+ * @returns {{ issues: { level: 'problem'|'warning', cue: number|null, line: number|null, message: string, code?: string }[],
  *   stats: { cues: number, words: number, seconds: number } }}
  */
-export function lintScript(script, { deliveries }) {
+export function lintScript(script, { deliveries, terms = new Set() }) {
   const issues = [];
-  const add = (level, cue, line, message) => issues.push({ level, cue, line, message });
+  const add = (level, cue, line, message, code) => issues.push({ level, cue, line, message, ...(code ? { code } : {}) });
   const resolve = deliveryResolver(deliveries);
 
   if (!script.title) add('problem', null, 1, 'thiếu tiêu đề `# …` ở dòng đầu');
@@ -241,9 +320,11 @@ export function lintScript(script, { deliveries }) {
       const bare = tokens.filter((w) => /\d/.test(w) && !/\p{L}/u.test(w.replace(/[%]/g, '')));
       const named = tokens.filter((w) => /\d/.test(w) && /\p{L}/u.test(w));
       if (bare.length) add('problem', cue.n, at('lời'), `lời đọc có số viết bằng chữ số (${bare.join(', ')}) — viết thành chữ ("hai mươi", không phải "20"); số để ở dòng Trên màn hình`);
-      if (named.length) add('warning', cue.n, at('lời'), `tên có chữ số (${named.join(', ')}) — kiểm máy đọc có đúng không, cần thì khai pronounce.json`);
-      const abbr = [...text.matchAll(/\b[A-Z][A-Z0-9]{1,}\b/g)].map((m) => m[0]).filter((w) => w !== 'AI');
-      if (abbr.length) add('warning', cue.n, at('lời'), `viết tắt trong lời đọc: ${[...new Set(abbr)].join(', ')} — viết tắt thông thường thì viết thành lời; tên riêng (GPT, UBS) thì giữ nguyên, khai cách đọc ở pronounce.json, đừng phiên âm`);
+      if (named.length) add('warning', cue.n, at('lời'), `tên có chữ số (${named.join(', ')}) — kiểm máy đọc có đúng không, cần thì khai pronounce.json`, 'pronounce');
+      // Viết tắt có trên slide (LLM, API…) là thuật ngữ của bài: giữ trong lời đọc. Bắt nó thì lượt sửa xoá luôn
+      // thuật ngữ cốt lõi để hết cảnh báo — một lượt thật đã bỏ "LLM" và "API" khỏi cả bài giảng về LLM.
+      const abbr = [...text.matchAll(/\b[A-Z][A-Z0-9]{1,}\b/g)].map((m) => m[0]).filter((w) => w !== 'AI' && !terms.has(w));
+      if (abbr.length) add('warning', cue.n, at('lời'), `viết tắt trong lời đọc: ${[...new Set(abbr)].join(', ')} (không có trên slide) — viết tắt thông thường thì viết thành lời; tên riêng (GPT, UBS) thì giữ nguyên, khai cách đọc ở pronounce.json, đừng phiên âm. Đừng xoá thuật ngữ chỉ để hết cảnh báo`);
       if (/\[c\d+\]|\bslide\s*:\s*\d/i.test(text)) add('problem', cue.n, at('lời'), 'mã nguồn nằm trong lời đọc — chuyển sang dòng **Nguồn:**');
       // Tên riêng bị phiên âm ra tiếng Việt ("Cát Gi Pi Ti", "U Bi Ét", "Gi Pi Ti bốn"): luật viết-tắt ở trên
       // không bắt được vì phiên âm xong thì không còn chữ hoa liền nhau nữa. Ba tiếng hoa một âm tiết đứng
@@ -256,9 +337,13 @@ export function lintScript(script, { deliveries }) {
         add('problem', cue.n, at('lời'), 'lời đọc có con số nhưng câu không có dòng **Trên màn hình** — viết con số đó ra màn hình để phần soát đối chiếu được với slide và finding');
       }
       if (n < MIN_WORDS) add('warning', cue.n, at('lời'), `câu quá ngắn (${n} từ) — thành cảnh chưa tới một giây; viết liền vào câu bên cạnh`);
-      if (n > MAX_WORDS) add('warning', cue.n, at('lời'), `câu dài ${n} từ — một cảnh phải gánh nhiều ý; tách thành hai câu`);
+      // Cắt ý chứ không tách câu: tách làm bài dài thêm — một lượt thật đi từ 26 lên 34 câu mà thời lượng không đổi.
+      if (n > MAX_WORDS) add('warning', cue.n, at('lời'), `câu dài ${n} từ — một cảnh gánh nhiều ý; cắt bớt ý phụ cho gọn, chỉ tách thành hai câu khi bài còn chỗ`);
+      // Đọc cả dãy số (bảng giá, bảng thông số) thì người nghe không giữ nổi con số nào — bảng để trên màn hình.
+      const numbers = spokenNumbers(text).filter((s) => s.decimal || s.percent || s.value >= 10);
+      if (numbers.length >= 4) add('warning', cue.n, at('lời'), `lời đọc có ${numbers.length} con số — người nghe không nhớ nổi; để bảng số trên màn hình, lời chỉ nói ý chính (chênh bao nhiêu, cái nào rẻ nhất)`);
       const sentences = text.split(/(?<=[.!?…])\s+(?=[\p{Lu}"“])/u).filter((s) => wordCount(s) >= 2);
-      if (sentences.length > 1) add('warning', cue.n, at('lời'), `mục Lời có ${sentences.length} câu — mỗi mục một câu = một cảnh`);
+      if (sentences.length > 1) add('warning', cue.n, at('lời'), `mục Lời có ${sentences.length} câu — mỗi mục một câu = một cảnh; nối lại thành một câu hoặc cắt bớt ý`);
     }
     if (!cue.fields['trên màn hình']) add('warning', cue.n, cue.line, 'thiếu dòng **Trên màn hình:**');
 

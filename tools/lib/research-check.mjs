@@ -10,7 +10,9 @@
  * "problem" chặn chặng sau; "warning" chỉ hiện cho người duyệt.
  */
 import { normalize, quoteInText, stripMarkdown } from './page-text.mjs';
-import { lintScript, parseRefs, parseScript, spokenNumbers } from './script-lint.mjs';
+import {
+  LENGTH_FAIL, LENGTH_WARN, lintScript, parseRefs, parseScript, spokenNumbers, SYLLABLES_PER_SECOND, WORDS_PER_CUE,
+} from './script-lint.mjs';
 
 export const CLAIM_KINDS = ['number', 'date', 'product', 'technical', 'quote', 'example'];
 export const DIFFICULTIES = ['easy', 'normal', 'hard'];
@@ -26,6 +28,15 @@ export const MIN_QUOTE_CHARS = 25;
 const YEAR_MS = 365 * 24 * 3600 * 1000;
 export const MAX_CLAIMS = 25;
 
+/**
+ * Số claim đáng research cho một kịch bản khoảng `cues` câu: một nửa số câu, ít nhất 4, không quá `MAX_CLAIMS`.
+ * Lượt thật: 14 claim cho kịch bản 20 câu, 4 claim không câu nào dẫn tới — 23% tiền research bỏ đi. Giữ khớp
+ * `claimCap` ở studio/src/lib/research.ts (có test).
+ */
+export function claimCap(cues) {
+  return Number.isInteger(cues) && cues > 0 ? Math.min(MAX_CLAIMS, Math.max(4, Math.ceil(cues / 2))) : MAX_CLAIMS;
+}
+
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
 
 // ── chặng bóc tách ────────────────────────────────────────────────────────────────
@@ -33,17 +44,45 @@ const str = (v) => (typeof v === 'string' ? v.trim() : '');
 /**
  * @param {{ outline: unknown, claims: unknown, slideCount: number|null }} input
  */
-export function checkExtract({ outline, claims, slideCount }) {
+/** 15, 21, 22, 23, 24 → "15, 21–24". */
+function ranges(numbers) {
+  const out = [];
+  for (const n of numbers) {
+    const last = out.at(-1);
+    if (last && n === last[1] + 1) last[1] = n;
+    else out.push([n, n]);
+  }
+  return out.map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`)).join(', ');
+}
+
+export function checkExtract({ outline, claims, slideCount, cues = null }) {
   const problems = [];
   const warnings = [];
   const slides = Array.isArray(outline?.outline) ? outline.outline : null;
   if (!slides) problems.push('outline.json thiếu mảng `outline`');
+  // Số trang: Studio đếm được (PPTX, PDF thường) thì dùng số đó; PDF mã hoá thì Studio không đếm được — dùng số
+  // agent ghi (`pages`, Read báo tổng số trang). Chỉ để bắt nhầm lẫn thật thà: dàn ý đánh số tự chế thay vì theo trang.
+  const declared = Number.isInteger(outline?.pages) && outline.pages > 0 ? outline.pages : null;
+  const total = slideCount ?? declared;
   const inRange = (n) => Number.isInteger(n) && n >= 1 && (!slideCount || n <= slideCount);
   for (const [i, s] of (slides ?? []).entries()) {
     if (!inRange(s?.slide)) problems.push(`outline[${i}]: số slide ${JSON.stringify(s?.slide)} không hợp lệ`);
     if (!str(s?.heading) && !(Array.isArray(s?.points) && s.points.length) && !s?.skip) warnings.push(`slide ${s?.slide}: không có tiêu đề hay ý nào`);
   }
-  if (slides && slideCount && slides.length < slideCount) warnings.push(`dàn ý có ${slides.length}/${slideCount} slide`);
+  // Mỗi trang đúng một mục, đánh số theo trang: kịch bản dẫn nguồn bằng số này (`**Nguồn:** slide:N`) và soát độ phủ
+  // theo nó. Một lượt thật đánh số tự chế — hai mục cùng số 47, trang 68 mất hẳn, 34 mục lệch 4 trang so với PDF —
+  // nên nửa số dòng nguồn trỏ sai trang.
+  if (slides?.length) {
+    const numbers = slides.map((s) => s?.slide).filter((n) => Number.isInteger(n));
+    const seen = new Set();
+    const twice = [...new Set(numbers.filter((n) => (seen.has(n) ? true : (seen.add(n), false))))].sort((a, b) => a - b);
+    if (twice.length) problems.push(`slide ${ranges(twice)} có hơn một mục — mỗi trang đúng một mục (slide dựng dần thì mỗi trang vẫn một mục)`);
+    const last = Math.max(...numbers, 0);
+    const missing = [];
+    for (let n = 1; n <= last; n++) if (!seen.has(n)) missing.push(n);
+    if (missing.length) problems.push(`thiếu mục cho slide ${ranges(missing)} — mỗi trang một mục, trang không có nội dung ghi \`skip: true\`; \`slide\` là số trang, không phải số thứ tự tự đếm`);
+    if (total && last !== total) problems.push(`dàn ý tới slide ${last} nhưng file có ${total} trang — \`slide\` phải là số trang của file`);
+  }
 
   const list = Array.isArray(claims?.claims) ? claims.claims : null;
   if (!list) problems.push('claims.json thiếu mảng `claims`');
@@ -62,7 +101,16 @@ export function checkExtract({ outline, claims, slideCount }) {
     if (typeof c?.timeSensitive !== 'boolean') problems.push(`${where}: \`timeSensitive\` phải là true/false`);
     if (!str(c?.key)) warnings.push(`${where}: thiếu \`key\` — không tra được thư viện dữ kiện`);
   }
+  // `skip` (tuỳ chọn): trang không mang nội dung bài mà agent chỉ ra khi dàn ý do code dựng.
+  const skip = claims?.skip;
+  if (skip !== undefined && (!Array.isArray(skip) || !skip.every((n) => Number.isInteger(n) && n >= 1 && (!total || n <= total)))) {
+    warnings.push('`skip` trong claims.json phải là mảng số trang có thật — bỏ qua');
+  }
   if (list && list.length > MAX_CLAIMS) problems.push(`${list.length} claim — tối đa ${MAX_CLAIMS}; giữ những claim ưu tiên cao`);
+  // Cảnh báo chứ không chặn: người duyệt ở cổng 1 quyết bỏ claim nào. Chặn thì một lượt bóc tách thứ hai chỉ để cắt danh sách.
+  else if (list && list.length > claimCap(cues)) {
+    warnings.push(`${list.length} claim cho kịch bản khoảng ${cues} câu — mức hợp lý là tối đa ${claimCap(cues)}: mỗi claim là thêm việc research, còn kịch bản chỉ dùng được chừng đó dữ kiện. Bỏ qua claim ưu tiên thấp nếu không cần`);
+  }
   return { ok: problems.length === 0, problems, warnings };
 }
 
@@ -210,17 +258,28 @@ export function checkFinding({ claim, finding, resolveSource, referenceDate }) {
     if (f.verdict === 'ok' && contradicts.length) warnings.push('kết luận "ok" nhưng có trích đoạn phản bác — người duyệt nên xem');
   }
 
+  /** Mốc thời gian của dữ kiện hay đổi — kịch bản nói "tính đến …" theo mốc này. */
+  let asOf = null;
   if (claim.timeSensitive && judged) {
-    const dates = uniq(basis).map((r) => Date.parse(r.source.modified ?? r.source.published ?? '')).filter(Number.isFinite);
+    const dateOf = (r) => Date.parse(r.source.modified ?? r.source.published ?? '');
+    const dates = uniq(basis).map(dateOf).filter(Number.isFinite);
     const newest = dates.length ? Math.max(...dates) : null;
-    if (newest === null) warnings.push('dữ kiện hay đổi nhưng không nguồn căn cứ nào ghi ngày — người duyệt nên xem độ mới');
+    // Tài liệu sống của chính chủ (trang giá, trang docs của đúng hãng trong claim) không ghi ngày vì nó luôn là bản
+    // hiện hành — và Studio vừa tải nó trong lượt này. Lượt thật: 4/7 claim dừng ở cổng 2 chỉ vì trang giá/docs chính
+    // thức không ghi ngày, và 2 claim trượt vì cạnh trang đó có thêm một bài ra mắt cũ — thêm nguồn lại bị phạt.
+    const live = uniq(basis).filter((r) => !Number.isFinite(dateOf(r)) && kindOf(r) === 'official' && authoritative(r.source, claim, f))
+      .map((r) => Date.parse(r.source.fetchedAt ?? '')).filter(Number.isFinite);
+    if (live.length) asOf = new Date(Math.max(...live)).toISOString().slice(0, 10);
+    else if (newest === null) warnings.push('dữ kiện hay đổi nhưng không nguồn căn cứ nào ghi ngày — người duyệt nên xem độ mới');
     else if (referenceDate - newest > YEAR_MS) problems.push(`dữ kiện hay đổi nhưng nguồn mới nhất là ${new Date(newest).toISOString().slice(0, 10)} — cần nguồn trong 12 tháng`);
+    if (!asOf && newest !== null) asOf = new Date(newest).toISOString().slice(0, 10);
   }
 
   return {
     claim: claim.id,
     ok: problems.length === 0,
     verdict: VERDICTS.includes(f.verdict) ? f.verdict : null,
+    ...(asOf ? { asOf } : {}),
     quotes: { total: rows.length, verified: verified.length, unverifiable: rows.filter((r) => r.status === 'unverifiable').length },
     // Bảng nguồn đã tính sẵn ở trên. Trước đây nó bị vứt đi sau khi đếm, nên lượt research lại chỉ nhận được
     // một dòng "mới có 1 nơi xuất bản" — agent không biết nguồn nào bị loại vì lý do gì và đi tìm lại từ đầu
@@ -263,9 +322,14 @@ const canon = (s) => String(Number(s));
 export function numberForms(token) {
   const t = String(token).replace(/%$/, '');
   const parts = t.split(/[.,]/).filter(Boolean);
-  const forms = new Set(parts.map(canon));
-  if (parts.length > 1 && parts.slice(1).every((p) => p.length === 3)) forms.add(canon(parts.join('')));
+  const forms = new Set();
+  // Có dấu nghìn ("1,500,000", "2,048") thì con số là cả khối — từng nhóm không phải một con số của nguồn: tính
+  // nhóm thì "1,500,000" làm "năm trăm nghìn" thành có thật, "2,048" làm "48%" thành có thật.
+  const grouped = parts.length > 1 && parts.slice(1).every((p) => p.length === 3);
+  if (grouped) forms.add(canon(parts.join('')));
   if (parts.length === 2) forms.add(canon(`${parts[0]}.${parts[1]}`));
+  // Không có dấu nghìn thì nhóm lẻ vẫn là thứ lời đọc có thể nói riêng — "Opus 4.6" đọc "bốn chấm sáu".
+  if (!grouped) for (const p of parts) forms.add(canon(p));
   return forms;
 }
 
@@ -299,6 +363,8 @@ function spokenNumberKnown(known, n) {
   const forms = new Set([String(n.value)]);
   for (const scale of [1e3, 1e6, 1e9]) {
     if (n.value % scale === 0) forms.add(String(n.value / scale));
+    // "một phẩy năm triệu" là 1 500 000, nguồn viết "1.5 triệu" / "1,5 million": chia theo bậc, tối đa ba số lẻ.
+    else if (n.decimal && n.value >= scale && n.value % (scale / 1000) === 0) forms.add(String(n.value / scale));
   }
   return [...forms].some((form) => known.has(canon(form)));
 }
@@ -308,13 +374,16 @@ function spokenNumberKnown(known, n) {
  * @param {string} args.markdown            nội dung kich-ban.md
  * @param {Record<string, {label?: string}>} args.deliveries   voices.json → deliveries
  * @param {{ slide: number, skip?: boolean, heading?: string, points?: string[] }[]} args.outline
- * @param {Record<string, { verdict: string|null, ok: boolean }>} args.claims   kết quả soát từng claim
+ * @param {Record<string, { verdict: string|null, ok: boolean, slides?: number[] }>} args.claims   kết quả soát từng claim
  * @param {string} args.knownText           chữ slide + finding (answer, corrected, trích đoạn) — nơi con số được phép đến từ
+ * @param {number|null} [args.target]       số câu người dùng đặt khi tạo lượt (`state.options.cues`)
  */
-export function checkScript({ markdown, deliveries, outline, claims, knownText }) {
+export function checkScript({ markdown, deliveries, outline, claims, knownText, target = null }) {
   const script = parseScript(markdown);
-  const { issues, stats } = lintScript(script, { deliveries });
-  const add = (level, cue, line, message) => issues.push({ level, cue, line, message });
+  // Viết tắt có trong slide hay finding (LLM, API, IDC…) là thuật ngữ của bài và của nguồn — lời đọc giữ nguyên.
+  const terms = new Set([...String(knownText ?? '').matchAll(/\b([A-Z][A-Z0-9]{1,})(?:s\b|\b)/g)].map((m) => m[1]));
+  const { issues, stats } = lintScript(script, { deliveries, terms });
+  const add = (level, cue, line, message, code) => issues.push({ level, cue, line, message, ...(code ? { code } : {}) });
   const known = numbersIn(knownText);
   const used = new Set();
   const usedClaims = new Set();
@@ -343,7 +412,8 @@ export function checkScript({ markdown, deliveries, outline, claims, knownText }
     // **Lời** viết thành chữ, nên vòng quét chữ số ngay trên không bao giờ nhìn tới lời đọc. Đo thật: sửa "một
     // trăm triệu" thành "năm trăm triệu" trong kịch bản đã giao thì mọi phép soát vẫn xanh.
     for (const n of spokenNumbers(cue.fields['lời'])) {
-      if (n.value < 10) continue;
+      // Số nhỏ đứng riêng hay là chuyện trình bày ("hai bước"); số thập phân thì luôn là dữ kiện ("hai phẩy năm đô la").
+      if (n.value < 10 && !n.decimal) continue;
       if (spokenNumberKnown(known, n)) continue;
       // Con số lớn hoặc phần trăm là dữ kiện, phải dừng; số nhỏ hay là chuyện trình bày ("mười lăm phút").
       const level = n.percent || n.value >= 100 ? 'problem' : 'warning';
@@ -351,9 +421,33 @@ export function checkScript({ markdown, deliveries, outline, claims, knownText }
     }
   }
 
+  // Độ dài theo số câu người dùng đặt — tính cả số câu lẫn số từ: hai mươi câu mỗi câu bốn mươi từ cũng dài gấp đôi.
+  // Lượt thật: đặt 20 câu, viết 34 câu · 1088 từ (~6 phút thay vì ~3), rồi lượt sửa còn tách câu dài cho dài thêm.
+  let length = null;
+  if (Number.isInteger(target) && target > 0 && script.cues.length) {
+    const words = target * WORDS_PER_CUE;
+    const ratio = Math.max(stats.cues / target, stats.words / words);
+    length = { target, words, maxCues: Math.floor(target * LENGTH_WARN), ratio: Math.round(ratio * 100) / 100 };
+    const minutes = (s) => `~${String(Math.round(s / 6) / 10).replace('.', ',')} phút`;
+    if (ratio > LENGTH_WARN) {
+      add(ratio > LENGTH_FAIL ? 'problem' : 'warning', null, null,
+        `kịch bản dài ${stats.cues} câu · ${stats.words} từ (${minutes(stats.seconds)}) — mức đặt là khoảng ${target} câu · ${words} từ `
+        + `(${minutes(words / SYLLABLES_PER_SECOND)}), tối đa ${length.maxCues} câu: gộp các câu cùng ý, cắt ý phụ và ví dụ thừa; đừng tách câu`, 'length');
+    }
+  }
+
   const wanted = outline.filter((o) => !o.skip).map((o) => o.slide);
   const missing = wanted.filter((n) => !used.has(n));
-  if (missing.length) add('warning', null, null, `slide ${missing.join(', ')} không có câu nào dựa vào — thiếu ý của giảng viên?`);
+  // Slide nhiều hơn số câu thì không thể câu nào cũng một slide — nhắc từng slide thiếu là đẩy người viết nhồi thêm
+  // câu. Khi đó chỉ nhắc slide mang ý đã research (ý có dữ kiện), và bảo gộp chứ không thêm.
+  const crowded = Number.isInteger(target) && target > 0 && wanted.length > target;
+  if (crowded) {
+    const researched = new Set(Object.values(claims).filter((r) => r.ok && r.verdict !== 'insufficient').flatMap((r) => r.slides ?? []));
+    const key = missing.filter((n) => researched.has(n));
+    if (key.length) add('warning', null, null, `slide ${ranges(key)} có ý đã research nhưng không câu nào dựa vào — nếu là ý chính thì gộp vào câu cùng phần; bài có ${wanted.length} slide cho ${target} câu nên không cần mỗi slide một câu`);
+  } else if (missing.length) {
+    add('warning', null, null, `slide ${ranges(missing)} không có câu nào dựa vào — thiếu ý của giảng viên?`);
+  }
   // Chỗ research đã bác bỏ mà kịch bản không dẫn tới là **lỗi**, không phải nhắc nhở: hoặc kịch bản bỏ qua
   // điều giảng viên nói sai, hoặc nó nói lại đúng điều đó mà không ai đối chiếu. Cả hai đều phải sửa trước
   // khi tới cổng 3 — nếu thật sự không cần nhắc ý đó thì bỏ luôn câu, đừng để câu không dẫn nguồn.
@@ -364,6 +458,7 @@ export function checkScript({ markdown, deliveries, outline, claims, knownText }
   return {
     ok: problems.length === 0,
     stats,
+    length,
     coverage: { slides: wanted.length, covered: wanted.length - missing.length, missing },
     issues,
   };

@@ -1,8 +1,9 @@
-/** npm run test:tools — bóc chữ PPTX và đếm trang PDF bằng Node thuần. */
+/** npm run test:tools — bóc chữ PPTX, chữ từng trang PDF, và dàn ý code dựng từ đó. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crc32, deflateRawSync } from 'node:zlib';
-import { pdfPageCount, pptxSlides, slidesMarkdown, unzip } from './slides.mjs';
+import { pdfPages } from './pdf-text.mjs';
+import { isThin, outlineFromSlides, pdfPageCount, pdfSlides, pptxSlides, slidesMarkdown, stripRepeated, unzip } from './slides.mjs';
 
 /** Zip tối giản để thử: mỗi file nén deflate (như PowerPoint), hoặc để nguyên nếu `stored`. */
 function zip(entries, { stored = false } = {}) {
@@ -96,4 +97,74 @@ test('đếm trang PDF: /Type /Page, không đếm /Pages; không đếm đượ
   assert.equal(pdfPageCount(enc('%PDF-1.4\n1 0 obj << /Type /Pages /Count 2 >> endobj\n2 0 obj << /Type /Page >> endobj\n3 0 obj << /Type/Page >> endobj\n%%EOF')), 2);
   assert.equal(pdfPageCount(enc('%PDF-1.7\n(object streams)\n%%EOF')), null);
   assert.throws(() => pdfPageCount(enc('PK')), /không phải PDF/);
+});
+
+// ── PDF: chữ từng trang (PDF.js) và dàn ý do code dựng ─────────────────────────────
+
+/** PDF tối giản, mỗi trang vài dòng chữ Helvetica — đủ để PDF.js đọc như một file slide xuất từ PowerPoint. */
+function makePdf(pages) {
+  const body = [];
+  const pageIds = pages.map((_, k) => 4 + k * 2);
+  body[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  body[2] = `<< /Type /Pages /Kids [${pageIds.map((i) => `${i} 0 R`).join(' ')}] /Count ${pages.length} >>`;
+  body[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  pages.forEach((lines, k) => {
+    const stream = `BT /F1 18 Tf 50 750 Td ${lines.map((l, j) => `${j ? '0 -30 Td ' : ''}(${l}) Tj`).join(' ')} ET`;
+    body[pageIds[k]] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[k] + 1} 0 R >>`;
+    body[pageIds[k] + 1] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+  });
+  let out = '%PDF-1.4\n';
+  const offsets = [];
+  for (let i = 1; i < body.length; i++) {
+    offsets[i] = out.length;
+    out += `${i} 0 obj\n${body[i]}\nendobj\n`;
+  }
+  const xref = out.length;
+  out += `xref\n0 ${body.length}\n0000000000 65535 f \n${offsets.slice(1).map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`;
+  out += `trailer\n<< /Size ${body.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, 'latin1');
+}
+
+const FOOTER = (n) => `Lecturer VinUni AICB Day 1 02/04/2026 ${n} / 5`;
+const DECK = [
+  ['AI and LLM Foundation', 'Course AICB Phase 1 Week 1', FOOTER(1)],
+  ['?', 'Think about how the assistant works every day', FOOTER(2)],
+  ['API Pricing Model', 'Price per one million tokens for input and output', 'Output tokens cost three to five times more', FOOTER(3)],
+  ['Transformer attention diagram', FOOTER(4)],
+  ['Thank you', 'Email: lecturer@vinuni.edu.vn', FOOTER(5)],
+];
+
+test('PDF: chữ từng trang qua PDF.js; file không phải PDF thì null', async () => {
+  const pages = await pdfPages(makePdf(DECK));
+  assert.equal(pages.length, 5);
+  assert.match(pages[2], /API Pricing Model/);
+  assert.match(pages[2], /three to five times/);
+  assert.equal(await pdfPages(Buffer.from('không phải PDF')), null);
+});
+
+test('dàn ý do code dựng: bỏ chân trang lặp lại, tiêu đề là dòng có chữ, tự bỏ qua trang cảm ơn', async () => {
+  const slides = stripRepeated(pdfSlides(await pdfPages(makePdf(DECK))));
+  // Chân trang đổi số trang từng trang nhưng vẫn là một dòng lặp lại — bỏ.
+  assert.ok(slides.every((s) => !s.paragraphs.some((p) => /Lecturer VinUni/.test(p))), JSON.stringify(slides));
+  const outline = outlineFromSlides('Bài 1', slides, [1]);
+  assert.equal(outline.pages, 5);
+  assert.deepEqual(outline.outline.map((o) => o.slide), [1, 2, 3, 4, 5]);
+  assert.equal(outline.outline[1].heading, 'Think about how the assistant works every day');
+  assert.equal(outline.outline[2].heading, 'API Pricing Model');
+  assert.deepEqual(outline.outline.filter((o) => o.skip).map((o) => o.slide), [1, 5]);
+  assert.equal(isThin(slides[3]), true, 'trang chỉ có tiêu đề hình vẽ là trang ít chữ');
+  const md = slidesMarkdown('Bài 1', slides, 'PDF');
+  assert.ok(md.includes('Read trang 4 của input/slide.pdf'));
+});
+
+test('tiêu đề đánh số ("Bước 1", "Bước 2") và tiêu đề lặp ở ít trang không bị coi là chân trang', () => {
+  const slides = Array.from({ length: 10 }, (_, i) => ({
+    slide: i + 1,
+    paragraphs: [i < 2 ? 'Token Economy' : `Bước ${i}`, `Giảng viên VinUni · Ngày 1 · trang ${i + 1} / 10`, `${i + 1} / 10`],
+    notes: [],
+  }));
+  const out = stripRepeated(slides);
+  assert.equal(out[0].paragraphs[0], 'Token Economy');
+  assert.equal(out[5].paragraphs[0], 'Bước 5');
+  assert.ok(out.every((s) => s.paragraphs.length === 1), JSON.stringify(out));
 });
