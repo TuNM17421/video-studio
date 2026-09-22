@@ -11,6 +11,7 @@ import { useVoiceCatalog, VoicePicker } from "../voice-picker";
 import { ImagesPanel } from "./images-panel";
 import { post, StepBar, type StepProps } from "./shared";
 import { ImportPanel } from "./voice-import";
+import { KagglePanel } from "./voice-kaggle";
 import { LocalModelPanel } from "./voice-local";
 
 const MODELS = [
@@ -23,12 +24,13 @@ const modelLabel = (id: string) => MODELS.find((m) => m.id === id)?.label ?? id;
 
 const SOURCES: { value: VoiceSource; label: string }[] = [
   { value: "elevenlabs", label: "ElevenLabs" },
+  { value: "kaggle", label: "Kaggle" },
   { value: "import", label: "Audio có sẵn" },
   { value: "local", label: "Model local" },
 ];
 const sourceLabel = (source: VoiceSource) => SOURCES.find((s) => s.value === source)?.label ?? source;
 
-const VOICE_JOBS = ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup"];
+const VOICE_JOBS = ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup", "kaggle-setup", "kaggle-generate"];
 
 /**
  * Who actually reads this video. The cast is not a setting — it comes from the script: every câu names its
@@ -56,7 +58,7 @@ function CastChips({ dry }: { dry: DryRun | null }) {
 }
 
 /**
- * The voice the video has, whatever made it: one card on top of the step, the same for all three sources.
+ * The voice the video has, whatever made it: one card on top of the step, the same for every source.
  * Listening is the check that matters here, so every câu can be played on its own from the master.
  */
 function VoiceResult({ detail, redo, onRedo }: { detail: VideoDetail; redo: boolean; onRedo: () => void }) {
@@ -234,6 +236,7 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, nav, refresh, ha
           {/* Labels stack above their field, as in the plan form; without it antd lays them out inline. */}
           <Form layout="vertical" requiredMark={false} component={false}>
             {view === "local" ? <LocalModelPanel {...panel} />
+              : view === "kaggle" ? <KagglePanel {...panel} />
               : view === "import" ? <ImportPanel {...panel} />
               : <ElevenLabsPanel {...panel} hasKey={hasKey} setHasKey={setHasKey} />}
           </Form>

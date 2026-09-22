@@ -4171,19 +4171,6 @@ button.vs-tile:hover {
 }
 
 .vs-rs-main .vs-step-body { display: grid; gap: var(--vu-space-4); }
-.vs-rs-head { align-items: flex-start; }
-.vs-rs-head h2 { overflow-wrap: anywhere; }
-.vs-rs-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--vu-space-2) var(--vu-space-3);
-  margin: 4px 0 0;
-  font-size: var(--vu-text-2xs);
-  color: var(--vu-text-muted);
-}
-.vs-rs-meta .ant-tag { margin: 0; }
-.vs-rs-actions { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
 .vs-badge.is-running { color: var(--vu-brand-primary); }
 .vs-badge.is-waiting { color: var(--vu-amber-700); }
 .vs-badge.is-failed { color: var(--vu-text-danger); }
@@ -4467,6 +4454,119 @@ button.vs-tile:hover {
 .vs-rs-claimlist button.is-ok { border-left-color: var(--vu-green-700); }
 .vs-rs-claimlist button.is-bad { border-left-color: var(--vu-text-danger); }
 .vs-rs-claimlist small { flex-basis: 100%; color: var(--vu-text-muted); font-size: var(--vu-text-2xs); }
+.vs-rs-claimlist button.is-warn { border-left-color: var(--vu-amber-700); }
+
+/* ── trang một lượt: đọc như tài liệu ──
+   Thanh của lượt ở trên (tiến độ, câu trạng thái, nút quyết định); dưới là hai cột: việc của lượt (claim, kịch bản)
+   và thứ để đối chiếu (nguồn, dàn ý, nhật ký) dính bên phải khi cuộn. Không dùng dải bước của trang video: ở đây
+   người dùng không chọn bước, chỉ cần biết lượt đang tới đâu. */
+.vs-rs-run { display: grid; gap: var(--vu-space-4); container-type: inline-size; }
+
+.vs-rs-bar {
+  display: grid;
+  gap: var(--vu-space-3);
+  padding: var(--vu-space-4) var(--vu-space-5);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-lg);
+  background: var(--vu-surface-card);
+}
+.vs-rs-bar-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vu-space-1) var(--vu-space-4); }
+.vs-rs-bar-head h2 {
+  margin: 0;
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-lg);
+  font-weight: var(--vu-font-semibold);
+  line-height: var(--vu-leading-snug);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-bar-meta { display: flex; flex-wrap: wrap; gap: var(--vu-space-1) var(--vu-space-3); margin: 0; font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-tokens { border-bottom: 1px dotted var(--vu-border-strong); cursor: help; }
+
+/* Năm bước là một vạch mảnh — biết đang tới đâu, không phải một dải để bấm. */
+.vs-rs-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--vu-space-1); margin: 0; padding: 0; list-style: none; }
+.vs-rs-track li { display: grid; gap: var(--vu-space-1); min-width: 0; }
+.vs-rs-track-bar { height: var(--vu-space-1); border-radius: var(--vu-radius-pill); background: var(--vu-neutral-200); }
+.vs-rs-track-label { overflow: hidden; font-size: var(--vu-text-2xs); color: var(--vu-text-muted); white-space: nowrap; text-overflow: ellipsis; }
+.vs-rs-track li.is-done .vs-rs-track-bar { background: var(--vu-brand-primary); }
+.vs-rs-track li.is-current .vs-rs-track-label { color: var(--vu-text-primary); font-weight: var(--vu-font-semibold); }
+.vs-rs-track li.is-running .vs-rs-track-bar { background: var(--vu-lesson-data); }
+.vs-rs-track li.is-waiting .vs-rs-track-bar { background: var(--vu-amber-700); }
+.vs-rs-track li.is-error .vs-rs-track-bar { background: var(--vu-text-danger); }
+.vs-rs-track li.is-idle .vs-rs-track-bar { background: var(--vu-border-strong); }
+
+.vs-rs-now { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2) var(--vu-space-3); padding-top: var(--vu-space-3); border-top: 1px solid var(--vu-border-subtle); }
+.vs-rs-now-dot { flex: none; width: var(--vu-space-2); height: var(--vu-space-2); border-radius: var(--vu-radius-pill); background: var(--vu-border-strong); }
+.vs-rs-now.is-running .vs-rs-now-dot { background: var(--vu-lesson-data); animation: vs-rs-pulse 1.6s ease-in-out infinite; }
+.vs-rs-now.is-waiting .vs-rs-now-dot { background: var(--vu-amber-700); }
+.vs-rs-now.is-done .vs-rs-now-dot { background: var(--vu-green-700); }
+.vs-rs-now.is-error .vs-rs-now-dot { background: var(--vu-text-danger); }
+.vs-rs-now-text { display: grid; flex: 1 1 280px; gap: 2px; min-width: 0; }
+.vs-rs-now-text strong { font-size: var(--vu-text-md); font-weight: var(--vu-font-semibold); color: var(--vu-text-primary); }
+.vs-rs-now-text > span { font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-rs-now.is-error .vs-rs-now-text strong { color: var(--vu-text-danger); }
+.vs-rs-now-actions { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
+.vs-rs-elapsed { font-weight: var(--vu-font-regular); color: var(--vu-text-muted); }
+/* Câu agent vừa nói: đủ để biết nó đang làm gì, không kéo dài thanh. */
+.vs-rs-said {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+@keyframes vs-rs-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .vs-rs-now.is-running .vs-rs-now-dot { animation: none; } }
+
+.vs-rs-doc { display: grid; grid-template-columns: minmax(0, 1fr) var(--vu-research-sources-width); align-items: start; gap: var(--vu-space-4); }
+.vs-rs-doc-main,
+.vs-rs-doc-side { min-width: 0; border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-lg); background: var(--vu-surface-card); }
+/* Đệm 12/16 — thanh Duyệt dính đáy của cổng 1 canh lề theo đúng khoảng này. */
+.vs-rs-doc-main { padding: var(--vu-space-3) var(--vu-space-4); }
+.vs-rs-doc-main > .ant-tabs > .ant-tabs-nav { margin-bottom: var(--vu-space-3); }
+.vs-rs-doc-side {
+  position: sticky;
+  top: var(--vu-space-4);
+  display: grid;
+  gap: var(--vu-space-3);
+  max-height: calc(100vh - 2 * var(--vu-space-4));
+  padding: var(--vu-space-3);
+  overflow: auto;
+}
+.vs-rs-side-body { display: grid; gap: var(--vu-space-2); min-width: 0; }
+.vs-rs-side-back.ant-btn { justify-self: start; padding-inline: 0; }
+.vs-rs-side-title { margin: 0; font-family: var(--vu-font-brand); font-size: var(--vu-text-sm); color: var(--vu-text-primary); }
+.vs-rs-doc-stack { display: grid; gap: var(--vu-space-3); min-width: 0; }
+.vs-rs-doc-subhead {
+  margin: var(--vu-space-2) 0 0;
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-2xs);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-reruns { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
+
+/* Câu dẫn claim đang mở ở cột nguồn, và mã claim đó trong câu. */
+.vs-rs-cue.is-linked { border-color: var(--vu-blue-300); background: var(--vu-blue-50); box-shadow: inset 3px 0 0 var(--vu-brand-primary); }
+.vs-rs-ref.is-active { border-color: var(--vu-brand-primary); background: var(--vu-brand-primary); color: var(--vu-surface-card); }
+.vs-rs-feedback { display: grid; gap: var(--vu-space-2); width: var(--vu-research-sources-width); max-width: 80vw; }
+
+/* Danh sách claim: mã · câu · kết luận trên một hàng, dòng nguồn bên dưới. */
+.vs-rs-claims button { align-items: center; padding: var(--vu-space-2) var(--vu-space-3); font-size: var(--vu-text-sm); }
+.vs-rs-claims button:hover { background: var(--vu-neutral-100); }
+.vs-rs-claims button:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 1px; }
+.vs-rs-claims button.is-selected { background: var(--vu-blue-50); box-shadow: inset 0 0 0 1px var(--vu-blue-300); }
+.vs-rs-claim-text { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+.vs-rs-claims .ant-tag { margin: 0; }
+.vs-rs-doc-side .vs-rs-claims button { font-size: var(--vu-text-xs); }
+
+.vs-rs-more { background: var(--vu-surface-card); }
+
+@container (max-width: 900px) {
+  .vs-rs-doc { grid-template-columns: minmax(0, 1fr); }
+  .vs-rs-doc-side { position: static; max-height: none; }
+}
 
 /* ── cổng duyệt ── */
 .vs-scout-review { display: grid; gap: var(--vu-space-4); }

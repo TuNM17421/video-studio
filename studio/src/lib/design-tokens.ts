@@ -178,6 +178,7 @@ export const STUDIO_LAYOUT = [
   { token: "finding.still.compact", value: "128 px", usage: "Ảnh nhỏ cho lỗi minor và lỗi đã xử lý" },
   { token: "image.candidate", value: "176 px", usage: "Cột thumbnail của thẻ ảnh đề xuất: đủ nhận ra người / hiện vật mà không đẩy chữ xuống" },
   { token: "image.card.min", value: "340 px", usage: "Thẻ ảnh đề xuất nằm ngang (thumbnail trái, thông tin phải); các thẻ chia đều bề rộng hàng, hẹp thì xuống một cột" },
+  { token: "research.sources", value: "400 px", usage: "Cột Claim & nguồn của trang research: đủ cho trích đoạn và bảng nguồn, dính cạnh kịch bản khi cuộn" },
   { token: "mascot.matrix.cell", value: "84 px", usage: "Ô ảnh của bảng tư thế × biểu cảm (Thư viện · Mascot): đủ nhận ra nét mặt, bảy cột vẫn vừa khung" },
   { token: "tour.panel", value: "440 px", usage: "Khung lời thoại của tour hướng dẫn: đủ cho Griffin bên trái và hai câu ngắn bên phải" },
   { token: "tour.mascot", value: "104 px", usage: "Chiều cao Griffin trong khung tour — nhận ra nét mặt mà không lấn chữ" },

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircleFilled, ExportOutlined, FileTextOutlined, RedoOutlined, SendOutlined, WarningFilled,
 } from "@ant-design/icons";
-import { Button, Input, Popconfirm, Segmented, Tag } from "antd";
+import { Button, Input, Popconfirm, Popover, Segmented, Tag } from "antd";
 import { fileUrl } from "@/lib/client";
 import {
   DIFFICULTY_LABEL, GATE2_LABEL, gate2Waiting, KIND_LABEL, RUN_RESULT_LABEL, STANCE_LABEL, VERDICT_LABEL,
@@ -163,14 +163,22 @@ function parseCues(md: string) {
   return cues;
 }
 
-export function ScriptView({ view, onClaim }: { view: ResearchView; onClaim: (cid: string) => void }) {
+/**
+ * Kịch bản đọc như tài liệu. `active` là claim đang mở ở cột nguồn: câu nào dẫn nó thì sáng lên. `follow` đổi (chọn
+ * claim từ cột nguồn, không phải từ chính kịch bản) thì cuộn tới câu đầu tiên dẫn claim đó.
+ */
+export function ScriptView({ view, onClaim, active = null, follow = 0 }: { view: ResearchView; onClaim: (cid: string) => void; active?: string | null; follow?: number }) {
   const cues = useMemo(() => parseCues(view.script ?? ""), [view.script]);
+  const list = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    if (follow) list.current?.querySelector(".vs-rs-cue.is-linked")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [follow]);
   const issues = view.scriptCheck?.issues ?? [];
   const edit = view.edit?.issues ?? [];
   if (!view.script) return <p className="vs-scout-empty">Chưa có kịch bản.</p>;
   return <div className="vs-rs-script">
     <p className="vs-scout-deliverable"><FileTextOutlined /><a href={fileUrl(`research/${view.state.id}/output/kich-ban.md`)} target="_blank" rel="noreferrer">research/{view.state.id}/output/kich-ban.md</a></p>
-    <ol className="vs-rs-cues">
+    <ol ref={list} className="vs-rs-cues">
       {cues.map((c, i) => {
         const head = i === 0 || cues[i - 1].section !== c.section ? c.section : null;
         const refs = (c.fields["nguồn"] ?? "").split(/[,;]/).map((s) => s.trim()).filter(Boolean);
@@ -178,7 +186,7 @@ export function ScriptView({ view, onClaim }: { view: ResearchView; onClaim: (ci
         const notes = edit.filter((i) => i.cue === c.n);
         return <li key={c.n} value={c.n}>
           {head && <h4>{head}</h4>}
-          <div className={`vs-rs-cue${mine.some((i) => i.level === "problem") ? " is-problem" : ""}`}>
+          <div className={`vs-rs-cue${mine.some((i) => i.level === "problem") ? " is-problem" : ""}${active && refs.some((r) => r.toLowerCase() === active) ? " is-linked" : ""}`}>
             <span className="vs-rs-cue-n mono">{c.n}</span>
             <div>
               <p className="vs-rs-cue-line">{c.fields["lời"] ?? <em>thiếu lời</em>}</p>
@@ -186,7 +194,7 @@ export function ScriptView({ view, onClaim }: { view: ResearchView; onClaim: (ci
               <p className="vs-rs-cue-meta">
                 {c.fields["kiểu"] && <Tag className="vs-badge">{c.fields["kiểu"]}</Tag>}
                 {refs.map((r) => /^c\d+$/i.test(r)
-                  ? <button key={r} type="button" className="vs-rs-ref" onClick={() => onClaim(r.toLowerCase())}>{r}</button>
+                  ? <button key={r} type="button" className={`vs-rs-ref${r.toLowerCase() === active ? " is-active" : ""}`} onClick={() => onClaim(r.toLowerCase())} aria-label={`Xem nguồn của claim ${r}`}>{r}</button>
                   : <span key={r} className="vs-rs-ref is-slide">{r}</span>)}
               </p>
               {mine.map((i, k) => <p key={k} className={`vs-rs-cue-issue is-${i.level}`}>{i.message}</p>)}
@@ -221,26 +229,36 @@ export function ReviewDetail({ view }: { view: ResearchView }) {
   </div>;
 }
 
-export function Gate3Panel({ view, act, onClaim }: { view: ResearchView; act: Act; onClaim: (cid: string) => void }) {
+/**
+ * Quyết định ở cổng 3, đặt trên thanh của lượt: kịch bản nằm ở cột tài liệu bên dưới, nên nút duyệt phải luôn thấy
+ * được mà không cuộn qua hết các câu. Góp ý chỉ sửa kịch bản, bằng chứng giữ nguyên.
+ */
+export function Gate3Actions({ act }: { act: Act }) {
   const [feedback, setFeedback] = useState("");
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const run = async (body: Record<string, unknown>) => {
     setBusy(true);
-    if (await act(body)) setFeedback("");
+    if (await act(body)) { setFeedback(""); setOpen(false); }
     setBusy(false);
   };
-  return <div className="vs-scout-review">
-    <p className="vs-scout-review-lede">
-      Kịch bản đã qua soát theo mẫu và một lượt biên tập. Đọc lại — bấm vào mã claim ở cuối mỗi câu để xem nguồn — rồi duyệt, hoặc viết góp ý để
-      agent sửa. Góp ý chỉ sửa kịch bản, bằng chứng giữ nguyên.
-    </p>
-    <ScriptView view={view} onClaim={onClaim} />
-    <Input.TextArea value={feedback} onChange={(e) => setFeedback(e.target.value)} autoSize={{ minRows: 2, maxRows: 6 }} maxLength={4000} placeholder="Góp ý cho kịch bản (ví dụ: câu 3 dài quá; phần hai cần thêm ví dụ từ slide 5)" aria-label="Góp ý" />
-    <div className="vs-scout-review-actions">
-      <Button icon={<SendOutlined />} disabled={!feedback.trim()} loading={busy} onClick={() => void run({ action: "feedback", feedback })}>Gửi góp ý · sửa lại</Button>
-      <Button type="primary" icon={<CheckCircleFilled />} loading={busy} onClick={() => void run({ action: "approve-script" })}>Duyệt kịch bản</Button>
-    </div>
-  </div>;
+  return <>
+    <Popover
+      open={open}
+      onOpenChange={setOpen}
+      trigger="click"
+      placement="bottomRight"
+      title="Góp ý cho kịch bản"
+      content={<div className="vs-rs-feedback">
+        <Input.TextArea value={feedback} onChange={(e) => setFeedback(e.target.value)} autoSize={{ minRows: 3, maxRows: 8 }} maxLength={4000} placeholder="Ví dụ: câu 3 dài quá; phần hai cần thêm ví dụ từ slide 5" aria-label="Góp ý" autoFocus />
+        <p className="vs-scout-node-note">Agent sửa kịch bản theo góp ý rồi đưa lại cho bạn duyệt. Nguồn và bằng chứng giữ nguyên.</p>
+        <Button type="primary" block icon={<SendOutlined />} disabled={!feedback.trim()} loading={busy} onClick={() => void run({ action: "feedback", feedback })}>Gửi góp ý · sửa lại</Button>
+      </div>}
+    >
+      <Button icon={<SendOutlined />} disabled={busy}>Góp ý…</Button>
+    </Popover>
+    <Button type="primary" icon={<CheckCircleFilled />} loading={busy} onClick={() => void run({ action: "approve-script" })}>Duyệt kịch bản</Button>
+  </>;
 }
 
 // ── lượt agent ────────────────────────────────────────────────────────────────────
@@ -248,7 +266,6 @@ export function Gate3Panel({ view, act, onClaim }: { view: ResearchView; act: Ac
 export function RunsTable({ view }: { view: ResearchView }) {
   if (!view.state.runs.length) return null;
   return <div className="vs-rs-runs">
-    <h3>Các lượt agent</h3>
     <table>
       <thead><tr><th>#</th><th>Việc</th><th>Agent</th><th>Kết quả</th><th>Token vào</th><th>Đọc cache</th><th>Token ra</th></tr></thead>
       <tbody>
