@@ -10,8 +10,10 @@ Never keep a second copy of the design system in another folder. Commit before a
 the repo is pushed to GitHub (private), `.env`, audio, MP4, `node_modules`, `ds-bundle/` are ignored.
 
 Setup (see README "Setup lần đầu"): `npm install` (deps + links `node_modules/vinuni-lesson-video-ds`),
-`npm run setup` (playwright Chromium), `npm run setup:voice` (only for imported voice: `voice/.venv` +
-Whisper, see `docs/decisions/voice-align.md`), `tts-elevenlabs/.env` from `.env.example`. Tools find Chrome via
+`npm run setup` (playwright Chromium), `npm run setup:voice` (only for imported voice: faster-whisper venv +
+Whisper model, see `docs/decisions/voice-align.md`; like `setup:omnivoice` it is one install per machine —
+reused from this checkout, the shared `~/.cache/video-studio/`, another worktree or the HF cache, see
+`tools/lib/shared-env.mjs`), `tts-elevenlabs/.env` from `.env.example`. Tools find Chrome via
 `$CHROME` → playwright's Chromium → system Chrome, and ffmpeg via `$FFMPEG` → ffmpeg-static → `ffmpeg` on PATH.
 Read `vinuni-lesson-video-ds/README.md` (rules, tokens, components) and `vinuni-lesson-video-ds/SKILL.md`
 before designing anything.
@@ -123,7 +125,7 @@ một file mẫu nằm trên máy, file ở nguyên chỗ đó chứ không đ�
 hoặc do Whisper nghe.
 OmniVoice trên Kaggle (tab **Kaggle** của bước Giọng đọc) dùng đúng dàn vai đó: `tools/voice-kaggle.mjs` dựng
 một kernel private `vs-<id>-voice` (giọng danh mục tải từ R2, file mẫu nhúng FLAC), Studio đẩy/theo dõi/tải về
-`projects/<id>/voice-script/kaggle/out` rồi nhập như audio tự thu. Kaggle CLI ở `voice/.venv-kaggle`
+`projects/<id>/voice-script/kaggle/out` rồi nhập như audio tự thu. Kaggle CLI là một venv dùng chung cho cả máy (như Whisper/OmniVoice)
 (`npm run setup:kaggle`); username/key chỉ ở RAM, CLI chạy với `KAGGLE_CONFIG_DIR` riêng để không lẫn tài
 khoản đã đăng nhập sẵn trên máy.
 Xem danh sách nhân vật tại Studio → **Thư viện · Nhân vật** (`/library/characters`): thẻ thoại do design system vẽ

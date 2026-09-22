@@ -59,7 +59,7 @@ export interface OmnivoiceStatus {
   /** Trọng số model phải tải về, GB. */
   modelGb: number;
   /**
-   * Bước nhập soát từng file bằng Whisper, và Whisper nằm ở `voice/.venv` — một môi trường khác hẳn
+   * Bước nhập soát từng file bằng Whisper, và Whisper nằm trong venv riêng (một bản cho cả máy) — khác hẳn
    * venv của OmniVoice. Thiếu nó thì sinh giọng xong vẫn không nhập được, nên panel phải biết trước.
    */
   align: boolean;

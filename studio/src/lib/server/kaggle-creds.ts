@@ -42,7 +42,8 @@ export function parseKaggleJson(raw: string) {
  * sẵn trên máy — và access token thì thắng credentials Studio đưa vào, nên kernel có thể bị đẩy lên một
  * tài khoản khác với tài khoản người dùng vừa nhập (id kernel lại mang tên tài khoản kia).
  */
-const CONFIG_DIR = path.join(REPO, "voice/.venv-kaggle/config");
+// Không đặt trong venv: venv giờ có thể nằm ở thư mục dùng chung hay ở worktree khác (tools/lib/shared-env.mjs).
+const CONFIG_DIR = path.join(REPO, "voice/cache/kaggle-config");
 
 /** Env for spawning the `kaggle` CLI: credentials only reach that one subprocess, never on disk. */
 export function kaggleEnv(): NodeJS.ProcessEnv {

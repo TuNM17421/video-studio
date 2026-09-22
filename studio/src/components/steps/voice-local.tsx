@@ -336,7 +336,7 @@ export function GeneratedImport({ detail, settings, result, aligned, aligning, b
       <Button size="small" icon={<SearchOutlined />} loading={scanning} disabled={busy || !aligned} onClick={rescan}>Kiểm tra lại</Button>
     </div>}
 
-    {/* Whisper nằm ở voice/.venv, KHÁC venv của OmniVoice. Thiếu nó thì sinh giọng vẫn chạy ngon rồi
+    {/* Whisper nằm trong venv riêng (một bản cho cả máy), KHÁC venv của OmniVoice. Thiếu nó thì sinh giọng vẫn chạy ngon rồi
         chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút GPU. */}
     {!aligned && <ProductionState
       className="vs-local-warning"

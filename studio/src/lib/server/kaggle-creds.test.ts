@@ -43,7 +43,7 @@ describe("Kaggle credentials", () => {
       setKaggleCreds("thai", LEGACY);
       const env = kaggleEnv();
       expect(env.KAGGLE_API_TOKEN).toBeUndefined();
-      expect(env.KAGGLE_CONFIG_DIR).toMatch(/\.venv-kaggle[\\/]config$/);
+      expect(env.KAGGLE_CONFIG_DIR).toMatch(/cache[\\/]kaggle-config$/);
     } finally {
       if (before === undefined) delete process.env.KAGGLE_API_TOKEN; else process.env.KAGGLE_API_TOKEN = before;
     }

@@ -82,7 +82,7 @@ export function KagglePanel({ detail, settings, setSettings, busy, act }: {
           <strong>Kaggle CLI</strong>
           {installed
             ? <small>Kaggle CLI {status?.version} · <code>{status?.from === "venv" ? status.venv : status?.bin}</code></small>
-            : <small>Máy này chưa có lệnh <code>kaggle</code>. Cài vào <code>{status?.venv ?? "voice/.venv-kaggle"}</code> — vài chục MB, không đụng tới Python của hệ thống.</small>}
+            : <small>Máy này chưa có lệnh <code>kaggle</code>. Cài vào <code>{status?.venv ?? "~/.cache/video-studio/kaggle-venv"}</code> — vài chục MB, một bản cho cả máy, không đụng tới Python của hệ thống.</small>}
           {!installed && status && <Button
             type="primary"
             icon={<DownloadOutlined />}

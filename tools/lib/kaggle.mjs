@@ -4,28 +4,19 @@
  * Máy chạy Studio chỉ cần `kaggle` CLI (không cần GPU, không cần torch): dựng một kernel private chứa lời
  * đọc + mẫu giọng, đẩy lên, chờ, tải thư mục `out/` về, rồi đi tiếp bằng đúng bước nhập của giọng tự thu.
  *
- * CLI nằm trong một venv riêng (`voice/.venv-kaggle`): Ubuntu/Debian mới chặn `pip install` vào Python hệ
- * thống (PEP 668), nên "pip install kaggle" chạy tay thường hỏng ngay ở máy của thành viên. Có sẵn `kaggle`
- * trên PATH thì dùng luôn cái đó.
+ * CLI nằm trong một venv riêng: Ubuntu/Debian mới chặn `pip install` vào Python hệ thống (PEP 668), nên
+ * "pip install kaggle" chạy tay thường hỏng ngay ở máy của thành viên. Venv đó là một bản cho cả máy
+ * (tools/lib/shared-env.mjs, như Whisper và OmniVoice); có sẵn `kaggle` trên PATH thì dùng luôn cái đó.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { displayPath, findVenv, installDir, KAGGLE_VENV } from './shared-env.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const VENV = path.join(ROOT, 'voice/.venv-kaggle');
-export const SETUP_HINT = 'Chưa cài Kaggle CLI. Chạy: npm run setup:kaggle (hoặc bấm Cài Kaggle CLI trong Studio).';
-
-const exe = (name) => (process.platform === 'win32' ? `${name}.exe` : name);
-
-export function venvBin(name) {
-  for (const dir of ['bin', 'Scripts']) {
-    const p = path.join(VENV, dir, exe(name));
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-}
+/** Venv có `kaggle` ({ dir, bin, from }) ở bất kỳ chỗ nào shared-env tìm tới, hoặc null. */
+export const kaggleVenv = () => findVenv(KAGGLE_VENV, { probe: 'kaggle' });
 
 /**
  * Bản CLI của `kaggle` import xong là tự đòi xác thực, kể cả với `--version`. Credentials giả chỉ để nó
@@ -39,15 +30,16 @@ function version(bin) {
   return (res.stdout || '').trim().replace(/^Kaggle (API|CLI)\s*/i, '') || 'không rõ';
 }
 
-/** `kaggle` nào dùng được: venv riêng trước, rồi tới cái trên PATH. */
+/** `kaggle` nào dùng được: venv (một bản cho cả máy) trước, rồi tới cái trên PATH. */
 export function kaggleStatus() {
-  const venv = venvBin('kaggle');
-  const candidates = [venv, 'kaggle'].filter(Boolean);
+  const found = kaggleVenv();
+  const venvDir = displayPath(found?.dir ?? installDir(KAGGLE_VENV));
+  const candidates = [found?.bin, 'kaggle'].filter(Boolean);
   for (const bin of candidates) {
     const v = version(bin);
-    if (v) return { installed: true, bin, version: v, venv: path.relative(ROOT, VENV), from: bin === venv ? 'venv' : 'path' };
+    if (v) return { installed: true, bin, version: v, venv: venvDir, from: bin === found?.bin ? 'venv' : 'path' };
   }
-  return { installed: false, bin: null, version: null, venv: path.relative(ROOT, VENV), from: null };
+  return { installed: false, bin: null, version: null, venv: venvDir, from: null };
 }
 
 // ── kernel ───────────────────────────────────────────────────────────────────
