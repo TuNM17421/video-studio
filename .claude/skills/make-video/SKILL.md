@@ -129,7 +129,8 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
      Stage 1 — never edit the narration here.
   8. `quiz: true` only on the `silent` cue (Stage 1 rule); `npm run verify` now reports a problem when it sits
      on a spoken câu.
-- `npm run build && npm run verify` must end with "all checks passed".
+- `npm run build && npm run verify -- --video <id>` must end with "all checks passed" — this video plus the
+  design-system checks. Another local video's problem is not this video's to fix: never edit a different video.
 - QA: shoot three frames per câu — `start + 20`, the middle, `end − 3` (`sNN-a/b/c.png` or `sNN-fNNN.png`) —
   to `projects/<id>/qa/` with `node tools/shoot.mjs --batch <jobs.json>`; build jobs.json from `timeline.js`
   (`TIMELINE[i].start / .end` are global frames); URL
@@ -152,4 +153,4 @@ node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/<Day>/<id>.
 - `transcripts/<Day>/<id>.txt` exists (Stage 4); if not, generate it.
 - `projects/<id>/PROMPTS.md`: source script, style, voice settings (model, pause), the feedback table,
   commands run, known limits — same headings as `projects/d2-01-lab/PROMPTS.md`.
-- Final `npm run build && npm run verify`. Do not commit unless asked.
+- Final `npm run build && npm run verify -- --video <id>`. Do not commit unless asked.

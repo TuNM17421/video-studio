@@ -167,7 +167,9 @@ async function deterministicSceneGate(id: string, base: string) {
 
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Static verification", "npm", ["run", "verify"]);
+    // Chỉ video này (cộng các phép soát chung của design system): video khác trên máy có lỗi thì không được chặn
+    // cổng của video này — lỗi đó người dựng video này không sửa được, agent cũng không nên sửa.
+    const verify = await command(id, "Static verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));
@@ -204,8 +206,13 @@ async function deterministicSceneGate(id: string, base: string) {
   }
 }
 
-/** The lines verify flags as problems, for the step's detail — the whole output is in the log. */
+/**
+ * The problems verify reports, for the step's detail — the whole output is in the log. The "- …" items under
+ * "N problem(s):" come first: the count line alone ("2 problem(s):") does not say which video is at fault.
+ */
 function problemLines(output: string) {
+  const items = output.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).slice(0, 3).map((line) => line.slice(2));
+  if (items.length) return items.join(" · ");
   const lines = output.split("\n").filter((line) => /✗|problem|error/i.test(line)).slice(0, 3);
   return lines.join(" · ") || "xem nhật ký";
 }
@@ -422,7 +429,7 @@ export async function runFinalGate(id: string) {
     stepDone(id, "build");
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Final verification", "npm", ["run", "verify"]);
+    const verify = await command(id, "Final verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Final verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));
