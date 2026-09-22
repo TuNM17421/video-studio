@@ -11,6 +11,8 @@ voice/.venv/
 # model local (OmniVoice): môi trường Python ~7 GB, cùng PID/nhật ký của server — đều theo từng máy.
 # venv tự sinh .gitignore riêng bên trong, nhưng khai ở đây để không phụ thuộc vào chuyện đó.
 voice/.venv-omnivoice/
+# Kaggle CLI (đường OmniVoice trên Kaggle): venv nhỏ, riêng từng máy.
+voice/.venv-kaggle/
 voice/.omnivoice/
 *.wav
 *.mp3
