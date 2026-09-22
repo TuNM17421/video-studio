@@ -35,6 +35,56 @@
       "component": "Whiteboard",
       "group": "whiteboard",
       "image": "whiteboard__Whiteboard.png"
+    },
+    {
+      "component": "WbMindMap",
+      "group": "whiteboard",
+      "image": "whiteboard__WbMindMap.png"
+    },
+    {
+      "component": "WbTitleCloud",
+      "group": "whiteboard",
+      "image": "whiteboard__WbTitleCloud.png"
+    },
+    {
+      "component": "WbSpeech",
+      "group": "whiteboard",
+      "image": "whiteboard__WbSpeech.png"
+    },
+    {
+      "component": "WbFlow",
+      "group": "whiteboard",
+      "image": "whiteboard__WbFlow.png"
+    },
+    {
+      "component": "WbCompare",
+      "group": "whiteboard",
+      "image": "whiteboard__WbCompare.png"
+    },
+    {
+      "component": "WbChecklist",
+      "group": "whiteboard",
+      "image": "whiteboard__WbChecklist.png"
+    },
+    {
+      "component": "WbCycle",
+      "group": "whiteboard",
+      "image": "whiteboard__WbCycle.png"
+    },
+    {
+      "component": "WbIdea",
+      "group": "whiteboard",
+      "image": "whiteboard__WbIdea.png"
+    },
+    {
+      "component": "WbTimeline",
+      "group": "whiteboard",
+      "image": "whiteboard__WbTimeline.png"
+    },
+    {
+      "component": "WbDoodles",
+      "group": "whiteboard",
+      "image": "whiteboard__WbDoodles.png"
     }
   ],
   "sampleVideo": null,

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Whiteboard — component dựng sẵn</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Xem thử một component bảng trắng dựng sẵn (components/whiteboard/parts.js) với nội dung mẫu:
+  //   ?part=WbMindMap            bút vẽ lần lượt (tự chạy); ?frame=N để chụp một khung
+  //   ?part=WbDoodles            bảng mọi doodle kèm tên
+  //   &font=shantell|pangolin    đổi chữ tay (mặc định playpen)
+  // Studio → Thư viện · whiteboard dùng ảnh chụp trang này (styles/previews/whiteboard__<Tên>.png).
+  var q = new URLSearchParams(location.search);
+  var part = q.get('part') || 'WbMindMap';
+  var font = q.get('font') || undefined;
+  var C = VK.C;
+  var b = VK.createBoard({ timeline: [{ n: 1, start: 0 }], spokenAt: function () { return 0; }, font: font });
+  b.look(0, { x: 960, y: 540, w: 1920 });
+
+  var SAMPLES = {
+    WbTitleCloud: function () { VK.WbTitleCloud(b, 'tc', 6, { x: 460, y: 250, w: 1000, h: 520, lines: ['Khởi', 'nghiệp'], size: 150 }); },
+    WbStickyNote: function () { VK.WbStickyNote(b, 'sn', 6, { x: 560, y: 250, w: 800, h: 560, title: 'Cần nhớ', lines: ['Hỏi người dùng trước', 'Đo trước khi làm', 'Ghi lại lý do'], size: 64 }); },
+    WbSpeech: function () {
+      VK.WbSpeech(b, 'sp', 6, { x: 260, y: 600, s: 60, lines: ['Bước nào làm bạn', 'mất thời gian?'], size: 60 });
+      VK.WbSpeech(b, 'th', null, { x: 1640, y: 700, s: 50, text: 'Mình cần AI?', thought: true, side: 'left', size: 56 });
+    },
+    WbFlow: function () { VK.WbFlow(b, 'fl', 6, { x: 130, y: 470, w: 440, h: 150, gap: 150, items: [{ text: 'Thu thập' }, { text: 'Xử lý' }, { text: 'Kiểm tra' }], size: 60 }); },
+    WbCycle: function () { VK.WbCycle(b, 'cy', 6, { cx: 960, cy: 560, r: 480, items: [{ text: 'Lên kế hoạch' }, { text: 'Làm thử' }, { text: 'Đo kết quả' }, { text: 'Điều chỉnh' }], size: 58 }); },
+    WbMindMap: function () { VK.WbMindMap(b, 'mm', 6, { cx: 960, cy: 540, center: 'Ngày 2', centerSize: 90, rx: 690, ry: 330, size: 54, branches: [{ text: 'Cần cải thiện gì?', doodle: 'search' }, { text: 'Làm thế nào?', doodle: 'gear' }, { text: 'Đã sẵn sàng?', doodle: 'clipboard-check' }, { text: 'Rủi ro', doodle: 'alert', color: C.red }] }); },
+    WbChecklist: function () { VK.WbChecklist(b, 'cl', 6, { x: 520, y: 260, size: 64, items: [{ text: 'Có dữ liệu', ok: true }, { text: 'Có người duyệt', ok: true }, { text: 'Chưa đo được lỗi', ok: false }, { text: 'Có kế hoạch dừng' }] }); },
+    WbCompare: function () { VK.WbCompare(b, 'cp', 6, { x: 160, y: 250, w: 1600, h: 620, size: 58, left: { title: 'AI làm thay', lines: ['Việc lặp lại', 'Sai ít hậu quả'] }, right: { title: 'AI hỗ trợ', lines: ['Người quyết định', 'Sai là tốn kém'] } }); },
+    WbTimeline: function () { VK.WbTimeline(b, 'tl', 6, { x: 120, y: 560, w: 1680, size: 50, items: [{ label: 'Tuần 1', sub: 'Quan sát' }, { label: 'Tuần 2', sub: 'Làm thử' }, { label: 'Tuần 3', sub: 'Đo lại' }, { label: 'Tuần 4', sub: 'Quyết định' }] }); },
+    WbBarChart: function () { VK.WbBarChart(b, 'bc', 6, { x: 400, y: 250, w: 1120, h: 560, size: 48, bars: [{ label: 'Tháng 1', value: 3 }, { label: 'Tháng 2', value: 5 }, { label: 'Tháng 3', value: 8, highlight: true }] }); },
+    WbIconLabel: function () {
+      ['rocket', 'target', 'trophy'].forEach(function (d, i) {
+        VK.WbIconLabel(b, 'il' + i, i ? null : 6, { x: 440 + i * 520, y: 470, doodle: d, size: 260, label: ['Khởi động', 'Mục tiêu', 'Kết quả'][i], labelSize: 60 });
+      });
+    },
+    WbIdea: function () { VK.WbIdea(b, 'id', 6, { x: 960, y: 480, size: 380, label: 'Ý tưởng mới', labelSize: 72 }); },
+    WbTable: function () { VK.WbTable(b, 'tb', 6, { x: 260, y: 260, colW: [520, 440, 440], rowH: 130, size: 52, rows: [['Việc', 'AI làm', 'Người làm'], ['Tóm tắt', 'Có', ''], ['Quyết định', '', 'Có'], ['Kiểm tra', 'Hỗ trợ', 'Có']] }); },
+    WbFlight: function () { VK.WbFlight(b, 'fh', 6, { from: { x: 300, y: 800 }, to: { x: 1560, y: 360 }, bend: 280, size: 170 }); },
+    WbSteps: function () { VK.WbSteps(b, 'st', 6, { x: 200, y: 900, stepW: 460, stepH: 170, size: 56, items: [{ text: 'Hiểu vấn đề' }, { text: 'Làm thử' }, { text: 'Mở rộng' }] }); },
+    WbDoodles: function () {
+      var names = Object.keys(VK.DOODLES);
+      var cols = 11;
+      names.forEach(function (n, i) {
+        var x = 100 + (i % cols) * 172, y = 70 + Math.floor(i / cols) * 168;
+        b.draw(null, { id: 'dd-' + n, kind: 'doodle', name: n, x: x, y: y, size: 82, dur: 4 });
+        b.draw(null, { id: 'dn-' + n, kind: 'text', x: x, y: y + 72, text: n, size: 22, anchor: 'middle', color: C.textMuted, dur: 2 });
+      });
+    },
+  };
+  (SAMPLES[part] || SAMPLES.WbMindMap)();
+  var end = b.marks.reduce(function (e, m) { return Math.max(e, b.endOf(m)); }, 0) + 45;
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: end,
+    render: function (f) { return VK.h(VK.Whiteboard, { frame: f, marks: b.marks, camera: b.camera, font: font }); }
+  });
+</script>
+</body>
+</html>

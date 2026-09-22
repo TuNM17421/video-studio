@@ -73,3 +73,4 @@ export * from './whiteboard/Whiteboard';
 export * from './whiteboard/board';
 export * from './whiteboard/doodles';
 export * from './whiteboard/handFonts';
+export * from './whiteboard/parts';

@@ -32,6 +32,10 @@ Video mẫu: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n2-00-bang-tran
 - **Camera**: lia tới vùng mới trước nét đầu tiên của vùng (30–45 frame); đừng vẽ khi camera còn đang chạy
   (verify báo nét ngoài khung). Lùi ra để nhắc đang ở đâu; câu tổng kết lùi ra toàn bảng.
 - **Lau bảng** (`erase`) khi một đoạn đã xong và cần chỗ; mọi nét trước đó trong vùng lau biến mất.
+- **Dùng component dựng sẵn trước khi tự vẽ.** `components/whiteboard/parts.js` có 15 part (sơ đồ tư duy,
+  chuỗi bước, vòng lặp, so sánh, checklist, bảng, trục thời gian, biểu đồ cột, người que nói / nghĩ, ghi chú,
+  mây tiêu đề, bóng đèn ý tưởng, máy bay giấy, bậc thang, hình + chú thích) — đọc `Parts.prompt.md`, xem thử ở
+  `demos/whiteboard-parts.html?part=<Tên>`. Chỉ tự ghép nét khi không part nào hợp.
 - **Hình minh hoạ**: `doodle` (icon vẽ tay: tên lửa, bóng đèn, máy bay giấy, bánh răng, biểu đồ, người, tiền…),
   `cloud` (mây cho tiêu đề hoặc suy nghĩ), `trail` nét đứt uốn lượn (đường bay, liên hệ lỏng), `fill: 'hachure'`
   để tô bóng, `outline: true` cho một chữ tiêu đề to. Xem `Whiteboard.prompt.md` và trang
