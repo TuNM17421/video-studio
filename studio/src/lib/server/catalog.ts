@@ -8,7 +8,7 @@ import { DS, exists, REPO, STYLES } from "./paths";
 type StyleFile = Omit<StyleDef, "sampleVideo"> & { sampleVideo?: string | null };
 
 /** Component groups that exist only in Lesson Lab Style (the old 9-color set had none of them). */
-const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "media", "structure", "system", "table", "teaching", "ui"]);
+const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "media", "structure", "system", "table", "teaching", "ui", "whiteboard"]);
 const LAB_COMPONENTS = new Set(["Magnifier", "SourceCard", "LineIcon", "Icon", "IllustrativeStamp", "Gauge", "RangeBand", "UnitGrid", "Spotlight"]);
 
 export function listStyles(): StyleDef[] {

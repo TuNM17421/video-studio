@@ -49,6 +49,11 @@ export const ROLE_OF = Object.freeze({
 });
 
 export const FONT = "'Montserrat', 'Segoe UI', system-ui, sans-serif";
+/**
+ * Whiteboard style only: the handwriting the marker writes on the board (Pangolin, OFL, Vietnamese).
+ * Never for chrome — eyebrow, captions and footer stay FONT.
+ */
+export const HAND = "'Pangolin', 'Comic Sans MS', cursive";
 export const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 export const BRAND = 'VinUni · AI in Action 20K';
 

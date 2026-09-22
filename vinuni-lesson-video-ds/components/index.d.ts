@@ -69,3 +69,4 @@ export * from './ui/Cursor';
 export * from './ui/EmailCard';
 export * from './ui/Tray';
 export * from './ui/UIButton';
+export * from './whiteboard/Whiteboard';

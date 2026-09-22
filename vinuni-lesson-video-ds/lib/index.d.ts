@@ -27,6 +27,8 @@ export type RoleName = 'input' | 'process' | 'reasoning' | 'output' | 'check' | 
 export declare const ROLE_OF: Readonly<Record<RoleName, readonly [string, string]>>;
 export declare const FONT: string;
 export declare const MONO: string;
+/** Whiteboard style: handwriting on the board (Pangolin). Never for chrome. */
+export declare const HAND: string;
 export declare const BRAND: string;
 /** Fixed canvas geometry (px on the 1920×1080 canvas). */
 export declare const LAYOUT: Readonly<Record<

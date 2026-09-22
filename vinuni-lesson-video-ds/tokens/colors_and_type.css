@@ -20,6 +20,16 @@
   font-display: block;
 }
 
+/* Whiteboard style only (lab, 2026-09-22): handwriting for what the marker writes ON the board.
+   Chrome (eyebrow, captions, footer) stays Montserrat. Pangolin · SIL OFL 1.1 (fonts/OFL-Pangolin.txt). */
+@font-face {
+  font-family: "Pangolin";
+  src: url("../fonts/Pangolin-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   /* ---------------------------------------------------------------- brand scale
      VinUni-inspired palette; names follow the original --vu-* design tokens. */

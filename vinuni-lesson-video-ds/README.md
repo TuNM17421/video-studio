@@ -20,6 +20,7 @@ thumbnail, poster** đúng style của khoá học. Mọi kích thước là px 
    vàng đậm) chỉ cho nhãn vùng / viền / nền nhạt khi kịch bản mã hóa vai trò bằng màu. Không thêm hex khác,
    không gradient, không màu thương hiệu khác (trừ logo `Brand`). Tint, bóng, glow = chính các màu đó ở alpha.
 3. **Chữ**: chỉ **Montserrat 500 / 600 / 700** (có subset tiếng Việt). Monospace chỉ cho code.
+   Ngoại lệ duy nhất (lab): style bảng trắng viết chữ trên bảng bằng `HAND` (Pangolin); chrome vẫn Montserrat.
 4. **Nghĩa của màu**: xanh `accent` = dữ liệu / trung tính / chưa xử lý · đỏ `red` = điểm nhấn / đã
    chọn / đã biến đổi / hành động / rủi ro / đáp án · `bgAlt` = thân thẻ và "cỗ máy kính" ·
    `dotInactive` = đường ray, divider, trạng thái chưa kích hoạt.
@@ -330,6 +331,7 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | structure | `Matrix2x2`, `Iceberg` | lưới quyết định 2 × 2 có một ô được chọn, phần nổi / phần chìm |
 | data | `Gauge`, `RangeBand`, `UnitGrid` | đồng hồ bán nguyệt có ngưỡng, ước lượng kèm khoảng dao động, đếm bằng ô (18 trên 60) |
 | marks | `Spotlight` | làm mờ cả khung trừ một vùng để dẫn mắt, không dịch chuyển gì |
+| whiteboard (lab) | `Whiteboard` | một tấm bảng cho cả video: bút dạ viết chữ tay và vẽ nét theo lời, lau bảng, camera lia / lùi ra — chỉ cho `styles/whiteboard.json` |
 
 Helpers mới: `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
 (`@remotion/paths`, d3-shape/scale/interpolate, flubber, dagre: `curvePath`, `pointOnPath`, `drawOn`, `morphPath`, `layoutGraph`).
@@ -359,6 +361,7 @@ template hoàn chỉnh (chrome, copy tiếng Việt, phụ đề, mốc frame t�
 | Thư mục | Nội dung |
 |---|---|
 | `n2-00-gioi-thieu-ngay-2/` | **N2-00 · Giới thiệu ngày 2** — 16 câu · 168 giây · 5 040 frame. Video tổng quan có một bản đồ ngày học xuyên suốt |
+| `n2-00-bang-trang/` | **Lab · bảng trắng** — cùng lời và giọng N2-00 dựng bằng `Whiteboard`: không có scene, `board.js` khai từng nét theo `spokenAt`, `video.jsx` là một `SceneFrame` |
 
 Cấu trúc một video, cũng là cách nên dựng video mới:
 
@@ -401,7 +404,7 @@ styles.css                      entry — chỉ @import (tokens + component CSS)
 README.md · SKILL.md            tài liệu này · điểm vào dạng Agent Skill
 tokens/colors_and_type.css      CSS variables, @font-face Montserrat, class vai trò chữ
 tokens/tokens.json              token dạng W3C design tokens
-fonts/                          Montserrat variable (OFL) + OFL.txt
+fonts/                          Montserrat variable (OFL) + OFL.txt · Pangolin (OFL, chỉ style bảng trắng)
 assets/icons/*.svg              20 icon nét tay (currentColor)
 lib/tokens.js                   C (9 màu), LAYOUT, SHADOW, alpha()
 lib/motion.js                   interpolate, spring, Easing (tương thích Remotion) + appear/pulse/fadeWindow/smooth

@@ -1,0 +1,26 @@
+{
+  "id": "whiteboard",
+  "name": "Whiteboard Style (lab)",
+  "order": 3,
+  "extends": "lesson",
+  "summary": "Bảng trắng vẽ tay: một tấm bảng cho cả video, bút dạ viết chữ tay và vẽ nét theo lời đọc, lau bảng khi đổi phần, camera lia tới từng vùng và lùi ra xem toàn cảnh.",
+  "palette": [],
+  "showcase": [
+    {
+      "component": "Whiteboard",
+      "group": "whiteboard",
+      "image": "whiteboard__Whiteboard.png"
+    }
+  ],
+  "sampleVideo": null,
+  "rules": [
+    "Cả video là MỘT tấm bảng, không cắt cảnh: video.jsx vẽ một SceneFrame (header={false}, eyebrow qua overlay, phụ đề cueCaptions toàn cục) chứa <Whiteboard frame marks camera />, không dùng Series. Mẫu: ui_kits/lesson-video/videos/n2-00-bang-trang/ (board.js, video.jsx).",
+    "board.js khai từng nét (mark) theo khung hình video: mốc = start(câu) + spokenAt(câu, cụm từ) − 4…8 frame. Bút chỉ vẽ một thứ một lúc — dùng hàm draw() kiểu board.js mẫu để nét sau tự chờ nét trước, và xem danh sách LAG để biết beat nào bị trễ.",
+    "Mỗi câu 3–5 nét chính; chữ trên bảng là từ khoá ngắn, không chép cả câu (bút viết ~32 ký tự/giây). Cỡ chữ ≥ 40 px ở zoom 1; chữ chỉ đọc lúc lùi ra thì ≥ 110 px.",
+    "Mực: navy C.text cho chữ, xanh C.accent cho vật/luồng/mũi tên, đỏ C.red cho câu hỏi, điểm nhấn, vòng khoanh. Nền nhạt C.bgAlt / C.redSoft cho ô và vệt highlight. Không dùng màu vai trò của Lesson Lab.",
+    "Chữ tay (HAND, Pangolin) chỉ cho chữ viết trên bảng. Eyebrow, phụ đề, footer giữ Montserrat.",
+    "Bố cục: chia bảng thành vùng theo cấu trúc kịch bản (ví dụ hàng tiêu đề + một ô cho mỗi phần). Camera lia tới vùng mới trước nét đầu tiên của vùng (30–45 frame), lùi ra để nhắc đang ở đâu, và câu tổng kết lùi ra toàn bảng.",
+    "Lau bảng (erase) khi một đoạn đã xong và cần dùng lại chỗ đó; mọi nét trước đó trong vùng lau biến mất, nét sau vẽ đè lên.",
+    "id của mỗi nét là duy nhất và cố định (nó là seed của độ run nét vẽ); không đổi id của nét đã duyệt."
+  ]
+}

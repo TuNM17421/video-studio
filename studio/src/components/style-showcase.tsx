@@ -6,7 +6,7 @@ import { SampleMedia } from "@/components/sample-media";
 import { fileUrl } from "@/lib/client";
 import type { PaletteColor, Showcase, StyleDef } from "@/lib/types";
 
-const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "structure", "system", "table", "teaching", "ui"]);
+const LAB_GROUPS = new Set(["brand", "code", "context", "control", "loop", "structure", "system", "table", "teaching", "ui", "whiteboard"]);
 
 const SIGNATURE_COMPONENTS = {
   lesson: ["GlassBox", "Flow", "ProbabilityBars"],

@@ -126,6 +126,7 @@
     "UsersIcon": "components/icons/Icons.prompt.md",
     "VectorColumn": "components/data/VectorColumn.prompt.md",
     "Watermark": "components/chrome/Chrome.prompt.md",
+    "Whiteboard": "components/whiteboard/Whiteboard.prompt.md",
     "ZoneLabel": "components/labels/ZoneLabel.prompt.md"
   },
   "tokensPkg": "vinuni-lesson-video-ds",
@@ -182,7 +183,8 @@
     "SvgText": "components/text/Text.jsx",
     "TrendUpIcon": "components/icons/Icons.jsx",
     "UsersIcon": "components/icons/Icons.jsx",
-    "Watermark": "components/chrome/Chrome.jsx"
+    "Watermark": "components/chrome/Chrome.jsx",
+    "Whiteboard": "components/whiteboard/Whiteboard.jsx"
   },
   "readmeHeader": ".design-sync/conventions.md",
   "overrides": {
