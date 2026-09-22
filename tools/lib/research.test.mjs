@@ -22,7 +22,7 @@ test('đọc tiêu đề, nơi xuất bản và ngày từ thẻ meta và JSON-L
     <meta content="OpenAI" property="og:site_name">
     <script type="application/ld+json">{"@graph":[{"@type":"Article","datePublished":"2026-03-02T10:00:00Z","dateModified":"2026-05-01"}]}</script>
     </head><body>x</body></html>`;
-  assert.deepEqual(pageMeta(html), { title: 'Models & context', publisher: 'OpenAI', published: '2026-03-02', modified: '2026-05-01' });
+  assert.deepEqual(pageMeta(html), { title: 'Models & context', publisher: 'OpenAI', published: '2026-03-02', modified: '2026-05-01', image: null });
 });
 
 test('trang không khai ngày thì ngày là null, không đoán', () => {

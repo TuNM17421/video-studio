@@ -150,7 +150,7 @@ export const TOURS: TourDef[] = [
   },
   {
     id: "practice",
-    version: 1,
+    version: 2,
     label: "Chế độ tập — xem một video đi đủ năm bước",
     routes: ["/"],
     auto: false,
@@ -194,6 +194,15 @@ export const TOURS: TourDef[] = [
         body: "Chọn nguồn giọng và người đọc; bản thu nằm ngay bên dưới để nghe lại. Tạo giọng bằng ElevenLabs sẽ tốn credit.",
         mascot: { pose: "stand", mood: "surprised", prop: "exclamation" },
         placement: "right",
+      },
+      {
+        // Chỉ có ở video bật "Video có ảnh tư liệu"; video khác không có panel này nên bước tự được bỏ qua.
+        target: "studio.images",
+        studioStep: "voice",
+        title: "Ảnh đề xuất",
+        body: "Trong lúc thu giọng, Studio đề xuất vài ảnh thật cho đúng những câu cần. Bạn chọn dùng, dùng làm tham khảo, hay bỏ — chỗ chưa chọn vẫn là animation.",
+        mascot: { pose: "stand", mood: "happy", prop: "lightbulb" },
+        placement: "top",
       },
       {
         target: "studio.editor",

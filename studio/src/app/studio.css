@@ -2787,7 +2787,9 @@ button.vs-tile:hover {
 }
 .vs-modules {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--vu-capability-card-min-width), 1fr));
+  /* Tối đa --vu-capability-grid-columns cột (2×2): mỗi cột ít nhất bằng phần của nó trong hàng, nên không bao
+     giờ thành ba cột với card thứ tư lẻ loi; hẹp hơn hai lần card tối thiểu thì xuống một cột. */
+  grid-template-columns: repeat(auto-fit, minmax(max(var(--vu-capability-card-min-width), calc((100% - (var(--vu-capability-grid-columns) - 1) * var(--vu-space-3)) / var(--vu-capability-grid-columns))), 1fr));
   gap: var(--vu-space-3);
   padding: var(--vu-space-4);
 }
@@ -5654,3 +5656,93 @@ details.vs-flow-more[open] > summary {
 .vs-qa-section .vs-qa-toolbar > div:first-child {
   flex: 0 0 auto;
 }
+
+/* ── Ảnh đề xuất (năng lực images) ───────────────────────────────────────────────── */
+.vs-images {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-images.is-running { border-color: var(--vu-blue-200); }
+.vs-images-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vs-images-head > .anticon { color: var(--vu-lesson-data); }
+.vs-images-head h3 { margin: 0; font-size: 14px; }
+.vs-images-head .ant-tag { margin-inline-end: 0; }
+.vs-images-tools { display: flex; gap: 8px; margin-left: auto; }
+.vs-images-lede {
+  margin: 8px 0 12px;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-image-slots, .vs-image-grid, .vs-image-rejected ul { margin: 0; padding: 0; list-style: none; }
+.vs-image-slots { display: grid; gap: 12px; }
+.vs-image-slot {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+}
+.vs-image-slot-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.vs-image-slot-head .mono { color: var(--vu-neutral-600); font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+.vs-image-slot-head .ant-tag { margin-inline-end: 0; }
+.vs-image-status { margin-left: auto; color: var(--vu-neutral-600); font-size: var(--vu-text-xs); }
+.vs-image-status.is-decided { color: var(--vu-green-700); font-weight: var(--vu-font-semibold); }
+.vs-image-cue {
+  margin: 8px 0 4px;
+  padding: 4px 10px;
+  border-left: 3px solid var(--vu-blue-200);
+  color: var(--vu-lesson-ink);
+  font-style: italic;
+}
+.vs-image-reason, .vs-image-none { margin: 4px 0 10px; font-size: var(--vu-text-xs); color: var(--vu-neutral-700); }
+.vs-image-warn { color: var(--vu-amber-700); font-size: var(--vu-text-xs); }
+/* Thẻ nằm ngang và chia đều hàng (auto-fit gộp cột trống): hai ảnh là hai nửa, không dồn trái để phải trống. */
+.vs-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--vu-image-card-min-width)), 1fr));
+  gap: 10px;
+}
+.vs-image-card {
+  display: grid;
+  grid-template-columns: var(--vu-image-candidate-width) minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-0);
+  overflow: hidden;
+}
+.vs-image-card.is-chosen { border-color: var(--vu-brand-primary); box-shadow: 0 0 0 1px var(--vu-brand-primary); }
+.vs-image-thumb {
+  grid-row: 1 / span 2;
+  display: block;
+  min-height: var(--vu-image-candidate-width);
+  background: var(--vu-lesson-surface);
+}
+.vs-image-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.vs-image-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px 4px; font-size: var(--vu-text-xs); }
+.vs-image-meta .ant-tag { align-self: flex-start; margin-inline-end: 0; }
+.vs-image-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.vs-image-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-image-license { color: var(--vu-neutral-700); }
+.vs-image-why { margin: 2px 0 0; color: var(--vu-neutral-700); }
+.vs-image-source { align-self: flex-start; }
+.vs-image-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 12px 10px; }
+.vs-image-slot-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.vs-image-caption { display: flex; gap: 6px; }
+.vs-image-caption .ant-input { width: 240px; }
+.vs-image-slot-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.vs-image-rejected { margin-top: 8px; font-size: var(--vu-text-xs); color: var(--vu-neutral-600); }
+.vs-image-rejected summary { cursor: pointer; }
+:root[data-theme="dark"] .vs-image-thumb img { filter: brightness(0.9); }
+:root[data-theme="dark"] .vs-image-thumb img:hover { filter: none; }
+.vs-image-confirm { display: grid; gap: 8px; max-width: 320px; }
+.vs-image-confirm p { margin: 0; }
+.vs-image-confirm .ant-select { width: 200px; }

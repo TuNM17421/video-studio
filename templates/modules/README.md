@@ -22,7 +22,7 @@ order: 10
 |---|---|---|
 | `name` | có | tên card, cũng là tên ghi vào `REQUEST.md` |
 | `summary` | có | một câu mô tả trên card |
-| `icon` | không | `dialogue` · `quiz` · `mascot` có glyph riêng; giá trị khác dùng glyph chung |
+| `icon` | không | `dialogue` · `quiz` · `mascot` · `image` có glyph riêng; giá trị khác dùng glyph chung |
 | `preview` | không | key video xem thử trên kho media (`media/manifest.json`); thiếu thì card không có nút xem thử |
 | `order` | không | số nhỏ đứng trước; mặc định 100 |
 

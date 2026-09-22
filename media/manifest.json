@@ -463,11 +463,23 @@
       "sha256": "2b9188a7e90c31ec7fea4022827b827daf0ede864029c1ca3c36e9799fb1897b",
       "updated": "2026-09-19"
     },
+    "modules/anh-tu-lieu-mau.mp4": {
+      "type": "video/mp4",
+      "bytes": 3907301,
+      "sha256": "30cf4937c143abf077eb469a4905501f08f316cc584a537e364bd16ecd2c7c3a",
+      "updated": "2026-09-22"
+    },
     "modules/hoi-thoai-mau-v2.mp4": {
       "type": "video/mp4",
       "bytes": 500381,
       "sha256": "b4af7be5ca84b00d8b75d66c5d0bfea141b41e57afd12b7ff647048eedd1c644",
       "updated": "2026-09-12"
+    },
+    "modules/quiz-mau.mp4": {
+      "type": "video/mp4",
+      "bytes": 4179061,
+      "sha256": "03df2e479f89ebfe112d18b252f212cfe3018a5ca0f64131253b60f9d20f62d3",
+      "updated": "2026-09-22"
     },
     "samples/mau-huong-dan/mau-huong-dan.mp4": {
       "type": "video/mp4",
