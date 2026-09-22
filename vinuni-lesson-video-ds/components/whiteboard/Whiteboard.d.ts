@@ -13,14 +13,21 @@ interface MarkBase {
   pen?: boolean;
   opacity?: number;
 }
+/** Names in DOODLES (components/whiteboard/doodles.js) — Lucide line icons redrawn by hand. */
+export type DoodleName = string;
+
 export type WhiteboardMark =
-  | (MarkBase & { kind: 'text'; x: number; y: number; text?: string; lines?: string[]; size?: number; lineHeight?: number; anchor?: 'start' | 'middle' | 'end' })
+  | (MarkBase & { kind: 'text'; x: number; y: number; text?: string; lines?: string[]; size?: number; lineHeight?: number; anchor?: 'start' | 'middle' | 'end'; outline?: boolean })
   | (MarkBase & { kind: 'line' | 'arrow'; points: { x: number; y: number }[]; width?: number; dash?: string; head?: number })
   | (MarkBase & { kind: 'box'; x: number; y: number; w: number; h: number; fill?: string; width?: number })
+  // fill: a color token, or 'hachure' for marker shading (box, loop, cloud; hachureGap?, hachureColor?)
   | (MarkBase & { kind: 'loop'; cx: number; cy: number; rx: number; ry: number; width?: number })
   | (MarkBase & { kind: 'underline'; x1: number; x2: number; y: number; width?: number })
   | (MarkBase & { kind: 'person'; x: number; y: number; s?: number; width?: number })
   | (MarkBase & { kind: 'check' | 'cross'; x: number; y: number; s?: number; width?: number })
+  | (MarkBase & { kind: 'doodle'; name: DoodleName; x: number; y: number; size?: number; rotate?: number; width?: number })
+  | (MarkBase & { kind: 'cloud'; x: number; y: number; w: number; h: number; fill?: string; width?: number })
+  | (MarkBase & { kind: 'trail'; points: { x: number; y: number }[]; dash?: string; width?: number })
   | (MarkBase & { kind: 'highlight'; x: number; y: number; w: number; h: number })
   | (MarkBase & { kind: 'erase'; x: number; y: number; w: number; h: number });
 

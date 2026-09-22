@@ -140,3 +140,62 @@ export function penOnPath(d, t) {
   const p = getPointAtLength(d, pathLength(d) * Math.max(0, Math.min(1, t)));
   return { x: p.x, y: p.y };
 }
+
+/**
+ * Puffy cloud around the box { x, y, w, h }: bumps of varying size along an ellipse, drawn in one
+ * clockwise stroke that closes with a small overlap. Good as a thought bubble or a title badge.
+ */
+export function sketchCloud({ x, y, w, h }, seed) {
+  const r = rng(seed);
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const rx = w / 2;
+  const ry = h / 2;
+  const perimeter = Math.PI * (rx + ry);
+  // bump width follows the cloud's height, so a flat cloud gets a few broad puffs, not a row of spikes
+  const bumps = Math.max(5, Math.round(perimeter / Math.max(Math.min(rx, ry) * 1.25, 56)));
+  const a0 = Math.PI * (0.9 + r() * 0.2);
+  const pts = [];
+  for (let b = 0; b < bumps; b++) {
+    const size = 0.16 + r() * 0.12;
+    const from = a0 + (b / bumps) * Math.PI * 2;
+    const to = a0 + ((b + 1) / bumps) * Math.PI * 2;
+    for (let i = 0; i < 6; i++) {
+      const t = i / 6;
+      const a = from + (to - from) * t;
+      const bulge = 1 + Math.sin(Math.PI * t) * size;
+      pts.push({ x: cx + Math.cos(a) * rx * bulge, y: cy + Math.sin(a) * ry * bulge });
+    }
+  }
+  pts.push(pts[0], pts[1]);
+  return curvePath(pts, 'catmullRom');
+}
+
+/** Smooth wandering path through points (catmull-rom), for dashed trails and loose connectors. */
+export function sketchTrail(points, seed) {
+  const r = rng(seed);
+  return curvePath(points.map((p, i) => (i === 0 || i === points.length - 1 ? p : { x: p.x + jit(r, 4), y: p.y + jit(r, 4) })), 'catmullRom');
+}
+
+/**
+ * Hachure: parallel strokes at `angle`° every `gap` px across the box { x, y, w, h }, each slightly
+ * wobbly — the marker's way of shading. Clip it to the shape it fills.
+ */
+export function sketchHachure({ x, y, w, h }, seed, { gap = 16, angle = -40 } = {}) {
+  const r = rng(seed);
+  const a = (angle * Math.PI) / 180;
+  const dx = Math.cos(a);
+  const dy = Math.sin(a);
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const reach = Math.hypot(w, h) / 2 + gap;
+  const lines = [];
+  for (let o = -reach; o <= reach; o += gap) {
+    const px = cx - dy * o;
+    const py = cy + dx * o;
+    const a1 = { x: px - dx * reach + jit(r, 3), y: py - dy * reach + jit(r, 3) };
+    const b1 = { x: px + dx * reach + jit(r, 3), y: py + dy * reach + jit(r, 3) };
+    lines.push(`M${pt(a1)} L${pt(b1)}`);
+  }
+  return lines.join(' ');
+}

@@ -30,6 +30,11 @@ Video mẫu: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n2-00-bang-tran
 - **Camera**: lia tới vùng mới trước nét đầu tiên của vùng (30–45 frame); đừng vẽ khi camera còn đang chạy
   (verify báo nét ngoài khung). Lùi ra để nhắc đang ở đâu; câu tổng kết lùi ra toàn bảng.
 - **Lau bảng** (`erase`) khi một đoạn đã xong và cần chỗ; mọi nét trước đó trong vùng lau biến mất.
+- **Hình minh hoạ**: `doodle` (icon vẽ tay: tên lửa, bóng đèn, máy bay giấy, bánh răng, biểu đồ, người, tiền…),
+  `cloud` (mây cho tiêu đề hoặc suy nghĩ), `trail` nét đứt uốn lượn (đường bay, liên hệ lỏng), `fill: 'hachure'`
+  để tô bóng, `outline: true` cho một chữ tiêu đề to. Xem `Whiteboard.prompt.md` và trang
+  `ui_kits/lesson-video/demos/whiteboard-doodles.html`. Hình minh hoạ đi kèm chữ, không thay chữ; mỗi câu
+  vẫn 3–5 nét chính.
 - `id` mỗi nét duy nhất và cố định (seed của độ run nét) — không đổi id của nét đã duyệt.
 - Xem `LAG` và cảnh báo `board —` của `npm run verify`: nét trễ > 45 frame thì bớt nét ở câu đó hoặc viết
   tiêu đề ngắn hơn, đừng dồn thêm.

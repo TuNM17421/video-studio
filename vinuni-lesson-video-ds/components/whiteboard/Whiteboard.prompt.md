@@ -17,6 +17,19 @@ video frame, not a `Series`.
   region disappears; later marks draw on top. Use it when a section is done and the space is reused.
 - Seeds come from `id`, so wobble is deterministic — never reuse an id.
 
+## Doodles, clouds, trails, lettering
+
+- `{ kind: 'doodle', name, x, y, size, rotate? }` — a Lucide line icon redrawn by hand (seeded wobble), centred
+  on (x, y). Names in `doodles.js` `DOODLES` (rocket, lightbulb, paper-plane, gear, chart-bar / -line / -pie,
+  trend-up, network, users, coins, banknote, target, trophy, speech-round, question, alert, sparkles, star…);
+  add one by importing it there. Line width follows `size` (a small doodle draws finer).
+- `{ kind: 'cloud', x, y, w, h, fill? }` — puffy cloud around a box: thought bubble, title badge.
+- `{ kind: 'trail', points, dash: '14 14' }` — wandering dashed path (a paper plane's flight, a loose link);
+  dashed strokes draw on too (masked).
+- `fill: 'hachure'` on box / loop / cloud — marker shading clipped to the shape.
+- `outline: true` on text — hollow bubble lettering for a big title word.
+- Demo: `ui_kits/lesson-video/demos/whiteboard-doodles.html` (`?frame=N`, `?font=` to preview another font).
+
 ## Authoring a board — `createBoard` (components/whiteboard/board.js)
 
 Write the video's `board.js` with `createBoard({ timeline: TIMELINE, spokenAt })`, never by hand:

@@ -8,13 +8,17 @@ import {
   seedOf,
   sketchArrow,
   sketchCheck,
+  sketchCloud,
   sketchCross,
   sketchEllipse,
+  sketchHachure,
+  sketchTrail,
   sketchLine,
   sketchPerson,
   sketchRect,
   sketchUnderline,
 } from './sketch.js';
+import { sketchDoodle } from './doodles.js';
 
 /*
  * Whiteboard — one persistent board for a whole video (whiteboard style, lab).
@@ -51,6 +55,12 @@ export function defaultDur(m) {
       return Math.max(8, Math.round(chars * 0.95));
     }
     case 'person':
+      return 22;
+    case 'doodle':
+      return Math.round(Math.min(40, Math.max(16, (m.size ?? 120) / 5)));
+    case 'cloud':
+      return 26;
+    case 'trail':
       return 22;
     case 'box':
       return 14;
@@ -99,6 +109,15 @@ export function markPath(m) {
       break;
     case 'cross':
       d = sketchCross(m.x, m.y, m.s ?? 36, seed);
+      break;
+    case 'doodle':
+      d = sketchDoodle(m, seed);
+      break;
+    case 'cloud':
+      d = sketchCloud(m, seed);
+      break;
+    case 'trail':
+      d = sketchTrail(m.points, seed);
       break;
     default:
       d = null;
@@ -154,6 +173,19 @@ export function markBounds(m) {
       const s = m.s ?? 40;
       return { x0: m.x - s, x1: m.x + s, y0: m.y - s, y1: m.y + s * 0.6 };
     }
+    case 'doodle': {
+      const h = (m.size ?? 120) / 2 + 4;
+      return { x0: m.x - h, x1: m.x + h, y0: m.y - h, y1: m.y + h };
+    }
+    case 'cloud':
+      return { x0: m.x - m.w * 0.16, x1: m.x + m.w * 1.16, y0: m.y - m.h * 0.2, y1: m.y + m.h * 1.2 };
+    case 'trail':
+      return {
+        x0: Math.min(...m.points.map((p) => p.x)) - 8,
+        x1: Math.max(...m.points.map((p) => p.x)) + 8,
+        y0: Math.min(...m.points.map((p) => p.y)) - 8,
+        y1: Math.max(...m.points.map((p) => p.y)) + 8,
+      };
     default:
       return { x0: m.x, y0: m.y, x1: m.x + (m.w ?? 0), y1: m.y + (m.h ?? 0) };
   }
@@ -183,8 +215,12 @@ function TextMark({ m, t }) {
   const total = rows.reduce((s, r) => s + r.w, 0) || 1;
   let shown = t >= 1 ? Infinity : t * total;
   const color = m.color ?? C.text;
+  // outline: hollow "bubble" lettering — the letter shapes stroked in ink, the board showing through
+  const paint = m.outline
+    ? { fill: C.bg, stroke: color, strokeWidth: Math.max(2.5, (m.size ?? 44) * 0.045), strokeLinejoin: 'round', paintOrder: 'stroke' }
+    : { fill: color };
   return (
-    <g fill={color} fontFamily={HAND} opacity={m.opacity}>
+    <g {...paint} fontFamily={HAND} opacity={m.opacity}>
       {rows.map((r, i) => {
         const visible = Math.max(0, Math.min(r.w, shown));
         shown -= r.w;
@@ -207,16 +243,55 @@ function TextMark({ m, t }) {
   );
 }
 
+/** Clip shape for a filled mark: the box, the loop's ellipse, the cloud's own outline. */
+function fillShape(m, d) {
+  if (m.kind === 'box') return <rect x={m.x} y={m.y} width={m.w} height={m.h} />;
+  if (m.kind === 'loop') return <ellipse cx={m.cx} cy={m.cy} rx={m.rx} ry={m.ry} />;
+  return <path d={d} />;
+}
+const fillBox = (m) => (m.kind === 'loop' ? { x: m.cx - m.rx, y: m.cy - m.ry, w: m.rx * 2, h: m.ry * 2 } : m.kind === 'cloud' ? { x: m.x - m.w * 0.2, y: m.y - m.h * 0.2, w: m.w * 1.4, h: m.h * 1.4 } : m);
+
 function StrokeMark({ m, t }) {
   const d = markPath(m);
   const color = m.color ?? C.text;
-  const dash = m.dash ? { strokeDasharray: m.dash } : t < 1 ? drawOn(d, t) : null;
-  // A dashed guide cannot also use the dash trick to draw on, so it fades in instead.
-  const opacity = m.dash ? (m.opacity ?? 1) * t : m.opacity;
+  // small doodles get a finer line, like a marker drawing small
+  const width = m.width ?? (m.kind === 'doodle' ? Math.max(3, Math.min(INK, (m.size ?? 120) / 26)) : INK);
+  const stroke = { d, fill: 'none', stroke: color, strokeWidth: width, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  const fillIn = clamp01((t - 0.6) / 0.4);
+  let fill = null;
+  if (m.fill && fillIn > 0) {
+    const id = `wb-fill-${m.id}`;
+    fill =
+      m.fill === 'hachure' ? (
+        <g opacity={fillIn}>
+          <clipPath id={id}>{fillShape(m, d)}</clipPath>
+          <path d={sketchHachure(fillBox(m), seedOf(m.id) + 3, { gap: m.hachureGap ?? 16 })} clipPath={`url(#${id})`} fill="none" stroke={m.hachureColor ?? color} strokeWidth={2.5} strokeLinecap="round" opacity={0.55} />
+        </g>
+      ) : m.kind === 'box' ? (
+        <rect x={m.x} y={m.y} width={m.w} height={m.h} fill={m.fill} opacity={fillIn} />
+      ) : (
+        <g opacity={fillIn} fill={m.fill}>{fillShape(m, d)}</g>
+      );
+  }
+  if (m.dash) {
+    // A dashed stroke cannot also use the dash trick to draw on: a solid copy drawn on masks it instead.
+    const id = `wb-dash-${m.id}`;
+    return (
+      <g opacity={m.opacity}>
+        {fill}
+        {t < 1 ? (
+          <mask id={id} maskUnits="userSpaceOnUse">
+            <path d={d} fill="none" stroke="#ffffff" strokeWidth={width + 8} strokeLinecap="round" {...drawOn(d, t)} />
+          </mask>
+        ) : null}
+        <path {...stroke} strokeDasharray={m.dash} mask={t < 1 ? `url(#${id})` : undefined} />
+      </g>
+    );
+  }
   return (
-    <g opacity={opacity}>
-      {m.kind === 'box' && m.fill ? <rect x={m.x} y={m.y} width={m.w} height={m.h} fill={m.fill} opacity={clamp01((t - 0.6) / 0.4)} /> : null}
-      <path d={d} fill="none" stroke={color} strokeWidth={m.width ?? INK} strokeLinecap="round" strokeLinejoin="round" {...dash} />
+    <g opacity={m.opacity}>
+      {fill}
+      <path {...stroke} {...(t < 1 ? drawOn(d, t) : null)} />
     </g>
   );
 }
