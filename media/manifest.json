@@ -591,8 +591,8 @@
     },
     "styles/whiteboard/sample.mp4": {
       "type": "video/mp4",
-      "bytes": 13951550,
-      "sha256": "1e5e017aefd188696bf476be86aee49d61c5b2b49c9ca8a5e8fb86a9e601e635",
+      "bytes": 14462964,
+      "sha256": "9ff2797666f84a68f2d7ffbf7033cd05c0e8ee7be1c1678a5ee7e8c1c04c056e",
       "updated": "2026-09-22"
     },
     "voices/cam-hong.wav": {
