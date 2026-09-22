@@ -2,7 +2,7 @@
 /**
  * Tìm ảnh cho những chỗ đã chọn trong triage.json — việc của code, không của agent.
  *
- *   node tools/image-search.mjs <thư mục video> [--slot s3] [--dry-run] [--sources commons,openverse]
+ *   node tools/image-search.mjs <thư mục video> [--slot s3] [--dry-run] [--sources commons,openverse,research]
  *                                               [--work <dir>] [--json]
  *
  * Với mỗi chỗ: gọi từng từ khoá trên từng nguồn, gộp và bỏ trùng, loại ảnh sai giấy phép (images.policy.json)
@@ -10,14 +10,19 @@
  * `candidates/<slot>.json` (kèm danh sách ảnh bị loại và lý do) + `candidates/<slot>/cNN.<ext>`.
  * `--dry-run` chỉ gọi API và in số kết quả — không tải, không ghi file.
  *
+ * Nguồn `research` (mặc định có trong images.policy.json): video đóng gói từ một lượt research thì thêm ảnh đại
+ * diện của đúng những trang research đã dẫn cho các câu của chỗ đó (tools/lib/image-research.mjs). Giấy phép
+ * của chúng không rõ nên không qua bộ lọc giấy phép mà mang `referenceOnly` — mặc định chỉ để tham khảo.
+ *
  * Mặc định thư mục làm việc là projects/<id>/images. Mã thoát 0 = xong, 1 = triage sai, 2 = gọi sai.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { downloadImage, THUMB_MAX_BYTES } from './lib/image-fetch.mjs';
 import { creditLine, licenseAllowed, readPolicy } from './lib/image-license.mjs';
+import { researchCandidates } from './lib/image-research.mjs';
 import { mergeCandidates, RENDERABLE, SEARCHERS } from './lib/image-sources.mjs';
-import { checkTriage, imagePaths, loadCues, readJson, writeJson } from './lib/image-suggest.mjs';
+import { checkTriage, imagePaths, loadCues, readJson, REPO, writeJson } from './lib/image-suggest.mjs';
 
 const args = process.argv.slice(2);
 const VALUE_FLAGS = ['--slot', '--sources', '--work'];
@@ -39,7 +44,9 @@ if (!dir || !fs.existsSync(path.join(dir, 'cues.js'))) usage('Cách dùng: node 
 
 const policy = readPolicy();
 const sources = (flag('--sources')?.split(',').map((s) => s.trim()).filter(Boolean) ?? policy.sources);
-for (const s of sources) if (!SEARCHERS[s]) usage(`nguồn "${s}" không có — dùng ${Object.keys(SEARCHERS).join(', ')}`);
+const KNOWN = [...Object.keys(SEARCHERS), 'research'];
+for (const s of sources) if (!KNOWN.includes(s)) usage(`nguồn "${s}" không có — dùng ${KNOWN.join(', ')}`);
+const apiSources = sources.filter((s) => SEARCHERS[s]);
 const P = imagePaths(dir, { work: flag('--work') ?? undefined });
 const triage = readJson(P.triage, null);
 if (!triage) usage(`không có ${path.relative(process.cwd(), P.triage)} — chạy bước chọn chỗ trước`);
@@ -61,7 +68,7 @@ async function searchSlot(slot) {
   const errors = [];
   const counts = [];
   for (const query of slot.queries) {
-    for (const source of sources) {
+    for (const source of apiSources) {
       if (exhausted.has(source)) continue;
       const r = await SEARCHERS[source](query, { limit: PER_QUERY });
       counts.push({ query, source, found: r.candidates.length, ...(r.error ? { error: r.error } : {}) });
@@ -102,9 +109,12 @@ async function fetchThumbs(slot, kept, filtered) {
         filtered.push({ id: c.id, title: c.title, license: c.license, landingUrl: c.landingUrl, reason: `không tải được thumbnail: ${r.error}` });
         continue;
       }
-      const longEdge = Math.max(c.width ?? 0, c.height ?? 0);
+      // Ảnh research không có kích thước từ API: thumbnail của nó chính là ảnh gốc, đo luôn từ file vừa tải.
+      const size = c.width && c.height ? { width: c.width, height: c.height } : { width: r.width ?? null, height: r.height ?? null };
+      const longEdge = Math.max(size.width ?? 0, size.height ?? 0);
       out[k] = {
         ...c,
+        ...size,
         thumb: path.relative(P.work, r.file).split(path.sep).join('/'),
         lowRes: longEdge > 0 && longEdge < policy.minLongEdge,
         credit: creditLine(c),
@@ -128,9 +138,14 @@ const report = [];
 for (const slot of slots) {
   const { merged, errors, counts } = await searchSlot(slot);
   const { kept, filtered } = screen(merged);
-  const top = kept.slice(0, policy.candidatesPerSlot);
+  // Ảnh từ trang research: giữ chỗ trong danh sách trước khi cắt, để chúng không bị ảnh API đẩy hết ra ngoài.
+  const fromResearch = sources.includes('research') ? await researchCandidates({ repo: REPO, videoId: P.id, cues, slotCues: slot.cues }) : null;
+  const extra = fromResearch?.candidates ?? [];
+  if (fromResearch?.rid) counts.push({ query: `research/${fromResearch.rid}`, source: 'research', found: extra.length });
+  errors.push(...(fromResearch?.errors ?? []).map((e) => `research: ${e}`));
+  const top = [...kept.slice(0, Math.max(0, policy.candidatesPerSlot - extra.length)), ...extra];
   if (dryRun) {
-    report.push({ slot: slot.slot, counts, found: merged.length, allowed: kept.length, filtered: filtered.length, errors });
+    report.push({ slot: slot.slot, counts, found: merged.length + extra.length, allowed: kept.length + extra.length, filtered: filtered.length, errors });
     continue;
   }
   const candidates = await fetchThumbs(slot, top, filtered);
@@ -144,7 +159,7 @@ for (const slot of slots) {
     candidates,
     filtered,
   });
-  report.push({ slot: slot.slot, counts, found: merged.length, candidates: candidates.length, filtered: filtered.length, errors });
+  report.push({ slot: slot.slot, counts, found: merged.length + extra.length, candidates: candidates.length, filtered: filtered.length, errors });
 }
 
 if (json) console.log(JSON.stringify({ ok: true, dryRun, warnings, slots: report }));

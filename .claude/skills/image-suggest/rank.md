@@ -16,6 +16,17 @@ trường `thumb`). Ghi đúng một file: `projects/<id>/images/suggest.json`. 
 
 `lowRes: true` (cạnh dài < 800 px) không tự loại — nhưng chỉ chọn khi không còn ảnh nào tốt hơn, và nói rõ.
 
+## Ảnh từ trang research (`source: "research"`)
+
+Video đóng gói từ "Đóng gói kịch bản" có thêm vài ứng viên là ảnh đại diện (og:image) của đúng những trang
+research đã dẫn cho câu đó — trường `research` ghi claim và nguồn. Giấy phép của chúng **không rõ**
+(`license: "unknown"`, `referenceOnly: true`): người dựng chỉ dùng làm tham khảo, trừ khi tự kiểm giấy phép.
+- Chọn khi ảnh cho thấy **đúng chủ thể** tốt hơn các ảnh có giấy phép rõ — nhất là với chỗ `kind: "reference"`
+  (sơ đồ trong bài gốc, ảnh chụp giao diện). Nói rõ trong `why` là ảnh từ trang research.
+- Loại: ảnh bìa chung của bài/trang (chân dung tác giả bài báo, banner chuyên mục, ảnh minh hoạ stock), ảnh có
+  chữ tít chồng lên, ảnh logo.
+- Giữa một ảnh research và một ảnh có giấy phép rõ ngang nhau, đặt ảnh có giấy phép rõ lên trước.
+
 ## Chọn
 
 - Tối đa 3 ảnh, tốt nhất đứng đầu. `fit`: `good` (đúng chủ thể, dùng được ngay) · `ok` (dùng được, có điểm trừ

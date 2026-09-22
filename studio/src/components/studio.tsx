@@ -5,6 +5,7 @@ import { CloseOutlined, ExportOutlined, LockOutlined } from "@ant-design/icons";
 import { Button, Collapse, Empty, Steps, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
+import { inferDay } from "@/lib/day";
 import type { AgentConfig, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { resolveReviewer } from "@/lib/review";
@@ -21,9 +22,10 @@ import { ScenesStep } from "./steps/scenes-step";
 import { StepBar, type StepNav } from "./steps/shared";
 import { VoiceStep } from "./steps/voice-step";
 
-/** Ba nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả ba là sai với hai cái kia. */
+/** Bốn nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả bốn là sai với ba cái kia. */
 const VOICE_SOURCE_LABEL: Record<VoiceSource, string> = {
   elevenlabs: "ElevenLabs",
+  kaggle: "OmniVoice (Kaggle)",
   import: "Audio có sẵn",
   local: "Model local",
 };
@@ -148,7 +150,7 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
               <div><dt>Trạng thái</dt><dd>{agentStatus}</dd></div>
               <div><dt>Thời lượng {cues?.voiced ? "thật" : "ước tính"}</dt><dd className="mono">{formatFrames(cues?.voiceDuration ?? cues?.duration)}</dd></div>
               <div><dt>Nguồn giọng</dt><dd>{VOICE_SOURCE_LABEL[source]}</dd></div>
-              {/* Key chỉ có nghĩa với ElevenLabs; hai nguồn kia không đụng tới nó nên đừng bắt nhìn. */}
+              {/* Key chỉ có nghĩa với ElevenLabs; các nguồn khác không đụng tới nó nên đừng bắt nhìn. */}
               {source === "elevenlabs" && <div><dt>Key ElevenLabs</dt><dd>{hasKey ? "Đã nhập" : "Chưa nhập"}</dd></div>}
             </dl>
             <WorkflowHealth detail={detail} />
@@ -173,7 +175,9 @@ function AgentLine({ detail }: { detail: VideoDetail }) {
 }
 
 export default function Studio() {
-  const id = useSearchParams().get("id");
+  const params = useSearchParams();
+  const id = params.get("id");
+  const fromResearch = params.get("fromResearch");
   const [step, setStep] = useState<Step>("plan");
   const [workflowTooltip, setWorkflowTooltip] = useState<Step | null>(null);
   const [styles, setStyles] = useState<StyleDef[]>([]);
@@ -186,6 +190,24 @@ export default function Studio() {
   const [error, setError] = useState<string | null>(null);
   const [autoStep, setAutoStep] = useState(true);
   const { detail, logs, job, error: loadError, refresh } = useVideo(id);
+
+  // "Tạo video từ kịch bản này" ở trang Đóng gói kịch bản: điền sẵn kịch bản đã duyệt vào form, như thể
+  // người dùng vừa chọn tệp. Mã video, style, ngày vẫn do người dùng chọn.
+  useEffect(() => {
+    if (id || !fromResearch) return;
+    let alive = true;
+    api<{ name: string; content: string; title: string }>(`/api/research/${encodeURIComponent(fromResearch)}/script`)
+      .then(({ name, content, title }) => {
+        if (!alive) return;
+        setDraft((current) => ({
+          ...current,
+          script: { name, content },
+          request: { ...current.request, scriptName: name, title: current.request.title || title, day: inferDay(name, content) ?? current.request.day },
+        }));
+      })
+      .catch((e: unknown) => { if (alive) setError(`Không lấy được kịch bản từ Đóng gói kịch bản: ${e instanceof Error ? e.message : String(e)}`); });
+    return () => { alive = false; };
+  }, [id, fromResearch]);
   const { hasKey, setHasKey } = useKeyStatus();
   const editorPanel = useRef<HTMLElement>(null);
 
@@ -284,7 +306,7 @@ export default function Studio() {
     back: previous && { label: previous.title, onClick: () => goToStep(previous.id) },
     next: next && { label: next.title, onClick: () => goToStep(next.id), ready: complete(step, detail) },
   };
-  const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop, nav } : null;
+  const stepProps = detail ? { detail, logs, job, busy: busy || running || !detail.managed, act, stop, nav, refresh } : null;
   const current = STEPS.find((s) => s.id === step)!;
   const completed = STEPS.filter((item) => complete(item.id, detail) && !!detail).length;
   const pageProvider = detail?.state.agent.provider ?? draft.agentProvider;

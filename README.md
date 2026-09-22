@@ -2,7 +2,7 @@
 
 Bộ công cụ sản xuất **video bài giảng tiếng Việt** cho khoá *AI in Action 20K* (VinUni): từ kịch bản đến
 MP4 1920×1080 · 30 fps kèm transcript và file chương. Repo gồm một design system React/SVG, pipeline dựng và
-kiểm tra chất lượng, ba nguồn giọng đọc (ElevenLabs, audio tự thu, model chạy dưới máy), và **Video Studio** —
+kiểm tra chất lượng, bốn nguồn giọng đọc (ElevenLabs, audio tự thu, model chạy dưới máy hoặc trên GPU Kaggle), và **Video Studio** —
 giao diện web điều khiển toàn bộ quy trình bằng Claude Code, Codex hoặc Antigravity.
 
 `Node ≥ 20` · `Next.js 16` · `React 19` · `Apache-2.0`
@@ -112,9 +112,18 @@ npm run build && npm run verify   # kết thúc bằng "all checks passed" là c
 Cài thêm theo nhu cầu:
 
 ```bash
-npm run setup:voice      # nhập audio tự thu hoặc do model local tạo: voice/.venv + Whisper small (~460 MB)
-npm run setup:omnivoice  # tự sinh giọng offline bằng OmniVoice: voice/.venv-omnivoice (1–4 GB + ~3,3 GB model)
+npm run setup:voice      # nhập audio tự thu hoặc do model local tạo: faster-whisper + Whisper small (~860 MB)
+npm run setup:omnivoice  # tự sinh giọng offline bằng OmniVoice (1–4 GB + ~3,3 GB model)
+npm run setup:kaggle     # sinh giọng OmniVoice trên GPU của Kaggle: chỉ cài Kaggle CLI (vài chục MB)
 ```
+
+> **Một bản cho cả máy.** Hai môi trường trên không cài theo từng checkout: có sẵn ở đâu thì dùng lại —
+> `voice/.venv` / `voice/.venv-omnivoice` của checkout này, thư mục dùng chung (`~/.cache/video-studio/`,
+> macOS `~/Library/Caches/video-studio/`, Windows `%LOCALAPPDATA%\video-studio\`), hoặc một worktree khác
+> của repo; model Whisper lấy luôn từ cache Hugging Face nếu đã có. Chỉ khi không thấy ở đâu cả mới cài,
+> và cài vào thư mục dùng chung. `node tools/setup-voice-align.mjs --where` cho biết đang dùng bản nào;
+> `--local` cài vào checkout như trước; `VOICE_ALIGN_VENV`, `OMNIVOICE_VENV`, `VOICE_ALIGN_CACHE`,
+> `VIDEO_STUDIO_HOME` chỉ định thẳng chỗ khác.
 
 > **Dùng OmniVoice cần cả hai lệnh:** `setup:omnivoice` để *sinh* giọng, `setup:voice` để *nhập* giọng đó vào
 > video. Kiểm tra máy có chạy nổi không bằng `node tools/setup-omnivoice.mjs --check`.
@@ -170,7 +179,7 @@ duyệt hoặc gửi góp ý ở mỗi điểm dừng.
 |---|---|---|
 | **Kế hoạch** | Bạn | Chọn style, mã video, ngày, kịch bản (`.md`/`.txt`), năng lực chọn thêm (tick "Video có quiz" nếu có), feedback và video cũ nếu có. **Copy prompt** cho ra prompt tương đương để dán vào agent |
 | **Lời & cue** | Agent | Viết `cues.js` với lời nguyên văn, dừng cho bạn đọc và duyệt |
-| **Giọng đọc** | Server | ElevenLabs (có dry-run miễn phí trước), nhập audio có sẵn, hoặc OmniVoice local — xem [Giọng đọc](#giọng-đọc) |
+| **Giọng đọc** | Server | ElevenLabs (có dry-run miễn phí trước), nhập audio có sẵn, OmniVoice local hoặc OmniVoice trên Kaggle — xem [Giọng đọc](#giọng-đọc) |
 | **Dựng cảnh** | Agent | Dựng cảnh theo độ dài giọng thật và mốc từng từ, build, verify, chụp ảnh QA |
 | **Render MP4** | Server | Chọn có/không phụ đề, nhạc nền, nhạc quiz; render MP4 và transcript |
 | **Bàn giao** | Agent | Viết file chương và `PROMPTS.md` |
@@ -291,7 +300,7 @@ MP4 và WAV không có trên git — tạo lại giọng theo bước 2 nếu c�
 
 ## Giọng đọc
 
-Ba nguồn giọng đều cho ra cùng hai file `voice/out/<id>/voice.wav` và `voice.cues.json`, nên các bước sau
+Bốn nguồn giọng đều cho ra cùng hai file `voice/out/<id>/voice.wav` và `voice.cues.json`, nên các bước sau
 không phân biệt nguồn.
 
 | Nguồn | Chi phí | Cần cài | Phù hợp khi |
@@ -299,8 +308,9 @@ không phân biệt nguồn.
 | **ElevenLabs** | Tính theo ký tự | API key | Cần giọng ổn định nhất |
 | **Audio tự thu** | Miễn phí | `setup:voice` | Có người đọc thật |
 | **OmniVoice local** | Miễn phí | `setup:omnivoice` + `setup:voice` | Có GPU, muốn làm offline |
+| **OmniVoice trên Kaggle** | Miễn phí (quota GPU tuần của Kaggle) | `setup:kaggle` + `setup:voice` + tài khoản Kaggle | Máy không có GPU |
 
-Cả ba đều làm được video hội thoại nhiều nhân vật.
+Cả bốn đều làm được video hội thoại nhiều nhân vật.
 
 ### ElevenLabs
 
@@ -365,6 +375,36 @@ và bị chặn ngay từ `--cast`.
 
 Muốn cả nhóm dùng chung một giọng mới thì đẩy mẫu lên kho media (`media/files/voices/<tên>.wav`,
 `npm run media`) rồi thêm một mục vào `voices.json` — từ đó nó hiện trong bộ chọn giọng như mọi giọng khác.
+
+### OmniVoice trên Kaggle
+
+Cùng model, cùng dàn vai với OmniVoice local — chỉ khác chỗ chạy: một kernel private trên GPU T4 của Kaggle,
+nên máy của bạn không cần card đồ hoạ. Trong Studio là tab **Kaggle** ở bước Giọng đọc, đi năm bước:
+
+1. **Kaggle CLI** — Studio tự kiểm; chưa có thì bấm **Cài Kaggle CLI** (một bản cho cả máy, dùng lại nếu đã có — không
+   đụng Python hệ thống — Ubuntu/Debian mới chặn `pip install` thẳng vào đó).
+2. **Tài khoản** — tải lên `kaggle.json` hoặc gõ username + API key/token (kaggle.com → Settings → API). Chỉ
+   giữ trong RAM của server, như key ElevenLabs. Tài khoản phải đã xác minh số điện thoại thì kernel mới được
+   bật GPU và Internet.
+3. **Giọng** — chọn một trong các giọng có sẵn của `voices.json`, hoặc nhân bản từ một file trên máy; video
+   hội thoại thì mỗi nhân vật mặc định mượn giọng đã gán (xem đoạn trên). File mẫu được nhúng vào kernel,
+   tổng các mẫu từ file nên dưới ~25 giây; giọng trong danh mục thì kernel tự tải từ kho media.
+4. **Sinh** — Studio dựng kernel `vs-<mã video>-voice`, đẩy lên, theo dõi (trần 2 giờ), tải `out/` về
+   `projects/<id>/voice-script/kaggle/`. Câu ra ngắn bất thường được sinh lại tối đa hai lần.
+5. **Nhập** — Whisper soát từng câu như với audio tự thu; không câu nào lỗi thì giọng được gắn luôn.
+
+Chạy tay:
+
+```bash
+KAGGLE_USERNAME=<tên> node tools/voice-kaggle.mjs --cues $VIDEO/cues.js --voice "Nhật Phong" --out /tmp/kernel
+kaggle kernels push -p /tmp/kernel --accelerator NvidiaTeslaT4      # P100 lỗi "no kernel image" với torch mới
+kaggle kernels status <tên>/vs-<id>-voice
+kaggle kernels output <tên>/vs-<id>-voice -p projects/<id>/voice-script/kaggle
+node tools/voice-import.mjs --cues $VIDEO/cues.js --from projects/<id>/voice-script/kaggle/out
+```
+
+`--speaker "Tú=<giọng|file>"` dùng y như ở `omnivoice-generate.mjs`. Bấm Dừng trong Studio chỉ dừng việc theo
+dõi — kernel vẫn chạy trên Kaggle cho tới khi xong; huỷ ở trang kernel nếu không cần nữa.
 
 ### Danh mục giọng, nhân vật và kiểu đọc
 

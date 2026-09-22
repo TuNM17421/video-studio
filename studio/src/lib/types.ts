@@ -2,7 +2,9 @@ import type { MusicChoice } from "./music";
 
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup";
+import type { ImagesView } from "./images";
+
+export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
@@ -46,7 +48,7 @@ export interface VideoRequest {
 }
 
 /** Where a video's narration comes from: the ElevenLabs API, or audio recorded/generated elsewhere. */
-export type VoiceSource = "elevenlabs" | "import" | "local";
+export type VoiceSource = "elevenlabs" | "kaggle" | "import" | "local";
 
 /** Trạng thái môi trường OmniVoice trên máy này (tools/setup-omnivoice.mjs --check). */
 export interface OmnivoiceStatus {
@@ -59,12 +61,27 @@ export interface OmnivoiceStatus {
   /** Trọng số model phải tải về, GB. */
   modelGb: number;
   /**
-   * Bước nhập soát từng file bằng Whisper, và Whisper nằm ở `voice/.venv` — một môi trường khác hẳn
+   * Bước nhập soát từng file bằng Whisper, và Whisper nằm trong venv riêng (một bản cho cả máy) — khác hẳn
    * venv của OmniVoice. Thiếu nó thì sinh giọng xong vẫn không nhập được, nên panel phải biết trước.
    */
   align: boolean;
   /** Server `omnivoice-demo`: model nằm sẵn trong RAM nên sinh giọng nhanh hơn chạy batch. */
   server: { running: boolean; pid: number | null; port: number; url: string | null; log: string };
+}
+
+/** Đường OmniVoice trên Kaggle: máy này chỉ cần `kaggle` CLI (tools/setup-kaggle.mjs --check) và credentials. */
+export interface KaggleStatus {
+  installed: boolean;
+  bin: string | null;
+  version: string | null;
+  venv: string;
+  /** CLI lấy từ venv riêng của repo, hay có sẵn trên PATH. */
+  from: "venv" | "path" | null;
+  /** Credentials đang giữ trong RAM của server (không bao giờ trả key về). */
+  hasCreds: boolean;
+  username: string | null;
+  /** Whisper của bước nhập (`voice/.venv`) — cần để soát từng câu tải về. */
+  align: boolean;
 }
 
 export interface VoiceSettings {
@@ -341,6 +358,8 @@ export interface VideoDetail {
   findings: QaFindingItem[];
   /** Feedback that stops the Duyệt button right now (the same rule the approve API applies). */
   blocking: Record<"cues" | "scenes", number>;
+  /** Image suggestions (capability `images`); null when the video does not use it. */
+  images: ImagesView | null;
 }
 
 export interface VideoSummary {

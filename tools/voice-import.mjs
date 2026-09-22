@@ -31,7 +31,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, FPS, sha256 } from './lib/voice-audio.mjs';
 import { cueKey, isAudioFile, matchAudioFolder } from './lib/voice-files.mjs';
-import { mapWords, MODEL_CACHE, runAlign, SETUP_HINT, venvPython } from './lib/voice-align.mjs';
+import { mapWords, runAlign, SETUP_HINT, venvPython } from './lib/voice-align.mjs';
 import { castSpeaker } from './lib/voices.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

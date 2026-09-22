@@ -10,13 +10,13 @@
  *   trang HTML hay một SVG (có thể chứa script) khai là image/jpeg vẫn bị loại;
  * - ghi qua file tạm rồi rename, để một lần tải hỏng giữa chừng không để lại ảnh cụt.
  *
- * `isInternalHost` là bản sao có chủ đích của hàm cùng tên trong tools/lib/fetch-page.mjs (nhánh research,
- * chưa vào main); khi research vào main thì gộp về một chỗ — xem docs/plans/image-suggest.md, pha 1b.
+ * Phần chặn địa chỉ nội bộ nằm ở tools/lib/net-guard.mjs, dùng chung với tools/lib/fetch-page.mjs.
  */
-import dns from 'node:dns';
 import fs from 'node:fs';
-import net from 'node:net';
 import path from 'node:path';
+import { checkHost, isInternalHost, isPrivateAddress } from './net-guard.mjs';
+
+export { isInternalHost, isPrivateAddress };
 
 export const TIMEOUT_MS = 20000;
 /** Ảnh gốc để dựng video. Thumbnail để xem trước dùng trần nhỏ hơn (`THUMB_MAX_BYTES`). */
@@ -27,51 +27,15 @@ export const USER_AGENT = 'VinUni-VideoStudio/0.1 (https://github.com/TuNM17421/
 
 export const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
-/** Địa chỉ IP (v4 hoặc v6) thuộc máy này, mạng nội bộ, link-local hay dải không định tuyến. */
-export function isPrivateAddress(ip) {
-  let a = String(ip ?? '').toLowerCase().replace(/^\[|\]$/g, '');
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(a);
-  if (mapped) a = mapped[1];
-  if (net.isIPv4(a)) {
-    const [p, q] = a.split('.').map(Number);
-    return p === 0 || p === 10 || p === 127 || (p === 100 && q >= 64 && q <= 127) || (p === 169 && q === 254)
-      || (p === 172 && q >= 16 && q <= 31) || (p === 192 && q === 168) || p >= 224;
-  }
-  if (net.isIPv6(a)) {
-    return a === '::' || a === '::1' || /^(fc|fd)[0-9a-f]{2}:/.test(a) || /^fe[89ab][0-9a-f]:/.test(a) || /^ff/.test(a);
-  }
-  return false;
-}
-
-/** Tên miền hay IP viết thẳng trong URL là địa chỉ nội bộ (chưa phân giải DNS). URL hỏng tính là nội bộ. */
-export function isInternalHost(url) {
-  let host;
-  try { host = new URL(url).hostname.toLowerCase().replace(/^\[|\]$/g, ''); } catch { return true; }
-  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local')) return true;
-  if (net.isIP(host)) return isPrivateAddress(host);
-  // 2130706433, 0x7f000001, 127.1 — các cách viết IP mà trình phân giải vẫn hiểu là 127.0.0.1
-  if (/^[0-9.]+$/.test(host) || /^0x[0-9a-f.x]+$/.test(host)) return true;
-  return false;
-}
-
 /**
  * Kiểm một URL trước khi gọi: https, không nội bộ, và mọi IP tên miền phân giải ra đều công khai
  * (chặn tên miền công khai trỏ về 127.0.0.1). `lookup` thay được trong test.
  */
-export async function checkUrl(url, { lookup = dns.promises.lookup } = {}) {
-  let u;
-  try { u = new URL(url); } catch { return 'URL hỏng'; }
-  if (u.protocol !== 'https:') return 'chỉ tải ảnh qua https';
-  if (u.username || u.password) return 'URL có tên đăng nhập';
-  if (isInternalHost(url)) return 'địa chỉ nội bộ — không tải';
-  try {
-    const addrs = await lookup(u.hostname, { all: true, verbatim: true });
-    if (!addrs.length) return 'tên miền không phân giải được';
-    if (addrs.some((a) => isPrivateAddress(a.address))) return 'tên miền trỏ về địa chỉ nội bộ — không tải';
-  } catch (e) {
-    return `tên miền không phân giải được (${e?.code ?? e?.message ?? e})`;
-  }
-  return null;
+export async function checkUrl(url, { lookup } = {}) {
+  const bad = await checkHost(url, { protocols: ['https:'], ...(lookup ? { lookup } : {}) });
+  if (!bad) return null;
+  if (bad.kind === 'internal') return `${bad.message} — không tải`;
+  return /^chỉ nhận/.test(bad.message) ? 'chỉ tải ảnh qua https' : bad.message;
 }
 
 /** Loại ảnh nhận ra từ các byte đầu file, hoặc null. */

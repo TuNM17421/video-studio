@@ -3,6 +3,20 @@
 Đây là mẫu cho **một clip bài giảng bình thường**: một người dẫn, không hội thoại, không quiz. Mọi video đều
 bắt đầu từ mẫu này.
 
+Mẫu này là **chỗ bàn giao** giữa hai pipeline: đóng gói kịch bản sinh ra nó, dựng video nhận nó vào. Vì thế
+nó không phải một tờ hướng dẫn đọc cho vui — **có một lệnh soát nó bằng code**, và cả hai bên gọi đúng lệnh
+đó. Kịch bản viết tay hay mang từ nơi khác sang cũng chạy được lệnh này:
+
+```
+node tools/script-check.mjs <đường dẫn kịch bản .md>
+node tools/script-check.mjs research/<rid>/output/kich-ban.md --run research/<rid>   # soát thêm phần căn cứ
+```
+
+Không có `--run` thì soát **hình thức** (đủ mục, kiểu đọc có thật, lời đọc phát âm được, câu không quá dài).
+Có `--run` trỏ tới một lượt đóng gói kịch bản thì soát thêm **căn cứ**: mỗi câu dẫn nguồn nào, con số người
+xem *nghe thấy* có trong slide hay trong finding đã kiểm không, slide nào chưa có câu nào nói tới.
+Mã thoát 0 là đạt, 1 là còn lỗi phải sửa.
+
 Video cần thêm năng lực nào (nhiều người nói, câu hỏi có khoảng chờ…) thì **vẫn viết theo mẫu này**, rồi
 đọc thêm file của năng lực đó trong `templates/modules/`. Mỗi file module chỉ ghi **phần thêm hoặc phần
 đổi** so với mẫu cơ bản — không nhắc lại những gì đã có ở đây.
@@ -62,6 +76,30 @@ ROLE · TASK · CONTEXT · FORMAT. Viết thứ cần *thấy*, đừng viết t
 **Kiểu** — cách đọc, một trong năm kiểu ở bảng dưới. Bỏ trống thì hiểu là *giảng*.
 
 Có thể thêm dòng **Chuyển động** khi muốn gợi ý nhịp động; đó là gợi ý, người dựng không bắt buộc theo.
+
+### Bảng các mục — cái nào bắt buộc
+
+Đây là phần "hợp đồng": `tools/script-check.mjs` soát đúng bảng này, nên thêm một mục lạ thì không sao,
+thiếu một mục bắt buộc thì bị chặn.
+
+| Chỗ | Mục | Bắt buộc | Ghi chú |
+|---|---|---|---|
+| Đầu file | `# <tên video>` | ✅ | dòng đầu tiên |
+| Đầu file | **Mục tiêu:** | nên có | thiếu thì cảnh báo |
+| Đầu file | **Thời lượng dự kiến:** · **Giọng đọc:** | không | viết thời lượng bằng chữ |
+| Đầu file | **Nguồn kịch bản:** | không | Studio tự điền khi kịch bản đến từ một lượt đóng gói |
+| Phần | `## <số> · <tên phần>` | ✅ | tên phần thành tên chương |
+| Câu | `### Câu N` | ✅ | đánh số liên tục từ 1, không nhảy số |
+| Câu | **Lời:** | ✅ | một câu, không chữ số, không phiên âm tên riêng |
+| Câu | **Trên màn hình:** | nên có | bắt buộc khi lời đọc có con số |
+| Câu | **Kiểu:** | không | bỏ trống là *giảng* |
+| Câu | **Nguồn:** | tuỳ pipeline | ví dụ `slide:4, c3` — xem dưới |
+| Câu | **Chuyển động:** | không | gợi ý nhịp, người dựng không bắt buộc theo |
+
+**Nguồn** — câu này dựa vào đâu: `slide:<số>` là ý của giảng viên, `c<số>` là một claim đã qua soát bằng
+chứng trong lượt đóng gói kịch bản. Kịch bản do pipeline đóng gói sinh ra thì **mọi câu đều phải có dòng
+này**; kịch bản viết tay thì không cần. Bên dựng video **giữ nguyên dòng đó và không đọc thành tiếng** — nó
+là vết để sau này còn truy được con số trong video đến từ đâu.
 
 ---
 

@@ -46,22 +46,7 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   // Cài xong thì job kết thúc — hỏi lại để bước 1 tự chuyển sang "xong". Cũng chạy lượt đầu khi mở tab.
   useEffect(() => { if (!installing && !aligning) void refresh(); }, [installing, aligning, refresh]);
 
-  /**
-   * Dàn vai: ai đọc câu nào, bằng giọng nào, mẫu đã sẵn sàng chưa. Miễn phí và tức thì (chỉ đọc cues.js
-   * với voices.json), nên hỏi lại sau mỗi lần đổi giọng — đó là cách duy nhất biết được một đường dẫn
-   * vừa gõ có thật hay không trước khi GPU chạy hàng chục phút.
-   */
-  const [cast, setCast] = useState<LocalCast | null>(null);
-  const castKey = JSON.stringify([settings.voiceId, settings.speakers || {}]);
-  useEffect(() => {
-    let alive = true;
-    void api<LocalCast>(`/api/videos/${id}/voice`, { method: "POST", json: { action: "omnivoice-cast", settings } })
-      .then((c) => { if (alive) setCast(c); })
-      .catch(() => { if (alive) setCast(null); });
-    return () => { alive = false; };
-    // settings đi cùng castKey; chỉ hỏi lại khi giọng của một vai nào đó thật sự đổi.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, castKey]);
+  const { cast, castKey } = useLocalCast(id, settings);
   // Lúc người dùng đổi giọng gần nhất: một lượt sinh thất bại TRƯỚC đó nói về thiết lập cũ, không còn
   // đáng treo trên màn hình — dàn vai đã nói lý do hiện tại rồi. 0 = chưa đo (frame đầu), không hiện gì.
   const [settingsChangedAt, setSettingsChangedAt] = useState(0);
@@ -76,43 +61,14 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   const installed = status?.installed ?? false;
   const aligned = status?.align ?? false;
   const running = status?.server.running ?? false;
-  // Video hội thoại: giọng là chuyện của từng nhân vật, không còn "giọng của video" nào để chọn một lần.
-  const dialogue = cast?.dialogue ?? false;
-  // Người dẫn của video một giọng có thể nhân bản từ file trên máy — khai ở cùng chỗ với các vai khác.
-  const narratorRef = String(settings.speakers?.[""] ?? "").trim();
-  const narratorFile = isRefFile(narratorRef);
-  const narratorless = () => {
-    const speakers = { ...(settings.speakers || {}) };
-    delete speakers[""];
-    return speakers;
-  };
-  const setNarratorFile = (value: string) => {
-    const speakers = { ...(settings.speakers || {}) };
-    if (value.trim()) speakers[""] = value.trim();
-    else delete speakers[""];
-    setSettings({ ...settings, speakers });
-  };
   // Sinh được chưa: dàn vai nói thay cho ô "đã chọn giọng" — nó biết cả nhân vật lạ lẫn file mẫu không có thật.
   const voiceReady = cast ? cast.ok : Boolean(settings.voiceId);
   const generating = jobRunning("omnivoice-generate");
   const spoken = detail.cues?.cues.filter((c) => !c.silent && c.text.trim()).length ?? 0;
   // Thư mục nhập đang trỏ vào kết quả của chính model local: bước 3 đã chạy xong ít nhất một lần.
-  const outDir = detail.state.voice.importDir;
-  const generated = outDir.replace(/\\/g, "/").endsWith("/voice-script/omnivoice");
-  const scanning = jobRunning("import-scan");
-  const importing = jobRunning("voice");
-  // Báo cáo phải là của đúng thư mục này; đổi giọng rồi sinh lại thì báo cáo cũ không còn nói gì nữa.
-  const scan = detail.importReport;
-  const fresh = generated && reportMatchesDir(scan, outDir) ? scan : null;
-  // "Đã nhập" phải là đã nhập CHÍNH thư mục này — chỉ báo cáo của một lượt nhập thật mới có `out`.
-  // Dựa vào artifacts.voice là sai: video còn giọng ElevenLabs cũ cũng sẽ hiện dấu tick.
-  const imported = Boolean(fresh?.out);
-  const problems = fresh ? fresh.rows.filter((r) => r.level === "error").length : 0;
-  const warnings = fresh ? fresh.rows.filter((r) => r.level === "warn").length : 0;
-  const [force, setForce] = useState(false);
+  const result = generatedResult(detail, (dir) => dir.endsWith("/voice-script/omnivoice"));
+  const { generated, imported } = result;
 
-  const reveal = () => act(() => post("/api/reveal", { dir: outDir }));
-  const rescan = () => act(() => post(`/api/videos/${id}/voice`, { action: "scan-import", settings }));
   const device = status?.device;
   // Máy yếu: không GPU thì chậm tới mức không dùng nổi, còn VRAM sát thì câu dài dễ tràn.
   const weak = device?.tight ?? false;
@@ -171,30 +127,7 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
       <li className={`vs-local-step ${!installed ? "is-wait" : voiceReady ? "is-done" : "is-now"}`}>
         <span className="vs-local-num">{installed && voiceReady ? <CheckCircleFilled /> : 2}</span>
         <div className="vs-local-body">
-          <strong>{dialogue ? `Chọn giọng cho ${cast?.roles.length} nhân vật` : "Chọn giọng để nhân bản"}</strong>
-          {/* OmniVoice clone giọng từ một đoạn mẫu, và voices.json đã có sẵn mẫu của cả bốn người
-              dẫn trên kho media — dùng lại đúng bộ chọn của tab ElevenLabs để giọng không lệch nhau. */}
-          <small>
-            {dialogue
-              ? <>Mỗi câu mang giọng của người nói câu đó, sinh gọn trong một lượt. Mặc định là đúng giọng voices.json đã gán cho nhân vật, nên không phải chọn gì cả — bảng dưới chỉ để đổi khác đi.</>
-              : <>Mẫu của giọng được chọn sẽ là <code>ref_audio</code> cho OmniVoice, nên giọng local khớp với giọng ElevenLabs đang dùng.</>}
-          </small>
-          {dialogue && cast
-            ? <LocalCastPicker cast={cast} settings={settings} setSettings={setSettings} disabled={busy || !installed} />
-            : <>
-                <VoicePicker value={settings.voiceId} onChange={(voiceId) => setSettings({ ...settings, voiceId, speakers: narratorless() })} disabled={busy || !installed || narratorFile} />
-                {/* Giọng chưa có trong danh mục: chỉ trỏ tới file mẫu trên máy, không tải lên đâu cả. */}
-                <details className="vs-local-extra vs-cast-other" open={narratorFile}>
-                  <summary>Hoặc nhân bản từ một file giọng trên máy</summary>
-                  <RefFileField
-                    value={narratorFile ? narratorRef : ""}
-                    onChange={setNarratorFile}
-                    disabled={busy || !installed}
-                    note={narratorFile ? cast?.roles[0]?.note : null}
-                    error={narratorFile ? cast?.roles[0]?.error : null}
-                  />
-                </details>
-              </>}
+          <VoiceChoice cast={cast} settings={settings} setSettings={setSettings} disabled={busy || !installed} />
         </div>
       </li>
 
@@ -241,49 +174,7 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
             Thư mục wav chưa phải là giọng của video: mỗi câu còn phải soát đúng câu rồi ghép lại thành
             một bản thu liền. Làm ngay tại đây — thư mục vừa sinh đã tự kiểm sau khi sinh xong.
           </small>
-
-          {generated && <div className="vs-local-out">
-            <code title={outDir}>{outDir}</code>
-            {/* Nghe thử là việc của tai, không phải của giao diện này — mở thẳng thư mục cho nhanh. */}
-            <Button size="small" icon={<FolderOpenOutlined />} disabled={busy} onClick={reveal}>Mở thư mục</Button>
-            <Button size="small" icon={<SearchOutlined />} loading={scanning} disabled={busy || !aligned} onClick={rescan}>Kiểm tra lại</Button>
-          </div>}
-
-          {/* Whisper nằm ở voice/.venv, KHÁC venv của OmniVoice. Cài xong OmniVoice mà thiếu nó thì
-              sinh giọng vẫn chạy ngon rồi chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút. */}
-          {status && !aligned && <ProductionState
-            className="vs-local-warning"
-            status="review"
-            title="Còn thiếu môi trường nhận diện giọng"
-            detail="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, bản cài OmniVoice không bao gồm."
-            action={<Button size="small" type="primary" loading={aligning} disabled={busy || aligning} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "align-setup" }))}>Cài Whisper</Button>}
-          />}
-
-          {fresh && <p className={`vs-import-summary ${problems ? "is-error" : warnings ? "is-warn" : "is-ok"}`}>
-            <strong>{fresh.matched}/{fresh.needFile} câu có file</strong>
-            {problems > 0 && <span> · {problems} lỗi</span>}
-            {warnings > 0 && <span> · {warnings} cảnh báo</span>}
-            {problems === 0 && warnings === 0 && <span> · không có vấn đề</span>}
-            {fresh.align.used && <small>Đối chiếu nội dung bằng Whisper {fresh.align.model}</small>}
-          </p>}
-
-          {fresh && <details className="vs-flow-more" open={problems > 0}>
-            <summary>Xem từng câu ({fresh.rows.length})</summary>
-            <ImportMap report={fresh} />
-          </details>}
-
-          {fresh && problems > 0 && <Checkbox className="vs-force" checked={force} onChange={(e) => setForce(e.target.checked)}>
-            Vẫn nhập dù {problems} câu có vấn đề — tôi đã nghe lại và chấp nhận
-          </Checkbox>}
-
-          {generated && <Button
-            type="primary"
-            icon={<ImportOutlined />}
-            loading={importing}
-            disabled={busy || importing || !fresh || (problems > 0 && !force)}
-            onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "import", force }))}
-          >{fresh ? `${imported ? "Nhập lại giọng" : "Nhập giọng"} · ${fresh.matched} câu` : "Kiểm tra thư mục trước"}</Button>}
-
+          <GeneratedImport detail={detail} settings={settings} result={result} aligned={!status || aligned} aligning={aligning} busy={busy} act={act} />
         </div>
       </li>
     </ol>
@@ -324,4 +215,160 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
       onConfirm={() => { setConfirmSetup(false); void act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-setup" })); }}
     />}
   </div>;
+}
+
+/**
+ * Dàn vai: ai đọc câu nào, bằng giọng nào, mẫu đã sẵn sàng chưa. Miễn phí và tức thì (chỉ đọc cues.js
+ * với voices.json), nên hỏi lại sau mỗi lần đổi giọng — đó là cách duy nhất biết được một đường dẫn
+ * vừa gõ có thật hay không trước khi GPU chạy hàng chục phút. Model local và Kaggle dùng chung.
+ */
+export function useLocalCast(id: string, settings: VoiceSettings) {
+  const [cast, setCast] = useState<LocalCast | null>(null);
+  const castKey = JSON.stringify([settings.voiceId, settings.speakers || {}]);
+  useEffect(() => {
+    let alive = true;
+    void api<LocalCast>(`/api/videos/${id}/voice`, { method: "POST", json: { action: "omnivoice-cast", settings } })
+      .then((c) => { if (alive) setCast(c); })
+      .catch(() => { if (alive) setCast(null); });
+    return () => { alive = false; };
+    // settings đi cùng castKey; chỉ hỏi lại khi giọng của một vai nào đó thật sự đổi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, castKey]);
+  return { cast, castKey };
+}
+
+/**
+ * Chọn giọng để OmniVoice nhân bản: một trong các giọng có sẵn của danh mục (mặc định), hoặc một file
+ * mẫu trên máy. Video hội thoại thì chọn theo từng nhân vật — mặc định là giọng voices.json đã gán.
+ */
+export function VoiceChoice({ cast, settings, setSettings, disabled }: {
+  cast: LocalCast | null;
+  settings: VoiceSettings;
+  setSettings: (v: VoiceSettings) => void;
+  disabled: boolean;
+}) {
+  // Video hội thoại: giọng là chuyện của từng nhân vật, không còn "giọng của video" nào để chọn một lần.
+  const dialogue = cast?.dialogue ?? false;
+  // Người dẫn của video một giọng có thể nhân bản từ file trên máy — khai ở cùng chỗ với các vai khác.
+  const narratorRef = String(settings.speakers?.[""] ?? "").trim();
+  const narratorFile = isRefFile(narratorRef);
+  const narratorless = () => {
+    const speakers = { ...(settings.speakers || {}) };
+    delete speakers[""];
+    return speakers;
+  };
+  const setNarratorFile = (value: string) => {
+    const speakers = { ...(settings.speakers || {}) };
+    if (value.trim()) speakers[""] = value.trim();
+    else delete speakers[""];
+    setSettings({ ...settings, speakers });
+  };
+  return <>
+    <strong>{dialogue ? `Chọn giọng cho ${cast?.roles.length} nhân vật` : "Chọn giọng để nhân bản"}</strong>
+    {/* OmniVoice clone giọng từ một đoạn mẫu, và voices.json đã có sẵn mẫu của cả bốn người
+        dẫn trên kho media — dùng lại đúng bộ chọn của tab ElevenLabs để giọng không lệch nhau. */}
+    <small>
+      {dialogue
+        ? <>Mỗi câu mang giọng của người nói câu đó, sinh gọn trong một lượt. Mặc định là đúng giọng voices.json đã gán cho nhân vật, nên không phải chọn gì cả — bảng dưới chỉ để đổi khác đi.</>
+        : <>Mẫu của giọng được chọn sẽ là <code>ref_audio</code> cho OmniVoice, nên giọng nhân bản khớp với giọng ElevenLabs cùng tên.</>}
+    </small>
+    {dialogue && cast
+      ? <LocalCastPicker cast={cast} settings={settings} setSettings={setSettings} disabled={disabled} />
+      : <>
+          {/* Voice id riêng của ElevenLabs không có mẫu để nhân bản — OmniVoice chỉ nhận giọng trong danh mục hoặc file. */}
+          <VoicePicker value={settings.voiceId} onChange={(voiceId) => setSettings({ ...settings, voiceId, speakers: narratorless() })} disabled={disabled || narratorFile} custom={false} />
+          {/* Giọng chưa có trong danh mục: chỉ trỏ tới file mẫu trên máy, không tải lên đâu cả. */}
+          <details className="vs-local-extra vs-cast-other" open={narratorFile}>
+            <summary>Hoặc nhân bản từ một file giọng trên máy</summary>
+            <RefFileField
+              value={narratorFile ? narratorRef : ""}
+              onChange={setNarratorFile}
+              disabled={disabled}
+              note={narratorFile ? cast?.roles[0]?.note : null}
+              error={narratorFile ? cast?.roles[0]?.error : null}
+            />
+          </details>
+        </>}
+  </>;
+}
+
+type GeneratedResult = ReturnType<typeof generatedResult>;
+
+/** Ô nhập đang trỏ vào thư mục do chính nguồn này sinh ra, và báo cáo quét (nếu có) là của đúng thư mục ấy. */
+export function generatedResult(detail: VideoDetail, ours: (dir: string) => boolean) {
+  const outDir = detail.state.voice.importDir;
+  const generated = ours(outDir.replace(/\\/g, "/"));
+  // Báo cáo phải là của đúng thư mục này; đổi giọng rồi sinh lại thì báo cáo cũ không còn nói gì nữa.
+  const scan = detail.importReport;
+  const fresh = generated && reportMatchesDir(scan, outDir) ? scan : null;
+  // "Đã nhập" phải là đã nhập CHÍNH thư mục này — chỉ báo cáo của một lượt nhập thật mới có `out`.
+  // Dựa vào artifacts.voice là sai: video còn giọng ElevenLabs cũ cũng sẽ hiện dấu tick.
+  const imported = Boolean(fresh?.out);
+  const problems = fresh ? fresh.rows.filter((r) => r.level === "error").length : 0;
+  const warnings = fresh ? fresh.rows.filter((r) => r.level === "warn").length : 0;
+  return { outDir, generated, fresh, imported, problems, warnings };
+}
+
+/** Bước cuối của hai đường OmniVoice: thư mục wav vừa sinh → soát từng câu → nhập vào video. */
+export function GeneratedImport({ detail, settings, result, aligned, aligning, busy, act }: {
+  detail: VideoDetail;
+  settings: VoiceSettings;
+  result: GeneratedResult;
+  aligned: boolean;
+  aligning: boolean;
+  busy: boolean;
+  act: StepProps["act"];
+}) {
+  const id = detail.state.id;
+  const { outDir, generated, fresh, imported, problems, warnings } = result;
+  const [force, setForce] = useState(false);
+  const job = detail.job;
+  const scanning = job?.kind === "import-scan" && job.status === "running";
+  const importing = job?.kind === "voice" && job.status === "running";
+  const reveal = () => act(() => post("/api/reveal", { dir: outDir }));
+  const rescan = () => act(() => post(`/api/videos/${id}/voice`, { action: "scan-import", settings }));
+
+  return <>
+    {generated && <div className="vs-local-out">
+      <code title={outDir}>{outDir}</code>
+      {/* Nghe thử là việc của tai, không phải của giao diện này — mở thẳng thư mục cho nhanh. */}
+      <Button size="small" icon={<FolderOpenOutlined />} disabled={busy} onClick={reveal}>Mở thư mục</Button>
+      <Button size="small" icon={<SearchOutlined />} loading={scanning} disabled={busy || !aligned} onClick={rescan}>Kiểm tra lại</Button>
+    </div>}
+
+    {/* Whisper nằm trong venv riêng (một bản cho cả máy), KHÁC venv của OmniVoice. Thiếu nó thì sinh giọng vẫn chạy ngon rồi
+        chết ở bước nhập — hỏi ngay đây, đừng để gặp sau hàng chục phút GPU. */}
+    {!aligned && <ProductionState
+      className="vs-local-warning"
+      status="review"
+      title="Còn thiếu môi trường nhận diện giọng"
+      detail="Bước nhập dùng Whisper để soát từng file có đúng câu của nó không. Đây là môi trường riêng, cài một lần cho máy này."
+      action={<Button size="small" type="primary" loading={aligning} disabled={busy || aligning} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "align-setup" }))}>Cài Whisper</Button>}
+    />}
+
+    {fresh && <p className={`vs-import-summary ${problems ? "is-error" : warnings ? "is-warn" : "is-ok"}`}>
+      <strong>{fresh.matched}/{fresh.needFile} câu có file</strong>
+      {problems > 0 && <span> · {problems} lỗi</span>}
+      {warnings > 0 && <span> · {warnings} cảnh báo</span>}
+      {problems === 0 && warnings === 0 && <span> · không có vấn đề</span>}
+      {fresh.align.used && <small>Đối chiếu nội dung bằng Whisper {fresh.align.model}</small>}
+    </p>}
+
+    {fresh && <details className="vs-flow-more" open={problems > 0}>
+      <summary>Xem từng câu ({fresh.rows.length})</summary>
+      <ImportMap report={fresh} />
+    </details>}
+
+    {fresh && problems > 0 && <Checkbox className="vs-force" checked={force} onChange={(e) => setForce(e.target.checked)}>
+      Vẫn nhập dù {problems} câu có vấn đề — tôi đã nghe lại và chấp nhận
+    </Checkbox>}
+
+    {generated && <Button
+      type="primary"
+      icon={<ImportOutlined />}
+      loading={importing}
+      disabled={busy || importing || !fresh || (problems > 0 && !force)}
+      onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "import", force }))}
+    >{fresh ? `${imported ? "Nhập lại giọng" : "Nhập giọng"} · ${fresh.matched} câu` : "Kiểm tra thư mục trước"}</Button>}
+  </>;
 }

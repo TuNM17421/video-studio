@@ -66,6 +66,79 @@ export function codexExecArgs(sessionId: string | null, model?: string) {
   ];
 }
 
+// ── research ("Đóng gói kịch bản") ───────────────────────────────────────────────
+
+/**
+ * What one headless agent step may do (a research step, an image-suggest step…), said once and translated
+ * per CLI. Where a CLI cannot enforce a line
+ * (agy has no tool allowlist and no web switch), the step's instructions say it and the Studio's checks
+ * catch what slips through — every quote is re-checked against the original page, every file against
+ * its schema.
+ */
+export interface StepCall {
+  /** Built-in tools the agent sees at all (Claude `--tools`): fewer tool definitions, fewer tokens per turn. */
+  tools: string[];
+  /** Claude permission rules that run without asking (`dontAsk` denies everything else). */
+  allowed: string[];
+  web: boolean;
+  /** The one shell command family the step needs (e.g. `node tools/page.mjs`), or none. */
+  shell: boolean;
+  model: string | null;
+  effort: "low" | "medium" | "high";
+}
+
+const STEP_DENIED = [
+  "Read(**/.env)", "Read(**/.env.*)",
+  "NotebookEdit", "Task", "Agent", "DesignSync", "RemoteTrigger", "CronCreate", "SendMessage",
+];
+
+/**
+ * Claude for one agent step: no session to resume (each step starts clean and small), no MCP servers
+ * (their tool schemas are paid for on every turn), only the tools the step needs, and partial messages
+ * so the Studio can tell a long write from a stalled one.
+ */
+export function claudeStepArgs(call: StepCall) {
+  const denied = [...STEP_DENIED, ...(call.web ? [] : ["WebSearch", "WebFetch"]), ...(call.shell ? [] : ["Bash", "PowerShell"])];
+  return [
+    "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+    "--permission-mode", "dontAsk", "--no-session-persistence", "--strict-mcp-config",
+    // Đẩy phần đổi theo máy (thư mục, biến môi trường, git status) khỏi system prompt: khối ~21k token nạp sẵn
+    // ở đầu mỗi lượt thành phần đọc lại từ cache thay vì ghi lại vào cache từng lượt. Đo trên lượt thật: 7 lượt,
+    // 217k token cache-write — phần lớn là khối đó lặp lại.
+    "--exclude-dynamic-system-prompt-sections",
+    ...(call.model ? ["--model", call.model] : []),
+    "--effort", call.effort,
+    "--tools", call.tools.join(","),
+    "--allowedTools", ...call.allowed,
+    "--disallowedTools", ...denied,
+  ];
+}
+
+/**
+ * Codex for one agent step. Web search is off unless the step needs it; a step that runs
+ * `node tools/page.mjs` needs network inside the sandbox, which `workspace-write` blocks by default.
+ * These `-c` keys follow the Codex CLI reference and have not been run on a machine with Codex yet.
+ */
+export function codexStepArgs(call: StepCall) {
+  return [
+    "exec", "--json", "--sandbox", "workspace-write",
+    "-c", 'approval_policy="never"',
+    "-c", `model_reasoning_effort="${call.effort}"`,
+    "-c", `web_search="${call.web ? "live" : "disabled"}"`,
+    ...(call.shell ? ["-c", "sandbox_workspace_write.network_access=true"] : []),
+    ...(call.model ? ["-m", call.model] : []),
+    "-",
+  ];
+}
+
+/**
+ * Antigravity for one agent step: no allowlist or web switch exists. Effort is not passed — agy rejects
+ * `--effort` for models that have no matching effort variant, and the model is the user's choice.
+ */
+export function antigravityStepArgs(call: StepCall) {
+  return [...antigravityExecArgs(null), ...(call.model ? ["--model", call.model] : [])];
+}
+
 /**
  * Visual QA is a separate, read-only session with a clean context — the provider is secondary. Each
  * adapter keeps the same guarantees in its own CLI's terms: no tool that writes or runs commands, and the

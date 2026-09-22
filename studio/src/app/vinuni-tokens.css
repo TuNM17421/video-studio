@@ -175,6 +175,7 @@
   --vu-page-agent-min-height: 84px;
   --vu-page-agent-control-width: 224px;
   --vu-capability-card-min-width: 280px;
+  --vu-capability-grid-columns: 2;
   --vu-capability-card-min-height: 148px;
   --vu-capability-card-padding: var(--vu-space-4);
   --vu-preview-panel-width: 296px;
@@ -182,6 +183,17 @@
   --vu-step-bar-shadow: 0 -8px 20px -14px rgba(11, 42, 77, 0.3);
   --vu-finding-still-width: 280px;
   --vu-finding-still-compact-width: 128px;
+  --vu-image-candidate-width: 176px;
+  --vu-image-card-min-width: 340px;
+  --vu-research-sources-width: 400px;
+  --vu-research-header-height: 56px;
+  --vu-research-strip-height: 112px;
+  --vu-research-node-min: 136px;
+  --vu-research-node-max: 200px;
+  --vu-research-node-height: 72px;
+  --vu-research-gate: 44px;
+  --vu-research-drawer-width: 560px;
+  --vu-research-sheet-height: 70vh;
   --vu-mascot-cell: 84px;
   --vu-tour-panel: 440px;
   --vu-tour-mascot: 104px;
@@ -464,6 +476,7 @@
   --vu-shadow-sm: 0 3px 8px -2px rgba(0, 0, 0, 0.45);
   --vu-shadow-md: 0 10px 24px -8px rgba(0, 0, 0, 0.5);
   --vu-shadow-lg: 0 18px 40px -12px rgba(0, 0, 0, 0.55);
+  --vu-step-bar-shadow: 0 -8px 20px -14px rgba(0, 0, 0, 0.6);
   --vu-shadow-focus: 0 0 0 4px rgba(95, 163, 220, 0.35);
   --vu-overlay-scrim: rgba(0, 0, 0, 0.7);
 
