@@ -4,8 +4,9 @@
  *
  *   node tools/research-slide.mjs <slide.pptx|slide.pdf> [--title "Bài 2 · LLM"] [--agent claude] [--cues 20] [--json]
  *
- * Tạo `research/<rid>/` với `input/slide.<ext>`, `input/slide.md` (PPTX: chữ + ghi chú từng slide) và
- * `state.json`, rồi in `rid`. Studio gọi đúng lệnh này khi người dùng tải slide lên; agent chạy
+ * Tạo `research/<rid>/` với `input/slide.<ext>`, `input/slide.md` + `input/slides.json` (chữ từng slide: PPTX bóc
+ * thẳng, PDF qua PDF.js), `outline.json` (dàn ý code dựng từ chữ đó) và `state.json`, rồi in `rid`. PDF không bóc
+ * được chữ (quét ảnh, mã hoá, Node dưới 22) thì chỉ có file gốc — agent đọc thẳng PDF và tự viết dàn ý như trước. Studio gọi đúng lệnh này khi người dùng tải slide lên; agent chạy
  * `/research-script` không qua Studio cũng vậy — nên hai đường tạo ra cùng một thư mục.
  *
  * File hỏng thì báo lỗi và không để lại thư mục nào.
@@ -13,8 +14,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pdfPages } from './lib/pdf-text.mjs';
 import { writeJson } from './lib/research-store.mjs';
-import { MAX_SLIDE_BYTES, pdfPageCount, pptxSlides, slidesMarkdown } from './lib/slides.mjs';
+import { isThin, MAX_SLIDE_BYTES, outlineFromSlides, pdfPageCount, pdfSlides, pptxSlides, slidesMarkdown, stripRepeated } from './lib/slides.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'research');
 const AGENTS = ['claude', 'codex', 'antigravity'];
@@ -55,10 +57,15 @@ let parsed = null;
 let pages = null;
 try {
   if (ext === 'pptx') parsed = pptxSlides(bytes);
-  else pages = pdfPageCount(bytes);
+  else {
+    pages = pdfPageCount(bytes);
+    const texts = await pdfPages(bytes);
+    if (texts) parsed = pdfSlides(texts);
+  }
 } catch (error) {
   die(error.message);
 }
+if (parsed) parsed = stripRepeated(parsed);
 
 const name = flag('--name') || path.basename(file);
 const title = (flag('--title') || name.replace(/\.(pdf|pptx)$/i, '')).trim().slice(0, 300);
@@ -72,7 +79,11 @@ for (let i = 2; fs.existsSync(path.join(ROOT, rid)); i++) rid = `${base}-${i}`;
 const dir = path.join(ROOT, rid);
 fs.mkdirSync(path.join(dir, 'input'), { recursive: true });
 fs.writeFileSync(path.join(dir, 'input', `slide.${ext}`), bytes);
-if (parsed) fs.writeFileSync(path.join(dir, 'input', 'slide.md'), slidesMarkdown(title, parsed));
+if (parsed) {
+  fs.writeFileSync(path.join(dir, 'input', 'slide.md'), slidesMarkdown(title, parsed, ext === 'pdf' ? 'PDF' : 'PPTX'));
+  writeJson(path.join(dir, 'input', 'slides.json'), { source: ext, slides: parsed });
+  writeJson(path.join(dir, 'outline.json'), outlineFromSlides(title, parsed));
+}
 
 const state = {
   version: 1,
@@ -86,9 +97,12 @@ const state = {
     format: ext,
     file: `input/slide.${ext}`,
     text: parsed ? 'input/slide.md' : null,
+    // Dàn ý do code dựng — agent bóc tách chỉ ghi claims.json.
+    ...(parsed ? { outline: 'code' } : {}),
     slides: parsed ? parsed.length : pages,
     bytes: bytes.length,
     emptySlides: parsed ? parsed.filter((s) => !s.paragraphs.length).map((s) => s.slide) : [],
+    ...(parsed && ext === 'pdf' ? { thinSlides: parsed.filter(isThin).map((s) => s.slide) } : {}),
   },
   stage: 'extract',
   status: 'idle',

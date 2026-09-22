@@ -82,13 +82,23 @@ function stripNonText(html) {
   return out;
 }
 
+/**
+ * Một thẻ bắt đầu bằng `<` rồi chữ cái, `/`, `!` hay `?` — đúng luật trình duyệt đọc HTML. "<= 200k" hay "< 5%" là
+ * chữ: bảng giá của Google viết thẳng "prompts <= 200k tokens … prompts > 200k", và coi mọi `<…>` là thẻ thì cả
+ * đoạn giữa hai dấu bị xoá — mất đúng bậc giá mà claim đang hỏi.
+ */
+const TAG = /<[a-zA-Z/!?][^<>]*>/g;
+
 /** HTML → chữ thường, bỏ script, style, chú thích; giữ ranh giới đoạn bằng xuống dòng. */
 export function pageText(html) {
   return decodeEntities(
     stripNonText(String(html))
+      // Xuống dòng trong mã nguồn HTML chỉ là khoảng trắng — trình duyệt gộp lại; chỉ thẻ khối mới xuống dòng thật.
+      // Giữ nó thì bảng viết mỗi <td> một dòng mã thành mỗi ô một dòng chữ, và không dòng nào đủ dài để trích.
+      .replace(/\s+/g, ' ')
       .replace(CELL, ' | ')
       .replace(BLOCK, '\n')
-      .replace(/<[^<>]*>/g, ''),
+      .replace(TAG, ''),
   )
     // Gộp mọi khoảng trắng trừ xuống dòng trước (kể cả \r, dấu cách Unicode), rồi mới dọn quanh xuống dòng:
     // `\s*\n\s*` chạy thẳng trên một dải \r dài là bậc hai.

@@ -46,3 +46,22 @@ test('gỡ in nghiêng markdown nhưng giữ gạch dưới trong tên hàm', ()
   assert.equal(stripMarkdown('a granularity called a _token_. Returns tokens in _the input only_.'), 'a granularity called a token. Returns tokens in the input only.');
   assert.equal(stripMarkdown('Call count_tokens with *care*'), 'Call count_tokens with care');
 });
+
+test('bảng giá: "<=" và ">" trong chữ không bị xoá như thẻ, mỗi hàng bảng một dòng', () => {
+  // Đúng dạng trang giá Gemini của Google: dấu so sánh viết thẳng, mỗi ô một dòng mã nguồn, <br> trong ô.
+  const html = `<table class="pricing-table">
+  <tbody>
+    <tr>
+      <td>Input price</td>
+      <td>Not available</td>
+      <td>$2.00, prompts <= 200k tokens<br>$4.00, prompts > 200k tokens</td>
+    </tr>
+  </tbody>
+</table>`;
+  const text = pageText(html);
+  assert.ok(text.includes('Input price | Not available | $2.00, prompts <= 200k tokens'), text);
+  assert.ok(text.includes('$4.00, prompts > 200k tokens'), text);
+  assert.ok(quoteInText('$2.00, prompts <= 200k tokens', text));
+  // Thẻ thật vẫn bị bỏ, kể cả thẻ không nằm trong danh sách khối.
+  assert.equal(pageText('<p>a <span class="x">b</span> <!-- c --> d</p>'), 'a b d');
+});

@@ -106,7 +106,7 @@ export function lookupFact(runDir, claim, { now = Date.now(), excludeRun = null 
  * Lưu một claim đã qua soát. Trích đoạn giữ kèm URL (không kèm sid — sid chỉ có nghĩa trong một lượt), để
  * lượt sau dùng lại vẫn biết nguồn ở đâu.
  */
-export function saveFact(runDir, { claim, finding, sources, runId, checkedAt = new Date().toISOString() }) {
+export function saveFact(runDir, { claim, finding, sources, runId, warnings = [], checkedAt = new Date().toISOString() }) {
   const file = claimFile(claim);
   if (!file || !['ok', 'fix', 'wrong'].includes(finding.verdict)) return null;
   const urlOf = (ref) => sources[ref]?.url ?? ref;
@@ -123,6 +123,9 @@ export function saveFact(runDir, { claim, finding, sources, runId, checkedAt = n
     run: runId,
     sources: (Array.isArray(finding.sources) ? finding.sources : []).map(({ id, ...s }) => ({ ...s, url: s.url ?? urlOf(id) })),
     evidence: (Array.isArray(finding.evidence) ? finding.evidence : []).map((e) => ({ url: urlOf(e.source), quote: e.quote, stance: e.stance })),
+    // Cảnh báo lúc soát gốc (nguồn toàn báo, nhãn "official" tự khai, không ghi ngày…) đi theo dữ kiện: bài sau dùng
+    // lại thì người duyệt vẫn thấy đúng những điều đó, không chỉ một dòng "đã soát ngày …".
+    warnings: (Array.isArray(warnings) ? warnings : []).filter((w) => typeof w === 'string' && w.trim()),
   };
   fs.mkdirSync(factsDir(runDir), { recursive: true });
   writeJson(path.join(factsDir(runDir), file), fact);
@@ -146,6 +149,9 @@ export function factForReuse(runDir, claim, finding) {
   if (!file) return null;
   const fact = readJson(path.join(factsDir(runDir), file), null);
   if (!fact || !factMatchesClaim(fact, claim)) return null;
+  // Dữ kiện do chính lượt này lưu không phải "đã kiểm ở bài trước": sau "Research lại", agent chép lại đúng kết quả
+  // người duyệt vừa nghi ngờ thì claim qua mà không trích đoạn nào được soát.
+  if (fact.run && fact.run === path.basename(path.resolve(runDir))) return null;
   if (fact.checkedAt !== finding.reused.checkedAt) return null;
   if (fact.verdict !== finding.verdict) return null;
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -157,6 +163,22 @@ export function factForReuse(runDir, claim, finding) {
 }
 
 const arrOf = (v) => (Array.isArray(v) ? v : []);
+
+/**
+ * Gỡ khỏi thư viện dữ kiện mà **chính lượt này** đã lưu cho một claim — khi người duyệt bấm "Research lại": họ không
+ * tin kết quả đó nữa, thì bài sau cũng không được dùng lại nó. Dữ kiện của lượt khác thì để nguyên.
+ */
+export function forgetFacts(runDir, claim) {
+  const run = path.basename(path.resolve(runDir));
+  const removed = [];
+  for (const file of new Set([claimFile(claim), factFile(claim?.key)].filter(Boolean))) {
+    const p = path.join(factsDir(runDir), file);
+    if (readJson(p, null)?.run !== run) continue;
+    fs.rmSync(p, { force: true });
+    removed.push(`_facts/${file}`);
+  }
+  return removed;
+}
 
 /** Dữ kiện đã lưu → finding.json của một claim trong lượt mới, đánh dấu là dùng lại. */
 export function findingFromFact(claim, fact) {

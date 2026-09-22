@@ -109,24 +109,48 @@ cho phán đoán. `.claude/skills/research-script/SKILL.md` là nguồn chuẩn;
 - Soát là một lệnh cho cả Studio và agent tự chạy: `node tools/research-verify.mjs research/<rid> --stage
   extract|evidence|script` (ghi `checks/*.json`). Trích đoạn so với trang gốc Studio tự tải (WebFetch của Claude
   trả bản một model nhỏ đã đọc lại); nguồn độc lập và độ mới tính theo `difficulty`/`timeSensitive` của claim.
-  Bốn chỗ **không được tin vào chữ agent viết ra**, mỗi chỗ đã tái hiện được trước khi vá: (1) cờ `reused`
+  Năm chỗ **không được tin vào chữ agent viết ra**, mỗi chỗ đã tái hiện được trước khi vá: (1) cờ `reused`
   nằm trong `claims/**` nên phải khớp đúng dữ kiện thật trong `_facts/` (khoá, câu slide, ngày soát, từng
   trích đoạn) mới miễn soát; (2) verdict `insufficient` **qua** được soát bằng chứng nhưng phải dừng ở cổng 2,
   không thì một lượt agent mất mạng mở cổng với dòng "mọi claim đạt"; (3) nhãn `kind: official` là chữ agent
   gõ — tên miền không tự nhận ra được thì thành cảnh báo cho người duyệt, và cổng 2 dừng khi claim `high`
   hoặc `timeSensitive` có cảnh báo; (4) `sources/<sid>/page.txt` có vân tay sha256 do code ghi ở
   `research/_pages/<rid>.json` (ngoài mọi glob `WRITABLE`) — lệch thì tải lại trang thật, nên "khớp trang gốc"
-  đúng cả với Codex/Antigravity, hai CLI ghi được khắp repo.
+  đúng cả với Codex/Antigravity, hai CLI ghi được khắp repo; (5) mỗi dòng của `checks/evidence.json` giữ vân tay
+  `finding.json` lúc soát — mỗi lượt chỉ soát claim của lô nó, nên finding của claim **ngoài lô** mà đổi (agent lô sau
+  ghi đè con số của claim đã đạt) thì bị soát lại ngay, kèm cảnh báo, thay vì giữ dấu "đạt" cũ.
 - Con số **người xem nghe thấy** cũng được soát: `spokenNumbers()` đọc lời đọc tiếng Việt về giá trị ("một
   trăm triệu" → 100000000) rồi đối chiếu với slide và finding đã qua soát. Trước đó không phép soát nào nhìn
   vào lời đọc — luật lint bắt viết số thành chữ, còn vòng quét chữ số chỉ đọc dòng **Trên màn hình**.
+  Số thập phân ("hai phẩy năm", "một phẩy năm triệu") là một con số và được soát cả khi dưới mười.
+- **Độ dài theo "Số câu"** người dùng đặt: ~24 từ mỗi câu (`WORDS_PER_CUE` trong `script-lint.mjs` =
+  `SCRIPT_BUDGET` trong `research.ts`, có test giữ khớp). Prompt viết báo trước mức đó; `--stage script` so cả số
+  câu lẫn số từ (quá 1,2 lần → cảnh báo, quá 1,5 lần → lỗi, lượt sửa rút gọn) và ghi lại dòng **Thời lượng dự
+  kiến:** theo lời đọc thật. Lượt thật đầu tiên: đặt 20 câu, ra 34 câu, khoảng 6 phút thay vì khoảng 3.
+- Lượt sửa không được "mua" hết cảnh báo: viết tắt có trong slide/finding (LLM, API) không bị cảnh báo; loại
+  `code: 'pronounce'` (tên có chữ số) là việc của bước làm video, không gửi agent sửa; câu dài thì cắt ý, không
+  tách câu. Góp ý biên tập mang `quote` để Studio gắn đúng câu sau khi lượt sửa đánh số lại.
+- **Chi phí** (lượt test 22/9: $8,06 giá API quy đổi, research 60%, và gần nửa tiền research là làm lại): agent
+  research **tự soát trước khi dừng** bằng `research-verify … --stage evidence --dry --claims …` (chỉ đọc, không tải
+  web; `--dry` ghép với chế độ ghi nào cũng bị từ chối, vì lệnh nằm trong allowlist); lượt làm lại nhận lỗi + bảng
+  nguồn + trang đã tải ngay trong prompt và đi từng cặp claim (`RETRY_BATCH`); bóc tách chọn tối đa `claimCap(cues)`
+  claim (nửa số câu); trang giá/docs chính thức của đúng hãng không ghi ngày tính là hiện hành (`asOf` = ngày tải);
+  vòng đầu sửa lỗi định dạng chạy Haiku (`lint` trong `CLAUDE_MODEL`), vòng hai lên Sonnet.
+- **Bóc tách đọc chữ, không đọc PDF:** nạp slide PDF thì `unpdf` (PDF.js, MIT, cần Node 22+) bóc chữ từng trang vào
+  `input/slides.json` + `slide.md`, bỏ chân trang lặp lại (`stripRepeated`). `outline.json` do **code** dựng
+  (`outlineFromSlides`, PPTX cũng vậy) và dựng lại mỗi lần `--stage extract` — agent bóc tách chỉ ghi `claims.json`
+  (kèm `skip` tuỳ chọn), chỉ mở trang PDF "ít chữ" khi cần xem hình. Đo trên bộ 78 trang: $0,69 / 8 phút → $0,26 /
+  48 giây, và số trang đúng tuyệt đối. PDF quét ảnh, mã hoá hay Node cũ thì agent đọc thẳng PDF như trước. PDF
+  nguồn khi research cũng qua PDF.js (`pdfTextAsync`) sau `pdftotext`.
 - Nguồn gốc hay là PDF (system card, báo cáo, bài nghiên cứu): `tools/lib/pdf-text.mjs` đọc được bằng Node
   thuần (giải nén stream, mở `/ObjStm`, đọc bảng `/ToUnicode`), dùng `pdftotext` nếu máy có. Không ra chữ thì
   trả "không đọc được" chứ không trả rác. Trước đó mọi PDF bị loại, nên phép soát **thưởng cho nguồn kém**.
-- Claim qua soát được lưu vào `research/_facts/` (theo `key`, hạn 90 ngày nếu hay đổi, 365 ngày nếu ổn định);
-  `--reuse` điền lại cho bài sau — gặp lại dữ kiện đã kiểm thì không tìm web lần nữa.
+- Claim qua soát được lưu vào `research/_facts/` (theo `key`, hạn 90 ngày nếu hay đổi, 365 ngày nếu ổn định)
+  **chỉ khi cổng 2 đã qua** (`--save-facts`), kèm cảnh báo lúc soát — lưu sớm hơn thì claim người duyệt bỏ vẫn tự qua ở
+  bài sau. `--reuse` điền lại cho bài sau; lượt không bao giờ dùng lại dữ kiện của chính nó, và "Research lại" gỡ dữ
+  kiện lượt đó đã lưu (`--forget-facts`). Dòng "dùng lại dữ kiện…" là `notes`, không phải cảnh báo làm cổng 2 dừng.
 - Agent đọc slide và trang web của người khác, nên Claude chỉ được ghi **đúng file của chặng đó** (`WRITABLE` trong
-  `runner.ts`: bóc tách → outline/claims.json, research → `claims/**`, viết/sửa → `output/**`, biên tập →
+  `runner.ts`: bóc tách → outline/claims.json, research → `claims/<id>/**` của đúng các claim trong lô, viết/sửa → `output/**`, biên tập →
   `checks/edit.json`). `sources/<sid>/page.txt`, `checks/evidence.json` và `state.json` chỉ đọc — agent ghi được vào
   `page.txt` thì nó "chứng minh" trích đoạn bằng chính chữ nó viết. Đo thật: ghi vào `tools/` bị chặn, `node
   tools/page.mjs … > tools/x` cũng bị chặn dù lệnh nằm trong allowlist, và chặng research bị chặn khi ghi vào
@@ -140,6 +164,12 @@ cho phán đoán. `.claude/skills/research-script/SKILL.md` là nguồn chuẩn;
   `sandbox_workspace_write.network_access`) theo tài liệu, **chưa chạy thử trên máy có Codex**.
 - Code: `studio/src/lib/server/research/` (store, runner, agent, prompts), `components/research/`, API
   `/api/research/*`; luồng sự kiện của ba CLI đọc chung ở `lib/server/agent-stream.ts` (pipeline video dùng lại).
+- **Giao diện `/research`**: hàng đầu trang 56 px, dải sơ đồ bảy ô bằng HTML (`research-strip.tsx`, không React Flow —
+  N điều cần kiểm thành N ô nhỏ trong ô Tra nguồn), vùng làm việc của ô đang chọn (`node-views.tsx`) với **một** thanh
+  "Việc của bạn" dính đáy (`decision-bar.tsx`, luôn đúng một nút chính), ngăn **Chi tiết** cho nhật ký, chi phí, file và
+  làm lại một bước. Trạng thái và câu chữ là hàm thuần ở `lib/research-ui.ts` (có test); cổng 1/2 đang chờ thì panel
+  luôn được dựng để lựa chọn chưa gửi không mất. Soát giao diện: `node studio/scripts/research-ui-check.mjs` (Studio
+  đang chạy; chỉ GET, dựng tám trạng thái từ một lượt thật, ba bề ngang, sáng/tối).
 
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không

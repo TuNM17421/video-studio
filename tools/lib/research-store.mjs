@@ -4,6 +4,7 @@
  *
  *   research/<rid>/
  *     input/slide.md             chữ và ghi chú từng slide
+ *     input/slides.json          như trên, dạng cấu trúc — nguồn của outline.json khi code dựng dàn ý
  *     outline.json claims.json   chặng bóc tách
  *     claims/<cid>/finding.json  chặng research
  *     sources/index.json         url → sid, và thông tin từng trang
@@ -34,9 +35,14 @@ const RENAME_RETRY_MS = 1500;
  * vẫn hỏng thì dọn file tạm rồi báo lỗi.
  */
 export function writeJson(file, data) {
+  writeText(file, `${JSON.stringify(data, null, 1)}\n`);
+}
+
+/** Như `writeJson` cho chữ thường (kịch bản): ghi file tạm rồi đổi tên, có thử lại trên Windows. */
+export function writeText(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(data, null, 1)}\n`);
+  fs.writeFileSync(tmp, text);
   const deadline = Date.now() + RENAME_RETRY_MS;
   const nap = new Int32Array(new SharedArrayBuffer(4));
   for (;;) {
@@ -55,6 +61,7 @@ export function writeJson(file, data) {
 
 export const paths = (dir) => ({
   slide: path.join(dir, 'input', 'slide.md'),
+  slides: path.join(dir, 'input', 'slides.json'),
   outline: path.join(dir, 'outline.json'),
   claims: path.join(dir, 'claims.json'),
   claimDir: (cid) => path.join(dir, 'claims', cid),
@@ -212,6 +219,16 @@ export function readClaims(dir) {
 
 export function readFinding(dir, cid) {
   return CLAIM_ID_RE.test(String(cid)) ? readJson(paths(dir).finding(cid), null) : null;
+}
+
+/**
+ * Vân tay của finding.json đúng lúc soát. Mỗi lượt research chỉ soát claim của lô nó, còn claim khác giữ kết quả
+ * lần trước — nên phải biết finding của chúng có bị ghi lại sau đó không: agent của lô sau ghi được vào `claims/**`
+ * (Codex/Antigravity thì ghi được khắp repo), và một finding bị sửa mà vẫn mang dấu "đạt" là số bịa lọt qua.
+ */
+export function findingHash(dir, cid) {
+  if (!CLAIM_ID_RE.test(String(cid))) return null;
+  try { return digest(fs.readFileSync(paths(dir).finding(cid))); } catch { return null; }
 }
 
 /** Ngày gốc của lượt — các phép soát theo thời gian tính từ đây, để chạy lại lúc nào cũng ra cùng kết quả. */

@@ -9,7 +9,7 @@
 import { execFile } from 'node:child_process';
 import { checkHost, isInternalHost } from './net-guard.mjs';
 import { asciiLower, decodeEntities, pageText } from './page-text.mjs';
-import { pdfText } from './pdf-text.mjs';
+import { pdfTextAsync } from './pdf-text.mjs';
 
 export const TIMEOUT_MS = 20000;
 export const MAX_BYTES = 8 * 1024 * 1024;
@@ -259,7 +259,7 @@ async function fetchOnce(base, fetchImpl, lookup) {
     if (isPdf) {
       // Nguồn gốc hay là PDF (system card, báo cáo, bài nghiên cứu). Đọc được thì finding dùng thẳng nó, thay
       // vì phải quay sang một trang thuật lại — xem `tools/lib/pdf-text.mjs`.
-      const pdf = pdfText(buf);
+      const pdf = await pdfTextAsync(buf);
       if (!pdf) return { ...info, ok: false, error: 'PDF không có chữ đọc được (bản quét ảnh hoặc mã hoá glyph)' };
       return { ...info, title: null, publisher: null, published: null, modified: null, text: pdf, chars: pdf.length, ok: true };
     }

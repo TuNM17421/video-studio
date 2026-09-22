@@ -60,8 +60,9 @@ function report() {
   const P = paths(run);
   const evidence = readJson(P.checks('evidence'), null)?.claims ?? {};
   const outline = readJson(P.outline, null)?.outline ?? [];
-  const claims = Object.fromEntries(readClaims(run).map((c) => [c.id, { ok: Boolean(evidence[c.id]?.ok), verdict: evidence[c.id]?.verdict ?? null }]));
-  const out = checkScript({ markdown, deliveries: readVoices().deliveries, outline, claims, knownText: knownNumbers(run) });
+  const claims = Object.fromEntries(readClaims(run).map((c) => [c.id, { ok: Boolean(evidence[c.id]?.ok), verdict: evidence[c.id]?.verdict ?? null, slides: Array.isArray(c.slides) ? c.slides : [] }]));
+  const cues = Number(readJson(P.state, null)?.options?.cues);
+  const out = checkScript({ markdown, deliveries: readVoices().deliveries, outline, claims, knownText: knownNumbers(run), target: Number.isInteger(cues) ? cues : null });
   return { ...out, scope: 'hình thức + căn cứ' };
 }
 

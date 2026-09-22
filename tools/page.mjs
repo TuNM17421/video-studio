@@ -81,5 +81,5 @@ if (!passages.length) {
   console.log('--find không phân biệt hoa thường và không cần đúng dấu câu. Thử từ khoá khác (tiếng Anh nếu trang tiếng Anh), hoặc bỏ --find để xem đầu trang.');
   process.exit(0);
 }
-console.log(`--- ${passages.length} đoạn khớp: ${terms.join(' | ')} (chép trích đoạn nguyên văn từ đây, bỏ dấu … ở hai đầu) ---`);
+console.log(`--- ${passages.length} đoạn khớp: ${terms.join(' | ')} (chép trích đoạn nguyên văn từ đây, bỏ dấu … ở hai đầu; mỗi trích đoạn ít nhất 25 ký tự — cả câu hoặc cả dòng bảng) ---`);
 for (const p of passages) console.log(`¶${p.line}: ${p.text}`);

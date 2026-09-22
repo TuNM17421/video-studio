@@ -1,15 +1,17 @@
 /** npm run test:tools — pipeline research: tải trang, tìm đoạn, soát bằng chứng, soát kịch bản, thư viện dữ kiện. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { fetchPage, isInternalHost, isoDay, isTransient, pageMeta, urlKey } from './fetch-page.mjs';
 import { findPassages, quoteInText } from './page-text.mjs';
-import { checkExtract, checkFinding, checkScript, publisherCount } from './research-check.mjs';
+import { checkExtract, checkFinding, checkScript, claimCap, publisherCount } from './research-check.mjs';
 import { factForReuse, factSlug, findingFromFact, isFresh, lookupFact, saveFact } from './research-facts.mjs';
 import { readIndex, saveSource, sourceIdFor } from './research-store.mjs';
-import { lintScript, parseRefs, parseScript } from './script-lint.mjs';
+import { durationPhrase, lintScript, parseRefs, parseScript, spokenNumbers, syncDuration } from './script-lint.mjs';
 
 const DELIVERIES = { ke: { label: 'kể' }, giang: { label: 'giảng' }, nhe: { label: 'thân mật' }, hoi: { label: 'hỏi' }, nhan: { label: 'chốt' } };
 const DAY = 24 * 3600 * 1000;
@@ -137,6 +139,20 @@ test('nhiều page.mjs chạy cùng lúc không cấp trùng sid, không làm m�
 // ── soát bóc tách ─────────────────────────────────────────────────────────────────
 
 const CLAIM = { id: 'c1', slides: [2], text: 'GPT-4 có cửa sổ ngữ cảnh 128K token', question: 'Cửa sổ ngữ cảnh của GPT-4?', kind: 'number', difficulty: 'normal', timeSensitive: true, priority: 'high', key: 'gpt-4 context window' };
+
+test('checkExtract: slide là số trang — không trùng, không hổng, tới đúng trang cuối', () => {
+  const claims = { claims: [{ ...CLAIM, slides: [2] }] };
+  const outline = (numbers, pages) => ({ ...(pages ? { pages } : {}), outline: numbers.map((slide) => ({ slide, heading: `Trang ${slide}` })) });
+  assert.equal(checkExtract({ outline: outline([1, 2, 3], 3), claims, slideCount: null }).ok, true);
+  // Lượt thật: hai mục cùng số 47, và số tự đếm bỏ qua vài trang.
+  const twice = checkExtract({ outline: outline([1, 2, 2, 3]), claims, slideCount: null });
+  assert.ok(twice.problems.some((p) => /slide 2 có hơn một mục/.test(p)), JSON.stringify(twice.problems));
+  const gaps = checkExtract({ outline: outline([1, 2, 5, 6, 7, 9]), claims, slideCount: null });
+  assert.ok(gaps.problems.some((p) => /thiếu mục cho slide 3–4, 8/.test(p)), JSON.stringify(gaps.problems));
+  // Tổng số trang: Studio đếm được thì theo Studio, không thì theo `pages` agent ghi (PDF mã hoá).
+  assert.ok(checkExtract({ outline: outline([1, 2, 3], 5), claims, slideCount: null }).problems.some((p) => /file có 5 trang/.test(p)));
+  assert.ok(checkExtract({ outline: outline([1, 2, 3], 3), claims, slideCount: 4 }).problems.some((p) => /file có 4 trang/.test(p)));
+});
 
 test('checkExtract bắt id trùng, loại lạ, số slide không có thật', () => {
   const outline = { outline: [{ slide: 1, heading: 'Mở đầu', skip: true }, { slide: 2, heading: 'Token', points: ['a'] }] };
@@ -357,7 +373,8 @@ test('dữ kiện tra ra theo câu hỏi (khoá đặt lại khác) vẫn qua đ
   // Tra nhận khoá *hoặc* câu hỏi; soát lại từng đòi khoá — nên lượt sau đặt khoá khác đi thì chính dữ kiện vừa
   // dùng lại bị coi là cờ giả và claim đi research lại từ đầu.
   const dir = tmpRun();
-  saveFact(dir, { claim: CLAIM, finding: finding(), sources: { s1: { url: SOURCES.s1.url } }, runId: 'bai-1', checkedAt: new Date(NOW).toISOString() });
+  // Dữ kiện do một bài trước lưu (bai-0) — lượt không bao giờ dùng lại dữ kiện của chính nó.
+  saveFact(dir, { claim: CLAIM, finding: finding(), sources: { s1: { url: SOURCES.s1.url } }, runId: 'bai-0', checkedAt: new Date(NOW).toISOString() });
   const rekeyed = { ...CLAIM, id: 'c4', key: 'gpt4 max context length' };
   const hit = lookupFact(dir, rekeyed, { now: NOW + DAY });
   assert.ok(hit);
@@ -384,4 +401,290 @@ test('checkScript không ghép chữ số của nguồn: 3.5 không thành 35, 1
   assert.ok(!flagged(same, /con số/), JSON.stringify(same.issues));
   const thousands = run(script('Cửa sổ chứa được một trăm hai mươi tám nghìn token.', 'GPT-4 Turbo · 128.000 token'), 'slide 2: 128K token, 128,000');
   assert.ok(!flagged(thousands, /con số|lời đọc nói/), JSON.stringify(thousands.issues));
+});
+
+test('checkScript: nhóm của số có dấu nghìn không thành con số riêng (500 từ 1,500,000; 48 từ 2,048)', () => {
+  const outline = [{ slide: 1 }, { slide: 2 }];
+  const script = (loi, screen) => SCRIPT.replace(/- \*\*Lời:\*\* Nó đọc[^\n]*/, `- **Lời:** ${loi}`).replace('GPT-4 Turbo · 128,000 token', screen);
+  const run = (md, knownText) => checkScript({ markdown: md, deliveries: DELIVERIES, outline, claims: { c1: { ok: true, verdict: 'fix' } }, knownText });
+  const flagged = (r, re) => r.issues.some((i) => re.test(i.message));
+  // Tái hiện lỗi sau 761a3ee: mỗi nhóm của "1,500,000" được tính là một con số có trong nguồn.
+  assert.ok(flagged(run(script('Sản phẩm có năm trăm nghìn người dùng ngay tháng đầu.', 'Người dùng tháng đầu'), 'slide 2: 1,500,000 users'), /năm trăm nghìn/));
+  assert.ok(flagged(run(script('Mô hình mới giảm bốn mươi tám phần trăm lỗi.', 'Lỗi giảm'), 'slide 2: 2,048 tokens'), /bốn mươi tám/));
+  assert.ok(flagged(run(script('Giá tăng tới hai trăm phần trăm chỉ sau một năm.', 'Giá tăng'), 'slide 2: $1,200 price'), /hai trăm/));
+  // Cả khối vẫn là con số có thật, đọc hay ghi kiểu nào cũng qua.
+  const ok = run(script('Sản phẩm có một triệu năm trăm nghìn người dùng ngay tháng đầu.', 'Người dùng: 1.500.000'), 'slide 2: 1,500,000 users');
+  assert.ok(!flagged(ok, /con số|lời đọc nói/), JSON.stringify(ok.issues));
+  // Số phiên bản không có dấu nghìn: nhóm lẻ vẫn đọc riêng được ("bốn chấm sáu").
+  const version = run(script('Claude Opus bốn chấm sáu là bản mạnh nhất của đợt này.', 'Claude Opus 4.6'), 'slide 2: Claude Opus 4.6');
+  assert.ok(!flagged(version, /con số|lời đọc nói/), JSON.stringify(version.issues));
+});
+
+// ── soát bằng chứng chạy thật (research-verify.mjs) trên một lượt giả ─────────────────
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const TWO_CLAIMS = [
+  { id: 'c1', slides: [1], text: 'ChatGPT có 100 triệu người dùng sau hai tháng', question: 'ChatGPT đạt bao nhiêu người dùng sau hai tháng?', kind: 'number', difficulty: 'easy', timeSensitive: false, priority: 'normal', key: 'chatgpt users two months' },
+  { id: 'c2', slides: [2], text: 'Transformer ra đời năm 2017', question: 'Transformer ra đời năm nào?', kind: 'date', difficulty: 'easy', timeSensitive: false, priority: 'normal', key: 'transformer year' },
+];
+const PAGE_TEXT = 'Reuters report. ChatGPT reached 100 million monthly active users in January, two months after launch, according to a UBS study.\n'
+  + 'The Transformer architecture was introduced in the 2017 paper Attention Is All You Need by Vaswani and colleagues.';
+
+/** Một lượt research giả dưới thư mục tạm: slide, dàn ý, hai claim, một trang nguồn đã tải (có vân tay). */
+function fakeRun(name = 'bai-1', root = fs.mkdtempSync(path.join(os.tmpdir(), 'research-cli-'))) {
+  const dir = path.join(root, name);
+  fs.mkdirSync(path.join(dir, 'input'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ version: 1, id: name, createdAt: '2026-09-20T00:00:00Z', deck: { slides: 2 } }));
+  fs.writeFileSync(path.join(dir, 'outline.json'), JSON.stringify({ outline: [{ slide: 1, heading: 'ChatGPT', points: ['100 triệu người dùng'] }, { slide: 2, heading: 'Transformer', points: ['2017'] }] }));
+  fs.writeFileSync(path.join(dir, 'claims.json'), JSON.stringify({ claims: TWO_CLAIMS }));
+  const sid = saveSource(dir, 'https://en.wikipedia.org/wiki/ChatGPT', { ok: true, text: PAGE_TEXT, publisher: 'Wikipedia', published: '2026-01-01' });
+  return { dir, root, sid };
+}
+const writeFinding = (dir, cid, f) => {
+  fs.mkdirSync(path.join(dir, 'claims', cid), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'claims', cid, 'finding.json'), JSON.stringify(f));
+};
+const honest = (sid, cid, answer, quote) => ({ claim: cid, verdict: 'ok', answer, sources: [{ id: sid, kind: 'reference' }], evidence: [{ source: sid, quote, stance: 'supports' }] });
+const verifyCli = (dir, ...args) => {
+  let out;
+  try { out = execFileSync(process.execPath, [path.join(ROOT, 'tools/research-verify.mjs'), dir, ...args, '--json'], { cwd: ROOT, encoding: 'utf8' }); } catch (e) { out = e.stdout; }
+  return JSON.parse(out.trim().split('\n').at(-1));
+};
+const factFiles = (root) => { try { return fs.readdirSync(path.join(root, '_facts')); } catch { return []; } };
+
+test('lô sau ghi lại finding của claim đã soát xong thì lần soát của lô đó soát lại claim kia', () => {
+  const { dir, sid } = fakeRun();
+  writeFinding(dir, 'c1', honest(sid, 'c1', 'ChatGPT đạt 100 triệu người dùng sau hai tháng.', 'ChatGPT reached 100 million monthly active users in January'));
+  assert.equal(verifyCli(dir, '--stage', 'evidence', '--claims', 'c1', '--no-fetch').claims.c1.ok, true);
+  // Lô 2 chỉ được giao c2, nhưng agent ghi đè cả c1 với con số khác và trích đoạn bịa.
+  writeFinding(dir, 'c2', honest(sid, 'c2', 'Transformer ra đời năm 2017.', 'The Transformer architecture was introduced in the 2017 paper'));
+  writeFinding(dir, 'c1', { ...honest(sid, 'c1', 'ChatGPT đạt 500 triệu người dùng sau hai tháng.', 'x'), evidence: [{ source: sid, quote: 'totally fabricated quote that appears on no page at all', stance: 'supports' }] });
+  const ev = verifyCli(dir, '--stage', 'evidence', '--claims', 'c2', '--no-fetch');
+  assert.equal(ev.claims.c2.ok, true, JSON.stringify(ev.claims.c2));
+  assert.equal(ev.claims.c1.ok, false, 'c1 bị ghi đè phải trượt soát, không giữ dấu "đạt" cũ');
+  assert.ok(ev.claims.c1.warnings.some((w) => /ngoài lượt research/.test(w)), JSON.stringify(ev.claims.c1.warnings));
+  // Không ai ghi lại c1 nữa thì lần soát sau không soát lại nó — dòng của c1 (kèm cảnh báo, vẫn đúng tới khi c1 được
+  // research lại) giữ nguyên.
+  const again = verifyCli(dir, '--stage', 'evidence', '--claims', 'c2', '--no-fetch');
+  assert.deepEqual(again.claims.c1, ev.claims.c1);
+});
+
+test('dữ kiện chỉ vào thư viện khi cổng 2 đã qua (--save-facts), kèm cảnh báo lúc soát', () => {
+  const { dir, root, sid } = fakeRun();
+  writeFinding(dir, 'c1', honest(sid, 'c1', 'ChatGPT đạt 100 triệu người dùng sau hai tháng.', 'ChatGPT reached 100 million monthly active users in January'));
+  verifyCli(dir, '--stage', 'evidence', '--claims', 'c1', '--no-fetch');
+  assert.deepEqual(factFiles(root), [], 'soát xong chưa được lưu — người duyệt còn có thể bỏ claim ở cổng 2');
+  const saved = verifyCli(dir, '--save-facts');
+  assert.equal(saved.saved.length, 1);
+  const fact = JSON.parse(fs.readFileSync(path.join(root, saved.saved[0].file), 'utf8'));
+  assert.equal(fact.run, 'bai-1');
+  assert.ok(Array.isArray(fact.warnings));
+  // Claim bị bỏ ở cổng 2 (không còn trong claims.json) không vào thư viện.
+  fs.writeFileSync(path.join(dir, 'claims.json'), JSON.stringify({ claims: [TWO_CLAIMS[1]] }));
+  fs.rmSync(path.join(root, '_facts'), { recursive: true, force: true });
+  assert.deepEqual(verifyCli(dir, '--save-facts').saved, []);
+});
+
+test('lượt không dùng lại dữ kiện chính nó lưu; "Research lại" gỡ dữ kiện đó khỏi thư viện', () => {
+  const { dir, root, sid } = fakeRun();
+  writeFinding(dir, 'c1', honest(sid, 'c1', 'ChatGPT đạt 100 triệu người dùng sau hai tháng.', 'ChatGPT reached 100 million monthly active users in January'));
+  verifyCli(dir, '--stage', 'evidence', '--claims', 'c1', '--no-fetch');
+  const [{ file }] = verifyCli(dir, '--save-facts').saved;
+  const fact = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
+  // Agent chép lại đúng dữ kiện của lượt mình sau "Research lại": cờ dùng lại không được nhận.
+  const own = findingFromFact(TWO_CLAIMS[0], { ...fact, file });
+  assert.equal(factForReuse(dir, TWO_CLAIMS[0], own), null);
+  const forgot = verifyCli(dir, '--forget-facts', '--claims', 'c1');
+  assert.deepEqual(forgot.removed, [file]);
+  assert.deepEqual(factFiles(root), []);
+});
+
+test('dùng lại ở bài sau: cảnh báo gốc hiện lại, dòng "dùng lại" là ghi chú không làm cổng 2 dừng', () => {
+  const first = fakeRun('bai-1');
+  writeFinding(first.dir, 'c1', honest(first.sid, 'c1', 'ChatGPT đạt 100 triệu người dùng sau hai tháng.', 'ChatGPT reached 100 million monthly active users in January'));
+  verifyCli(first.dir, '--stage', 'evidence', '--claims', 'c1', '--no-fetch');
+  // Cảnh báo lúc soát gốc được lưu cùng dữ kiện — giả một cảnh báo để thấy nó đi theo.
+  const evFile = path.join(first.dir, 'checks', 'evidence.json');
+  const ev = JSON.parse(fs.readFileSync(evFile, 'utf8'));
+  ev.claims.c1.warnings = ['nguồn duy nhất là blog — người duyệt nên xem'];
+  fs.writeFileSync(evFile, JSON.stringify(ev));
+  verifyCli(first.dir, '--save-facts');
+  // Bài sau (cùng thư mục research/) gặp lại đúng claim đó.
+  const second = fakeRun('bai-2', first.root);
+  assert.deepEqual(verifyCli(second.dir, '--reuse').reused.map((r) => r.claim), ['c1']);
+  const row = verifyCli(second.dir, '--stage', 'evidence', '--claims', 'c1', '--no-fetch').claims.c1;
+  assert.equal(row.ok, true);
+  assert.deepEqual(row.warnings, ['nguồn duy nhất là blog — người duyệt nên xem']);
+  assert.ok(row.notes.some((n) => /dùng lại dữ kiện/.test(n)));
+});
+
+// ── kịch bản: độ dài, số thập phân, thuật ngữ, bảng số ─────────────────────────────
+
+test('lời đọc: số thập phân đọc "phẩy"/"chấm" là một con số, nhân được cả bậc', () => {
+  const values = (s) => spokenNumbers(s).map((n) => n.value);
+  // Bản cũ đọc "hai phẩy năm" thành 2 rồi bỏ "năm" như chữ chỉ năm — con số nghe thấy không ai soát.
+  assert.deepEqual(values('giá hai phẩy năm đô la'), [2.5]);
+  assert.deepEqual(values('một phẩy năm triệu người dùng'), [1500000]);
+  assert.deepEqual(values('một phẩy một triệu người dùng'), [1100000], 'không lệch vì phép nhân số thực');
+  assert.deepEqual(values('năm phẩy hai phần trăm'), [5.2]);
+  assert.equal(spokenNumbers('năm phẩy hai phần trăm')[0].percent, true);
+  assert.deepEqual(values('không phẩy bảy mươi lăm'), [0.75]);
+  assert.deepEqual(values('Claude Opus bốn chấm sáu'), [4.6]);
+  assert.deepEqual(values('năm hai nghìn không trăm hai mươi hai'), [2022], '"năm" chỉ năm vẫn là mốc thời gian');
+});
+
+test('checkScript soát cả số thập phân nghe thấy; "1,5 triệu" của nguồn khớp "một phẩy năm triệu"', () => {
+  const outline = [{ slide: 1 }, { slide: 2 }];
+  const script = (loi, screen) => SCRIPT.replace(/- \*\*Lời:\*\* Nó đọc[^\n]*/, `- **Lời:** ${loi}`).replace('GPT-4 Turbo · 128,000 token', screen);
+  const run = (md, knownText) => checkScript({ markdown: md, deliveries: DELIVERIES, outline, claims: { c1: { ok: true, verdict: 'fix' } }, knownText });
+  const flagged = (r, re) => r.issues.some((i) => re.test(i.message));
+  // Nguồn nói 2.5 đô la; lời đọc "ba phẩy năm" là con số bịa — bản cũ bỏ qua mọi số nghe thấy dưới mười.
+  assert.ok(flagged(run(script('Mỗi triệu token đầu vào có giá ba phẩy năm đô la.', 'Giá mỗi triệu token'), 'slide 2: giá $2.5 mỗi triệu token'), /ba phẩy năm/));
+  const ok = run(script('Sản phẩm có một phẩy năm triệu người dùng ngay tháng đầu.', 'Người dùng: 1,5 triệu'), 'slide 2: 1,5 triệu người dùng');
+  assert.ok(!flagged(ok, /lời đọc nói|con số/), JSON.stringify(ok.issues));
+});
+
+test('lời đọc có "tỷ" mà câu thiếu dòng Trên màn hình thì bị bắt — biên chữ theo Unicode, không theo \\b', () => {
+  const s = parseScript('# T\n- **Mục tiêu:** x\n## A\n### Câu 1\n- **Kiểu:** kể\n- **Lời:** Mô hình này đã có một tỷ người dùng khắp thế giới.\n');
+  const { issues } = lintScript(s, { deliveries: DELIVERIES });
+  assert.ok(issues.some((i) => i.level === 'problem' && /không có dòng \*\*Trên màn hình/.test(i.message)), JSON.stringify(issues));
+});
+
+test('viết tắt có trên slide là thuật ngữ của bài; tên có chữ số là việc của bước làm video', () => {
+  const md = '# T\n- **Mục tiêu:** x\n## A\n### Câu 1\n- **Kiểu:** kể\n- **Lời:** Một LLM như GPT-4 được gọi qua API để trả lời câu hỏi của bạn.\n- **Trên màn hình:** LLM · API\n- **Nguồn:** slide:1\n';
+  const outline = [{ slide: 1 }];
+  const known = 'slide 1: LLMs và API, GPT-4';
+  const r = checkScript({ markdown: md, deliveries: DELIVERIES, outline, claims: {}, knownText: known });
+  // Bản cũ cảnh báo cả LLM, GPT, API — lượt sửa thật đã xoá "LLM" và "API" khỏi cả bài giảng về LLM để hết cảnh báo.
+  assert.ok(!r.issues.some((i) => /viết tắt/.test(i.message)), JSON.stringify(r.issues));
+  assert.equal(r.issues.find((i) => /tên có chữ số/.test(i.message))?.code, 'pronounce');
+  const other = checkScript({ markdown: md.replace('qua API', 'qua SDK'), deliveries: DELIVERIES, outline, claims: {}, knownText: known });
+  assert.ok(other.issues.some((i) => /viết tắt trong lời đọc: SDK/.test(i.message)), JSON.stringify(other.issues));
+});
+
+test('lời đọc cả dãy số (bảng giá) thì cảnh báo — bảng để trên màn hình', () => {
+  const s = parseScript('# T\n- **Mục tiêu:** x\n## A\n### Câu 1\n- **Kiểu:** giảng\n- **Lời:** Bản lớn giá năm mươi đô la, bản vừa mười lăm đô la, bản nhỏ hai phẩy năm đô la, còn cửa sổ là hai trăm nghìn token.\n- **Trên màn hình:** bảng giá\n');
+  const { issues } = lintScript(s, { deliveries: DELIVERIES });
+  assert.ok(issues.some((i) => i.level === 'warning' && /4 con số/.test(i.message)), JSON.stringify(issues));
+});
+
+test('checkScript: dài quá số câu đã đặt — tính cả số câu lẫn số từ', () => {
+  const cue = (n, words) => `### Câu ${n}\n- **Kiểu:** ${n % 2 ? 'kể' : 'giảng'}\n- **Lời:** ${Array.from({ length: words }, () => 'chữ').join(' ')}.\n- **Trên màn hình:** x\n- **Nguồn:** slide:1\n`;
+  const md = (count, words) => `# T\n- **Mục tiêu:** x\n## A\n${Array.from({ length: count }, (_, i) => cue(i + 1, words)).join('\n')}`;
+  const run = (count, words, target) => checkScript({ markdown: md(count, words), deliveries: DELIVERIES, outline: [{ slide: 1 }], claims: {}, knownText: '', target });
+  const length = (r) => r.issues.find((i) => i.code === 'length');
+  assert.equal(length(run(10, 20, 10)), undefined);
+  assert.equal(length(run(13, 20, 10)).level, 'warning');
+  assert.equal(length(run(16, 20, 10)).level, 'problem');
+  // Đúng mười câu nhưng mỗi câu bốn mươi từ: 400 từ so với 240 — cũng dài gấp rưỡi.
+  assert.equal(length(run(10, 40, 10)).level, 'problem');
+  assert.match(length(run(16, 20, 10)).message, /đừng tách câu/);
+  // Kịch bản viết tay (không có mức đặt) thì không soát độ dài.
+  assert.equal(length(run(16, 20, null)), undefined);
+  assert.deepEqual(run(16, 20, 10).length, { target: 10, words: 240, maxCues: 12, ratio: 1.6 });
+});
+
+test('checkScript: slide nhiều hơn số câu thì chỉ nhắc slide mang ý đã research, và bảo gộp chứ không thêm câu', () => {
+  const outline = Array.from({ length: 30 }, (_, i) => ({ slide: i + 1 }));
+  const claims = { c1: { ok: true, verdict: 'ok', slides: [2] }, c2: { ok: true, verdict: 'ok', slides: [17] }, c3: { ok: true, verdict: 'insufficient', slides: [20] } };
+  const r = checkScript({ markdown: SCRIPT, deliveries: DELIVERIES, outline, claims, knownText: '128,000', target: 5 });
+  // Bản cũ liệt kê 28 slide thiếu — lượt sửa theo đó nhồi thêm câu cho từng slide.
+  const coverage = r.issues.filter((i) => i.cue === null && /^slide /.test(i.message));
+  assert.equal(coverage.length, 1, JSON.stringify(coverage));
+  assert.match(coverage[0].message, /^slide 17 có ý đã research/);
+  assert.match(coverage[0].message, /gộp/);
+  const small = checkScript({ markdown: SCRIPT, deliveries: DELIVERIES, outline: outline.slice(0, 6), claims, knownText: '128,000', target: 10 });
+  assert.ok(small.issues.some((i) => /^slide 3–6 không có câu nào/.test(i.message)), JSON.stringify(small.issues));
+});
+
+test('thời lượng ở phần đầu ghi theo lời đọc thật, không theo con số người viết đoán', () => {
+  assert.equal(durationPhrase(375), 'khoảng sáu phút rưỡi');
+  assert.equal(durationPhrase(165), 'khoảng ba phút');
+  assert.equal(durationPhrase(1260), 'khoảng hai mươi mốt phút');
+  assert.equal(durationPhrase(20), 'dưới một phút');
+  const md = '# T\r\n\r\n- **Mục tiêu:** x\r\n- **Thời lượng dự kiến:** khoảng bốn phút rưỡi.\r\n\r\n## 1 · A\r\n';
+  assert.equal(syncDuration(md, 375), md.replace('bốn phút rưỡi', 'sáu phút rưỡi'));
+  assert.equal(syncDuration(syncDuration(md, 375), 375), null, 'đã đúng thì không ghi lại');
+  // Không có dòng đó ở phần đầu thì không thêm dòng — số dòng của các lỗi khác phải giữ nguyên.
+  assert.equal(syncDuration('# T\n\n## 1 · A\n- **Thời lượng dự kiến:** x\n', 375), null);
+});
+
+test('soát kịch bản (research-verify) lấy mức đặt từ state.json và ghi lại dòng thời lượng', () => {
+  const { dir } = fakeRun();
+  const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
+  fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ ...state, options: { cues: 1 } }));
+  const cue = (n) => `### Câu ${n}\n- **Kiểu:** ${['kể', 'giảng', 'chốt'][n - 1]}\n- **Lời:** Câu thứ ${['nhất', 'hai', 'ba'][n - 1]} nói về mô hình ngôn ngữ và cách nó đoán chữ tiếp theo.\n- **Trên màn hình:** x\n- **Nguồn:** slide:${n === 3 ? 2 : 1}\n`;
+  const file = path.join(dir, 'output', 'kich-ban.md');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `# Bài 1\n\n- **Mục tiêu:** x\n- **Thời lượng dự kiến:** khoảng mười phút.\n\n## 1 · A\n\n${[1, 2, 3].map(cue).join('\n')}`);
+  const report = verifyCli(dir, '--stage', 'script');
+  assert.equal(report.length.target, 1);
+  assert.ok(report.issues.some((i) => i.code === 'length' && i.level === 'problem'), JSON.stringify(report.issues));
+  assert.match(fs.readFileSync(file, 'utf8'), /- \*\*Thời lượng dự kiến:\*\* dưới một phút\.\n/);
+});
+
+// ── chi phí: tự soát, độ mới của tài liệu chính thức, số claim ──────────────────────
+
+test('trang giá/docs chính thức của đúng hãng không ghi ngày là bản hiện hành — không phạt, lấy ngày tải làm mốc', () => {
+  const claim = { ...CLAIM, text: 'OpenAI GPT-4 Turbo có cửa sổ ngữ cảnh 128K token' };
+  const live = { ...SOURCES.s1, published: null, fetchedAt: '2026-09-18T10:00:00Z' };
+  const both = finding({ evidence: [{ source: 's1', quote: QUOTE, stance: 'supports' }, { source: 's3', quote: QUOTE, stance: 'supports' }] });
+  // Bản cũ lấy ngày của bài báo cũ (2024) làm "nguồn mới nhất" và đánh trượt — thêm nguồn lại bị phạt.
+  const r = checkFinding({ claim, finding: both, resolveSource: (ref) => ({ s1: live, s3: SOURCES.s3 })[ref] ?? null, referenceDate: NOW });
+  assert.equal(r.ok, true, JSON.stringify(r.problems));
+  assert.deepEqual(r.warnings, []);
+  assert.equal(r.asOf, '2026-09-18');
+  // Trang không ghi ngày của nơi khác vẫn chỉ là cảnh báo — nhãn "official" agent tự khai không đủ.
+  const thirdParty = { ...SOURCES.s3, published: null, fetchedAt: '2026-09-18T10:00:00Z' };
+  const r2 = checkFinding({
+    claim, finding: finding({ sources: [{ id: 's3', kind: 'official' }], evidence: [{ source: 's3', quote: QUOTE, stance: 'supports' }] }),
+    resolveSource: (ref) => (ref === 's3' ? thirdParty : null), referenceDate: NOW,
+  });
+  assert.ok(r2.warnings.some((w) => /ghi ngày/.test(w)), JSON.stringify(r2.warnings));
+  assert.equal(r2.asOf, undefined);
+});
+
+test('bóc tách: nhiều claim hơn mức kịch bản dùng được thì cảnh báo, không chặn', () => {
+  assert.deepEqual([claimCap(20), claimCap(5), claimCap(21), claimCap(80), claimCap(null)], [10, 4, 11, 25, 25]);
+  const outline = { outline: [{ slide: 1 }, { slide: 2 }] };
+  const many = { claims: Array.from({ length: 12 }, (_, i) => ({ ...CLAIM, id: `c${i + 1}`, text: `${CLAIM.text} ${i}`, key: `${CLAIM.key} ${i}` })) };
+  const r = checkExtract({ outline, claims: many, slideCount: 2, cues: 20 });
+  assert.equal(r.ok, true, JSON.stringify(r.problems));
+  assert.ok(r.warnings.some((w) => /tối đa 10/.test(w)), JSON.stringify(r.warnings));
+  assert.ok(!checkExtract({ outline, claims: many, slideCount: 2, cues: 24 }).warnings.some((w) => /mức hợp lý/.test(w)));
+});
+
+test('agent tự soát (--dry): in kết quả, không ghi file nào, và không mở được chế độ ghi', () => {
+  const { dir, root, sid } = fakeRun();
+  writeFinding(dir, 'c1', honest(sid, 'c1', 'ChatGPT đạt 100 triệu người dùng.', 'ChatGPT reached'));
+  const r = verifyCli(dir, '--stage', 'evidence', '--dry', '--claims', 'c1');
+  assert.equal(r.dry, true);
+  assert.equal(r.claims.c1.ok, false);
+  assert.ok(r.claims.c1.problems.some((p) => /ngắn/.test(p)), JSON.stringify(r.claims.c1.problems));
+  assert.equal(fs.existsSync(path.join(dir, 'checks', 'evidence.json')), false, 'tự soát không được ghi kết quả soát');
+  // Lệnh nằm trong allowlist của chặng research: ghép thêm cờ không được lưu dữ kiện vào thư viện hay dùng lại dữ kiện.
+  for (const extra of [['--save-facts'], ['--reuse'], ['--forget-facts']]) {
+    const bad = verifyCli(dir, '--stage', 'evidence', '--dry', '--claims', 'c1', ...extra);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /--dry/);
+  }
+  assert.match(verifyCli(dir, '--stage', 'evidence', '--dry').error, /--dry/);
+  assert.deepEqual(factFiles(root), []);
+  assert.equal(fs.existsSync(path.join(dir, 'checks', 'evidence.json')), false);
+});
+
+test('dàn ý do code dựng: soát bóc tách dựng lại outline.json từ slides.json (agent ghi đè cũng mất), nhận skip từ claims.json', () => {
+  const { dir } = fakeRun();
+  fs.writeFileSync(path.join(dir, 'input', 'slides.json'), JSON.stringify({ source: 'pdf', slides: [
+    { slide: 1, paragraphs: ['ChatGPT', '100 triệu người dùng sau hai tháng'], notes: [] },
+    { slide: 2, paragraphs: ['Transformer', 'Ra đời năm 2017'], notes: [] },
+  ] }));
+  // Agent tự đánh số — đúng lỗi của lượt thật (hai mục cùng số, trang mất hẳn).
+  fs.writeFileSync(path.join(dir, 'outline.json'), JSON.stringify({ outline: [{ slide: 1, heading: 'tự chế' }, { slide: 1, heading: 'trùng' }] }));
+  fs.writeFileSync(path.join(dir, 'claims.json'), JSON.stringify({ skip: [2], claims: TWO_CLAIMS }));
+  const r = verifyCli(dir, '--stage', 'extract');
+  assert.equal(r.ok, true, JSON.stringify(r.problems));
+  const outline = JSON.parse(fs.readFileSync(path.join(dir, 'outline.json'), 'utf8'));
+  assert.equal(outline.source, 'code');
+  assert.deepEqual(outline.outline.map((o) => [o.slide, o.heading, Boolean(o.skip)]), [[1, 'ChatGPT', false], [2, 'Transformer', true]]);
 });
