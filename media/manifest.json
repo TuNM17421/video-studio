@@ -589,6 +589,12 @@
       "sha256": "dc5c5ff81afdd641cb96a75cf75dd3f2512097241726af88ce7bd666741ce9f1",
       "updated": "2026-09-12"
     },
+    "styles/whiteboard/sample.mp4": {
+      "type": "video/mp4",
+      "bytes": 13951550,
+      "sha256": "1e5e017aefd188696bf476be86aee49d61c5b2b49c9ca8a5e8fb86a9e601e635",
+      "updated": "2026-09-22"
+    },
     "voices/cam-hong.wav": {
       "type": "audio/wav",
       "bytes": 635342,
