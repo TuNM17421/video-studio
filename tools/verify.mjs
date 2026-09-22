@@ -19,7 +19,8 @@
  *   node tools/verify.mjs --video <id> [--video <id>…]   only those videos, plus every design-system check
  *
  * Studio's scene and final gates pass `--video`: without it, one local video with a problem (they live only on
- * the member's machine) blocks every other video's gate with an error that is not about that video.
+ * the member's machine) blocks every other video's gate with an error that is not about that video. The other
+ * videos' files are left out of every scan, the card, palette and determinism checks included.
  */
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -38,7 +39,13 @@ const walk = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
     d.isDirectory() ? (SKIP.has(d.name) ? [] : walk(path.join(dir, d.name))) : [path.join(dir, d.name)],
   );
-const files = walk(DS);
+const onlyVideos = process.argv.flatMap((a, i, all) => (all[i - 1] === '--video' ? [a] : []));
+// A file inside another video's folder: with --video, no scan below may fail this gate on it.
+const otherVideo = (f) => {
+  const r = path.relative(path.join(DS, 'ui_kits/lesson-video/videos'), f).split(path.sep);
+  return onlyVideos.length > 0 && r.length > 1 && r[0] !== '..' && !onlyVideos.includes(r[0]);
+};
+const files = walk(DS).filter((f) => !otherVideo(f));
 const rel = (f) => path.relative(DS, f);
 const problems = [];
 
@@ -117,7 +124,6 @@ for (const f of files.filter((x) => rel(x).startsWith('ui_kits/lesson-video/scen
 
 // 5 · example videos
 const VIDEOS_DIR = path.join(DS, 'ui_kits/lesson-video/videos');
-const onlyVideos = process.argv.flatMap((a, i, all) => (all[i - 1] === '--video' ? [a] : []));
 const allVideoDirs = fs.existsSync(VIDEOS_DIR)
   ? fs.readdirSync(VIDEOS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
   : [];
