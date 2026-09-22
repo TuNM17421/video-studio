@@ -8,8 +8,8 @@ import { defaultBackground } from "@/lib/server/music";
 import { readAgentConfig, resolveAgentProvider, reviewDefaults } from "@/lib/server/agent-config";
 import { handle } from "@/lib/server/http";
 import { assertId, DAY_RE, exists, HttpError, projectDir, STYLES, videoDir } from "@/lib/server/paths";
-import { cleanModules, isModuleId } from "@/lib/server/modules";
-import { listVideos, newVoice, requestMarkdown, writeState } from "@/lib/server/videos";
+import { cleanModules, isModuleId, moduleById } from "@/lib/server/modules";
+import { listVideos, newVoice, requestMarkdown, styleName, styleUnsupportedModules, writeState } from "@/lib/server/videos";
 
 export const GET = handle(() => Response.json(listVideos()));
 
@@ -38,6 +38,8 @@ export const POST = handle(async (req: Request) => {
   const modules = cleanModules(r.modules);
   const unknown = (Array.isArray(r.modules) ? r.modules : []).filter((m) => !isModuleId(m));
   if (unknown.length) throw new HttpError(400, `Không có năng lực bổ sung: ${unknown.join(", ")}`);
+  const blocked = modules.filter((m) => styleUnsupportedModules(r.style).includes(m));
+  if (blocked.length) throw new HttpError(400, `${styleName(r.style)} chưa hỗ trợ: ${blocked.map((m) => moduleById(m)?.name || m).join(", ")}`);
   const request: VideoRequest = {
     style: r.style, modules, day: r.day, title: String(r.title || "").slice(0, 200), scriptName: String(body.script.name || "").slice(0, 200),
     feedbackDir: r.feedbackDir || "", oldVideoDir: r.oldVideoDir || "", notes: String(r.notes || "").slice(0, 5000),

@@ -1,6 +1,5 @@
 import { C, alpha } from '../../../../lib/tokens.js';
-import { defaultDur } from '../../../../components/whiteboard/Whiteboard.jsx';
-import { handWidth } from '../../../../components/whiteboard/sketch.js';
+import { createBoard } from '../../../../components/whiteboard/board.js';
 import { spokenAt } from './cues.js';
 import { TIMELINE } from './timeline.js';
 
@@ -14,44 +13,13 @@ import { TIMELINE } from './timeline.js';
  *   part panels 1760 × 760  columns x 0 / 1960 / 3920 (one per question), rows y 800 / 1760;
  *                           part 1–2 in column 1, 3–4 in column 2, 5–6 in column 3.
  *                           Left half = the first câu of the part, right half = the second.
- * The marker draws one thing at a time: draw() starts a mark at its beat (spokenAt − a few frames) or
- * as soon as the previous stroke is done, whichever is later. LAG lists beats that ran late.
+ * createBoard (components/whiteboard/board.js) runs the single marker: a mark starts at its beat or when
+ * the previous stroke is done, whichever is later; LAG lists beats that ran late.
  */
 
-const start = (n) => TIMELINE[n - 1].start;
-/** Video frame a few frames before `phrase` is said in câu n. */
-const say = (n, phrase, off = -6) => start(n) + Math.max(0, spokenAt(n, phrase) + off);
-
-export const MARKS = [];
-export const LAG = [];
-let penFree = 0;
-const ids = new Set();
-/** `at` = the beat; null = right after the previous stroke (a follow-on mark, never counted as late). */
-function draw(at, mark) {
-  const want = at == null ? penFree : Math.round(at);
-  const a = mark.pen === false ? want : Math.max(want, penFree);
-  if (ids.has(mark.id)) throw new Error(`board.js: mark id "${mark.id}" is used twice (the id seeds the stroke)`);
-  ids.add(mark.id);
-  const m = { ...mark, at: a };
-  if (m.pen !== false) penFree = a + (m.dur ?? defaultDur(m)) + 2;
-  if (a - want > 12) LAG.push({ id: m.id, late: a - want });
-  MARKS.push(m);
-  return m;
-}
-const endOf = (m) => m.at + (m.dur ?? defaultDur(m));
-
-/** Box with centred text (text drawn straight after the box). */
-function boxText(id, at, b, text, { size = 46, color, fill, boxColor, dur } = {}) {
-  const box = draw(at, { id: `${id}-box`, kind: 'box', x: b.x, y: b.y, w: b.w, h: b.h, color: boxColor, fill, dur });
-  return draw(endOf(box), { id: `${id}-t`, kind: 'text', x: b.x + b.w / 2, y: b.y + b.h / 2 + size * 0.35, text, size, anchor: 'middle', color });
-}
-
-/** Stick-figure-free clock: loop + two hands (hour hand angle in "o'clock"). */
-function clock(id, at, cx, cy, r, hour) {
-  draw(at, { id: `${id}-face`, kind: 'loop', cx, cy, rx: r, ry: r, dur: 14 });
-  const a = ((hour / 12) * 360 - 90) * (Math.PI / 180);
-  draw(at, { id: `${id}-hands`, kind: 'line', points: [{ x: cx, y: cy - r * 0.72 }, { x: cx, y: cy }, { x: cx + Math.cos(a) * r * 0.5, y: cy + Math.sin(a) * r * 0.5 }], dur: 8 });
-}
+const board = createBoard({ timeline: TIMELINE, spokenAt });
+const { start, say, draw, endOf, look, boxText, clock, textWidth: handWidth } = board;
+export const { marks: MARKS, camera: CAMERA, lag: LAG } = board;
 
 // ── geometry ──────────────────────────────────────────────────────────────────────────────────────
 const PX = [0, 1960, 3920];
@@ -75,8 +43,7 @@ const Q_SIZE = 170;
 const Q_Y = 400;
 
 const FULL = { x: HX, y: 1170, w: 6600 };
-export const CAMERA = [{ at: 0, x: HX, y: 380, w: 1920 }];
-const look = (frame, target, dur = 40) => CAMERA.push({ at: Math.round(frame), dur, ...target });
+look(0, { x: HX, y: 380, w: 1920 });
 
 /** Part header: red loop + number, then the title. */
 function partTitle(p, frame, title) {
@@ -113,7 +80,7 @@ draw(say(2, 'dùng công nghệ', 0), { id: 'tool-later', kind: 'text', x: HX + 
 
 // ── câu 03 · wipe, then the day map: three questions across the board ─────────────────────────────
 draw(start(3) + 2, { id: 'wipe-hook', kind: 'erase', x: HX - 960, y: -90, w: 1920, h: 900, dur: 32 });
-look(start(3) + 30, FULL, 45);
+look(start(3) + 12, FULL, 40);
 for (let p = 1; p <= 6; p++) {
   const r = rect(p, 0, 0, PW, PH);
   draw(start(3) + 40 + p * 4, { id: `frame-${p}`, kind: 'box', ...r, color: alpha('accent', 0.35), width: 6, dash: '18 16', pen: false, dur: 20 });
@@ -135,7 +102,7 @@ ZONES.forEach((z, k) => {
   draw(start(4) + 2, { id: 'h0-under', kind: 'underline', x1: CX[0] - w / 2, x2: CX[0] + w / 2, y: Q_Y + 50, color: C.red, width: 10, dur: 14 });
   look(start(4) + 18, { ...panelCenter(1), w: 1920 }, 36);
 }
-partTitle(1, start(4) + 30, 'Tìm khó khăn đằng sau lời đề nghị');
+partTitle(1, start(4) + 44, 'Tìm khó khăn đằng sau lời đề nghị');
 draw(say(4, 'khó khăn thật sự'), { id: 'p1-real', kind: 'text', ...at(1, 440, 640), text: 'Khó khăn thật sự?', size: 56, color: C.red, anchor: 'middle' });
 boxText('p1-req', say(4, 'một đề nghị'), rect(1, 90, 220, 700, 120), '“Làm trợ lý hỗ trợ học viên”', { size: 46 });
 draw(say(4, 'học viên', 4), { id: 'p1-behind', kind: 'arrow', points: [at(1, 440, 350), at(1, 452, 440), at(1, 440, 560)], color: C.accent });
@@ -260,7 +227,7 @@ draw(say(15, 'kiểm soát rủi ro', -2), { id: 'p6-b2', kind: 'text', ...at(6,
 
 // ── câu 16 · zoom out: the whole day on one board, the three questions it answers ─────────────────
 look(start(16), FULL, 50);
-draw(start(16) + 30, { id: 'after', kind: 'text', x: HX, y: -110, text: 'Sau hôm nay', size: 130, color: C.red, anchor: 'middle' });
+draw(start(16) + 50, { id: 'after', kind: 'text', x: HX, y: -50, text: 'Sau hôm nay', size: 130, color: C.red, anchor: 'middle' });
 [
   ['cần AI', 0],
   ['làm thay hay hỗ trợ', 1],

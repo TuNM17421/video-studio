@@ -120,6 +120,45 @@ function textLayout(m) {
   });
 }
 
+/** Board-space box { x0, y0, x1, y1 } a mark covers — what checkBoard tests against the camera. */
+export function markBounds(m) {
+  const pad = (b, d) => ({ x0: b.x0 - d, y0: b.y0 - d, x1: b.x1 + d, y1: b.y1 + d });
+  switch (m.kind) {
+    case 'text': {
+      const rows = textLayout(m);
+      return {
+        x0: Math.min(...rows.map((r) => r.x0)),
+        x1: Math.max(...rows.map((r) => r.x0 + r.w)),
+        y0: rows[0].y - rows[0].size * 0.95,
+        y1: rows[rows.length - 1].y + rows[0].size * 0.3,
+      };
+    }
+    case 'line':
+    case 'arrow':
+      return pad({
+        x0: Math.min(...m.points.map((p) => p.x)),
+        x1: Math.max(...m.points.map((p) => p.x)),
+        y0: Math.min(...m.points.map((p) => p.y)),
+        y1: Math.max(...m.points.map((p) => p.y)),
+      }, m.kind === 'arrow' ? (m.head ?? 22) : 4);
+    case 'loop':
+      return { x0: m.cx - m.rx * 1.1, x1: m.cx + m.rx * 1.1, y0: m.cy - m.ry * 1.1, y1: m.cy + m.ry * 1.1 };
+    case 'underline':
+      return { x0: m.x1, x1: m.x2, y0: m.y - 6, y1: m.y + 6 };
+    case 'person': {
+      const s = m.s ?? 30;
+      return { x0: m.x - s * 1.6, x1: m.x + s * 1.6, y0: m.y - s * 1.1, y1: m.y + s * 5.2 };
+    }
+    case 'check':
+    case 'cross': {
+      const s = m.s ?? 40;
+      return { x0: m.x - s, x1: m.x + s, y0: m.y - s, y1: m.y + s * 0.6 };
+    }
+    default:
+      return { x0: m.x, y0: m.y, x1: m.x + (m.w ?? 0), y1: m.y + (m.h ?? 0) };
+  }
+}
+
 /** Pen tip position while `m` is at progress t. */
 function penAt(m, t) {
   if (m.kind === 'text') {
@@ -222,7 +261,7 @@ function Marker({ x, y, color, scale, opacity }) {
   );
 }
 
-/** Camera transform at `frame` from its keys. */
+/** Where the camera looks at `frame`: { x, y, w } (board point at the screen's content centre, board units across). */
 export function cameraAt(camera, frame) {
   if (!camera || !camera.length) return { x: SCREEN_CENTER.x, y: SCREEN_CENTER.y, w: 1920 };
   let prev = camera[0];
@@ -263,6 +302,13 @@ function penState(marks, frame) {
   if (next && next.at - frame <= 12) return { ...to, color: next.color ?? C.text, opacity: clamp01(1 - (next.at - frame) / 12) };
   if (from) return { ...from, color: last.color ?? C.text, opacity: clamp01(1 - (frame - markEnd(last)) / 12) };
   return null;
+}
+
+/** Screen point (1920 × 1080) of board point p at `frame`. */
+export function toScreen(camera, frame, p) {
+  const cam = cameraAt(camera, frame);
+  const scale = 1920 / cam.w;
+  return { x: SCREEN_CENTER.x + (p.x - cam.x) * scale, y: SCREEN_CENTER.y + (p.y - cam.y) * scale, scale };
 }
 
 export function Whiteboard({ frame, marks, camera, pen = true }) {

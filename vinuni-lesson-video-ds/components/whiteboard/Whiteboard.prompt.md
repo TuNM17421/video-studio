@@ -17,6 +17,16 @@ video frame, not a `Series`.
   region disappears; later marks draw on top. Use it when a section is done and the space is reused.
 - Seeds come from `id`, so wobble is deterministic — never reuse an id.
 
+## Authoring a board — `createBoard` (components/whiteboard/board.js)
+
+Write the video's `board.js` with `createBoard({ timeline: TIMELINE, spokenAt })`, never by hand:
+`draw(at, mark)` runs the single marker (a mark starts at its beat or when the previous stroke ends; `at`
+null = right after it), `say(n, phrase)` gives the beat, `look(frame, { x, y, w })` adds a camera move,
+`boxText` / `clock` are common doodles. It throws on a reused id and lists late beats in `lag`.
+Export `MARKS`, `CAMERA`, `LAG` and put `board: { marks, camera, lag }` in the video's `meta`:
+`npm run verify` then runs `checkBoard` — a mark drawn off screen (e.g. while the camera is still moving)
+is a problem; beats > 45 frames late and board text < 26 px on screen are warnings.
+
 ```jsx
 const MARKS = [
   { id: 'q', kind: 'text', at: 20, x: 960, y: 300, text: 'Bắt đầu từ đâu?', size: 96, color: C.red, anchor: 'middle' },
@@ -24,6 +34,7 @@ const MARKS = [
   { id: 'p', kind: 'person', at: 90, x: 400, y: 520, s: 34 },
   { id: 'a', kind: 'arrow', at: 130, points: [{ x: 480, y: 600 }, { x: 800, y: 600 }], color: C.accent },
 ];
+// the full pattern: ui_kits/lesson-video/videos/n2-00-bang-trang/ (board.js + video.jsx)
 <SceneFrame frame={frame} header={false} captions={captions}>
   <Whiteboard frame={frame} marks={MARKS} camera={[{ at: 0, x: 960, y: 550, w: 1920 }]} />
 </SceneFrame>

@@ -70,3 +70,4 @@ export * from './ui/EmailCard';
 export * from './ui/Tray';
 export * from './ui/UIButton';
 export * from './whiteboard/Whiteboard';
+export * from './whiteboard/board';

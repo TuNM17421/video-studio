@@ -13,9 +13,14 @@
     }
   ],
   "sampleVideo": null,
+  "unsupportedModules": [
+    "dialogue",
+    "quiz",
+    "mascot"
+  ],
   "rules": [
     "Cả video là MỘT tấm bảng, không cắt cảnh: video.jsx vẽ một SceneFrame (header={false}, eyebrow qua overlay, phụ đề cueCaptions toàn cục) chứa <Whiteboard frame marks camera />, không dùng Series. Mẫu: ui_kits/lesson-video/videos/n2-00-bang-trang/ (board.js, video.jsx).",
-    "board.js khai từng nét (mark) theo khung hình video: mốc = start(câu) + spokenAt(câu, cụm từ) − 4…8 frame. Bút chỉ vẽ một thứ một lúc — dùng hàm draw() kiểu board.js mẫu để nét sau tự chờ nét trước, và xem danh sách LAG để biết beat nào bị trễ.",
+    "board.js dựng bằng createBoard({ timeline: TIMELINE, spokenAt }) từ components/whiteboard/board.js: draw(at, mark) cho bút vẽ một thứ một lúc (nét sau tự chờ nét trước), say(câu, cụm từ) cho mốc theo lời, look(frame, { x, y, w }) cho camera. Đưa board: { marks, camera, lag } vào meta của video.jsx để npm run verify kiểm tra nét vẽ ngoài khung, nét trễ và chữ quá nhỏ.",
     "Mỗi câu 3–5 nét chính; chữ trên bảng là từ khoá ngắn, không chép cả câu (bút viết ~32 ký tự/giây). Cỡ chữ ≥ 40 px ở zoom 1; chữ chỉ đọc lúc lùi ra thì ≥ 110 px.",
     "Mực: navy C.text cho chữ, xanh C.accent cho vật/luồng/mũi tên, đỏ C.red cho câu hỏi, điểm nhấn, vòng khoanh. Nền nhạt C.bgAlt / C.redSoft cho ô và vệt highlight. Không dùng màu vai trò của Lesson Lab.",
     "Chữ tay (HAND, Pangolin) chỉ cho chữ viết trên bảng. Eyebrow, phụ đề, footer giữ Montserrat.",

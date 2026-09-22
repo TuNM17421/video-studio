@@ -1,7 +1,7 @@
 import React from 'react';
 import { Eyebrow, SceneFrame, Whiteboard } from '../../../../components/index.js';
 import { cueCaptions, useFrame } from '../../../../lib/index.js';
-import { CAMERA, MARKS } from './board.js';
+import { CAMERA, LAG, MARKS } from './board.js';
 import { PLAY_DURATION, TIMELINE, VOICED } from './timeline.js';
 
 /*
@@ -20,6 +20,8 @@ export const meta = {
   pattern: VOICED ? 'Bảng trắng · 16 câu · có giọng đọc' : 'Bảng trắng · 16 câu',
   duration: PLAY_DURATION,
   markers: TIMELINE.map((t) => ({ frame: t.start, label: `Câu ${String(t.n).padStart(2, '0')} · ${t.screen}` })),
+  // Whiteboard videos hand their board to tools/verify.mjs (checkBoard: off-screen marks, late beats, tiny text).
+  board: { marks: MARKS, camera: CAMERA, lag: LAG },
 };
 
 export default function N200Whiteboard() {

@@ -72,3 +72,4 @@ export * from './data/RangeBand.jsx';
 export * from './data/UnitGrid.jsx';
 export * from './marks/Spotlight.jsx';
 export * from './whiteboard/Whiteboard.jsx';
+export * from './whiteboard/board.js';

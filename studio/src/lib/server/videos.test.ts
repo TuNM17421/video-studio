@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeVideoState, requestMarkdown } from "./videos";
+import { normalizeVideoState, requestMarkdown, styleUnsupportedModules } from "./videos";
 
 const storedState = {
   id: "d2-01-lab",
@@ -62,5 +62,13 @@ describe("mascot request contract", () => {
     const off = requestMarkdown("d2-plain", { ...state.request, modules: [] }, "Claude");
     expect(off).toContain("**không** có linh vật");
     expect(off).not.toContain("## Linh vật Griffin");
+  });
+});
+
+describe("style capabilities", () => {
+  it("reads the capabilities a style cannot build from styles/<id>.json", () => {
+    expect(styleUnsupportedModules("whiteboard")).toEqual(expect.arrayContaining(["dialogue", "quiz", "mascot"]));
+    expect(styleUnsupportedModules("lesson-lab")).toEqual([]);
+    expect(styleUnsupportedModules("no-such-style")).toEqual([]);
   });
 });

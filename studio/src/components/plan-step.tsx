@@ -259,7 +259,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
           ? <div className="vs-inline-state" role="status"><LoadingOutlined spin /><span>Đang tải style và cấu hình agent…</span></div>
           : unavailable
             ? <div className="vs-inline-state is-error" role="status"><WarningFilled /><span>Chưa thể tải cấu hình Studio.</span></div>
-            : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s })} disabled={busy} labelledBy={styleLabelId} />}
+            : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s, modules: draft.request.modules.filter((id) => !styles.find((x) => x.id === s)?.unsupportedModules?.includes(id)) })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
       {style && <StyleShowcase style={style} collapsible />}
       <section className="vs-capabilities" data-tour="plan.modules" aria-labelledby="vs-capabilities-title">
@@ -269,19 +269,20 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
         </div>
         <div className="vs-modules">
           {modules.map((m) => {
-            const checked = draft.request.modules.includes(m.id);
-            return <article key={m.id} className={`vs-module ${checked ? "is-on" : ""} ${busy ? "is-disabled" : ""}`}>
+            const unsupported = style?.unsupportedModules?.includes(m.id) ?? false;
+            const checked = !unsupported && draft.request.modules.includes(m.id);
+            return <article key={m.id} className={`vs-module ${checked ? "is-on" : ""} ${busy || unsupported ? "is-disabled" : ""}`}>
             <Checkbox
               className="vs-module-toggle"
               checked={checked}
-              disabled={busy}
+              disabled={busy || unsupported}
               onChange={(e) => setModule(m.id, e.target.checked)}
             >
               <span className="vs-module-identity">
                 <ModuleGlyph icon={m.icon} />
                 <span className="vs-module-copy">
                   <strong>{m.name}</strong>
-                  <small>{m.summary}{m.template ? <> Dùng <code>{m.template}</code>.</> : null}</small>
+                  <small>{unsupported ? `${style?.name} chưa hỗ trợ tính năng này.` : <>{m.summary}{m.template ? <> Dùng <code>{m.template}</code>.</> : null}</>}</small>
                   {checked && <span className="vs-module-status">Đã bật</span>}
                 </span>
               </span>

@@ -209,6 +209,14 @@ export function styleName(id: string) {
   return exists(file) ? (JSON.parse(fs.readFileSync(file, "utf8")).name as string) : id;
 }
 
+/** Capabilities the style cannot build yet (styles/<id>.json `unsupportedModules`). */
+export function styleUnsupportedModules(id: string): string[] {
+  const file = path.join(REPO, "styles", `${id}.json`);
+  if (!exists(file)) return [];
+  const list = (JSON.parse(fs.readFileSync(file, "utf8")) as { unsupportedModules?: unknown }).unsupportedModules;
+  return Array.isArray(list) ? list.filter((m): m is string => typeof m === "string") : [];
+}
+
 /** REQUEST.md: what the agent (and anyone running the video by hand) reads first. */
 /** What each chosen capability demands of the script — written into REQUEST.md, which is what the agent reads. */
 function moduleSections(modules: string[]) {
