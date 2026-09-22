@@ -25,9 +25,11 @@ interface Registry {
   listeners: Map<string, Set<Listener>>;
   /** ElevenLabs API key: memory only, never written to disk or passed to the agent. */
   elevenKey: string | null;
+  /** Kaggle username + API key (from kaggle.json or typed in): memory only, same rule as elevenKey. */
+  kaggle: { username: string; key: string } | null;
 }
 const g = globalThis as typeof globalThis & { __videoStudio?: Registry };
-export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null });
+export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null });
 
 const MAX_LOGS = 1500;
 
