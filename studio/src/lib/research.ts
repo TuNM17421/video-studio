@@ -54,7 +54,13 @@ export interface ClaimCheck {
   quotes: { total: number; verified: number; unverifiable: number };
   problems: string[];
   warnings: string[];
-  /** Bảng nguồn bộ soát đã dựng — vào feedback.json để lượt research lại sửa đúng chỗ. */
+  /** Ghi chú không phải cảnh báo (vd. "dùng lại dữ kiện đã soát ngày …") — hiện cho người duyệt, không làm cổng 2 dừng. */
+  notes?: string[];
+  /** Mốc thời gian của dữ kiện hay đổi (nguồn mới nhất, hoặc ngày Studio tải trang docs chính thức) — kịch bản nói "tính đến …". */
+  asOf?: string;
+  /** Vân tay finding.json lúc soát — finding bị ghi lại sau đó thì lần soát sau soát lại nó. */
+  findingHash?: string | null;
+  /** Bảng nguồn bộ soát đã dựng — đi vào prompt của lượt research lại để nó sửa đúng chỗ. */
   sources?: { ref: string; stance: string | null; status: string; note: string | null; publisher: string | null; domain: string | null; kind: string | null; published: string | null }[];
   missing?: boolean;
   reused?: { from: string; checkedAt: string };
@@ -79,19 +85,32 @@ export interface ScriptIssue {
   cue: number | null;
   line: number | null;
   message: string;
+  /** Phân loại cho máy (tools/lib/script-lint.mjs): `length` = dài quá mức đặt; `pronounce` = việc của bước làm video. */
+  code?: string;
 }
 
 export interface ScriptCheck {
   ok: boolean;
   stats: { cues: number; words: number; seconds: number };
+  /** So với số câu đã đặt khi tạo lượt; null khi không có mức đặt. */
+  length?: { target: number; words: number; maxCues: number; ratio: number } | null;
   coverage: { slides: number; covered: number; missing: number[] };
   issues: ScriptIssue[];
   checkedAt?: string;
 }
 
+export interface EditIssue {
+  cue: number | null;
+  type: string;
+  problem: string;
+  fix: string;
+  /** Vài từ chép nguyên văn từ Lời của câu đó — để còn tìm được câu sau khi lượt sửa đánh số lại. */
+  quote?: string;
+}
+
 export interface EditReview {
   score: Partial<Record<"accuracy" | "hook" | "flow" | "clarity" | "spoken", number>>;
-  issues: { cue: number | null; type: string; problem: string; fix: string }[];
+  issues: EditIssue[];
 }
 
 export type RunStep = "extract" | "research" | "write" | "fix" | "edit";
@@ -115,9 +134,13 @@ export interface Deck {
   format: "pdf" | "pptx";
   file: string;
   text: string | null;
+  /** "code": dàn ý do code dựng từ chữ từng slide (input/slides.json) — agent bóc tách chỉ ghi claims.json. */
+  outline?: "code";
   slides: number | null;
   bytes: number;
   emptySlides?: number[];
+  /** Trang PDF gần như không có chữ — agent mở đúng trang đó trong PDF khi cần xem hình. */
+  thinSlides?: number[];
 }
 
 export interface ResearchState {
@@ -181,18 +204,6 @@ export interface ResearchSummary {
   sample: boolean;
 }
 
-export const STAGE_LABEL: Record<ResearchStage, string> = {
-  extract: "Bóc tách",
-  gate1: "Chờ duyệt claim",
-  research: "Research",
-  gate2: "Chờ quyết định",
-  write: "Viết kịch bản",
-  review: "Soát & biên tập",
-  revise: "Sửa theo góp ý",
-  gate3: "Chờ duyệt kịch bản",
-  done: "Xong",
-};
-
 export const KIND_LABEL: Record<ClaimKind, string> = {
   number: "Số liệu",
   date: "Mốc thời gian",
@@ -226,10 +237,61 @@ export const SLIDES_HELP = "Kịch bản dẫn nguồn theo slide này. Để tr
 export const TEXT_HELP = "Chép sát lời slide — thư viện dữ kiện nhận lại claim theo đúng câu này.";
 export const REUSE_NOTE = "Đã đổi câu hoặc câu hỏi so với bản agent: claim này sẽ research từ đầu, không dùng lại dữ kiện đã kiểm ở bài trước (nếu có).";
 
+/**
+ * Độ dài kịch bản theo số câu người dùng đặt khi tạo lượt. Cùng số với tools/lib/script-lint.mjs (`WORDS_PER_CUE`,
+ * `LENGTH_WARN`, `SYLLABLES_PER_SECOND`) — phần soát bắt đúng mức prompt đã báo cho người viết; test giữ hai bên khớp.
+ * 24 từ một câu: các video đã QA trung vị 22 từ (d2-01-lab), dài nhất 28.
+ */
+export const SCRIPT_BUDGET = { wordsPerCue: 24, minWords: 15, maxWords: 30, warnAbove: 1.2, syllablesPerSecond: 2.9 };
+
+export function scriptBudget(cues: number) {
+  const words = cues * SCRIPT_BUDGET.wordsPerCue;
+  return { cues, maxCues: Math.floor(cues * SCRIPT_BUDGET.warnAbove), words, minutes: Math.round(words / SCRIPT_BUDGET.syllablesPerSecond / 6) / 10 };
+}
+
+const flatText = (s: string) => s.normalize("NFC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * Góp ý biên tập nằm ở câu nào. Biên tập chấm bản **trước** lượt sửa theo góp ý, và lượt sửa gộp/tách/bỏ câu nên số
+ * câu dời đi — gắn theo số thì góp ý hiện cạnh nhầm câu. Gắn theo đoạn trích (`quote`, ít nhất ba từ): không còn ở
+ * câu nào nghĩa là câu đó đã được viết lại, tức góp ý đã xử lý. Góp ý không có đoạn trích (bản cũ) thì theo số câu.
+ */
+export function placeEditIssues(cues: { n: number; text: string }[], issues: EditIssue[]) {
+  const byCue = new Map<number, EditIssue[]>();
+  const resolved: EditIssue[] = [];
+  const general: EditIssue[] = [];
+  const texts = cues.map((c) => ({ n: c.n, text: flatText(c.text) }));
+  for (const issue of issues) {
+    const quote = issue.quote ? flatText(issue.quote) : "";
+    let n: number | null = issue.cue;
+    if (quote.split(" ").length >= 3) {
+      const hit = texts.find((c) => c.n === issue.cue && c.text.includes(quote)) ?? texts.find((c) => c.text.includes(quote));
+      if (!hit) { resolved.push(issue); continue; }
+      n = hit.n;
+    }
+    if (n === null || !texts.some((c) => c.n === n)) { general.push(issue); continue; }
+    byCue.set(n, [...(byCue.get(n) ?? []), issue]);
+  }
+  return { byCue, resolved, general };
+}
+
 /** Trần số claim một lượt research — máy chủ cũng cắt ở đây (runner.ts `cleanClaims`, research-check.mjs). */
 export const MAX_CLAIMS = 25;
 /** Số claim mỗi lượt agent theo độ khó: claim dễ đi lô lớn (ít lượt, ít token cố định), claim khó đi lô nhỏ. */
 export const RESEARCH_BATCH: Record<Difficulty, number> = { easy: 6, normal: 4, hard: 2 };
+/**
+ * Lượt research lại gom tối đa chừng này claim. Mỗi lần agent gọi công cụ là cả hội thoại gửi lại, nên chi phí một
+ * lượt tăng nhanh hơn số claim: lượt thật làm lại bốn claim một lúc tốn $1,94 — gần bằng cả năm lượt đầu cộng lại.
+ */
+export const RETRY_BATCH = 2;
+
+/**
+ * Số claim đáng research cho kịch bản khoảng `cues` câu: một nửa số câu, ít nhất 4, không quá `MAX_CLAIMS`. Cùng phép
+ * tính với `claimCap` ở tools/lib/research-check.mjs (có test). Lượt thật: 14 claim cho 20 câu, 4 claim không câu nào dùng.
+ */
+export function claimCap(cues: number) {
+  return Number.isInteger(cues) && cues > 0 ? Math.min(MAX_CLAIMS, Math.max(4, Math.ceil(cues / 2))) : MAX_CLAIMS;
+}
 const PRIORITY_RANK: Record<Priority, number> = { high: 0, normal: 1, low: 2 };
 export const difficultyOf = (c: Claim): Difficulty => (c.difficulty in RESEARCH_BATCH ? c.difficulty : "normal");
 
@@ -237,11 +299,12 @@ export const difficultyOf = (c: Claim): Difficulty => (c.difficulty in RESEARCH_
  * Lô claim cho từng lượt agent. Nằm ở đây chứ không ở máy chủ để cổng 1 báo trước được số lượt agent sẽ chạy —
  * con số người duyệt đổi được bằng cách bỏ qua claim hay hạ độ khó.
  */
-export function batches(claims: Claim[]): Claim[][] {
+export function batches(claims: Claim[], size?: number): Claim[][] {
   const out: Claim[][] = [];
   for (const d of ["hard", "normal", "easy"] as Difficulty[]) {
     const group = claims.filter((c) => difficultyOf(c) === d).sort((a, b) => (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1));
-    for (let i = 0; i < group.length; i += RESEARCH_BATCH[d]) out.push(group.slice(i, i + RESEARCH_BATCH[d]));
+    const n = Math.min(size ?? RESEARCH_BATCH[d], RESEARCH_BATCH[d]);
+    for (let i = 0; i < group.length; i += n) out.push(group.slice(i, i + n));
   }
   return out;
 }
@@ -258,27 +321,12 @@ export function outlineSummary(outline: OutlineSlide[]): string {
   return `${outline.length} mục, slide ${lo === hi ? lo : `${lo}–${hi}`}`;
 }
 
-export const VERDICT_LABEL: Record<Verdict, string> = {
-  ok: "Slide đúng",
-  fix: "Cần sửa",
-  wrong: "Slide sai",
-  insufficient: "Không đủ nguồn",
-};
-
-export const STANCE_LABEL: Record<Stance, string> = { supports: "Ủng hộ", contradicts: "Phản bác", context: "Bối cảnh" };
-
 export const RUN_RESULT_LABEL: Record<NonNullable<ResearchRun["result"]>, string> = {
   ok: "xong",
   failed: "lỗi",
   stalled: "đứng im quá lâu, đã dừng",
   cap: "vượt trần theo khối lượng, đã dừng",
   stopped: "đã dừng",
-};
-
-export const GATE2_LABEL: Record<Gate2Decision, string> = {
-  retry: "Research lại",
-  drop: "Bỏ claim",
-  accept: "Ghi nhận không đủ nguồn",
 };
 
 /**

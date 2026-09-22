@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { blankClaim, type Claim } from "../../research";
 import { claudeStepArgs, codexStepArgs } from "../agent-cli";
-import { batches, cleanClaims, mergeGate2Decisions, withProvenance } from "./runner";
+import { selfCheckCommand } from "./prompts";
+import { batches, cleanClaims, extractWritable, mergeGate2Decisions, modelFor, researchShell, withProvenance } from "./runner";
 
 const claim = (id: string, patch: Partial<Claim> = {}): Claim => ({ ...blankClaim(id), text: `claim ${id}`, question: `hỏi ${id}`, ...patch });
 
@@ -87,6 +88,8 @@ describe("quyền ghi của từng chặng", () => {
     expect(all.every((g) => g.startsWith("research/bai-1/"))).toBe(true);
     expect(all.some((g) => g.includes("sources") || g.includes("state.json") || g.includes("evidence"))).toBe(false);
     expect(WRITABLE.research("bai-1")).toEqual(["research/bai-1/claims/**"]);
+    // Lô research chỉ ghi được thư mục của đúng claim trong lô — không đụng finding của claim đã soát xong.
+    expect(WRITABLE.research("bai-1", ["c2", "c5"])).toEqual(["research/bai-1/claims/c2/**", "research/bai-1/claims/c5/**"]);
     expect(WRITABLE.edit("bai-1")).toEqual(["research/bai-1/checks/edit.json"]);
   });
 });
@@ -123,5 +126,37 @@ describe("quyết định cổng 2 dồn qua các lần dừng", () => {
 
   it("\"Research lại\" không được lưu — kể cả xoá quyết định cũ của claim đó", () => {
     expect(mergeGate2Decisions({ c1: "accept", c2: "accept" }, ["c2"], { c2: "retry" })).toEqual({ c1: "accept" });
+  });
+});
+
+describe("quyền và model theo chặng", () => {
+  it("chặng research chạy được lệnh tự soát của đúng lượt đó, chỉ ở chế độ --dry", () => {
+    const rules = researchShell("bai-1");
+    expect(rules).toContain(`Bash(${selfCheckCommand("bai-1", [])}*)`);
+    expect(rules).toContain(`PowerShell(${selfCheckCommand("bai-1", [])}*)`);
+    expect(rules.filter((r) => r.includes("research-verify")).every((r) => r.includes("research/bai-1 --stage evidence --dry --claims "))).toBe(true);
+  });
+
+  it("vòng đầu sửa lỗi định dạng chạy Haiku; chỉ Claude nhận tên model", () => {
+    const saved = process.env.STUDIO_RESEARCH_MODELS;
+    delete process.env.STUDIO_RESEARCH_MODELS;
+    try {
+      expect(modelFor("lint", "claude")).toBe("haiku");
+      expect(modelFor("fix", "claude")).toBe("sonnet");
+      expect(modelFor("write", "claude")).toBeNull();
+      expect(modelFor("lint", "codex")).toBeNull();
+      process.env.STUDIO_RESEARCH_MODELS = JSON.stringify({ lint: "sonnet" });
+      expect(modelFor("lint", "claude")).toBe("sonnet");
+    } finally {
+      if (saved === undefined) delete process.env.STUDIO_RESEARCH_MODELS;
+      else process.env.STUDIO_RESEARCH_MODELS = saved;
+    }
+  });
+});
+
+describe("dàn ý do code dựng", () => {
+  it("agent bóc tách chỉ ghi claims.json khi dàn ý là của code; PDF quét ảnh thì vẫn ghi cả hai", () => {
+    expect(extractWritable("bai-1", true)).toEqual(["research/bai-1/claims.json"]);
+    expect(extractWritable("bai-1", false)).toEqual(["research/bai-1/outline.json", "research/bai-1/claims.json"]);
   });
 });

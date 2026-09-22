@@ -1,127 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FileTextOutlined, InboxOutlined, LeftOutlined, LoadingOutlined, PlayCircleFilled, PlusOutlined, RedoOutlined } from "@ant-design/icons";
-import { Alert, Button, Collapse, Empty, Input, InputNumber, Modal, Popconfirm, Segmented, Select, Tabs, Upload } from "antd";
+import { FileTextOutlined, InboxOutlined, LoadingOutlined, PlayCircleFilled, UploadOutlined } from "@ant-design/icons";
+import { Alert, Button, Input, InputNumber, Modal, Select, Upload } from "antd";
 import { AGENT_PROVIDER_OPTIONS } from "@/lib/agent-providers";
-import { api, fileUrl } from "@/lib/client";
-import { outlineSummary, STAGE_LABEL, type ResearchStage, type ResearchSummary, type ResearchView } from "@/lib/research";
+import { api } from "@/lib/client";
+import { scriptBudget } from "@/lib/research";
+import { defaultNode, fmtTime, runStatus, type NodeId } from "@/lib/research-ui";
 import type { AgentProvider } from "@/lib/types";
 import { Shell } from "../shell";
-import { Gate1Panel } from "./gate1-panel";
-import { ResearchFlow } from "./research-flow";
-import { ClaimDetail, Gate2Panel, LogList, ReviewDetail, RunsTable, ScriptView, type Act } from "./research-panels";
-import { ClaimList, RunBar } from "./research-steps";
+import { WorkArea } from "./node-views";
+import { DetailsDrawer, type DetailsSection } from "./research-details";
+import { RunHeader } from "./research-head";
+import type { Act } from "./research-panels";
+import { ResearchStrip } from "./research-strip";
 import { useResearch, useResearchIndex } from "./use-research";
 
-const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
-const day = (iso: string) => new Date(iso).toLocaleString("vi-VN", { hour12: false, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-
-/** Nhãn trạng thái một lượt trong bộ chọn — "chờ bạn" nổi lên trước tên chặng. */
-function statusLabel(r: Pick<ResearchSummary, "status" | "stage" | "sample">) {
-  if (r.sample) return "mẫu";
-  if (r.status === "waiting") return "chờ bạn";
-  if (r.status === "running") return "đang chạy";
-  if (r.status === "failed") return "lỗi";
-  return STAGE_LABEL[r.stage];
-}
-
-/** Chặng đã tới — một chặng chỉ chạy lại được khi lượt đã đi qua nó (máy chủ cũng chặn đúng như vậy). */
-const REACHED: Record<ResearchStage, number> = { extract: 0, gate1: 1, research: 2, gate2: 3, write: 4, review: 5, revise: 5, gate3: 6, done: 7 };
-const RERUN_FROM = { extract: 0, research: 2, write: 4, review: 5 } as const;
-
-function RerunButton({ view, step, label, act, running }: { view: ResearchView; step: keyof typeof RERUN_FROM; label: string; act: Act; running: boolean }) {
-  const [busy, setBusy] = useState(false);
-  if (view.state.sample || REACHED[view.state.stage] < RERUN_FROM[step]) return null;
-  // Chạy lại xoá kết quả từ chặng này trở đi (kể cả kịch bản đã duyệt) — hỏi trước, một cú bấm nhầm là mất.
-  return <Popconfirm
-    title={`${label}?`}
-    description="Kết quả từ chặng này trở đi sẽ bị xoá và làm lại (tốn thêm lượt agent)."
-    okText={label}
-    cancelText="Thôi"
-    onConfirm={async () => {
-      setBusy(true);
-      await act({ action: "rerun", step });
-      setBusy(false);
-    }}
-  ><Button size="small" icon={<RedoOutlined />} disabled={running || busy} loading={busy}>{label}</Button></Popconfirm>;
-}
-
 /**
- * Hai cột như đọc tài liệu có chú thích: bên trái là việc của lượt (claim để duyệt, rồi kịch bản để đọc), bên phải
- * là thứ để đối chiếu (nguồn của claim đang chọn, dàn ý slide, nhật ký agent). Trước khi research, thứ để đối chiếu
- * là dàn ý — claim lấy ra từ đó; sau research là nguồn.
+ * Trang Đóng gói kịch bản: hàng đầu trang, dải sơ đồ bảy ô, vùng làm việc của ô đang chọn với thanh quyết định dính
+ * đáy, và ngăn Chi tiết. Trang chỉ ghép các phần; mỗi phần ở file riêng.
  */
-type DocTab = "claims" | "script";
-type SideTab = "sources" | "outline" | "log";
-const docTabOf = (stage: ResearchStage): DocTab => (["extract", "gate1", "research", "gate2"].includes(stage) ? "claims" : "script");
-const sideTabOf = (stage: ResearchStage): SideTab => (stage === "extract" || stage === "gate1" ? "outline" : "sources");
 
-/** Nút trên sơ đồ → cột và tab mở ra (sơ đồ vẫn là một đường vào, nội dung mở ở hai cột). */
-function placeOfNode(node: string): { doc?: DocTab; side?: SideTab } {
-  if (node === "input" || node === "extract") return { side: "outline" };
-  if (node === "gate1" || node === "research" || node === "evidence" || node === "gate2") return { doc: "claims" };
-  return { doc: "script" };
-}
-
-/** Tab Claim: danh sách để duyệt ở cổng 1, việc cần quyết ở cổng 2, còn lại là claim và kết luận. */
-function ClaimsDoc({ view, act, error, running, selected, onClaim }: { view: ResearchView; act: Act; error: string | null; running: boolean; selected: string | null; onClaim: (cid: string) => void }) {
-  const { state } = view;
-  const waiting = (gate: ResearchStage) => state.stage === gate && state.status === "waiting" && !state.sample;
-  if (waiting("gate1")) return <Gate1Panel view={view} act={act} error={error} />;
-  if (state.stage === "extract") return <p className="vs-scout-empty">Agent đang đọc slide và chọn những điều nên kiểm — danh sách claim sẽ hiện ở đây để bạn duyệt.</p>;
-  return <div className="vs-rs-doc-stack">
-    {waiting("gate2") && <Gate2Panel view={view} act={act} />}
-    {waiting("gate2") && <h3 className="vs-rs-doc-subhead">Tất cả claim</h3>}
-    {state.gates.gate1 && !waiting("gate2") && <p className="vs-scout-node-lede">
-      Bạn đã duyệt {state.gates.gate1.claims} claim lúc {day(state.gates.gate1.at)}.
-      {state.gates.gate2 && (state.gates.gate2.auto ? " Mọi claim đạt soát bằng chứng." : ` Đã quyết định ở cổng 2 lúc ${day(state.gates.gate2.at)}.`)}
-      {" "}Bấm một claim để xem nguồn bên phải.
-    </p>}
-    <ClaimList view={view} running={running} selected={selected} onOpen={onClaim} />
-    <p className="vs-scout-check-run">Studio soát từng trích đoạn với trang gốc nó tự tải. Chạy lại bằng tay: <code>node tools/research-verify.mjs research/{state.id} --stage evidence</code></p>
-  </div>;
-}
-
-/** Tab Kịch bản: bản đang có, đọc như tài liệu; mã claim ở cuối câu mở nguồn bên phải. */
-function ScriptDoc({ view, act, running, active, follow, onClaim }: { view: ResearchView; act: Act; running: boolean; active: string | null; follow: number; onClaim: (cid: string) => void }) {
-  if (!view.script) {
-    return <p className="vs-scout-empty">{running && view.state.stage === "write" ? "Agent đang viết — kịch bản sẽ hiện ở đây khi xong." : "Agent viết kịch bản sau khi research xong."}</p>;
-  }
-  return <div className="vs-rs-doc-stack">
-    <ScriptView view={view} onClaim={onClaim} active={active} follow={follow} />
-    <ReviewDetail view={view} />
-    <div className="vs-rs-reruns">
-      <RerunButton view={view} step="write" label="Viết lại từ đầu" act={act} running={running} />
-      <RerunButton view={view} step="review" label="Soát & biên tập lại" act={act} running={running} />
-    </div>
-  </div>;
-}
-
-/** Dàn ý slide ở cột đối chiếu — thứ claim được lấy ra từ đó. */
-function OutlineSide({ view, act, running }: { view: ResearchView; act: Act; running: boolean }) {
-  const { state } = view;
-  return <div className="vs-rs-doc-stack">
-    <p className="vs-scout-node-note">
-      <a href={fileUrl(`research/${state.id}/${state.deck.file}`)} target="_blank" rel="noreferrer">{state.deck.name}</a> · {state.deck.format.toUpperCase()} · {size(state.deck.bytes)}
-      {state.deck.slides ? ` · ${state.deck.slides} slide` : ""}
-    </p>
-    {state.deck.text && <p className="vs-scout-node-note">Chữ và ghi chú đã bóc: <a href={fileUrl(`research/${state.id}/${state.deck.text}`)} target="_blank" rel="noreferrer">{state.deck.text}</a> — hình trong PPTX không đi theo.</p>}
-    {(state.deck.emptySlides?.length ?? 0) > 0 && <p className="vs-scout-node-note">Slide chỉ có hình, agent không đọc được: {state.deck.emptySlides!.join(", ")}. Cần nội dung của chúng thì xuất PDF rồi tạo lượt mới.</p>}
-    {view.outline
-      ? <>
-          <p className="vs-scout-node-note">Dàn ý agent bóc được · {outlineSummary(view.outline)}</p>
-          <ol className="vs-rs-outline">{view.outline.map((o, i) => <li key={`${o.slide}-${i}`} value={o.slide}>{o.heading || `Slide ${o.slide}`}{o.skip ? " · không đọc" : ""}</li>)}</ol>
-        </>
-      : <p className="vs-scout-empty">Agent đang đọc slide — dàn ý sẽ hiện ở đây.</p>}
-    <div><RerunButton view={view} step="extract" label="Bóc tách lại" act={act} running={running} /></div>
-  </div>;
-}
+const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`);
+const NOTES_KEY = "video-studio.research.notes";
 
 /**
- * Điều người dùng cần biết trước khi giao một lượt research (đọc slide và trang web của người khác) cho agent:
- * chỉ Claude bị giới hạn ghi trong research/<rid>/.
+ * Điều người dùng cần biết trước khi giao một lượt (đọc slide và trang web của người khác) cho agent: chỉ Claude bị giới
+ * hạn ghi trong research/<rid>/.
  */
 const AGENT_NOTE: Partial<Record<AgentProvider, string>> = {
   codex: " · chưa kiểm, ghi được khắp repo",
@@ -186,12 +92,14 @@ function NewRun({ agents, locked, fallback, onCreated }: { agents: Record<AgentP
         />
       </label>
       <label className="vs-scout-field">
-        <span className="vs-field-label">Số câu</span>
+        <span className="vs-field-label">Số câu kịch bản</span>
         <InputNumber min={5} max={80} value={cues} disabled={busy} onChange={(v) => setCues(v ?? 20)} />
+        <small>Mỗi câu là một cảnh · ≈ {String(scriptBudget(cues).minutes).replace(".", ",")} phút lời đọc</small>
       </label>
     </div>
+    <p className="vs-rs-note">Agent chạy trên máy này; slide và mọi kết quả chỉ nằm trong thư mục research/ trên máy này.</p>
     {error && <Alert className="feedback" type="error" showIcon closable title="Chưa tạo được" description={error} onClose={() => setError(null)} />}
-    <Button type="primary" block icon={<PlayCircleFilled />} loading={busy} disabled={!file} onClick={() => void start()}>Bóc tách slide</Button>
+    <Button type="primary" block icon={<PlayCircleFilled />} loading={busy} disabled={!file} onClick={() => void start()}>Bắt đầu đọc slide</Button>
   </div>;
 }
 
@@ -200,15 +108,42 @@ export default function ResearchPage() {
   const router = useRouter();
   const rid = params.get("id");
   const { index, error: indexError, refresh: refreshIndex } = useResearchIndex();
-  const { view, logs, job, error, act: rawAct } = useResearch(rid, refreshIndex);
-  // Tab người dùng tự chọn nhớ theo lượt và chặng — sang chặng mới thì về tab hợp với chặng đó.
-  const [docPick, setDocPick] = useState<{ key: string; tab: DocTab } | null>(null);
-  const [sidePick, setSidePick] = useState<{ key: string; tab: SideTab } | null>(null);
+  const { view, logs, job, error, refresh, act: rawAct } = useResearch(rid, refreshIndex);
+  // Ô người dùng tự chọn nhớ theo lượt và chặng — sang chặng mới thì về ô hợp với chặng đó.
+  const [pick, setPick] = useState<{ key: string; node: NodeId } | null>(null);
   const [claim, setClaim] = useState<{ rid: string | null; cid: string | null }>({ rid: null, cid: null });
-  // Tăng mỗi lần chọn claim từ cột nguồn: kịch bản cuộn tới câu dẫn claim đó (chọn từ chính kịch bản thì không cuộn).
+  // Tăng mỗi lần chọn một điều từ cột nguồn: kịch bản cuộn tới câu dẫn nó.
   const [follow, setFollow] = useState(0);
+  const [details, setDetails] = useState<{ open: boolean; sections: DetailsSection[] }>({ open: false, sections: ["log"] });
+  const [draft, setDraft] = useState("");
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [notes, setNotesState] = useState(false);
   const [actError, setActError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // Công tắc "Ghi chú dựng video" nhớ theo trình duyệt — đọc sau khi dựng trang để bản server và bản client khớp nhau.
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNotesState(localStorage.getItem(NOTES_KEY) === "1");
+    } catch {}
+  }, []);
+  const setNotes = (on: boolean) => {
+    setNotesState(on);
+    try { localStorage.setItem(NOTES_KEY, on ? "1" : "0"); } catch {}
+  };
+
+  const running = job?.status === "running";
+  // Tên tab nói trạng thái — người dùng hay để trang ở tab khác trong lúc agent chạy.
+  const tabWord = !view ? null : view.state.status === "waiting" && !view.state.sample ? "Chờ bạn" : running ? "Đang chạy"
+    : view.state.status === "failed" && view.state.error !== "Đã dừng." ? "Lỗi" : null;
+  const tabTitle = view && tabWord ? `${tabWord} · ${view.state.title} · Video Studio` : null;
+  useEffect(() => {
+    if (!tabTitle) return;
+    const prev = document.title;
+    document.title = tabTitle;
+    return () => { document.title = prev; };
+  }, [tabTitle]);
 
   const select = (id: string | null) => router.push(id ? `/research?id=${encodeURIComponent(id)}` : "/research");
   const act: Act = async (body) => {
@@ -221,135 +156,87 @@ export default function ResearchPage() {
       return false;
     }
   };
-  const running = job?.status === "running";
   const config = index?.config;
   const fallback = config?.defaultProvider ?? "claude";
   const key = view ? `${view.state.id}:${view.state.stage}` : "";
-  const docTab = docPick?.key === key ? docPick.tab : view ? docTabOf(view.state.stage) : "claims";
-  const sideTab = sidePick?.key === key ? sidePick.tab : view ? sideTabOf(view.state.stage) : "sources";
+  const node: NodeId = view ? (pick?.key === key ? pick.node : defaultNode(view)) : "slide";
   const openClaim = claim.rid === rid ? claim.cid : null;
-  const openFrom = (cid: string, fromSide: boolean) => {
-    setClaim({ rid, cid });
-    setSidePick({ key, tab: "sources" });
-    if (fromSide) return setFollow((n) => n + 1);
-    // Màn hẹp: cột nguồn nằm dưới kịch bản, không dính bên cạnh — đưa người dùng xuống chỗ nó vừa mở.
-    requestAnimationFrame(() => {
-      const side = document.querySelector<HTMLElement>(".vs-rs-doc-side");
-      if (side && getComputedStyle(side).position !== "sticky") side.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
-  const claimsReady = Boolean(view && (view.claims.length || view.state.stage !== "extract"));
-  const scriptReady = Boolean(view && (view.script || REACHED[view.state.stage] >= REACHED.write));
+  const selectNode = (n: NodeId) => setPick({ key, node: n });
+  const recent = [...(index?.runs ?? [])].sort((a, b) => Number(b.status === "waiting") - Number(a.status === "waiting") || b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  const sample = index?.runs.find((r) => r.sample);
 
   return <Shell page="scout">
-    <div className="page-heading vs-page-heading">
-      <div>
-        <div className="eyebrow"><span className="tiny-mark" /> Thử nghiệm</div>
-        <h1>Đóng gói kịch bản</h1>
-      </div>
-      <span className="vs-scout-beta">Beta</span>
-    </div>
-    <p className="vs-rs-lede">
-      Slide của giảng viên → agent chọn điều cần kiểm → bạn duyệt → agent research trên web, Studio soát từng trích đoạn với trang gốc →
-      agent viết kịch bản theo mẫu → bạn duyệt. Chạy bằng agent coding trên máy bạn; mọi lượt nằm ở <code>research/</code>, chỉ trên máy này.
-    </p>
-
-    <div className="vs-rs-toolbar">
-      <Select
-        className="vs-rs-picker"
-        value={rid ?? undefined}
-        placeholder={index?.runs.length ? "Chọn một lượt research" : "Chưa có lượt nào"}
-        onChange={(id: string) => select(id)}
-        options={index?.runs.map((r) => ({ value: r.id, label: `${r.title} · ${statusLabel(r)} · ${day(r.createdAt)}${r.claims ? ` · ${r.passed}/${r.claims} claim` : ""}` })) ?? []}
-        aria-label="Lượt research"
-      />
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Lượt mới từ slide</Button>
-    </div>
+    <RunHeader runs={index?.runs} rid={rid} onSelect={select} onNew={() => setCreating(true)} onDetails={() => setDetails({ open: true, sections: details.sections })} hasRun={Boolean(view)} />
     {indexError && <Alert className="feedback" type="error" showIcon title={indexError} />}
 
-    <Modal open={creating} title="Lượt research mới" footer={null} onCancel={() => setCreating(false)} destroyOnHidden>
+    <Modal open={creating} title="Lượt mới từ slide" footer={null} onCancel={() => setCreating(false)} destroyOnHidden>
       <NewRun agents={index?.agents} locked={Boolean(config?.selectionLocked)} fallback={fallback} onCreated={(id) => { setCreating(false); void refreshIndex(); select(id); }} />
     </Modal>
 
-    {!rid && <section className="editor-panel vs-rs-main" aria-label="Lượt research">
-      <div className="vs-step-body"><Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tải slide của giảng viên lên để bắt đầu, hoặc chọn một lượt ở trên">
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>Lượt mới từ slide</Button>
-      </Empty></div>
+    {!rid && <>
+      <ResearchStrip preview />
+      <section className="vs-rs-empty" aria-labelledby="rs-empty-title">
+        <h2 id="rs-empty-title">Bắt đầu từ slide của giảng viên</h2>
+        <p>Tải slide lên (.pdf hoặc .pptx). Studio tự đi qua các bước trên sơ đồ và chỉ dừng ở ba hình thoi để bạn quyết. Bạn có thể rời trang trong lúc agent chạy.</p>
+        <div className="vs-rs-empty-actions">
+          <Button type="primary" icon={<UploadOutlined />} onClick={() => setCreating(true)} data-tour="research.new">Tải slide lên</Button>
+          {sample && <button type="button" className="vs-rs-link" onClick={() => select(sample.id)}>Xem lượt mẫu ›</button>}
+        </div>
+        {recent.length > 0 && <div className="vs-rs-recent">
+          <h3>Lượt gần đây</h3>
+          <ul>{recent.map((r) => {
+            const s = runStatus(r);
+            return <li key={r.id}><button type="button" onClick={() => select(r.id)}>
+              <i className={`vs-rs-dot is-${s.tone}`} aria-hidden="true" />
+              <span className="vs-rs-recent-status">{s.word}</span>
+              <span className="vs-rs-recent-title">{r.title}</span>
+              <small>{fmtTime(r.createdAt)}</small>
+            </button></li>;
+          })}</ul>
+        </div>}
+      </section>
+    </>}
+
+    {rid && !view && <section className="vs-rs-work" aria-label="Lượt research">
+      {error
+        ? <Alert type="error" showIcon title="Không mở được lượt này." description={error} action={<Button size="small" onClick={() => void refresh()}>Tải lại</Button>} />
+        : <p className="vs-rs-lead"><LoadingOutlined spin /> Đang tải lượt…</p>}
     </section>}
-    {rid && !view && <section className="editor-panel vs-rs-main" aria-label="Lượt research">
-      <div className="vs-step-body">{error ? <Alert type="error" showIcon title={error} /> : <p className="vs-scout-running"><LoadingOutlined spin /> Đang tải…</p>}</div>
-    </section>}
-    {view && <div className="vs-rs-run">
-      <RunBar view={view} job={job} logs={logs} act={act} running={running} />
-      {actError && <Alert className="feedback" type="error" showIcon closable title="Chưa làm được" description={actError} onClose={() => setActError(null)} />}
-      <div className="vs-rs-doc">
-        <section className="vs-rs-doc-main" aria-label="Tài liệu của lượt">
-          <Tabs
-            activeKey={docTab}
-            onChange={(tab) => setDocPick({ key, tab: tab as DocTab })}
-            items={[
-              {
-                key: "claims",
-                label: `Claim${view.claims.length ? ` · ${view.claims.length}` : ""}`,
-                disabled: !claimsReady,
-                children: <ClaimsDoc view={view} act={act} error={actError} running={running} selected={openClaim} onClaim={(cid) => openFrom(cid, false)} />,
-              },
-              {
-                key: "script",
-                label: "Kịch bản",
-                disabled: !scriptReady,
-                children: <ScriptDoc view={view} act={act} running={running} active={openClaim} follow={follow} onClaim={(cid) => openFrom(cid, false)} />,
-              },
-            ]}
-          />
-        </section>
-        <aside className="vs-rs-doc-side" aria-label="Đối chiếu">
-          <Segmented
-            block
-            value={sideTab}
-            onChange={(tab) => setSidePick({ key, tab: tab as SideTab })}
-            options={[
-              { value: "sources", label: "Nguồn" },
-              { value: "outline", label: "Dàn ý slide" },
-              { value: "log", label: "Nhật ký" },
-            ]}
-          />
-          <div className="vs-rs-side-body">
-            {sideTab === "sources" && (openClaim
-              ? <>
-                  <Button type="link" size="small" icon={<LeftOutlined />} className="vs-rs-side-back" onClick={() => setClaim({ rid, cid: null })}>Tất cả claim</Button>
-                  <h3 className="vs-rs-side-title">Claim {openClaim}</h3>
-                  <ClaimDetail view={view} cid={openClaim} act={act} running={running} />
-                </>
-              : view.claims.length && REACHED[view.state.stage] >= REACHED.research
-                ? <>
-                    <p className="vs-scout-node-note">Bấm một claim để xem nguồn, trích đoạn và câu trả lời của agent.</p>
-                    <ClaimList view={view} running={running} selected={openClaim} onOpen={(cid) => openFrom(cid, true)} />
-                  </>
-                : <p className="vs-scout-empty">Nguồn của từng claim hiện ở đây sau khi bạn duyệt claim và agent research xong.</p>)}
-            {sideTab === "outline" && <OutlineSide view={view} act={act} running={running} />}
-            {sideTab === "log" && <LogList logs={logs} />}
-          </div>
-        </aside>
-      </div>
-      {/* Sơ đồ và bảng token là thứ để tra khi cần — gập sẵn. */}
-      <Collapse className="vs-rs-more" size="small" items={[
-        {
-          key: "flow",
-          label: "Sơ đồ pipeline",
-          children: <ResearchFlow
-            view={view}
-            selected={openClaim ? `claim:${openClaim}` : docTab === "script" ? "write" : "research"}
-            onSelect={(node) => {
-              if (node.startsWith("claim:")) return openFrom(node.slice(6), true);
-              const place = placeOfNode(node);
-              if (place.doc) setDocPick({ key, tab: place.doc });
-              if (place.side) setSidePick({ key, tab: place.side });
-            }}
-          />,
-        },
-        ...(view.state.runs.length ? [{ key: "runs", label: `Các lượt agent · ${view.state.runs.length} lượt · token`, children: <RunsTable view={view} /> }] : []),
-      ]} />
-    </div>}
+
+    {view && <>
+      <ResearchStrip view={view} running={running} selected={node} onSelect={selectNode}
+        onClaim={(cid) => { setClaim({ rid, cid }); selectNode("research"); }} />
+      <WorkArea
+        view={view}
+        logs={logs}
+        job={job}
+        node={node}
+        onNode={selectNode}
+        act={act}
+        actError={actError}
+        onActError={() => setActError(null)}
+        openLog={() => setDetails({ open: true, sections: [...new Set<DetailsSection>([...details.sections, "log"])] })}
+        claim={openClaim}
+        setClaim={(cid) => setClaim({ rid, cid })}
+        follow={follow}
+        bumpFollow={() => setFollow((n) => n + 1)}
+        notes={notes}
+        setNotes={setNotes}
+        draft={draft}
+        setDraft={setDraft}
+        feedbackOpen={feedbackOpen}
+        setFeedbackOpen={setFeedbackOpen}
+      />
+      <DetailsDrawer
+        open={details.open}
+        sections={details.sections}
+        onClose={() => setDetails({ ...details, open: false })}
+        onSections={(sections) => setDetails({ ...details, sections })}
+        view={view}
+        logs={logs}
+        act={act}
+        running={running}
+      />
+    </>}
   </Shell>;
 }

@@ -4,13 +4,14 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEve
 import {
   CheckCircleFilled, DeleteOutlined, EditOutlined, InfoCircleOutlined, PlusOutlined, RollbackOutlined, UndoOutlined, WarningFilled,
 } from "@ant-design/icons";
-import { Button, Checkbox, Collapse, Input, Popconfirm, Segmented, Select, Tag, Tooltip, type GetRef } from "antd";
+import { Button, Checkbox, Input, Popconfirm, Segmented, Select, Switch, Tag, Tooltip, type GetRef } from "antd";
 import { groupClaims, reviewClaim, slideOptions, type ClaimReview, type SlideGroup } from "@/lib/claim-review";
 import {
-  batches, blankClaim, DIFFICULTY_HELP, DIFFICULTY_LABEL, KIND_HELP, KIND_LABEL, MAX_CLAIMS, outlineSummary, PRIORITY_HELP,
+  batches, blankClaim, claimCap, DIFFICULTY_HELP, DIFFICULTY_LABEL, KIND_HELP, KIND_LABEL, MAX_CLAIMS, outlineSummary, PRIORITY_HELP,
   PRIORITY_LABEL, PRIORITY_TAG, REUSE_NOTE, SLIDES_HELP, TEXT_HELP, TIME_SENSITIVE_HELP,
   type Claim, type ClaimKind, type Difficulty, type OutlineSlide, type Priority, type ResearchView,
 } from "@/lib/research";
+import { DecisionBar } from "./decision-bar";
 import type { Act } from "./research-panels";
 
 /**
@@ -43,7 +44,7 @@ function warningsOf(review: ClaimReview): string[] {
   const out: string[] = [];
   for (const a of review.anchors) {
     if (!a.inOutline) out.push(`Dàn ý không có slide ${a.slide}.`);
-    else if (a.point === null && !a.onHeading) out.push(`Không thấy câu này trong dàn ý slide ${a.slide}.`);
+    else if (a.point === null && !a.onSlide) out.push(`Không thấy câu này trong dàn ý slide ${a.slide}.`);
   }
   if (review.missingNumbers.length) {
     const cited = review.anchors.filter((a) => a.inOutline).map((a) => a.slide).join(", ");
@@ -244,6 +245,8 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
   // Claim vừa thêm mà chưa Lưu lần nào: Huỷ thì bỏ hẳn, không để lại một thẻ rỗng.
   const [fresh, setFresh] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
+  // Cột dàn ý: mặc định chỉ tiêu đề từng slide — mở ý của từng slide khi cần đối chiếu.
+  const [points, setPoints] = useState(false);
   // Lần duyệt vừa rồi không qua. Đổi gì trong danh sách là bỏ cờ, để thanh duyệt quay lại đếm claim và lượt agent.
   const [failed, setFailed] = useState(false);
   // Sau mỗi thao tác, focus về đúng nút kế tiếp (Bỏ qua ↔ Hoàn tác, Lưu → Sửa) — nút đó chỉ có sau lần vẽ tới.
@@ -280,7 +283,6 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
   const skipped = draft.length - kept.length;
   const lots = batches(chosen).length;
   const locked = editing !== null;
-  const citedSlides = new Set(view.claims.flatMap((c) => c.slides)).size;
 
   const toggle = (ids: string[], research: boolean) => {
     setFailed(false);
@@ -353,6 +355,7 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
     card.focus();
   };
   const chip = (id: string) => <button key={id} type="button" className="vs-rs-ref" onClick={() => focusCard(id)} aria-label={`Tới claim ${id}`}>{id}</button>;
+  const idLink = (id: string) => <button key={id} type="button" className="vs-rs-idlink" onClick={() => focusCard(id)} aria-label={`Tới claim ${id}`}>{id}</button>;
 
   const renderClaim = (c: Claim) => {
     if (editing === c.id) {
@@ -412,54 +415,55 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
 
   // Lỗi chỉ hiện khi trang còn giữ nó: đóng thông báo ở đầu trang hay đổi danh sách là thanh quay lại đếm.
   const failure = failed && !locked && error ? error : null;
+  // Nhiều điều hơn mức kịch bản dùng được: nói ra ở thanh duyệt — người duyệt quyết bỏ bớt hay giữ.
+  const cap = claimCap(view.state.options.cues);
+  const over = chosen.length > cap ? ` · nhiều hơn mức ${cap} điều cho kịch bản ${view.state.options.cues} câu` : "";
   const state = locked
     ? `Đang sửa ${editing} — Lưu hoặc Huỷ trước khi duyệt.`
     : failure
       ? `Chưa duyệt được: ${failure}`
       : chosen.length
-        ? `Research ${chosen.length} claim${skipped ? ` · bỏ qua ${skipped}` : ""} · ${lots} lượt agent${full ? ` · đã đủ ${MAX_CLAIMS} claim` : ""}`
+        ? `Research ${chosen.length} claim${skipped ? ` · bỏ qua ${skipped}` : ""} · ${lots} lượt agent${full ? ` · đã đủ ${MAX_CLAIMS} claim` : ""}${over}`
         : "Không research claim nào — kịch bản viết thẳng từ slide.";
 
   return <div className="vs-rs-g1" onFocus={revealAboveBar}>
-    {view.claims.length === 0
-      ? <p className="vs-scout-empty">Agent không thấy điều gì cần kiểm. Thêm tay, hoặc viết kịch bản thẳng từ slide.</p>
-      : <p className="vs-rs-g1-lede">
-          Agent chọn {view.claims.length} điều nên kiểm trên web{citedSlides ? `, từ ${citedSlides} slide` : ""} — mặc định research hết.
-          Bấm <strong>Bỏ qua</strong> với điều không cần kiểm (kịch bản vẫn đọc như slide, chỉ không tra nguồn); bấm <strong>Sửa</strong> khi
-          agent chép sai ý, chấm sai độ khó hoặc gắn nhầm slide.
-        </p>}
-    {groups.map(renderGroup)}
-    {outline.length > 0 && <Collapse size="small" className="vs-scout-outline vs-rs-g1-outline" items={[{
-      key: "outline",
-      label: `Dàn ý agent bóc được · ${outlineSummary(outline)} · ${withClaims} slide có claim`,
-      children: <ol>{outline.map((o, i) => {
-        const first = firstEntry.get(o.slide) === i;
-        const ids = first ? draft.filter((c) => c.slides.includes(o.slide)).map((c) => c.id) : [];
-        return <li key={`${o.slide}-${i}`} value={o.slide}>
-          <strong>{o.heading || `Slide ${o.slide}`}</strong>
-          {o.skip && <Tag className="vs-badge">không đọc</Tag>}
-          {ids.map(chip)}
-          {first && <Button type="link" size="small" disabled={locked || busy || full} onClick={() => add([o.slide])} aria-label={`Thêm claim ở slide ${o.slide}`}>Thêm claim</Button>}
-          {(o.points?.length ?? 0) > 0 && <ul>{o.points!.map((p, j) => <li key={j}>{p}</li>)}</ul>}
-        </li>;
-      })}</ol>,
-    }]} />}
-    <div ref={bar} className="vs-rs-g1-bar" role="region" aria-label="Duyệt danh sách claim">
-      <p className={`vs-rs-g1-state${failure ? " is-error" : ""}`} aria-live="polite">
+    <div className="vs-rs-grid">
+      <div className="vs-rs-main vs-rs-g1-main">
+        {view.claims.length === 0 && <p className="vs-scout-empty">Agent không thấy điều gì cần kiểm. Thêm tay, hoặc viết kịch bản thẳng từ slide.</p>}
+        {groups.map(renderGroup)}
+      </div>
+      {outline.length > 0 && <aside className="vs-rs-aside" aria-label="Dàn ý slide">
+        <p className="vs-rs-aside-head">Dàn ý slide · {outlineSummary(outline)} · {withClaims} slide có claim</p>
+        <span className="vs-rs-switchline"><Switch size="small" checked={points} onChange={setPoints} aria-label="Hiện ý của từng slide" /> Hiện ý của từng slide</span>
+        <ol className="vs-rs-outline">{outline.map((o, i) => {
+          const ids = firstEntry.get(o.slide) === i ? draft.filter((c) => c.slides.includes(o.slide)).map((c) => c.id) : [];
+          return <li key={`${o.slide}-${i}`} value={o.slide}>
+            {o.heading || `Slide ${o.slide}`}{o.skip ? " · không đọc" : ""}
+            {ids.map(idLink)}
+            {points && (o.points?.length ?? 0) > 0 && <ul>{o.points!.map((p, j) => <li key={j}>{p}</li>)}</ul>}
+          </li>;
+        })}</ol>
+      </aside>}
+    </div>
+    <p id="g1-lots-help" className="sr-only">{LOTS_HELP}</p>
+    <DecisionBar
+      barRef={bar}
+      tone={failure ? "error" : "waiting"}
+      lead={failure ? "Lỗi" : "Tới lượt bạn"}
+      text={<>
         {state}
         {!locked && !failure && chosen.length > 0 && <Tooltip title={LOTS_HELP} trigger={["hover", "focus"]}>
-          <InfoCircleOutlined tabIndex={0} aria-label="Cách tính số lượt agent" aria-describedby="g1-lots-help" />
+          <InfoCircleOutlined className="vs-rs-decide-info" tabIndex={0} aria-label="Cách tính số lượt agent" aria-describedby="g1-lots-help" />
         </Tooltip>}
-      </p>
-      <p id="g1-lots-help" className="sr-only">{LOTS_HELP}</p>
-      <div className="vs-rs-g1-baracts">
+      </>}
+      actions={<>
         <Tip title={full ? FULL_ADD : undefined}>
           <Button id="g1-add" icon={<PlusOutlined />} disabled={busy || locked || full} onClick={() => add()}>Thêm claim</Button>
         </Tip>
         <Button type="primary" icon={<CheckCircleFilled />} loading={busy} disabled={locked} onClick={() => void submit()}>
           {chosen.length ? `Duyệt · research ${chosen.length} claim` : "Viết kịch bản từ slide, không research"}
         </Button>
-      </div>
-    </div>
+      </>}
+    />
   </div>;
 }

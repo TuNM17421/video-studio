@@ -186,6 +186,14 @@
   --vu-image-candidate-width: 176px;
   --vu-image-card-min-width: 340px;
   --vu-research-sources-width: 400px;
+  --vu-research-header-height: 56px;
+  --vu-research-strip-height: 112px;
+  --vu-research-node-min: 136px;
+  --vu-research-node-max: 200px;
+  --vu-research-node-height: 72px;
+  --vu-research-gate: 44px;
+  --vu-research-drawer-width: 560px;
+  --vu-research-sheet-height: 70vh;
   --vu-mascot-cell: 84px;
   --vu-tour-panel: 440px;
   --vu-tour-mascot: 104px;

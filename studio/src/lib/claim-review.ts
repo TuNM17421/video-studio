@@ -19,8 +19,11 @@ export interface SlideAnchor {
   /** Chỉ số ý khớp nhất trong các ý của slide (gộp mọi mục cùng số), `null` nếu không ý nào tới `NEAR`. */
   point: number | null;
   score: number;
-  /** Claim nói đúng tiêu đề slide (vd. "2024–2026 là bước ngoặt") — có trên slide dù không khớp ý nào. */
-  onHeading: boolean;
+  /**
+   * Claim có trên slide dù không khớp riêng ý nào: nói đúng tiêu đề ("2024–2026 là bước ngoặt"), hay gộp nhiều ý
+   * mà agent chép tách dòng ("Perceptron 1957, Deep Learning 2012" khi dàn ý ghi "1. Perceptron (1957)", "2. Deep …").
+   */
+  onSlide: boolean;
 }
 
 export interface ClaimReview {
@@ -94,15 +97,17 @@ export function reviewClaim(claim: Pick<Claim, "text" | "slides">, outline: Outl
       if (s > score) { score = s; best = i; }
     });
     const heading = Math.max(0, ...entries.map((e) => matchScore(claim.text, e.heading ?? "")));
-    return { slide, inOutline: entries.length > 0, point: score >= NEAR ? best : null, score, onHeading: heading >= NEAR };
+    const whole = matchScore(claim.text, entries.flatMap((e) => [e.heading ?? "", ...(e.points ?? [])]).join(" "));
+    return { slide, inOutline: entries.length > 0, point: score >= NEAR ? best : null, score, onSlide: Math.max(heading, whole) >= NEAR };
   });
-  // Nhà là slide dẫn khớp nhất — tính cả tiêu đề; hoà thì slide ghi trước.
-  const rank = (a: SlideAnchor) => Math.max(a.score, a.onHeading ? NEAR : 0);
+  // Nhà là slide dẫn khớp nhất — tính cả tiêu đề và cả slide; hoà thì slide ghi trước.
+  const rank = (a: SlideAnchor) => Math.max(a.score, a.onSlide ? NEAR : 0);
   let home: SlideAnchor | null = null;
   for (const a of anchors) if (!home || rank(a) > rank(home)) home = a;
   const cited = anchors.filter((a) => a.inOutline).flatMap((a) => entriesOf(outline, a.slide));
   const known = new Set(cited.flatMap((e) => [e.heading ?? "", ...(e.points ?? [])]).flatMap(nums).map((n) => n.value));
-  const missing = cited.length ? nums(claim.text).filter((n) => !known.has(n.value)).map((n) => n.raw) : [];
+  // Số nguyên một chữ số ("1 token", "3 bước") gần như không bao giờ là dữ kiện đang soát — chỉ là nhiễu.
+  const missing = cited.length ? nums(claim.text).filter((n) => !/^\d$/.test(n.value) && !known.has(n.value)).map((n) => n.raw) : [];
   return { home: home?.slide ?? null, anchors, missingNumbers: [...new Set(missing)] };
 }
 
