@@ -15,7 +15,7 @@ import path from 'node:path';
 import { downloadImage, EXT, imageSize, MAX_BYTES, writeFileAtomic } from './lib/image-fetch.mjs';
 import { attributionText, creditLine, licenseAllowed, readPolicy } from './lib/image-license.mjs';
 import { renderUrl } from './lib/image-sources.mjs';
-import { checkDecisions, dsSrc, imagePaths, imagesModule, readCandidates, readJson, writeJson } from './lib/image-suggest.mjs';
+import { checkDecisions, dsSrc, effectiveLicense, imagePaths, imagesModule, readCandidates, readJson, writeJson } from './lib/image-suggest.mjs';
 
 const args = process.argv.slice(2);
 const VALUE_FLAGS = ['--work', '--dest'];
@@ -61,7 +61,10 @@ const nextApplied = {};
 
 for (const [slot, d] of Object.entries(decisions.slots)) {
   if (d.action === 'skip') continue;
-  const c = candidatesBySlot[slot].candidates.find((x) => x.id === d.candidate);
+  const found = candidatesBySlot[slot].candidates.find((x) => x.id === d.candidate);
+  // Ảnh từ trang research: ghi công theo giấy phép người dựng đã tự kiểm (nếu có), không theo "unknown".
+  const lic = effectiveLicense(found, d);
+  const c = { ...found, license: lic.license, licenseVersion: lic.licenseVersion };
   let file = existing(slot);
   let size = null;
   if (file && applied[slot]?.candidate === c.id) {
@@ -87,6 +90,7 @@ for (const [slot, d] of Object.entries(decisions.slots)) {
     ...(d.action === 'use' ? { caption: d.caption ?? null, credit: creditLine(c) } : { note: t.why }),
     attribution: attributionText(c),
     license: c.license,
+    ...(lic.confirmedBy ? { licenseConfirmedBy: lic.confirmedBy } : {}),
     shareAlike: licenseAllowed(c.license, policy).shareAlike,
     landingUrl: c.landingUrl,
     width: size?.width ?? null,

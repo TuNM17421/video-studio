@@ -20,7 +20,7 @@ export const DEFAULT_POLICY = Object.freeze({
   minLongEdge: 800,
   maxSlots: 8,
   candidatesPerSlot: 12,
-  sources: ['commons', 'openverse'],
+  sources: ['commons', 'openverse', 'research'],
 });
 
 export function readPolicy(file = POLICY_FILE) {
@@ -80,6 +80,8 @@ const SOURCE_LABEL = { commons: 'Wikimedia Commons', openverse: 'Openverse' };
 
 /** Tên nơi đăng ảnh để ghi công: Openverse thì ghi nơi gốc (Flickr…), không ghi bộ tìm kiếm. */
 export function sourceLabel(candidate) {
+  // Ảnh lấy từ trang research: nơi đăng là chính trang đó (tên báo / tên miền).
+  if (candidate.source === 'research') return candidate.origin ?? 'trang nguồn';
   if (candidate.source === 'openverse' && candidate.origin) {
     const o = String(candidate.origin);
     return o === 'wikimedia' ? 'Wikimedia Commons' : o.charAt(0).toUpperCase() + o.slice(1);
@@ -94,6 +96,8 @@ const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
  * Chữ 14 px nên phải ngắn; bản ghi công đầy đủ (TASL) nằm ở `attributionText`.
  */
 export function creditLine(candidate) {
+  // Ảnh từ trang research: không biết tác giả ảnh, chỉ biết trang — "Ảnh: en.wikipedia.org · CC BY-SA".
+  if (candidate.source === 'research') return `Ảnh: ${sourceLabel(candidate)} · ${licenseLabel(candidate.license, candidate.licenseVersion)}`;
   const who = candidate.creator ? clip(candidate.creator, 48) : clip(candidate.title ?? 'không rõ tác giả', 48);
   return `Ảnh: ${who} · ${licenseLabel(candidate.license, candidate.licenseVersion)} · ${sourceLabel(candidate)}`;
 }

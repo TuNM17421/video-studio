@@ -1,6 +1,7 @@
 import { handle } from "@/lib/server/http";
 import { emit, log } from "@/lib/server/jobs";
 import { assertId, HttpError, REPO } from "@/lib/server/paths";
+import { imagesEnabled, startImages } from "@/lib/server/images";
 import { readState, setStage } from "@/lib/server/videos";
 import { blockersFor, updateFeedbackWhere } from "@/lib/server/workflow";
 
@@ -32,6 +33,11 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     { status: "verified", evidence: "Người dùng duyệt stage trong Video Studio." },
   );
   log(id, "system", `Đã duyệt ${stage === "cues" ? "lời & cue" : "dựng cảnh"}.`);
+  // Lời đã chốt: đề xuất ảnh chạy ngay, song song với bước Giọng đọc. Không chạy được thì chỉ ghi lại — việc
+  // duyệt lời không được hỏng vì nó, và panel ảnh có nút chạy lại.
+  if (stage === "cues" && imagesEnabled(state.request.modules)) {
+    try { startImages(id); } catch (error) { log(id, "error", `Chưa chạy được đề xuất ảnh: ${error instanceof Error ? error.message : String(error)}`); }
+  }
   emit(id, { type: "state" });
   return Response.json({ ok: true, alreadyApproved: false });
 });

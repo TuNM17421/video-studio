@@ -7,6 +7,10 @@ const config: NextConfig = {
   devIndicators: false,
   // The Studio intentionally reads the parent video repository and linked design system.
   turbopack: { root: path.resolve(process.cwd(), "..") },
+  // The research page used to live at a Vietnamese slug; keep old links and bookmarks working.
+  async redirects() {
+    return [{ source: "/dong-goi-kich-ban", destination: "/research", permanent: false }];
+  },
   async headers() {
     return [{ source: "/(.*)", headers: [
       { key: "X-Content-Type-Options", value: "nosniff" },

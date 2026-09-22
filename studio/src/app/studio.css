@@ -2787,7 +2787,9 @@ button.vs-tile:hover {
 }
 .vs-modules {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--vu-capability-card-min-width), 1fr));
+  /* Tối đa --vu-capability-grid-columns cột (2×2): mỗi cột ít nhất bằng phần của nó trong hàng, nên không bao
+     giờ thành ba cột với card thứ tư lẻ loi; hẹp hơn hai lần card tối thiểu thì xuống một cột. */
+  grid-template-columns: repeat(auto-fit, minmax(max(var(--vu-capability-card-min-width), calc((100% - (var(--vu-capability-grid-columns) - 1) * var(--vu-space-3)) / var(--vu-capability-grid-columns))), 1fr));
   gap: var(--vu-space-3);
   padding: var(--vu-space-4);
 }
@@ -4110,6 +4112,715 @@ button.vs-tile:hover {
   color: var(--vu-amber-700) !important;
 }
 
+/* ── Đóng gói kịch bản (beta) · pipeline research ─────────────────────────────
+   Slide → bóc tách → cổng 1 → research từng claim → soát bằng chứng → cổng 2 → viết → soát & biên tập
+   → cổng 3. Tách khỏi luồng tạo video: lớp mang tiền tố vs-scout- (khung dùng chung từ bản đầu) hoặc
+   vs-rs- (riêng pipeline research), không lớp nào dùng chung với bước sản xuất. */
+.vs-nav-beta {
+  padding: 1px 6px;
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-100);
+  color: var(--vu-blue-800);
+  font-size: 9px;
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-wide);
+  text-transform: uppercase;
+}
+.vs-scout-beta {
+  align-self: center;
+  padding: 3px 10px;
+  border: 1px solid var(--vu-blue-300);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-50);
+  color: var(--vu-blue-800);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-wide);
+  white-space: nowrap;
+}
+.vs-rs-lede {
+  max-width: 920px;
+  margin: 0 0 var(--vu-space-5);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-secondary);
+}
+.vs-rs-lede code { font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+
+/* Bộ chọn lượt ở đầu trang thay cho một cột danh sách: workflow cần cả bề ngang của bàn dựng, chia cột
+   thì canvas phải thu nhỏ tới mức chữ trong nút không đọc được. */
+.vs-rs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-3);
+  margin-bottom: var(--vu-space-4);
+}
+.vs-rs-picker { flex: 1 1 320px; min-width: 0; max-width: 720px; }
+.vs-rs-new { display: grid; gap: var(--vu-space-3); }
+.vs-rs-new .field-grid { gap: var(--vu-space-3); }
+.vs-scout-field {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+.vs-scout-field small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-snug);
+}
+
+.vs-rs-main .vs-step-body { display: grid; gap: var(--vu-space-4); }
+.vs-badge.is-running { color: var(--vu-brand-primary); }
+.vs-badge.is-waiting { color: var(--vu-amber-700); }
+.vs-badge.is-failed { color: var(--vu-text-danger); }
+.vs-badge.is-done { color: var(--vu-green-700); }
+.vs-badge.is-contradicts { color: var(--vu-text-danger); }
+
+/* ── nhật ký ── */
+.vs-scout-flow {
+  display: grid;
+  gap: 2px;
+  max-height: 460px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-scout-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--vu-space-2);
+  padding: 5px 6px;
+  border-radius: var(--vu-radius-sm);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-snug);
+}
+.vs-scout-row.is-search { background: var(--vu-blue-50); }
+.vs-scout-row.is-error { background: var(--vu-red-50); }
+.vs-scout-row.is-done { background: var(--vu-green-50); }
+.vs-scout-time {
+  color: var(--vu-neutral-400);
+  font-size: var(--vu-text-2xs);
+}
+.vs-scout-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--vu-space-2);
+  min-width: 0;
+}
+.vs-scout-body small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  overflow-wrap: anywhere;
+}
+.vs-scout-say,
+.vs-scout-error {
+  flex-basis: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vs-scout-say { color: var(--vu-text-secondary); }
+.vs-scout-error { color: var(--vu-text-danger); }
+.vs-scout-running,
+.vs-scout-deliverable {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  margin: 0;
+  font-size: var(--vu-text-xs);
+  color: var(--vu-text-secondary);
+}
+.vs-scout-deliverable a { font-family: var(--vu-font-utility); overflow-wrap: anywhere; }
+
+/* ── soát ── */
+.vs-scout-check {
+  padding: var(--vu-space-3) var(--vu-space-4);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--vu-radius-sm);
+}
+.vs-scout-check.is-ok { border-left-color: var(--vu-green-700); background: var(--vu-green-50); }
+.vs-scout-check.is-warn { border-left-color: var(--vu-amber-700); background: var(--vu-amber-50); }
+.vs-scout-check h3,
+.vs-rs-edit h3,
+.vs-rs-runs h3 {
+  margin: 0 0 var(--vu-space-2);
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-semibold);
+  color: var(--vu-text-primary);
+}
+.vs-scout-check-line {
+  margin: 0;
+  font-size: var(--vu-text-xs);
+  color: var(--vu-text-secondary);
+}
+.vs-scout-problems {
+  display: grid;
+  gap: 5px;
+  margin: var(--vu-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--vu-text-2xs);
+  color: var(--vu-text-secondary);
+  overflow-wrap: anywhere;
+}
+.vs-scout-problems .anticon { color: var(--vu-text-danger); }
+.vs-scout-problems li.is-warning { color: var(--vu-text-muted); }
+.vs-scout-check-run {
+  margin: var(--vu-space-2) 0 0;
+  font-size: var(--vu-text-2xs);
+  color: var(--vu-text-muted);
+}
+.vs-scout-check-run code { font-family: var(--vu-font-utility); overflow-wrap: anywhere; }
+.vs-scout-sid {
+  padding: 0 5px;
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-2xs);
+}
+
+/* ── workflow (React Flow) ───────────────────────────────────────────────────────
+ * Biến --xy-* là cửa React Flow mở cho việc đổi màu; trỏ hết về token để canvas tự theo chế độ tối
+ * như phần còn lại của trang, không phải khai một bảng màu thứ hai. */
+.vs-scout-canvas {
+  height: 540px;
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-subtle);
+  overflow: hidden;
+}
+.vs-scout-canvas .react-flow {
+  --xy-background-color: transparent;
+  --xy-background-pattern-color: var(--vu-border-default);
+  --xy-edge-stroke: var(--vu-border-strong);
+  --xy-edge-stroke-width: 1.5;
+  --xy-edge-stroke-selected: var(--vu-brand-primary);
+  --xy-controls-button-background-color: var(--vu-surface-card);
+  --xy-controls-button-background-color-hover: var(--vu-overlay-hover);
+  --xy-controls-button-color: var(--vu-text-secondary);
+  --xy-controls-button-color-hover: var(--vu-text-primary);
+  --xy-controls-button-border-color: var(--vu-border-subtle);
+  --xy-controls-box-shadow: var(--vu-shadow-xs);
+  --xy-attribution-background-color: transparent;
+  --xy-node-border-radius: var(--vu-radius-md);
+}
+.vs-scout-canvas .react-flow__attribution a { color: var(--vu-text-muted); }
+.vs-scout-canvas .react-flow__edge.is-active path,
+.vs-scout-canvas .react-flow__edge.is-done path { stroke: var(--vu-brand-primary); }
+.vs-scout-canvas .react-flow__edge.is-skipped path { stroke-dasharray: 4 4; }
+.vs-scout-canvas .react-flow__handle {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--vu-border-strong);
+  background: var(--vu-surface-card);
+}
+.vs-flow-node {
+  display: grid;
+  gap: 3px;
+  width: 210px;
+  padding: 10px 12px;
+  border: 1px solid var(--vu-border-default);
+  border-left: 4px solid var(--vu-neutral-300);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  box-shadow: var(--vu-shadow-xs);
+  color: var(--vu-text-primary);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-snug);
+  cursor: pointer;
+}
+.vs-flow-node.is-selected { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; }
+.vs-flow-node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+}
+.vs-flow-node-icon { color: var(--vu-text-secondary); font-size: 13px; }
+.vs-flow-node-state { display: inline-flex; align-items: center; gap: 4px; font-weight: var(--vu-font-semibold); }
+.vs-flow-node-badge {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-secondary);
+  font-weight: var(--vu-font-semibold);
+  white-space: nowrap;
+}
+.vs-flow-node-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-weight: var(--vu-font-semibold);
+}
+.vs-flow-node-sub { color: var(--vu-text-secondary); font-size: var(--vu-text-2xs); }
+.vs-flow-node-meta { color: var(--vu-text-muted); font-size: var(--vu-text-2xs); }
+.vs-flow-node.is-active {
+  border-left-color: var(--vu-brand-primary);
+  box-shadow: 0 0 0 3px var(--vu-blue-100);
+}
+.vs-flow-node.is-active .vs-flow-node-state { color: var(--vu-brand-primary); }
+.vs-flow-node.is-done { border-left-color: var(--vu-green-700); }
+.vs-flow-node.is-done .vs-flow-node-state { color: var(--vu-green-700); }
+.vs-flow-node.is-warn { border-left-color: var(--vu-amber-700); box-shadow: 0 0 0 3px var(--vu-amber-50); }
+.vs-flow-node.is-warn .vs-flow-node-state,
+.vs-flow-node.is-warn .vs-flow-node-badge { color: var(--vu-amber-700); }
+.vs-flow-node.is-error { border-left-color: var(--vu-text-danger); }
+.vs-flow-node.is-error .vs-flow-node-state { color: var(--vu-text-danger); }
+.vs-flow-node.is-pending .vs-flow-node-title { color: var(--vu-text-secondary); }
+.vs-flow-node.is-skipped { border-style: dashed; border-left-style: solid; opacity: 0.6; }
+
+/* ── chi tiết một nút ── */
+.vs-scout-detail {
+  display: grid;
+  gap: var(--vu-space-3);
+  padding: var(--vu-space-3) var(--vu-space-4);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+}
+.vs-scout-detail-head { display: flex; align-items: center; justify-content: space-between; gap: var(--vu-space-3); }
+.vs-scout-detail-head h3 { margin: 0; font-family: var(--vu-font-brand); font-size: var(--vu-text-sm); }
+.vs-scout-node { display: grid; gap: var(--vu-space-3); justify-items: start; }
+.vs-scout-node > * { justify-self: stretch; }
+.vs-scout-node > .ant-btn { justify-self: start; }
+.vs-scout-node-lede,
+.vs-scout-node-note { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-scout-node-lede .ant-tag { margin-right: 6px; }
+.vs-scout-empty { margin: 0; font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-outline { margin: 0; padding-left: var(--vu-space-5); font-size: var(--vu-text-xs); color: var(--vu-text-secondary); line-height: var(--vu-leading-normal); }
+.vs-rs-question { margin: 0; font-size: var(--vu-text-xs); color: var(--vu-text-secondary); }
+
+.vs-rs-finding {
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-left: 3px solid var(--vu-green-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-green-50);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-rs-finding strong { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2); }
+.vs-rs-finding strong .ant-tag { margin: 0; font-weight: var(--vu-font-regular); }
+.vs-rs-finding p { margin: 2px 0 0; color: var(--vu-text-secondary); }
+.vs-rs-finding.is-fix { border-left-color: var(--vu-brand-primary); background: var(--vu-blue-50); }
+.vs-rs-finding.is-wrong { border-left-color: var(--vu-text-danger); background: var(--vu-red-50); }
+.vs-rs-finding.is-insufficient { border-left-color: var(--vu-amber-700); background: var(--vu-amber-50); }
+.vs-rs-corrected { color: var(--vu-text-primary) !important; font-weight: var(--vu-font-semibold); }
+.vs-rs-reason { font-size: var(--vu-text-2xs); }
+
+.vs-rs-evidence { display: grid; gap: var(--vu-space-2); margin: 0; padding: 0; list-style: none; }
+.vs-rs-evidence li {
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-left: 3px solid var(--vu-lesson-rail);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-card);
+  font-size: var(--vu-text-2xs);
+}
+.vs-rs-evidence li.is-supports { border-left-color: var(--vu-green-700); }
+.vs-rs-evidence li.is-contradicts { border-left-color: var(--vu-text-danger); }
+.vs-rs-evidence-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--vu-space-2); }
+.vs-rs-evidence-head a { display: inline-flex; align-items: center; gap: 4px; font-weight: var(--vu-font-semibold); overflow-wrap: anywhere; }
+.vs-rs-evidence-head small { color: var(--vu-text-muted); }
+.vs-rs-evidence-head .ant-tag { margin: 0; }
+.vs-rs-page { margin-left: auto; }
+.vs-rs-evidence q { display: block; margin-top: 4px; color: var(--vu-text-secondary); line-height: var(--vu-leading-snug); overflow-wrap: anywhere; }
+
+.vs-rs-claimlist { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.vs-rs-claimlist button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--vu-space-2);
+  width: 100%;
+  padding: 6px var(--vu-space-2);
+  border: 0;
+  border-left: 3px solid var(--vu-border-default);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-primary);
+  font: inherit;
+  font-size: var(--vu-text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+.vs-rs-claimlist button.is-ok { border-left-color: var(--vu-green-700); }
+.vs-rs-claimlist button.is-bad { border-left-color: var(--vu-text-danger); }
+.vs-rs-claimlist small { flex-basis: 100%; color: var(--vu-text-muted); font-size: var(--vu-text-2xs); }
+.vs-rs-claimlist button.is-warn { border-left-color: var(--vu-amber-700); }
+
+/* ── trang một lượt: đọc như tài liệu ──
+   Thanh của lượt ở trên (tiến độ, câu trạng thái, nút quyết định); dưới là hai cột: việc của lượt (claim, kịch bản)
+   và thứ để đối chiếu (nguồn, dàn ý, nhật ký) dính bên phải khi cuộn. Không dùng dải bước của trang video: ở đây
+   người dùng không chọn bước, chỉ cần biết lượt đang tới đâu. */
+.vs-rs-run { display: grid; gap: var(--vu-space-4); container-type: inline-size; }
+
+.vs-rs-bar {
+  display: grid;
+  gap: var(--vu-space-3);
+  padding: var(--vu-space-4) var(--vu-space-5);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-lg);
+  background: var(--vu-surface-card);
+}
+.vs-rs-bar-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vu-space-1) var(--vu-space-4); }
+.vs-rs-bar-head h2 {
+  margin: 0;
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-lg);
+  font-weight: var(--vu-font-semibold);
+  line-height: var(--vu-leading-snug);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-bar-meta { display: flex; flex-wrap: wrap; gap: var(--vu-space-1) var(--vu-space-3); margin: 0; font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-tokens { border-bottom: 1px dotted var(--vu-border-strong); cursor: help; }
+
+/* Năm bước là một vạch mảnh — biết đang tới đâu, không phải một dải để bấm. */
+.vs-rs-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--vu-space-1); margin: 0; padding: 0; list-style: none; }
+.vs-rs-track li { display: grid; gap: var(--vu-space-1); min-width: 0; }
+.vs-rs-track-bar { height: var(--vu-space-1); border-radius: var(--vu-radius-pill); background: var(--vu-neutral-200); }
+.vs-rs-track-label { overflow: hidden; font-size: var(--vu-text-2xs); color: var(--vu-text-muted); white-space: nowrap; text-overflow: ellipsis; }
+.vs-rs-track li.is-done .vs-rs-track-bar { background: var(--vu-brand-primary); }
+.vs-rs-track li.is-current .vs-rs-track-label { color: var(--vu-text-primary); font-weight: var(--vu-font-semibold); }
+.vs-rs-track li.is-running .vs-rs-track-bar { background: var(--vu-lesson-data); }
+.vs-rs-track li.is-waiting .vs-rs-track-bar { background: var(--vu-amber-700); }
+.vs-rs-track li.is-error .vs-rs-track-bar { background: var(--vu-text-danger); }
+.vs-rs-track li.is-idle .vs-rs-track-bar { background: var(--vu-border-strong); }
+
+.vs-rs-now { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2) var(--vu-space-3); padding-top: var(--vu-space-3); border-top: 1px solid var(--vu-border-subtle); }
+.vs-rs-now-dot { flex: none; width: var(--vu-space-2); height: var(--vu-space-2); border-radius: var(--vu-radius-pill); background: var(--vu-border-strong); }
+.vs-rs-now.is-running .vs-rs-now-dot { background: var(--vu-lesson-data); animation: vs-rs-pulse 1.6s ease-in-out infinite; }
+.vs-rs-now.is-waiting .vs-rs-now-dot { background: var(--vu-amber-700); }
+.vs-rs-now.is-done .vs-rs-now-dot { background: var(--vu-green-700); }
+.vs-rs-now.is-error .vs-rs-now-dot { background: var(--vu-text-danger); }
+.vs-rs-now-text { display: grid; flex: 1 1 280px; gap: 2px; min-width: 0; }
+.vs-rs-now-text strong { font-size: var(--vu-text-md); font-weight: var(--vu-font-semibold); color: var(--vu-text-primary); }
+.vs-rs-now-text > span { font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-rs-now.is-error .vs-rs-now-text strong { color: var(--vu-text-danger); }
+.vs-rs-now-actions { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
+.vs-rs-elapsed { font-weight: var(--vu-font-regular); color: var(--vu-text-muted); }
+/* Câu agent vừa nói: đủ để biết nó đang làm gì, không kéo dài thanh. */
+.vs-rs-said {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+@keyframes vs-rs-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .vs-rs-now.is-running .vs-rs-now-dot { animation: none; } }
+
+.vs-rs-doc { display: grid; grid-template-columns: minmax(0, 1fr) var(--vu-research-sources-width); align-items: start; gap: var(--vu-space-4); }
+.vs-rs-doc-main,
+.vs-rs-doc-side { min-width: 0; border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-lg); background: var(--vu-surface-card); }
+/* Đệm 12/16 — thanh Duyệt dính đáy của cổng 1 canh lề theo đúng khoảng này. */
+.vs-rs-doc-main { padding: var(--vu-space-3) var(--vu-space-4); }
+.vs-rs-doc-main > .ant-tabs > .ant-tabs-nav { margin-bottom: var(--vu-space-3); }
+.vs-rs-doc-side {
+  position: sticky;
+  top: var(--vu-space-4);
+  display: grid;
+  gap: var(--vu-space-3);
+  max-height: calc(100vh - 2 * var(--vu-space-4));
+  padding: var(--vu-space-3);
+  overflow: auto;
+}
+.vs-rs-side-body { display: grid; gap: var(--vu-space-2); min-width: 0; }
+.vs-rs-side-back.ant-btn { justify-self: start; padding-inline: 0; }
+.vs-rs-side-title { margin: 0; font-family: var(--vu-font-brand); font-size: var(--vu-text-sm); color: var(--vu-text-primary); }
+.vs-rs-doc-stack { display: grid; gap: var(--vu-space-3); min-width: 0; }
+.vs-rs-doc-subhead {
+  margin: var(--vu-space-2) 0 0;
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-2xs);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-reruns { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
+
+/* Câu dẫn claim đang mở ở cột nguồn, và mã claim đó trong câu. */
+.vs-rs-cue.is-linked { border-color: var(--vu-blue-300); background: var(--vu-blue-50); box-shadow: inset 3px 0 0 var(--vu-brand-primary); }
+.vs-rs-ref.is-active { border-color: var(--vu-brand-primary); background: var(--vu-brand-primary); color: var(--vu-surface-card); }
+.vs-rs-feedback { display: grid; gap: var(--vu-space-2); width: var(--vu-research-sources-width); max-width: 80vw; }
+
+/* Danh sách claim: mã · câu · kết luận trên một hàng, dòng nguồn bên dưới. */
+.vs-rs-claims button { align-items: center; padding: var(--vu-space-2) var(--vu-space-3); font-size: var(--vu-text-sm); }
+.vs-rs-claims button:hover { background: var(--vu-neutral-100); }
+.vs-rs-claims button:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 1px; }
+.vs-rs-claims button.is-selected { background: var(--vu-blue-50); box-shadow: inset 0 0 0 1px var(--vu-blue-300); }
+.vs-rs-claim-text { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+.vs-rs-claims .ant-tag { margin: 0; }
+.vs-rs-doc-side .vs-rs-claims button { font-size: var(--vu-text-xs); }
+
+.vs-rs-more { background: var(--vu-surface-card); }
+
+@container (max-width: 900px) {
+  .vs-rs-doc { grid-template-columns: minmax(0, 1fr); }
+  .vs-rs-doc-side { position: static; max-height: none; }
+}
+
+/* ── cổng duyệt ── */
+.vs-scout-review { display: grid; gap: var(--vu-space-4); }
+.vs-scout-review-lede { margin: 0; font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-scout-outline ol { margin: 0; padding-left: var(--vu-space-5); font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); }
+.vs-scout-outline ol > li + li { margin-top: var(--vu-space-2); }
+.vs-scout-outline ul { margin: 2px 0 0; padding-left: var(--vu-space-4); color: var(--vu-text-secondary); }
+.vs-scout-outline .ant-tag { margin-left: var(--vu-space-2); }
+.vs-scout-items { display: grid; gap: var(--vu-space-2); margin: 0; padding: 0; list-style: none; }
+.vs-scout-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--vu-space-3);
+  padding: var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+}
+.vs-scout-item-body { display: grid; gap: var(--vu-space-2); min-width: 0; }
+.vs-scout-review-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--vu-space-2); }
+.vs-rs-decision strong { font-size: var(--vu-text-xs); }
+
+/* ── cổng 1 · duyệt claim ──
+   Thẻ claim đọc như chữ: nhãn nhỏ, câu slide trong một khối trích, câu hỏi bên dưới, hai nút ở góc. Cảnh báo chỉ
+   hiện khi có gì lệch. Thanh duyệt dính đáy chừa chỗ bên phải cho nút Griffin (cố định ở góc màn hình).
+   Cỡ chữ và bố cục theo bề rộng của chính cổng (container query), không theo màn hình: sidebar thu/mở làm cổng
+   hẹp đi cả trăm px ở cùng một cỡ màn hình. */
+.vs-rs-g1 { display: grid; gap: var(--vu-space-4); container-type: inline-size; }
+.vs-rs-g1-lede { margin: 0; max-width: var(--vu-reading-max); font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-rs-g1-tip { display: inline-flex; }
+.vs-rs-g1-group { display: grid; gap: var(--vu-space-2); }
+.vs-rs-g1-ghead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vu-space-1) var(--vu-space-2); }
+.vs-rs-g1-ghead h4 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-semibold);
+  line-height: var(--vu-leading-snug);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-slide {
+  margin-right: var(--vu-space-2);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-g1-ghead .ant-tag { margin: 0 0 0 var(--vu-space-2); }
+.vs-rs-g1-count { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-rs-g1-skipnote {
+  margin: 0;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-left: 3px solid var(--vu-amber-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-amber-50);
+  color: var(--vu-amber-700);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-rs-g1-source > summary { width: fit-content; cursor: pointer; font-size: var(--vu-text-xs); color: var(--vu-text-link); }
+.vs-rs-g1-source > summary:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; border-radius: var(--vu-radius-sm); }
+.vs-rs-g1-points {
+  margin: var(--vu-space-2) 0 0;
+  padding: var(--vu-space-2) var(--vu-space-3) var(--vu-space-2) var(--vu-space-6);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-muted);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-points li.is-claimed { color: var(--vu-text-primary); }
+.vs-rs-g1-points .vs-rs-ref,
+.vs-rs-g1-outline .vs-rs-ref { margin-left: var(--vu-space-1); }
+.vs-rs-g1-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-2); margin: 0; padding: 0; list-style: none; }
+.vs-rs-g1-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--vu-space-2) var(--vu-space-3);
+  padding: var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  min-width: 0;
+  scroll-margin-block: var(--vu-space-4) calc(var(--vu-step-bar-height) + var(--vu-space-4));
+}
+/* Thẻ có tabindex=-1 để chip đưa tới được; bấm chuột vào chữ cũng focus thẻ nên chỉ vẽ vòng khi tới bằng bàn phím hay chip. */
+.vs-rs-g1-card:focus { outline: none; }
+.vs-rs-g1-card:focus-visible,
+.vs-rs-g1-card.is-target:focus { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; }
+.vs-rs-g1-card > * { grid-column: 1 / -1; }
+.vs-rs-g1-card > .vs-rs-g1-top { grid-column: 1; grid-row: 1; }
+.vs-rs-g1-card > .vs-rs-g1-actions { grid-column: 2; grid-row: 1; }
+.vs-rs-g1-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-1) var(--vu-space-2); min-height: var(--vu-control-sm); }
+.vs-rs-g1-top .ant-tag { margin: 0; }
+.vs-rs-g1-kind {
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-g1-also { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-rs-g1-actions { display: flex; gap: var(--vu-space-1); }
+.vs-rs-g1-text {
+  margin: 0;
+  max-width: var(--vu-reading-max);
+  padding: var(--vu-space-1) var(--vu-space-3);
+  border-left: 3px solid var(--vu-blue-300);
+  border-radius: 0 var(--vu-radius-sm) var(--vu-radius-sm) 0;
+  background: var(--vu-surface-subtle);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-question { margin: 0; max-width: var(--vu-reading-max); font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); overflow-wrap: anywhere; }
+.vs-rs-g1-question b { margin-right: var(--vu-space-1); font-weight: var(--vu-font-semibold); color: var(--vu-text-muted); }
+.vs-rs-g1-warn { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-amber-700); }
+.vs-rs-g1-warn .anticon { margin-right: var(--vu-space-1); }
+.vs-rs-g1-card.is-off {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-style: dashed;
+  border-color: var(--vu-border-default);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-rs-g1-offtext { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Nhãn mã claim dùng nền surface-subtle — trên dòng đã bỏ qua (cũng nền đó) thì đổi sang nền thẻ để còn thấy. */
+.vs-rs-g1-card.is-off .vs-scout-sid,
+.vs-rs-claimlist .vs-scout-sid { background: var(--vu-surface-card); }
+.vs-rs-g1-card.is-editing { grid-template-columns: minmax(0, 1fr); border-color: var(--vu-border-focus); box-shadow: var(--vu-shadow-xs); }
+.vs-rs-g1-editor { display: grid; gap: var(--vu-space-3); min-width: 0; }
+.vs-rs-g1-edithead { margin: 0; font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-g1-form { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; gap: var(--vu-space-3) var(--vu-space-4); }
+.vs-rs-g1-form > :is(label, .vs-rs-g1-label) { padding-top: var(--vu-space-2); font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-g1-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-1); min-width: 0; }
+.vs-rs-g1-field > .ant-select { width: 100%; }
+.vs-rs-g1-field > .ant-segmented { justify-self: start; }
+.vs-rs-g1-help { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-muted); }
+.vs-rs-g1-reuse {
+  margin: 0;
+  padding: var(--vu-space-1) var(--vu-space-2);
+  border-left: 3px solid var(--vu-amber-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-amber-50);
+  color: var(--vu-amber-700);
+  font-size: var(--vu-text-xs);
+}
+.vs-rs-g1-editbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2); }
+.vs-rs-g1-editbar > :first-child { margin-right: auto; }
+.vs-rs-g1-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-4);
+  min-height: var(--vu-step-bar-height);
+  margin: 0 calc(-1 * var(--vu-space-4)) calc(-1 * var(--vu-space-3));
+  padding: var(--vu-space-3) calc(var(--vu-tour-launcher) + var(--vu-space-6)) var(--vu-space-3) var(--vu-space-4);
+  border-top: 1px solid var(--vu-border-subtle);
+  border-radius: 0 0 var(--vu-radius-md) var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  box-shadow: var(--vu-step-bar-shadow);
+}
+/* Nền tối nuốt bóng: thêm viền đậm để thanh vẫn tách khỏi thẻ đang cuộn bên dưới. */
+:root[data-theme="dark"] .vs-rs-g1-bar { border-top-color: var(--vu-border-strong); }
+.vs-rs-g1-state { flex: 1 1 0; min-width: 0; margin: 0; font-size: var(--vu-text-sm); color: var(--vu-text-secondary); }
+.vs-rs-g1-state .anticon { margin-left: var(--vu-space-1); color: var(--vu-text-muted); }
+.vs-rs-g1-state.is-error { color: var(--vu-text-danger); }
+.vs-rs-g1-baracts { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
+@container (max-width: 720px) {
+  .vs-rs-g1-state { flex-basis: 100%; }
+}
+@container (max-width: 560px) {
+  .vs-rs-g1-form { grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-1); }
+  .vs-rs-g1-form > .vs-rs-g1-field + :is(label, .vs-rs-g1-label) { margin-top: var(--vu-space-2); }
+  .vs-rs-g1-field > .ant-segmented { justify-self: stretch; }
+}
+/* Hẹp tới mức hai nút xếp chồng: thanh cao ba hàng mà dính đáy thì che nửa màn hình — để nó nằm cuối cổng. */
+@container (max-width: 440px) {
+  .vs-rs-g1-bar { position: static; padding-inline-end: var(--vu-space-4); box-shadow: none; }
+  .vs-rs-g1-baracts,
+  .vs-rs-g1-baracts > .vs-rs-g1-tip,
+  .vs-rs-g1-baracts > .ant-btn { flex: 1 1 auto; }
+  .vs-rs-g1-baracts .ant-btn { width: 100%; }
+}
+
+/* ── kịch bản ── */
+.vs-rs-script { display: grid; gap: var(--vu-space-3); }
+.vs-rs-cues { display: grid; gap: var(--vu-space-2); margin: 0; padding: 0; list-style: none; }
+.vs-rs-cues h4 {
+  margin: var(--vu-space-3) 0 var(--vu-space-1);
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-xs);
+  color: var(--vu-text-primary);
+}
+.vs-rs-cue {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--vu-space-2);
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-card);
+}
+.vs-rs-cue.is-problem { border-color: var(--vu-text-danger); }
+.vs-rs-cue-n { color: var(--vu-text-muted); font-size: var(--vu-text-2xs); padding-top: 2px; }
+.vs-rs-cue p { margin: 0; }
+.vs-rs-cue-line { font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-primary); }
+.vs-rs-cue-screen { margin-top: 2px !important; font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-rs-cue-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px !important; }
+.vs-rs-cue-meta .ant-tag { margin: 0; }
+.vs-rs-ref {
+  padding: 0 6px;
+  border: 1px solid var(--vu-blue-300);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-50);
+  color: var(--vu-blue-800);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  cursor: pointer;
+}
+.vs-rs-ref:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 1px; }
+.vs-rs-ref.is-slide { border-color: var(--vu-border-default); background: var(--vu-surface-subtle); color: var(--vu-text-secondary); cursor: default; }
+.vs-rs-cue-issue { margin-top: 4px !important; font-size: var(--vu-text-2xs); }
+.vs-rs-cue-issue.is-problem { color: var(--vu-text-danger); }
+.vs-rs-cue-issue.is-warning { color: var(--vu-amber-700); }
+.vs-rs-cue-issue.is-edit { color: var(--vu-text-muted); font-style: italic; }
+.vs-rs-scores { display: flex; flex-wrap: wrap; gap: var(--vu-space-3); margin: 0 0 var(--vu-space-2); }
+.vs-rs-scores span { display: grid; gap: 2px; }
+.vs-rs-scores small { color: var(--vu-text-muted); font-size: var(--vu-text-2xs); }
+.vs-rs-scores strong { font-family: var(--vu-font-utility); font-size: var(--vu-text-sm); }
+
+/* ── các lượt agent ── */
+.vs-rs-runs { overflow-x: auto; }
+.vs-rs-runs table { width: 100%; border-collapse: collapse; font-size: var(--vu-text-2xs); }
+.vs-rs-runs th,
+.vs-rs-runs td { padding: 4px var(--vu-space-2); border-bottom: 1px solid var(--vu-border-subtle); text-align: left; white-space: nowrap; }
+.vs-rs-runs th { color: var(--vu-text-muted); font-weight: var(--vu-font-semibold); }
+.vs-rs-runs td.mono { text-align: right; font-variant-numeric: tabular-nums; }
+
 /* Cross-review switch (review-control.tsx): plan form and scenes step. */
 .vs-review {
   display: flex;
@@ -4945,3 +5656,93 @@ details.vs-flow-more[open] > summary {
 .vs-qa-section .vs-qa-toolbar > div:first-child {
   flex: 0 0 auto;
 }
+
+/* ── Ảnh đề xuất (năng lực images) ───────────────────────────────────────────────── */
+.vs-images {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-images.is-running { border-color: var(--vu-blue-200); }
+.vs-images-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vs-images-head > .anticon { color: var(--vu-lesson-data); }
+.vs-images-head h3 { margin: 0; font-size: 14px; }
+.vs-images-head .ant-tag { margin-inline-end: 0; }
+.vs-images-tools { display: flex; gap: 8px; margin-left: auto; }
+.vs-images-lede {
+  margin: 8px 0 12px;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-image-slots, .vs-image-grid, .vs-image-rejected ul { margin: 0; padding: 0; list-style: none; }
+.vs-image-slots { display: grid; gap: 12px; }
+.vs-image-slot {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+}
+.vs-image-slot-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.vs-image-slot-head .mono { color: var(--vu-neutral-600); font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+.vs-image-slot-head .ant-tag { margin-inline-end: 0; }
+.vs-image-status { margin-left: auto; color: var(--vu-neutral-600); font-size: var(--vu-text-xs); }
+.vs-image-status.is-decided { color: var(--vu-green-700); font-weight: var(--vu-font-semibold); }
+.vs-image-cue {
+  margin: 8px 0 4px;
+  padding: 4px 10px;
+  border-left: 3px solid var(--vu-blue-200);
+  color: var(--vu-lesson-ink);
+  font-style: italic;
+}
+.vs-image-reason, .vs-image-none { margin: 4px 0 10px; font-size: var(--vu-text-xs); color: var(--vu-neutral-700); }
+.vs-image-warn { color: var(--vu-amber-700); font-size: var(--vu-text-xs); }
+/* Thẻ nằm ngang và chia đều hàng (auto-fit gộp cột trống): hai ảnh là hai nửa, không dồn trái để phải trống. */
+.vs-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--vu-image-card-min-width)), 1fr));
+  gap: 10px;
+}
+.vs-image-card {
+  display: grid;
+  grid-template-columns: var(--vu-image-candidate-width) minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-0);
+  overflow: hidden;
+}
+.vs-image-card.is-chosen { border-color: var(--vu-brand-primary); box-shadow: 0 0 0 1px var(--vu-brand-primary); }
+.vs-image-thumb {
+  grid-row: 1 / span 2;
+  display: block;
+  min-height: var(--vu-image-candidate-width);
+  background: var(--vu-lesson-surface);
+}
+.vs-image-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.vs-image-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px 4px; font-size: var(--vu-text-xs); }
+.vs-image-meta .ant-tag { align-self: flex-start; margin-inline-end: 0; }
+.vs-image-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.vs-image-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-image-license { color: var(--vu-neutral-700); }
+.vs-image-why { margin: 2px 0 0; color: var(--vu-neutral-700); }
+.vs-image-source { align-self: flex-start; }
+.vs-image-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 12px 10px; }
+.vs-image-slot-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.vs-image-caption { display: flex; gap: 6px; }
+.vs-image-caption .ant-input { width: 240px; }
+.vs-image-slot-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.vs-image-rejected { margin-top: 8px; font-size: var(--vu-text-xs); color: var(--vu-neutral-600); }
+.vs-image-rejected summary { cursor: pointer; }
+:root[data-theme="dark"] .vs-image-thumb img { filter: brightness(0.9); }
+:root[data-theme="dark"] .vs-image-thumb img:hover { filter: none; }
+.vs-image-confirm { display: grid; gap: 8px; max-width: 320px; }
+.vs-image-confirm p { margin: 0; }
+.vs-image-confirm .ant-select { width: 200px; }
