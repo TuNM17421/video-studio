@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { displayPath, findVenv, installDir, sharedHome, WHISPER_VENV, whisperModelCache, whisperRepoDir } from './shared-env.mjs';
+import { displayPath, findVenv, installDir, KAGGLE_VENV, sharedHome, WHISPER_VENV, whisperModelCache, whisperRepoDir } from './shared-env.mjs';
 
 const tmp = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shared-env-')));
 const bin = process.platform === 'win32' ? ['Scripts', 'python.exe'] : ['bin', 'python'];
@@ -81,4 +81,14 @@ test('lượt tải dở (chưa có model.bin) không được tính là đã c�
 test('đường dẫn in ra: tương đối trong checkout, ~/ trong thư mục nhà', () => {
   assert.equal(displayPath('/r/voice/.venv', '/r', '/home/a'), 'voice/.venv');
   assert.equal(displayPath('/home/a/.cache/video-studio/x', '/r', '/home/a'), '~/.cache/video-studio/x');
+});
+
+test('Kaggle CLI: chỉ nhận venv có lệnh kaggle, không nhận venv trống', () => {
+  const root = tmp(); const shared = tmp(); const other = tmp();
+  makeVenv(path.join(root, 'voice/.venv-kaggle')); // có python nhưng pip install kaggle chưa xong
+  const withCli = path.join(other, 'voice/.venv-kaggle', bin[0]);
+  fs.mkdirSync(withCli, { recursive: true });
+  fs.writeFileSync(path.join(withCli, process.platform === 'win32' ? 'kaggle.exe' : 'kaggle'), '');
+  const found = findVenv(KAGGLE_VENV, { probe: 'kaggle', env: {}, root, shared, worktrees: [other] });
+  assert.equal(found.from, 'worktree');
 });

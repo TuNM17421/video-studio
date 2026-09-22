@@ -98,6 +98,7 @@ export function displayPath(p, root = ROOT, home = os.homedir()) {
 
 export const WHISPER_VENV = { repo: 'voice/.venv', shared: 'voice-align-venv', env: 'VOICE_ALIGN_VENV' };
 export const OMNIVOICE_VENV = { repo: 'voice/.venv-omnivoice', shared: 'omnivoice-venv', env: 'OMNIVOICE_VENV' };
+export const KAGGLE_VENV = { repo: 'voice/.venv-kaggle', shared: 'kaggle-venv', env: 'KAGGLE_CLI_VENV' };
 
 /** Tên thư mục một model faster-whisper nằm trong cache kiểu Hugging Face. */
 export const whisperRepoDir = (model) => `models--Systran--faster-whisper-${model}`;

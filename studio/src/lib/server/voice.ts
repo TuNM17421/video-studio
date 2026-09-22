@@ -1,8 +1,9 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { DryRun, ImportReport, LocalCast, OmnivoiceStatus, VoiceBound, VoiceScript, VoiceSettings } from "../types";
+import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, VoiceBound, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
 
@@ -152,10 +153,11 @@ async function bindVoice(id: string) {
 // ── narration recorded or generated outside the repo ─────────────────────────
 
 /** Run a repo tool that prints one JSON object on stdout; stderr is the human-readable progress. */
-async function toolJson<T>(id: string, args: string[], onLine?: (line: string) => void) {
+async function toolJson<T>(id: string, args: string[], onLine?: (line: string) => void, env?: NodeJS.ProcessEnv) {
   let out = "";
   const errors: string[] = [];
   const code = await run(id, process.execPath, args, {
+    env,
     onLine: (line, stream) => {
       if (stream === "stdout") { out += line; return; }
       errors.push(line);
@@ -359,6 +361,186 @@ export async function generateLocal(id: string, v: VoiceSettings) {
   }
 }
 
+// ── OmniVoice trên GPU của Kaggle ─────────────────────────────────────────────
+//
+// Cùng dàn vai, cùng JSONL với model local (tools/voice-kaggle.mjs dùng castLocal), chỉ khác chỗ chạy:
+// máy này không cần GPU hay torch, chỉ cần `kaggle` CLI. Kết quả là một thư mục 01.wav, 02.wav… và từ đó
+// đi đúng đường nhập của giọng tự thu — Whisper soát từng câu, chốt "vẫn nhập" khi có câu lỗi.
+
+/** Nơi tải kết quả kernel về; WAV nằm ở `out/` bên trong (run.py ghi vào đó). */
+const kaggleDir = (id: string) => path.join(voiceScriptDir(id), "kaggle");
+export const kaggleAudioDir = (id: string) => path.join(kaggleDir(id), "out");
+const kaggleKernelDir = (id: string) => path.join(stateDir(id), "kaggle-kernel");
+/** Thư mục nhập là kết quả của Kaggle (để ghi đúng nguồn giọng vào voiceBound). */
+export const isKaggleDir = (dir: string) => dir.replace(/\\/g, "/").endsWith("/voice-script/kaggle/out");
+
+/** Trần thời gian chạy của kernel trên Kaggle (`push -t`), để lượt hỏng không đốt hết quota GPU tuần. */
+const KAGGLE_RUN_SECONDS = 2 * 60 * 60;
+const KAGGLE_POLL_MS = 20_000;
+
+export async function kaggleStatus(): Promise<KaggleStatus> {
+  const cli = await toolState(["tools/setup-kaggle.mjs", "--check", "--json"], {
+    installed: false, bin: null, version: null, venv: "voice/.venv-kaggle", from: null,
+  } as Omit<KaggleStatus, "hasCreds" | "username" | "align">);
+  return { ...cli, hasCreds: hasKaggleCreds(), username: hasKaggleCreds() ? kaggleUsername() : null, align: await alignInstalled() };
+}
+
+/** `pip install kaggle` (một bản cho cả máy, dùng lại nếu đã có) — nhẹ, vài chục giây, nhưng vẫn là một job để có nhật ký. */
+export async function setupKaggle(id: string) {
+  startJob(id, "kaggle-setup");
+  setProgress(id, null, "Cài Kaggle CLI…");
+  log(id, "system", "Cài Kaggle CLI (một bản cho cả máy, dùng lại nếu đã có)");
+  const code = await run(id, process.execPath, ["tools/setup-kaggle.mjs"], {
+    onLine: (line) => log(id, "output", line),
+  });
+  const stopped = wasStopped(id);
+  finishJob(id, code === 0 ? "done" : "error");
+  if (code !== 0) throw new HttpError(500, stopped ? "Đã dừng cài đặt." : "Cài Kaggle CLI thất bại, xem nhật ký.");
+  return kaggleStatus();
+}
+
+/** Chạy `kaggle …` với credentials trong RAM; mọi dòng in ra đều bị xoá key trước khi vào nhật ký. */
+async function kaggle(id: string, bin: string, args: string[], quiet = false) {
+  const lines: string[] = [];
+  const code = await run(id, bin, args, {
+    env: kaggleEnv(),
+    onLine: (raw, stream) => {
+      const line = redactKaggle(raw);
+      lines.push(line);
+      if (!quiet) log(id, stream === "stderr" ? "error" : "output", line);
+    },
+  });
+  return { code, out: lines.join("\n") };
+}
+
+/** Chờ mà vẫn nghe nút Dừng: ngủ từng giây thay vì một lèo 20 giây. */
+async function pause(id: string, ms: number) {
+  for (let waited = 0; waited < ms && !wasStopped(id); waited += 1000) await new Promise((r) => setTimeout(r, 1000));
+}
+
+/**
+ * Sinh cả video trên Kaggle. Hỏng ở bước nào cũng nói rõ bước đó; kernel lỗi thì kéo đuôi log của chính
+ * kernel về nhật ký, vì lý do thật (hết quota GPU, tài khoản chưa xác minh số điện thoại, pip lỗi…) chỉ
+ * nằm ở đó. Xong thì tự soát bằng Whisper, và tự gắn luôn nếu không câu nào có vấn đề.
+ */
+export async function generateKaggle(id: string, v: VoiceSettings) {
+  const status = await kaggleStatus();
+  if (!status.installed || !status.bin) throw new HttpError(400, "Chưa cài Kaggle CLI. Bấm Cài Kaggle CLI ở bước 1.");
+  if (!status.hasCreds) throw new HttpError(400, "Nhập Kaggle username và API key/token trước.");
+  const bin = status.bin;
+  startJob(id, "kaggle-generate");
+  log(id, "system", `OmniVoice trên Kaggle · tài khoản ${kaggleUsername()} · nghỉ ${v.pause} s`);
+  let ref = "";
+  try {
+    setProgress(id, null, "Dựng kernel (lời đọc + mẫu giọng)…");
+    const kernel = await toolJson<{ ref: string; cues: number; bytes: number; voice: string }>(id, [
+      "tools/voice-kaggle.mjs",
+      "--cues", rel(path.join(videoDir(id), "cues.js")),
+      ...castArgs(v),
+      "--out", rel(kaggleKernelDir(id)),
+      "--json",
+    ], (line) => log(id, "output", line), { ...process.env, KAGGLE_USERNAME: kaggleUsername() });
+    ref = kernel.ref;
+    log(id, "system", `Kernel ${ref} · ${kernel.cues} câu · ${kernel.voice} · ${Math.round(kernel.bytes / 1024)} KB`);
+
+    setProgress(id, null, `Đẩy kernel lên Kaggle…`);
+    const push = await kaggle(id, bin, ["kernels", "push", "-p", kaggleKernelDir(id), "--accelerator", "NvidiaTeslaT4", "-t", String(KAGGLE_RUN_SECONDS)]);
+    // CLI có lúc in lỗi mà vẫn thoát 0 ("Kernel push error: …"), nên đọc cả chữ lẫn mã thoát.
+    // CLI 2.x trả lời 401 bằng cách in nguyên trang hướng dẫn đăng nhập — nói thẳng lý do thay vì để nó trôi.
+    if (/Authentication required/i.test(push.out)) {
+      throw new HttpError(401, "Kaggle không nhận username/key này. Xoá rồi nhập lại (hoặc tải lại kaggle.json) ở bước 2.");
+    }
+    if (push.code !== 0 || (/error|not valid|forbidden|unauthori[sz]ed/i.test(push.out) && !/successfully/i.test(push.out))) {
+      throw new HttpError(500, "Đẩy kernel lên Kaggle thất bại — xem nhật ký. Hay gặp: tài khoản chưa xác minh số điện thoại (GPU và Internet của kernel đều cần), hết quota GPU tuần, hoặc username không khớp với key.");
+    }
+
+    const started = Date.now();
+    let state: string | null = null;
+    while (!wasStopped(id) && Date.now() - started < (KAGGLE_RUN_SECONDS + 15 * 60) * 1000) {
+      await pause(id, KAGGLE_POLL_MS);
+      if (wasStopped(id)) break;
+      const res = await kaggle(id, bin, ["kernels", "status", ref], true);
+      state = parseKernelStatus(res.out);
+      const minutes = Math.floor((Date.now() - started) / 60_000);
+      setProgress(id, null, `Kaggle: ${KERNEL_STATE_LABEL[state ?? ""] ?? "chưa rõ trạng thái"} · ${minutes} phút`);
+      if (res.code !== 0) log(id, "error", res.out.split("\n").slice(-3).join("\n"));
+      if (state && TERMINAL_STATES.has(state)) break;
+    }
+    if (wasStopped(id)) {
+      log(id, "system", `Đã dừng theo dõi. Kernel vẫn chạy trên Kaggle tới khi xong (tối đa ${KAGGLE_RUN_SECONDS / 3600} giờ) — huỷ tại https://www.kaggle.com/code/${ref} nếu không cần nữa.`);
+      throw new HttpError(500, "Đã dừng.");
+    }
+    if (state !== "complete") {
+      await kernelLogTail(id, bin, ref);
+      throw new HttpError(500, state === null || !TERMINAL_STATES.has(state)
+        ? `Kernel chạy quá lâu mà chưa xong. Theo dõi tại https://www.kaggle.com/code/${ref}.`
+        : `Kernel kết thúc với trạng thái "${KERNEL_STATE_LABEL[state]}". Đuôi log của kernel ở nhật ký phía trên; log đầy đủ tại https://www.kaggle.com/code/${ref}.`);
+    }
+
+    setProgress(id, null, "Tải kết quả từ Kaggle…");
+    fs.rmSync(kaggleDir(id), { recursive: true, force: true });
+    fs.mkdirSync(kaggleDir(id), { recursive: true });
+    const download = await kaggle(id, bin, ["kernels", "output", ref, "-p", kaggleDir(id), "-o"], true);
+    if (download.code !== 0) throw new HttpError(500, "Tải kết quả kernel thất bại, xem nhật ký.");
+    const audioDir = kaggleAudioDir(id);
+    const wavs = fs.existsSync(audioDir) ? fs.readdirSync(audioDir).filter((f) => /\.wav$/i.test(f)).length : 0;
+    if (wavs < kernel.cues) throw new HttpError(500, `Chỉ tải về được ${wavs}/${kernel.cues} câu từ Kaggle.`);
+
+    // Như model local: trỏ ô nhập vào thư mục vừa tải, xoá báo cáo quét cũ của thư mục trước.
+    updateState(id, (s) => { s.voice = { ...s.voice, ...v, source: "kaggle", importDir: audioDir }; });
+    fs.rmSync(importReportFile(id), { force: true });
+    log(id, "system", `Kaggle đã sinh ${wavs}/${kernel.cues} câu → ${rel(audioDir)}`);
+    finishJob(id, "done");
+  } catch (error) {
+    finishJob(id, "error");
+    throw error;
+  }
+
+  await autoScan(id, kaggleAudioDir(id));
+  const report = lastImportReport(id);
+  if (report?.ok && report.rows.every((r) => r.level !== "error")) {
+    await importVoice(id, false);
+  } else if (report) {
+    log(id, "system", "Có câu cần nghe lại — xem bảng đối chiếu ở bước Nhập vào video rồi quyết định.");
+  }
+}
+
+const KERNEL_STATE_LABEL: Record<string, string> = {
+  queued: "đang xếp hàng",
+  running: "đang chạy",
+  complete: "xong",
+  error: "lỗi",
+  cancelled: "đã huỷ",
+  unknown: "chưa rõ trạng thái",
+};
+const TERMINAL_STATES = new Set(["complete", "error", "cancelled"]);
+
+/**
+ * `kaggle kernels status` không có JSON, chỉ in một dòng `<ref> has status "<trạng thái>"` — CLI 2.x ghi
+ * dạng `KernelWorkerStatus.COMPLETE`. Chỉ đọc trong dấu nháy của đúng dòng đó: dò chữ "error" trên cả
+ * output (cảnh báo phiên bản, tên kernel có chữ "error"…) là coi nhầm một lời nhắc thành kernel hỏng.
+ */
+export function parseKernelStatus(output: string): string | null {
+  const match = String(output || "").match(/has status "([^"]+)"/i);
+  if (!match) return null;
+  const raw = match[1].replace(/^KernelWorkerStatus\./i, "").toLowerCase().replace(/[^a-z]/g, "");
+  const map: Record<string, string> = { queued: "queued", newscript: "queued", running: "running", complete: "complete", error: "error", cancelrequested: "cancelled", cancelacknowledged: "cancelled" };
+  return map[raw] ?? "unknown";
+}
+
+/** Đuôi log của kernel: lý do hỏng thật chỉ nằm ở đây (pip lỗi, hết VRAM, thiếu câu…). */
+async function kernelLogTail(id: string, bin: string, ref: string) {
+  const res = await kaggle(id, bin, ["kernels", "logs", ref], true);
+  let lines = res.out.split("\n");
+  // Log của Kaggle là một mảng JSON {stream_name, data}; không đọc được thì giữ nguyên văn.
+  try {
+    const parsed = JSON.parse(res.out) as { data?: string }[];
+    lines = parsed.map((e) => String(e.data ?? "")).join("").split("\n");
+  } catch { /* nguyên văn */ }
+  const tail = lines.map((l) => l.trim()).filter(Boolean).slice(-15);
+  if (tail.length) log(id, "error", `Đuôi log của kernel:\n${tail.join("\n")}`);
+}
+
 /**
  * Kiểm thư mục vừa sinh, ngay sau khi sinh. Là việc làm thêm cho tiện, nên hỏng thì chỉ ghi nhật ký:
  * thư mục wav vẫn còn nguyên đó và bước 4 vẫn có nút kiểm tra lại — đừng biến một lượt sinh thành công
@@ -366,7 +548,7 @@ export async function generateLocal(id: string, v: VoiceSettings) {
  */
 async function autoScan(id: string, dir: string) {
   if (!(await alignInstalled())) {
-    log(id, "system", "Chưa cài môi trường nhận diện giọng nên bỏ qua bước kiểm tra. Cài xong thì bấm Kiểm tra lại ở bước 4.");
+    log(id, "system", "Chưa cài môi trường nhận diện giọng nên bỏ qua bước kiểm tra. Cài xong thì bấm Kiểm tra lại ở bước Nhập vào video.");
     return;
   }
   try {
@@ -471,7 +653,7 @@ export async function importVoice(id: string, force: boolean) {
   setProgress(id, null, "Gắn giọng vào video…");
   const bind = await bindVoice(id);
   // The folder a local model writes to is the only thing telling its import apart from a recorded one.
-  if (bind) recordBound(id, target.replace(/\\/g, "/").endsWith("/voice-script/omnivoice") ? "local" : "import", v);
+  if (bind) recordBound(id, isKaggleDir(target) ? "kaggle" : target.replace(/\\/g, "/").endsWith("/voice-script/omnivoice") ? "local" : "import", v);
   setStage(id, "voice", bind ? "done" : "error", bind ? null : "Không gắn được giọng vào video.");
   finishJob(id, bind ? "done" : "error");
   return bind;

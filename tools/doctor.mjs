@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { kaggleStatus } from './lib/kaggle.mjs';
 
 const require = createRequire(import.meta.url);
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -132,8 +133,9 @@ check('recommended', 'Antigravity CLI', () => {
 });
 
 check('recommended', 'Kaggle CLI (chỉ cần cho giọng OmniVoice)', () => {
-  if (!which('kaggle')) return false;
-  return versionOf('kaggle') || 'đã cài';
+  // Venv do `npm run setup:kaggle` cài (một bản cho cả máy) cũng tính, không chỉ `kaggle` trên PATH.
+  const status = kaggleStatus();
+  return status.installed ? status.version : false;
 });
 
 check('recommended', 'studio/.env: STUDIO_MACHINE_LABEL', () => {

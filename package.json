@@ -13,6 +13,7 @@
     "setup": "playwright install chromium",
     "setup:voice": "node tools/setup-voice-align.mjs",
     "setup:omnivoice": "node tools/setup-omnivoice.mjs",
+    "setup:kaggle": "node tools/setup-kaggle.mjs",
     "build": "node tools/build.mjs",
     "verify": "node tools/verify.mjs",
     "workflow": "node tools/video-workflow.mjs",
