@@ -25,10 +25,10 @@ import type { Act } from "./research-panels";
 const KIND_OPTIONS = (Object.keys(KIND_LABEL) as ClaimKind[]).map((k) => ({ value: k, label: KIND_LABEL[k] }));
 const DIFF_OPTIONS = (["easy", "normal", "hard"] as Difficulty[]).map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }));
 const PRIO_OPTIONS = (["high", "normal", "low"] as Priority[]).map((p) => ({ value: p, label: PRIORITY_LABEL[p] }));
-const LOCKED = "Lưu hoặc huỷ claim đang sửa trước.";
-const FULL_UNDO = `Đã đủ ${MAX_CLAIMS} claim được research. Bỏ qua bớt một claim khác trước.`;
-const FULL_ADD = `Tối đa ${MAX_CLAIMS} claim được research. Bỏ qua bớt một claim để thêm.`;
-const LOTS_HELP = "Lượt đầu chia lô theo độ khó: Khó 2 claim mỗi lượt, Vừa 4, Dễ 6. Claim đã kiểm ở bài trước được dùng lại thì bớt lượt; claim trượt soát được research lại thêm tối đa một lần.";
+const LOCKED = "Lưu hoặc huỷ điều đang sửa trước.";
+const FULL_UNDO = `Đã đủ ${MAX_CLAIMS} điều được tra nguồn. Bỏ qua bớt một điều khác trước.`;
+const FULL_ADD = `Tối đa ${MAX_CLAIMS} điều được tra nguồn. Bỏ qua bớt một điều để thêm.`;
+const LOTS_HELP = "Lần đầu chia nhóm theo độ khó: Khó 2 điều mỗi lần gọi agent, Vừa 4, Dễ 6. Điều đã kiểm ở bài trước được dùng lại thì bớt lần gọi; điều có trích dẫn chưa khớp trang gốc được tra lại tối đa một lần.";
 
 const sorted = (n: number[]) => [...n].sort((a, b) => a - b).join(",");
 const sameWords = (a: Claim, b: Claim) => a.text.trim() === b.text.trim() && a.question.trim() === b.question.trim();
@@ -76,7 +76,7 @@ function ClaimCard({ claim, review, original, manual, checkOutline, locked, onEd
       {claim.timeSensitive && <Tooltip title={TIME_SENSITIVE_HELP}><Tag className="vs-badge">Hay đổi</Tag></Tooltip>}
       {priority && <Tooltip title={PRIORITY_HELP[claim.priority]}><Tag className="vs-badge">{priority}</Tag></Tooltip>}
       {changed && <Tooltip title={changedWords ? REUSE_NOTE : "Đã đổi nhãn so với bản agent."}><Tag className="vs-badge is-waiting">Đã sửa</Tag></Tooltip>}
-      {manual && <Tooltip title="Claim bạn thêm — research từ đầu."><Tag className="vs-badge">Thêm tay</Tag></Tooltip>}
+      {manual && <Tooltip title="Điều bạn thêm — tra nguồn từ đầu."><Tag className="vs-badge">Thêm tay</Tag></Tooltip>}
       {also.length > 0 && <span className="vs-rs-g1-also">cũng ghi slide {also.join(", ")}</span>}
     </div>
     <p className="vs-rs-g1-text">{claim.text}</p>
@@ -84,9 +84,9 @@ function ClaimCard({ claim, review, original, manual, checkOutline, locked, onEd
     {warnings.map((w) => <p key={w} className="vs-rs-g1-warn"><WarningFilled />{w}</p>)}
     <div className="vs-rs-g1-actions">
       <Tip title={locked ? LOCKED : undefined}>
-        <Button id={`g1-${claim.id}-edit`} type="text" size="small" icon={<EditOutlined />} disabled={locked} onClick={onEdit} aria-label={`Sửa claim ${claim.id}`}>Sửa</Button>
+        <Button id={`g1-${claim.id}-edit`} type="text" size="small" icon={<EditOutlined />} disabled={locked} onClick={onEdit} aria-label={`Sửa ${claim.id}`}>Sửa</Button>
       </Tip>
-      <Button id={`g1-${claim.id}-drop`} type="text" size="small" onClick={onDrop} aria-label={`Bỏ qua claim ${claim.id} — không research`}>Bỏ qua</Button>
+      <Button id={`g1-${claim.id}-drop`} type="text" size="small" onClick={onDrop} aria-label={`Bỏ qua ${claim.id} — không tra nguồn`}>Bỏ qua</Button>
     </div>
   </li>;
 }
@@ -94,10 +94,10 @@ function ClaimCard({ claim, review, original, manual, checkOutline, locked, onEd
 function DroppedRow({ claim, full, onUndo }: { claim: Claim; full: boolean; onUndo: () => void }) {
   return <li id={`g1-${claim.id}`} tabIndex={-1} className="vs-rs-g1-card is-off">
     <span className="vs-scout-sid mono">{claim.id}</span>
-    <Tag className="vs-badge">Không research</Tag>
+    <Tag className="vs-badge">Không tra</Tag>
     <span className="vs-rs-g1-offtext">{claim.text}</span>
     <Tip title={full ? FULL_UNDO : undefined}>
-      <Button id={`g1-${claim.id}-undo`} type="link" size="small" icon={<UndoOutlined />} disabled={full} onClick={onUndo} aria-label={`Hoàn tác — research lại claim ${claim.id}`}>Hoàn tác</Button>
+      <Button id={`g1-${claim.id}-undo`} type="link" size="small" icon={<UndoOutlined />} disabled={full} onClick={onUndo} aria-label={`Hoàn tác — tra nguồn ${claim.id}`}>Hoàn tác</Button>
     </Tip>
   </li>;
 }
@@ -138,7 +138,7 @@ function ClaimEditor({ claim, original, isNew, outline, onSave, onCancel, onDele
   };
   return <li id={base} tabIndex={-1} className="vs-rs-g1-card is-editing">
     <div ref={root} role="group" aria-label={`Sửa claim ${claim.id}`} className="vs-rs-g1-editor" onKeyDown={onKeyDown}>
-      <p className="vs-rs-g1-edithead">{claim.id} · {isNew ? "claim mới" : "đang sửa"}</p>
+      <p className="vs-rs-g1-edithead">{claim.id} · {isNew ? "điều mới" : "đang sửa"}</p>
       <div className="vs-rs-g1-form">
         <label htmlFor={`${base}-text`}>Điều cần kiểm</label>
         <div className="vs-rs-g1-field vs-counted-textarea">
@@ -156,7 +156,7 @@ function ClaimEditor({ claim, original, isNew, outline, onSave, onCancel, onDele
           />
           <p id={`${base}-text-help`} className="vs-rs-g1-help">{ok ? TEXT_HELP : "Cần có nội dung để lưu."}</p>
         </div>
-        <label htmlFor={`${base}-q`}>Câu hỏi research</label>
+        <label htmlFor={`${base}-q`}>Câu hỏi để tra</label>
         <div className="vs-rs-g1-field vs-counted-textarea">
           <Input.TextArea
             id={`${base}-q`}
@@ -217,14 +217,14 @@ function ClaimEditor({ claim, original, isNew, outline, onSave, onCancel, onDele
             }}>Khôi phục bản agent</Button>}</span>
           : <span><Popconfirm
               title={`Xoá ${claim.id}?`}
-              description="Chữ bạn đã gõ cho claim này sẽ mất."
+              description="Chữ bạn đã gõ cho điều này sẽ mất."
               okText="Xoá"
               cancelText="Thôi"
               okButtonProps={{ autoFocus: true }}
               onOpenChange={setConfirming}
               onConfirm={onDelete}
             >
-              <Button type="link" size="small" danger icon={<DeleteOutlined />}>Xoá claim</Button>
+              <Button type="link" size="small" danger icon={<DeleteOutlined />}>Xoá điều này</Button>
             </Popconfirm></span>}
         <Button ref={cancelRef} size="small" onClick={onCancel}>Huỷ</Button>
         <Button type="primary" size="small" disabled={!ok} onClick={() => onSave(buf)} title="Lưu (Ctrl+Enter)" aria-keyshortcuts="Control+Enter Meta+Enter">Lưu</Button>
@@ -354,8 +354,8 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
     card.addEventListener("blur", () => card.classList.remove("is-target"), { once: true });
     card.focus();
   };
-  const chip = (id: string) => <button key={id} type="button" className="vs-rs-ref" onClick={() => focusCard(id)} aria-label={`Tới claim ${id}`}>{id}</button>;
-  const idLink = (id: string) => <button key={id} type="button" className="vs-rs-idlink" onClick={() => focusCard(id)} aria-label={`Tới claim ${id}`}>{id}</button>;
+  const chip = (id: string) => <button key={id} type="button" className="vs-rs-ref" onClick={() => focusCard(id)} aria-label={`Tới ${id}`}>{id}</button>;
+  const idLink = (id: string) => <button key={id} type="button" className="vs-rs-idlink" onClick={() => focusCard(id)} aria-label={`Tới ${id}`}>{id}</button>;
 
   const renderClaim = (c: Claim) => {
     if (editing === c.id) {
@@ -380,18 +380,18 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
           {g.slide === null ? "Chưa gắn slide" : g.title || (g.inOutline ? "" : "(không có trong dàn ý)")}
           {g.skip && <Tag className="vs-badge">không đọc</Tag>}
         </h4>
-        <span className="vs-rs-g1-count">{ids.length} claim</span>
+        <span className="vs-rs-g1-count">{ids.length} điều</span>
         {(ids.length >= 2 || g.skip) && <Tip title={locked ? LOCKED : tooMany ? FULL_UNDO : undefined}>
           <Button
             type="link"
             size="small"
             disabled={locked || tooMany}
             onClick={() => toggle(ids, !anyKept)}
-            aria-label={anyKept ? `Bỏ qua cả slide — ${ids.length} claim của ${where}` : `Hoàn tác cả slide — research lại ${ids.length} claim của ${where}`}
+            aria-label={anyKept ? `Bỏ qua cả slide — ${ids.length} điều của ${where}` : `Hoàn tác cả slide — tra lại ${ids.length} điều của ${where}`}
           >{anyKept ? "Bỏ qua cả slide" : "Hoàn tác cả slide"}</Button>
         </Tip>}
       </div>
-      {g.skip && <p className="vs-rs-g1-skipnote">Agent đánh dấu slide này là không đọc thành lời, nên kịch bản không cần câu nào cho nó — research các claim ở đây nhiều khả năng thừa.</p>}
+      {g.skip && <p className="vs-rs-g1-skipnote">Agent đánh dấu slide này là không đọc thành lời, nên kịch bản không cần câu nào cho nó — tra nguồn các điều ở đây nhiều khả năng thừa.</p>}
       {g.slide !== null && g.points.length > 0 && <details className="vs-rs-g1-source">
         <summary>Dàn ý slide · {g.points.length} dòng</summary>
         <ul className="vs-rs-g1-points">
@@ -401,7 +401,7 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
           })}
         </ul>
         <Tip title={locked ? LOCKED : full ? FULL_ADD : undefined}>
-          <Button type="link" size="small" icon={<PlusOutlined />} disabled={locked || busy || full} onClick={() => add([g.slide!])}>Thêm claim ở slide {g.slide}</Button>
+          <Button type="link" size="small" icon={<PlusOutlined />} disabled={locked || busy || full} onClick={() => add([g.slide!])}>Thêm điều ở slide {g.slide}</Button>
         </Tip>
       </details>}
       <ul className="vs-rs-g1-list">{g.claims.map(renderClaim)}</ul>
@@ -423,8 +423,8 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
     : failure
       ? `Chưa duyệt được: ${failure}`
       : chosen.length
-        ? `Research ${chosen.length} claim${skipped ? ` · bỏ qua ${skipped}` : ""} · ${lots} lượt agent${full ? ` · đã đủ ${MAX_CLAIMS} claim` : ""}${over}`
-        : "Không research claim nào — kịch bản viết thẳng từ slide.";
+        ? `Tra ${chosen.length} điều${skipped ? ` · bỏ qua ${skipped}` : ""} · khoảng ${lots} lần gọi agent${full ? ` · đã đủ ${MAX_CLAIMS} điều` : ""}${over}`
+        : "Không tra điều nào — kịch bản viết thẳng từ slide.";
 
   return <div className="vs-rs-g1" onFocus={revealAboveBar}>
     <div className="vs-rs-grid">
@@ -433,7 +433,7 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
         {groups.map(renderGroup)}
       </div>
       {outline.length > 0 && <aside className="vs-rs-aside" aria-label="Dàn ý slide">
-        <p className="vs-rs-aside-head">Dàn ý slide · {outlineSummary(outline)} · {withClaims} slide có claim</p>
+        <p className="vs-rs-aside-head">Dàn ý slide · {outlineSummary(outline)} · {withClaims} slide có điều cần kiểm</p>
         <span className="vs-rs-switchline"><Switch size="small" checked={points} onChange={setPoints} aria-label="Hiện ý của từng slide" /> Hiện ý của từng slide</span>
         <ol className="vs-rs-outline">{outline.map((o, i) => {
           const ids = firstEntry.get(o.slide) === i ? draft.filter((c) => c.slides.includes(o.slide)).map((c) => c.id) : [];
@@ -453,15 +453,15 @@ export function Gate1Panel({ view, act, error }: { view: ResearchView; act: Act;
       text={<>
         {state}
         {!locked && !failure && chosen.length > 0 && <Tooltip title={LOTS_HELP} trigger={["hover", "focus"]}>
-          <InfoCircleOutlined className="vs-rs-decide-info" tabIndex={0} aria-label="Cách tính số lượt agent" aria-describedby="g1-lots-help" />
+          <InfoCircleOutlined className="vs-rs-decide-info" tabIndex={0} aria-label="Cách tính số lần gọi agent" aria-describedby="g1-lots-help" />
         </Tooltip>}
       </>}
       actions={<>
         <Tip title={full ? FULL_ADD : undefined}>
-          <Button id="g1-add" icon={<PlusOutlined />} disabled={busy || locked || full} onClick={() => add()}>Thêm claim</Button>
+          <Button id="g1-add" icon={<PlusOutlined />} disabled={busy || locked || full} onClick={() => add()}>Thêm điều</Button>
         </Tip>
         <Button type="primary" icon={<CheckCircleFilled />} loading={busy} disabled={locked} onClick={() => void submit()}>
-          {chosen.length ? `Duyệt · research ${chosen.length} claim` : "Viết kịch bản từ slide, không research"}
+          {chosen.length ? `Duyệt · tra ${chosen.length} điều` : "Viết kịch bản từ slide, không tra nguồn"}
         </Button>
       </>}
     />

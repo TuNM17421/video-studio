@@ -222,20 +222,20 @@ export const PRIORITY_TAG: Partial<Record<Priority, string>> = { high: "Ưu tiê
 // Lời giải thích từng nhãn ở cổng 1 — nói đúng điều code làm (tools/lib/research-check.mjs, runner.ts), vì người
 // duyệt chọn độ khó là chọn số nguồn phải có và số lượt agent phải chạy.
 export const DIFFICULTY_HELP: Record<Difficulty, string> = {
-  easy: "Đủ với 1 nguồn gốc (trang chính thức, bài nghiên cứu, tài liệu tham khảo) hoặc 2 nơi xuất bản khác nhau. Research 6 claim mỗi lượt agent.",
-  normal: "Cần 2 nơi xuất bản độc lập, hoặc 1 trang chính thức. Research 4 claim mỗi lượt agent.",
-  hard: "Như Vừa, và có cảnh báo nếu không nguồn nào là nguồn gốc (chỉ báo, blog thuật lại). Research 2 claim mỗi lượt agent — tốn lượt nhất.",
+  easy: "Đủ với 1 nguồn gốc (trang chính thức, bài nghiên cứu, tài liệu tham khảo) hoặc 2 nơi xuất bản khác nhau. Tra 6 điều mỗi lần gọi agent.",
+  normal: "Cần 2 nơi xuất bản độc lập, hoặc 1 trang chính thức. Tra 4 điều mỗi lần gọi agent.",
+  hard: "Như Vừa, và có cảnh báo nếu không nguồn nào là nguồn gốc (chỉ báo, blog thuật lại). Tra 2 điều mỗi lần gọi agent — tốn lần gọi nhất.",
 };
 export const PRIORITY_HELP: Record<Priority, string> = {
-  high: "Research trước trong lô. Claim có cảnh báo sau khi soát thì dừng ở cổng 2 cho bạn xem.",
-  normal: "Thứ tự bình thường trong lô.",
-  low: "Xếp cuối trong lô. Không bớt nguồn, không bỏ research.",
+  high: "Tra trước trong nhóm. Điều có cảnh báo sau khi đối chiếu thì dừng ở hình thoi Bạn quyết cho bạn xem.",
+  normal: "Thứ tự bình thường trong nhóm.",
+  low: "Xếp cuối trong nhóm. Không bớt nguồn, không bỏ tra nguồn.",
 };
-export const TIME_SENSITIVE_HELP = "Nguồn mới nhất phải đăng trong 12 tháng; dữ kiện chỉ được dùng lại 90 ngày thay vì 365; có cảnh báo thì dừng ở cổng 2.";
-export const KIND_HELP = "Chỉ để phân loại — không đổi cách research.";
+export const TIME_SENSITIVE_HELP = "Nguồn mới nhất phải đăng trong 12 tháng; dữ kiện chỉ được dùng lại 90 ngày thay vì 365; có cảnh báo thì dừng ở hình thoi Bạn quyết.";
+export const KIND_HELP = "Chỉ để phân loại — không đổi cách tra nguồn.";
 export const SLIDES_HELP = "Kịch bản dẫn nguồn theo slide này. Để trống là cả bài.";
-export const TEXT_HELP = "Chép sát lời slide — thư viện dữ kiện nhận lại claim theo đúng câu này.";
-export const REUSE_NOTE = "Đã đổi câu hoặc câu hỏi so với bản agent: claim này sẽ research từ đầu, không dùng lại dữ kiện đã kiểm ở bài trước (nếu có).";
+export const TEXT_HELP = "Chép sát lời slide — thư viện dữ kiện nhận lại điều này theo đúng câu này.";
+export const REUSE_NOTE = "Đã đổi câu hoặc câu hỏi so với bản agent: điều này sẽ tra nguồn từ đầu, không dùng lại dữ kiện đã kiểm ở bài trước (nếu có).";
 
 /**
  * Độ dài kịch bản theo số câu người dùng đặt khi tạo lượt. Cùng số với tools/lib/script-lint.mjs (`WORDS_PER_CUE`,
