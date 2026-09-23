@@ -20,6 +20,14 @@ hội thoại (bật thêm `templates/modules/dialogue.md`).
 2. **Khoảng chờ** — một mục **Dừng**, không có lời đọc.
 3. **Chữa bài** — câu bình thường.
 
+Ba mẩu này **phải dính nhau, không có gì chen vào giữa mẩu 2 và mẩu 3**. Platform QA của trường đọc đúng
+ba mẩu liền nhau để dựng màn hiểu bài: nó lấy **câu ngay sau khoảng chờ** làm đáp án mẫu và dừng video ở
+đó. Viết một câu đệm "Hết giờ." vào chỗ ấy thì người học bấm xem đáp án và nhận được đúng hai chữ "Hết
+giờ." — lỗi này đã ăn thật ở bộ Day 2, và chỉ lộ ra sau khi thu giọng và render xong. Muốn có câu báo hết
+giờ thì viết **trước** khoảng chờ, hoặc để đồng hồ trên màn hình tự nói.
+
+`node tools/script-check.mjs <kịch bản>` chặn cả hai lỗi này ngay trên kịch bản.
+
 ```markdown
 ### Câu 27
 - **Kiểu:** hỏi
@@ -52,6 +60,22 @@ nhạc quiz vào khi câu hỏi đã dứt và đồng hồ bắt đầu chạy,
 kịch bản không phải làm gì thêm ngoài việc tách đúng ba mẩu — pipeline tự đánh dấu cue `silent`.
 
 Trên màn hình khoảng chờ luôn có **vòng đếm ngược** (component `Countdown`), chạy đúng số giây của mục Dừng.
+
+---
+
+## Đánh dấu trong cues.js: hai trường khác nhau, đừng lẫn
+
+Người dựng cues.js khai **hai** thứ ở chỗ dừng, và chúng phục vụ hai bên khác nhau:
+
+| Trường | Đặt ở đâu | Ai đọc |
+|---|---|---|
+| `tag: 'CÂU HỎI'` | câu **hỏi** (có lời) | platform QA — để nhận ra đây là một bộ quiz |
+| `quiz: true` | cue **im lặng** (khoảng chờ) | `render.mjs` — để biết đoạn nào thả nhạc quiz |
+
+`tag` cũng là nhãn góc vẽ trên màn hình, nên đừng dùng `tag: 'CÂU HỎI'` chỉ để hiện chữ "CÂU HỎI" ở một
+cảnh không phải câu hỏi — `npm run verify` sẽ cảnh báo, và platform lặng lẽ bỏ qua bộ đó. Ngược lại,
+`quiz: true` **không** đánh dấu câu hỏi; nó chỉ là cờ nhạc, và `voice-timing --write-cues` xoá mất nếu khai
+không đúng cuối phần khai của câu.
 
 ---
 
@@ -90,7 +114,11 @@ người dẫn bổ sung nốt. Đừng dựng học viên lên để làm sai r
 
 ---
 
-## Cách viết đầu kịch bản
+## Ba chỗ dừng, không phải một
+
+Platform QA muốn **ba bộ quiz** trong một video. Ít hơn thì màn hiểu bài chuyển sang chế độ "viết ba ý
+chính" — video vẫn soát được, nhưng phải được duyệt ngoại lệ ở Giai đoạn 0. `script-check` cảnh báo khi
+kịch bản có dưới ba chỗ dừng.
 
 Thêm một dòng ở đầu kịch bản cho người dựng biết có bao nhiêu chỗ dừng và mỗi chỗ dài bao lâu:
 

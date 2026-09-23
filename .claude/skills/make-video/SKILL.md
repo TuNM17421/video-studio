@@ -75,6 +75,12 @@ and the matching `run finish`; this keeps token, time, machine, outcome and feed
   `seconds` a script estimate, `visual` what the scene shows. Export `SECTIONS`, `CUES`, `DURATION` and
   `export const { spokenAt, speechEnd } = createSpeech(RAW, VOICE);` with
   `import { VOICE } from './voice.js'` and `import { createSpeech } from '../../../../lib/speech.js'`.
+- A quiz set is three cues in a row the QA platform reads: a spoken câu with `tag: 'CÂU HỎI'` (the
+  question), the `silent` cue (the pause), then the câu that answers it. Nothing may sit between the pause
+  and the answer — the platform takes that câu as the model answer and stops the video there, so a filler
+  "Hết giờ." becomes the answer the learner is shown. Do not use `tag: 'CÂU HỎI'` as a decorative corner
+  label: `npm run verify` warns, and the platform ignores that set. Three sets per video
+  (`templates/modules/quiz.md`).
 - `quiz: true` marks a câu the quiz bed plays over — only the pause where the viewer thinks (the `silent` cue,
   while the timer runs). Never the câu that reads the question out loud: the background bed carries that, and
   the quiz track comes in once the question is finished. Never the explanation that follows either, so the
@@ -141,7 +147,13 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
 ```console
 node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base> [--no-captions]
 node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/<Day>/<id>.txt
+node tools/qa-manifest.mjs --scene <id> --item <id> --title "<tên video>" --build 1 --captions yes|no --mp4 projects/<id>/render/<id>.mp4
 ```
+`manifest.json` goes next to the MP4 and is what the QA platform needs to accept the upload — without it,
+or with the wrong kind of file, the upload is refused. `--captions` must match how the MP4 was actually
+rendered, and `--build` is 1 for the first submission, 2 after fixes, 3 for the release. It refuses to
+write when cues.js and the recording disagree or the MP4 does not match the voice; both mean the MP4 is
+not the build to send. Never pass `--keep-frames` builds: the platform rejects them.
 
 ## Stage 5 · deliver
 - Before writing `chapters/<Day>/`, check the Day in REQUEST.md against the script head (`- **Ngày:** N`,

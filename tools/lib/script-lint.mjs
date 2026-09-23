@@ -169,6 +169,10 @@ export function syncDuration(markdown, seconds) {
 }
 /** Quá chừng này câu liền nhau cùng một kiểu đọc thì giọng đều đều — lỗi đã gặp thật ở bộ Day 02. */
 const SAME_DELIVERY_RUN = 6;
+/** Số bộ quiz platform QA muốn thấy trong một video (HUONG-DAN-MANIFEST.md, "Quiz: đúng mẫu ba câu"). */
+const QUIZ_SETS = 3;
+/** Câu đệm hết giờ — hợp lý khi đọc, nhưng đặt sau khoảng chờ thì nó thành đáp án mẫu. */
+const FILLER_ANSWER = /^(hết giờ|hết thời gian|thời gian đã hết|xong rồi|xong)[.!…]*$/i;
 
 /** Dòng `- **Tên:** giá trị` của một câu hoặc của phần đầu kịch bản. */
 const FIELD = /^\s*-\s*\*\*([^*:]+?):?\*\*:?\s*(.*)$/;
@@ -184,7 +188,9 @@ export function parseScript(md) {
   const header = {};
   const sections = [];
   const cues = [];
+  const pauses = [];
   let cue = null;
+  let pause = null;
   let lastKey = null;
   let target = header;
   lines.forEach((raw, i) => {
@@ -210,6 +216,17 @@ export function parseScript(md) {
       lastKey = null;
       return;
     }
+    // Khoảng chờ của module quiz: `### Dừng 1` + `- **Dừng:** 30 giây`. Nó không phải một câu (không có
+    // lời đọc, không tốn credit) nhưng là một cue `silent` trong video, và platform QA đọc chỗ dừng để
+    // tìm bộ quiz — nên phải giữ lại, đúng vị trí giữa hai câu.
+    if (/^###\s+Dừng\b/i.test(line)) {
+      cue = null;
+      pause = { line: no, after: cues.at(-1)?.n ?? null, section: sections.at(-1)?.title ?? null, fields: {} };
+      pauses.push(pause);
+      target = pause.fields;
+      lastKey = null;
+      return;
+    }
     if (/^###\s+/.test(line)) {
       cue = null;
       target = null;
@@ -231,7 +248,7 @@ export function parseScript(md) {
     }
     if (!line.trim()) lastKey = null;
   });
-  return { title, header, sections, cues };
+  return { title, header, sections, cues, pauses };
 }
 
 /** Số từ (≈ số tiếng trong tiếng Việt). */
@@ -354,5 +371,45 @@ export function lintScript(script, { deliveries, terms = new Set() }) {
     else { runKey = kind; runLength = 1; }
     if (runLength === SAME_DELIVERY_RUN) add('warning', cue.n, cue.line, `${SAME_DELIVERY_RUN} câu liền cùng kiểu "${kindRaw || 'giảng'}" — giọng sẽ đều đều, xen kiểu khác vào`);
   }
+  lintQuiz(script, add);
   return { issues, stats: { cues: script.cues.length, words, seconds: Math.round(words / SYLLABLES_PER_SECOND) } };
+}
+
+/**
+ * Chỗ dừng của module quiz, soát theo đúng mẫu platform QA đọc: **câu hỏi → khoảng chờ → câu chữa bài**,
+ * ba mẩu liền nhau. Platform lấy *đúng câu ngay sau khoảng chờ* làm đáp án mẫu và dừng video ở đó, nên
+ * một câu đệm ("Hết giờ.") chen vào giữa là đủ để người học nhận một đáp án rỗng — lỗi này đã có thật ở
+ * bộ Day 2, và chỉ lộ ra sau khi đã thu giọng và render xong. Soát ở đây, trên chính kịch bản, là chỗ rẻ
+ * nhất: chưa mất một ký tự credit nào.
+ *
+ * Kịch bản không có chỗ dừng nào thì không nói gì — video không quiz là hợp lệ, platform chuyển sang màn
+ * "viết ba ý chính".
+ */
+export function lintQuiz(script, add) {
+  const pauses = script.pauses ?? [];
+  if (!pauses.length) return;
+  const spokenAfter = (line) => script.cues.find((c) => c.line > line && c.fields['lời']);
+  for (const pause of pauses) {
+    if (!pause.fields['dừng']) {
+      add('problem', null, pause.line, 'chỗ dừng thiếu dòng **Dừng:** — phải ghi rõ mấy giây, không có chỗ nào khác khai thời lượng khoảng chờ');
+    }
+    const question = script.cues.filter((c) => c.line < pause.line).at(-1);
+    if (!question?.fields['lời']) {
+      add('problem', null, pause.line, 'chỗ dừng không có câu hỏi ngay trước — platform QA chỉ nhận một bộ quiz khi có câu hỏi → khoảng chờ → câu chữa bài liền nhau');
+      continue;
+    }
+    const answer = spokenAfter(pause.line);
+    const nextPause = pauses.find((p) => p.line > pause.line);
+    if (!answer || (nextPause && nextPause.line < answer.line)) {
+      add('problem', question.n, pause.line, `câu ${question.n} hỏi xong nhưng không có câu chữa bài nào sau khoảng chờ — bộ quiz này sẽ bị bỏ qua`);
+      continue;
+    }
+    if (FILLER_ANSWER.test(answer.fields['lời'].trim())) {
+      add('problem', answer.n, answer.fieldLines['lời'] ?? answer.line,
+        `câu ${answer.n} ("${answer.fields['lời'].trim()}") nằm ngay sau khoảng chờ nên platform QA lấy chính nó làm đáp án mẫu — bỏ câu đệm này, hoặc viết nó trước khoảng chờ`);
+    }
+  }
+  if (pauses.length < QUIZ_SETS) {
+    add('warning', null, pauses[0].line, `kịch bản có ${pauses.length} chỗ dừng, platform QA muốn ${QUIZ_SETS} — ít hơn thì phải được duyệt ngoại lệ ở Giai đoạn 0`);
+  }
 }

@@ -19,7 +19,7 @@ const video = (stageValues: Record<StageId, StageStatus>): VideoSummary => ({
   cueCount: 12,
   managed: true,
   stages: stageValues,
-  artifacts: { script: true, cues: true, voice: false, voiceWav: null, voiceScript: false, scenes: false, mp4: null, transcript: null, chapters: null, prompts: null },
+  artifacts: { script: true, cues: true, voice: false, voiceWav: null, voiceScript: false, scenes: false, mp4: null, transcript: null, qaManifest: null, chapters: null, prompts: null },
   running: false,
   updatedAt: null,
 });
