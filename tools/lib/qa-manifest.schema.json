@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vlearn-qa-manifest-v1",
+  "title": "manifest.json cho platform QA video VLearn",
+  "description": "Một file cho mỗi MP4 gửi đi soát. Sinh bằng video-studio/tools/qa-manifest.mjs, không gõ tay.",
+  "type": "object",
+  "required": ["item_id", "title", "build_no", "duration_sec", "fps", "captions_burned", "render", "chapters", "cues"],
+  "properties": {
+    "item_id": { "type": "string", "minLength": 1, "maxLength": 32, "description": "Mã item trong khung nội dung: \"1.1\", \"2.3\", \"M.2\". KHÔNG phải id thư mục video." },
+    "title": { "type": "string", "maxLength": 200 },
+    "build_no": { "type": "integer", "minimum": 1, "maximum": 3, "description": "Bản dựng thứ mấy của video này: 1 lần soát đầu, 2 sau sửa, 3 bản phát hành." },
+    "script_hash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "sha256 của kich-ban-goc.md" },
+    "cues_hash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$", "description": "sha256 của cues.js" },
+    "duration_sec": { "type": "number", "exclusiveMinimum": 0, "description": "Thời lượng audio thật, khớp MP4 trong ±0.5s." },
+    "fps": { "type": "number", "exclusiveMinimum": 0 },
+    "captions_burned": { "type": "boolean", "description": "MP4 có phụ đề in cứng không. Bản gửi soát nên là true." },
+    "render": {
+      "type": "object",
+      "required": ["keep_frames"],
+      "properties": { "keep_frames": { "const": false, "description": "Phải false. Bản render bằng --keep-frames bị platform từ chối." } }
+    },
+    "chapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "start_sec"],
+        "properties": {
+          "k": { "type": "integer", "minimum": 1 },
+          "title": { "type": "string" },
+          "start_sec": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "cues": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5000,
+      "description": "Một câu thoại = một cue, theo đúng thứ tự phát. n tăng dần, start_sec không lùi.",
+      "items": {
+        "type": "object",
+        "required": ["n", "text", "start_sec", "end_sec", "tag", "silent"],
+        "properties": {
+          "n": { "type": "integer" },
+          "section": { "type": ["integer", "null"] },
+          "text": { "type": "string", "maxLength": 2000, "description": "Nguyên văn lời đọc. Rỗng với câu im lặng." },
+          "start_sec": { "type": "number", "minimum": 0, "description": "Đo từ audio thật (voice.cues.json), không phải ước lượng kịch bản." },
+          "end_sec": { "type": "number", "minimum": 0 },
+          "tag": { "type": ["string", "null"], "description": "\"CÂU HỎI\" đánh dấu câu hỏi quiz. Tag khác (MINH HỌA, BÀI TẬP…) platform bỏ qua." },
+          "silent": { "type": "number", "minimum": 0, "description": "Số giây im lặng; > 0 chỉ ở câu dừng sau câu hỏi." }
+        }
+      }
+    }
+  }
+}

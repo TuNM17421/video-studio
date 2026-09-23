@@ -244,6 +244,25 @@ có thêm nguồn `research` (`tools/lib/image-research.mjs`): og:image của đ
 Giấy phép không rõ → `referenceOnly`: mặc định chỉ tham khảo; dùng trong video thì người dựng tự kiểm trang nguồn
 và chọn giấy phép (`decision.license`, images.js ghi `licenseConfirmedBy`).
 
+## Bàn giao cho platform QA của trường (`manifest.json`)
+Mỗi MP4 gửi đi soát phải có **một `manifest.json` nằm cạnh nó**, nếu không platform từ chối upload. File
+này gắn mỗi lỗi người soát ghi vào đúng câu thoại, tìm ba bộ câu hỏi hiểu bài, và so bản dựng mới với bản
+cũ. `tools/qa-manifest.mjs` + `tools/lib/qa-manifest.mjs` là **bản do đội QA giao, chép vào nguyên văn** —
+luật trong lib là hợp đồng với platform, hỏng thì sửa video chứ đừng sửa luật; đội QA ra bản mới thì chép
+lại cả hai file. Studio chạy nó ngay sau transcript ở bước Render; CLI gọi ở Stage 4.
+- Hai thứ repo không tự biết, nên phải hỏi người dùng: **`item_id`** (ô "Mã item gửi QA" ở bước Kế hoạch,
+  để trống thì dùng id video) và **`build_no`** (ô chọn ở bước Render: gửi soát lần đầu / sau sửa / phát
+  hành). Lưu ý tài liệu của đội QA nói `item_id` **không** phải id thư mục và schema chặn ở 32 ký tự —
+  repo này dùng id video theo yêu cầu, ô nhập cảnh báo khi quá dài.
+- **Bộ quiz** là ba cue liền nhau platform đọc được: câu hỏi có lời mang `tag: 'CÂU HỎI'` → cue `silent`
+  (khoảng chờ) → câu chữa bài. Nó lấy **đúng câu ngay sau khoảng chờ** làm đáp án mẫu, nên một câu đệm
+  ("Hết giờ.") chen vào đó thành đáp án hiện cho người học — đã ăn thật ở `d2-v2-mr-toi`. Đừng lẫn với
+  `quiz: true`: trường đó chỉ là cờ nhạc, đặt ở cue im lặng.
+- Soát **sớm, không đợi tới render**: `tools/script-check.mjs` chặn cứng trên chính kịch bản (chỗ dừng
+  thiếu số giây, không có câu hỏi trước hoặc câu chữa bài sau, câu đệm thành đáp án; dưới ba chỗ dừng là
+  cảnh báo) — lúc đó chưa tốn một ký tự credit. `npm run verify` chỉ **cảnh báo** cho cả repo, vì video
+  làm xong trước khi có platform sẽ không thu lại.
+
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),
 `seconds` và `lufs` — độ to đo được. Các bản master chênh nhau tới 15 dB nên **không** dùng gain cố định:

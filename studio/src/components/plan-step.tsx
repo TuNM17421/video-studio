@@ -6,6 +6,7 @@ import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, T
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { inferDay } from "@/lib/day";
+import { ITEM_ID_MAX, itemIdFor } from "@/lib/qa-manifest";
 import type { AgentProvider, ReviewSettings, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { DEFAULT_REVIEW } from "@/lib/review";
@@ -45,7 +46,7 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
   id: "",
   agentProvider,
   review: { ...DEFAULT_REVIEW },
-  request: { style, modules: [], day: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
+  request: { style, modules: [], day: "", itemId: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
 
@@ -137,6 +138,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const styleLabelId = useId();
   const idErrorId = useId();
   const dayMessageId = useId();
+  const itemIdMessageId = useId();
   const scriptLabelId = useId();
   const scriptErrorId = useId();
   const prompt = useMemo(() => buildPrompt(draft, style, modules), [draft, style, modules]);
@@ -153,6 +155,9 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const formatError = videoIdError(draft.id);
   const duplicateError = idCheck?.value === draft.id && idCheck.taken ? `Đã có video “${draft.id}”. Chọn một mã khác.` : null;
   const shownIdError = touched.id ? formatError || duplicateError : null;
+  // What the manifest beside the MP4 will carry as item_id: the field when filled, else the video id.
+  const itemId = itemIdFor(draft.request.itemId, draft.id);
+  const itemIdTooLong = itemId.length > ITEM_ID_MAX;
   const requiredDayError = !draft.request.day ? "Chọn ngày của bài học (Day01, Day02…)." : null;
   const shownDayError = touched.day ? requiredDayError : null;
   const scriptDay = useMemo(() => draft.script ? inferDay(draft.script.name, draft.script.content) : null, [draft.script]);
@@ -311,6 +316,16 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
         <Form.Item className="field" label={<span className="vs-field-label">Tên video</span>}>
           <Input value={draft.request.title} disabled={busy} maxLength={200} onChange={(e) => set({ title: e.target.value })} />
         </Form.Item>
+        <Form.Item
+          className="field"
+          label={<span className="vs-field-label">Mã item gửi QA</span>}
+          validateStatus={itemIdTooLong ? "warning" : undefined}
+          help={<span id={itemIdMessageId} className={`vs-validation-message${itemIdTooLong ? " is-warn" : ""}`} role="status">
+            {itemIdTooLong ? <><WarningFilled />{`Dài ${itemId.length} ký tự, platform QA chỉ nhận tối đa ${ITEM_ID_MAX}.`}</> : "Để trống thì dùng mã video. Đây là mã platform QA gắn lỗi soát vào."}
+          </span>}
+        >
+          <Input value={draft.request.itemId} disabled={busy} maxLength={ITEM_ID_MAX * 2} placeholder={draft.id || "d2-01-lab-v3"} spellCheck={false} autoComplete="off" aria-describedby={itemIdMessageId} onChange={(e) => set({ itemId: e.target.value })} />
+        </Form.Item>
       </div>
       <Form.Item className="field vs-script-field" data-tour="plan.script" label={<span id={scriptLabelId} className="vs-field-label">Kịch bản<RequiredMark /></span>} validateStatus={shownScriptError ? "error" : undefined} help={shownScriptError ? <span id={scriptErrorId} className="vs-validation-message is-error" role="alert"><WarningFilled />{shownScriptError}</span> : undefined}>
         {draft.script
@@ -365,6 +380,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
       { key: "agent", label: "Agent", children: <AgentName provider={state.agent.provider} /> },
       { key: "style", label: "Style", children: style?.name || r.style },
       { key: "day", label: "Ngày", children: r.day || "—" },
+      { key: "item", label: "Mã item gửi QA", children: itemIdFor(r.itemId, state.id) },
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
       { key: "feedback", label: "Feedback bản cũ", children: r.feedbackDir || "—" },
       { key: "video", label: "Video cũ", children: r.oldVideoDir || "—" },
