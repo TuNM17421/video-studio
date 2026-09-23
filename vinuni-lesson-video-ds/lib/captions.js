@@ -26,12 +26,15 @@ const OPENERS = new Set([
  * Words that lean on the next one — a page must not end right after them. Includes words that are also
  * openers (cho, từ): a page may start with "cho biết", "từ dữ liệu", but never end on the bare "cho" / "từ"
  * (the noun "từ", as in "từng từ", is caught too — rarer than the preposition, and the cost of a split
- * elsewhere is small). 'bên' binds what follows ("bên trong", "bên ngoài").
+ * elsewhere is small). 'bên' binds what follows ("bên trong", "bên ngoài"). The tail of the list is the
+ * first syllable of common Vietnamese compounds (đạo đức, khả năng, phương án…).
  */
 const LEANERS = new Set([
   'sẽ', 'đã', 'đang', 'được', 'bị', 'cần', 'những', 'các', 'một', 'mỗi', 'hai', 'ba', 'bốn', 'năm',
   'sáu', 'rất', 'không', 'chưa', 'hãy', 'nên', 'phải', 'cách', 'việc', 'người', 'bài', 'đằng', 'thật',
   'bên', 'cho', 'từ',
+  'đạo', 'chứ', 'mức', 'khả', 'phương', 'tiêu', 'chính', 'giải', 'quyết', 'kỳ', 'tự', 'hỗ',
+  'dự', 'ngưỡng', 'độ', 'tỉ', 'trợ', 'chấp',
 ]);
 /**
  * Compound nouns whose first syllable is spelled like an opener: 'từ' in "từ ngữ" is the noun "word", not the
@@ -57,8 +60,13 @@ function breakCost(words, i) {
 
 export function paginate(sourceText, max = CAPTION_MAX) {
   const text = sourceText.trim().replace(/\s+/g, ' ');
+  // Keep sentence boundaries intact before balancing pages within each sentence.
+  return text.split(/(?<=[.!?…]["”’']?)\s+/u).flatMap((sentence) => paginateSentence(sentence, max));
+}
+
+function paginateSentence(text, max) {
   const words = text.split(' ');
-  if (words.some((w) => chars(w) > max)) throw new Error(`Caption contains an overlong word: ${sourceText}`);
+  if (words.some((w) => chars(w) > max)) throw new Error(`Caption contains an overlong word: ${text}`);
 
   let minPages = 1;
   let current = 0;
@@ -94,7 +102,7 @@ export function paginate(sourceText, max = CAPTION_MAX) {
     return result;
   };
   const solved = best(0, minPages);
-  if (!solved) throw new Error(`Unable to paginate caption: ${sourceText}`);
+  if (!solved) throw new Error(`Unable to paginate caption: ${text}`);
   return solved.pages;
 }
 
