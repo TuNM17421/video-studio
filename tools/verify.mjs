@@ -21,6 +21,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { detectQuestions, QUIZ_TAG } from './lib/qa-manifest.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -247,6 +248,26 @@ for (const dir of videoDirs) {
       problems.push(`${where}: câu ${cue.n} có lời đọc nhưng đánh dấu quiz: true — cờ này chỉ dành cho khoảng chờ im lặng (xem CLAUDE.md "Nhạc nền và nhạc quiz")`);
     }
   }
+  // Quiz sets for the QA platform. It reads a set as three cues in a row — a spoken câu tagged CÂU HỎI,
+  // a silent pause, then the câu that answers it — and files the video's comprehension screen off that.
+  // The same field `tag` also draws the corner label, so a scene labelled CÂU HỎI with no pause after it
+  // is almost always a label, not a question; and a filler câu ("Hết giờ.") wedged between the pause and
+  // the real answer silently becomes the model answer.
+  // Warnings, not problems: verify covers the whole repo, and videos finished before the QA platform
+  // existed are not going to be re-recorded. What blocks a *new* video is tools/script-check.mjs, which
+  // runs on the one script being written — before a word of it is paid for.
+  const quizSets = detectQuestions(AUTHORED.map((c) => ({ n: c.n, text: String(c.text || '').trim(), tag: c.tag || null, silent: Number(c.silent) || 0 })));
+  const answered = new Set(quizSets.map((q) => q.q_cue_n));
+  for (const cue of AUTHORED) {
+    if (cue.tag !== QUIZ_TAG || !String(cue.text || '').trim() || answered.has(cue.n)) continue;
+    warnings.push(`${where}: câu ${cue.n} gắn tag "${QUIZ_TAG}" nhưng không thành bộ quiz (cần câu hỏi → câu im lặng → câu đáp án liền nhau) — platform QA sẽ bỏ qua`);
+  }
+  for (const q of quizSets) {
+    if (/^(hết giờ|hết thời gian|xong)[.!…]?$/i.test(q.model_answer.trim())) {
+      warnings.push(`${where}: bộ quiz ở câu ${q.q_cue_n} có đáp án mẫu là "${q.model_answer}" — platform QA lấy đúng câu ngay sau khoảng chờ làm đáp án, nên câu đó phải chữa bài (xem templates/modules/quiz.md)`);
+    }
+  }
+
   // smoke render
   const frames = new Set();
   for (let f = 0; f < meta.duration; f += 3) frames.add(f);
