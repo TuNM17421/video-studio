@@ -1,7 +1,0 @@
-00:00 Vấn đề trung tâm — Chạy đúng vẫn có thể trả lời sai
-01:25 Bản đồ bài học — 4 cụm · 18 nội dung thực chiến
-01:41 Cụm 1 — Nền móng & Đường đi của dữ liệu
-02:11 Cụm 2 — Độ tin cậy & Quan sát dữ liệu
-02:58 Cụm 3 — Vận hành & Phục hồi hệ thống
-03:30 Cụm 4 — Thực hành Lab 10 & Cầu nối Day 13
-03:47 Chuyển tiếp — Theo chân dòng dữ liệu từ Source

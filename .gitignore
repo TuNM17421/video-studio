@@ -42,6 +42,7 @@ projects/*/qa/
 projects/*/.studio/
 # Per-video inputs and generated deliverables stay local. Existing tracked Day02
 # templates remain tracked; add a future template explicitly when it is approved.
+/day10/
 /projects/*/
 /tts-elevenlabs/out/*/
 /voice/out/*/
