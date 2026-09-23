@@ -1,0 +1,8 @@
+{
+  "$doc": "Baseline problem của `verify` KHÔNG CỜ. Chỉ cập nhật khi đã soát tay từng dòng.",
+  "at": "2026-09-21",
+  "count": 1,
+  "problems": [
+    "videos/n5-06-human-centered-ai-design: câu 9: chữ \"Vấn đề: AI product = thiết kế cho \" rộng hơn hộp 377 px"
+  ]
+}
