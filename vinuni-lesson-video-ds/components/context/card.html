@@ -1,0 +1,75 @@
+<!-- @dsCard group="Components" viewport="900x350" name="Context · cửa sổ ngữ cảnh, khay, gói gửi đi, kho tài liệu" subtitle="ContextBudget vượt giới hạn · ContextTray đầy chỗ, phần còn lại chờ ngoài · Envelope niêm phong · FilingCabinet rút một ngăn" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=900" />
+<title>Context</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 900px; height: 350px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  // Chỗ ngồi tính bằng số, không ướm mắt — bản đầu ép cả bốn vào 1400 px và cái nào cũng đè chữ:
+  //   ContextTray  tiêu đề tới x+222, ô đếm neo phải ở x+w-24  → w ≥ 330 (bản cũ 300, đè)
+  //   Envelope     nhãn ô 21/600 + tag 15/700 hai đầu          → lòng ô ≥ 271, tức w ≥ 320
+  //   FilingCabinet nhãn ngăn 21/600 + tay nắm 62 px            → lòng ngăn ≥ 215, tức w ≥ 255
+  //   ContextBudget phần dư vẽ TRÀN sang phải mốc giới hạn      → chừa (tổng−limit) × w/limit px
+  //   Cả ba cái trên đều vẽ thêm ra ngoài w: khay có hàng chờ ở x+w+48, tủ có tờ giấy ở x+w+36.
+  VK.mountCard('#root', {
+    width: 1800, height: 700, duration: 260,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.ContextBudget, {
+          x: 50, y: 70, w: 1400, h: 76, limit: 8000, title: 'CỬA SỔ NGỮ CẢNH · 8000 TOKEN',
+          segments: [
+            { label: 'Lời hệ thống', tokens: 1200, tone: 'system' },
+            { label: 'Tài liệu đính kèm', tokens: 3600, tone: 'accent' },
+            { label: 'Lịch sử hội thoại', tokens: 2600, tone: 'purple' },
+            { label: 'Câu hỏi mới', tokens: 1400, tone: 'amber' }
+          ],
+          frame: f, start: 10, per: 18, showSum: true, illustrative: true
+        }),
+
+        h(VK.ContextTray, {
+          x: 50, y: 280, w: 360, h: 244, label: 'KHAY NGỮ CẢNH', capacity: 3, queueW: 300,
+          items: [
+            { label: 'Lời hệ thống', tone: 'accent', icon: 'settings' },
+            { label: 'Sổ tay sản phẩm', tone: 'memory', icon: 'book' },
+            { label: 'Câu hỏi của khách', tone: 'amber', icon: 'message-circle' },
+            { label: 'Biên bản họp cũ', tone: 'red', icon: 'file-text' }
+          ],
+          frame: f, start: 40, per: 16
+        }),
+
+        h(VK.Envelope, {
+          x: 820, y: 280, w: 320, h: 268, label: 'GÓI GỬI MÔ HÌNH', sealed: true, illustrative: true,
+          slots: [
+            { label: 'Lời hệ thống', kind: 'system' },
+            { label: 'Câu hỏi', kind: 'user' },
+            { label: 'Trích tài liệu', kind: 'doc' }
+          ],
+          frame: f, at: 180
+        }),
+
+        h(VK.FilingCabinet, {
+          x: 1200, y: 280, w: 260, h: 250, label: 'KHO TÀI LIỆU', icon: 'archive',
+          drawers: ['Sản phẩm', 'Giá', 'Chính sách'],
+          selected: 2, docLabel: 'Chính sách đổi trả', docW: 150,
+          frame: f, at: 140
+        }),
+
+        h(VK.SvgText, { x: 50, y: 620, size: 20, weight: 600, anchor: 'start', color: C.textMuted },
+          'Vượt giới hạn thì phần dư bị cắt · thứ không vừa khay phải chờ ngoài · chỉ ngăn được rút mới vào gói gửi đi')
+      );
+    }
+  });
+</script>
+</body>
+</html>

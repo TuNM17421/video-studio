@@ -1,0 +1,41 @@
+<!-- @dsCard group="Components" viewport="700x190" name="Shapes · DrawPath, Callout, Pie, Spark" subtitle="hình học từ @remotion/shapes và @remotion/paths — path data thuần, chuyển động theo frame" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Shapes</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; width: 700px; height: 190px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  function note(x, y, t) { return h(VK.SvgText, { x: x, y: y, size: 20, weight: 600, anchor: 'middle', color: C.textMuted }, t); }
+  // frame 40: cả bốn đã diễn xong phần vào, đứng ở trạng thái ổn định — card là ảnh tĩnh nên phải
+  // chọn một frame SAU khi spring settle, không thì card chụp đúng lúc hình còn đang bé.
+  VK.mountCard('#root', {
+    width: 1400, height: 380, duration: 60, frame: 40,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.DrawPath, { frame: f, d: 'M 90 200 C 220 200, 250 90, 330 90', from: 0, duration: 24 }),
+        note(210, 300, 'DrawPath'),
+
+        h(VK.Callout, { frame: f, x: 600, y: 210, width: 280, height: 76, text: 'Chỗ nhiều team vấp', from: 0 }),
+        note(600, 300, 'Callout'),
+
+        h(VK.Pie, { frame: f, x: 930, y: 150, radius: 70, value: 0.62, label: '62%', from: 0, duration: 26 }),
+        note(930, 300, 'Pie'),
+
+        h(VK.Spark, { frame: f, x: 1230, y: 150, radius: 60, from: 0 }),
+        note(1230, 300, 'Spark')
+      );
+    }
+  });
+</script>
+</body>
+</html>

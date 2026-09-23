@@ -1,0 +1,61 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Code · đoạn mã, payload JSON, nhật ký thực thi" subtitle="CodeBlock gõ dần rồi tô dòng · JsonView có chú thích tiếng Việt · LogCard 4 cột, một dòng bị chặn" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Code</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 360px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var CODE = [
+    'def cong_hai_so(a, b):',
+    '    """Trả về tổng a + b."""',
+    '    return a + b',
+    '',
+    '# công cụ khai cho mô hình',
+    'TOOLS = [cong_hai_so]'
+  ].join('\n');
+  VK.mountCard('#root', {
+    width: 1400, height: 720, duration: 260,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.CodeBlock, {
+          x: 50, y: 70, w: 640, code: CODE, language: 'python', title: 'tools/cong_hai_so.py',
+          illustrative: true, frame: f, start: 10, cps: 60, highlight: [3], highlightAt: 150
+        }),
+        h(VK.JsonView, {
+          x: 50, y: 400, w: 640, fontSize: 19, title: 'YÊU CẦU GỬI MÔ HÌNH',
+          data: { model: 'gpt-4o', messages: [{ role: 'user', content: 'Cộng 2 và 3' }], tools: ['cong_hai_so'] },
+          highlightKeys: ['tools'], glosses: { role: 'ai đang nói', tools: 'công cụ được phép gọi' },
+          frame: f, start: 60, per: 6
+        }),
+        h(VK.LogCard, {
+          x: 740, y: 70, w: 610, columns: ['GIỜ', 'BÊN', 'SỰ KIỆN', ''], highlightIndex: 3,
+          rows: [
+            { time: '19:02:11', level: 'info', actor: 'Suy luận', text: 'Chọn công cụ cong_hai_so' },
+            { time: '19:02:12', level: 'ok', actor: 'Hành động', text: 'Gọi với a=2, b=3', status: 'OK' },
+            { time: '19:02:12', level: 'ok', actor: 'Máy chủ', text: 'Trả về 5', status: 'OK' },
+            { time: '19:02:14', level: 'blocked', actor: 'Hành động', text: 'Xoá tệp người dùng', status: 'CHẶN' },
+            { time: '19:02:15', level: 'warn', actor: 'Suy luận', text: 'Thử lại bằng đường khác', status: 'CẢNH BÁO' }
+          ],
+          frame: f, start: 40, per: 14
+        }),
+        h(VK.SvgText, { x: 740, y: 560, size: 19, weight: 600, anchor: 'start', color: C.textMuted },
+          'LogCard · dòng bị chặn tô đỏ, các dòng khác mờ đi'),
+        h(VK.SvgText, { x: 740, y: 600, size: 19, weight: 600, anchor: 'start', color: C.textMuted },
+          'Mã và payload đều gắn tag MINH HOẠ khi chưa chạy thật')
+      );
+    }
+  });
+</script>
+</body>
+</html>

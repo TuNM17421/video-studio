@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Table · bảng so sánh, cột trước/sau, ô trạng thái" subtitle="DataTable · cột tone muted gạch ngang (TRƯỚC) và tone red (SAU) · ô trạng thái Đạt / Bị chặn / Chờ duyệt / Chưa thử · hàng được tô" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Table</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 300px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h;
+  VK.mountCard('#root', {
+    width: 1400, height: 600, duration: 180,
+    render: function (f) {
+      return h(VK.DataTable, {
+        x: 50, y: 60, w: 1300, fontSize: 23, illustrative: true,
+        title: 'QUYỀN CỦA TRỢ LÝ · TRƯỚC VÀ SAU KHI SIẾT',
+        highlightRow: 2,
+        columns: [
+          { key: 'tool', label: 'Công cụ', w: 1.5, mono: true },
+          { key: 'truoc', label: 'Trước', w: 1.2, tone: 'muted', strike: true },
+          { key: 'sau', label: 'Sau', w: 1.2, tone: 'red' },
+          { key: 'trangthai', label: 'Trạng thái', w: 1, align: 'center' }
+        ],
+        rows: [
+          { tool: 'doc_tep()', truoc: 'toàn máy', sau: 'thư mục dự án', trangthai: { status: 'ok' } },
+          { tool: 'gui_thu()', truoc: 'tự động', sau: 'người duyệt', trangthai: { status: 'pending' } },
+          { tool: 'xoa_tep()', truoc: 'tự động', sau: 'không cho phép', trangthai: { status: 'blocked' } },
+          { tool: 'goi_api()', truoc: 'mọi tên miền', sau: 'danh sách trắng', trangthai: { status: 'untested' } }
+        ],
+        frame: f, start: 10, per: 14
+      });
+    }
+  });
+</script>
+</body>
+</html>

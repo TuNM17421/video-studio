@@ -1,0 +1,53 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Control · quyền, phê duyệt, cổng chặn, hạn mức" subtitle="PermissionBoundary có vùng cấm + BlockedBadge · ApprovalStep chờ người duyệt · Gate mở/chặn · StepCounter dừng đếm · StopGate" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Control</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 360px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  VK.mountCard('#root', {
+    width: 1400, height: 720, duration: 240,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.PermissionBoundary, {
+          x: 50, y: 70, w: 560, h: 280, label: 'PHẠM VI ĐƯỢC PHÉP', tone: 'accent', locked: true,
+          blocked: [{ x: 360, y: 190, w: 220, h: 120 }]
+        }),
+        h(VK.SvgText, { x: 90, y: 200, size: 23, weight: 600, anchor: 'start', color: C.text }, 'Đọc tệp trong thư mục dự án'),
+        h(VK.SvgText, { x: 90, y: 240, size: 23, weight: 600, anchor: 'start', color: C.text }, 'Gọi công cụ đã khai báo'),
+        h(VK.SvgText, { x: 50, y: 390, size: 19, weight: 600, anchor: 'start', color: C.textMuted },
+          'PermissionBoundary · việc ngoài phạm vi bị đóng dấu BlockedBadge'),
+
+        h(VK.ApprovalStep, {
+          x: 680, y: 70, w: 440, h: 260, state: 'waiting',
+          title: 'Gửi thư cho khách', lines: ['Bản nháp đã viết xong.', 'Chờ người xem trước khi gửi.'],
+          reviewer: 'Minh', action: 'GỬI', illustrative: true
+        }),
+        h(VK.Gate, { x: 1250, y: 200, h: 164, state: 'blocked', label: 'CHẶN' }),
+        h(VK.SvgText, { x: 1250, y: 330, size: 19, weight: 600, color: C.textMuted }, 'Gate · trạng thái chặn'),
+
+        h(VK.StepCounter, {
+          x: 50, y: 450, value: 2, max: 3, label: 'LƯỢT GỌI CÔNG CỤ',
+          paused: true, illustrative: true
+        }),
+        h(VK.StopGate, { x: 760, y: 560, label: 'ĐỦ 3 LẦN', detail: 'dừng vòng lặp', triggered: true }),
+        h(VK.Gate, { x: 1050, y: 560, h: 164, state: 'open', label: 'CHO QUA' }),
+        h(VK.SvgText, { x: 1250, y: 520, size: 19, weight: 600, color: C.textMuted }, 'Gate · trạng thái mở'),
+        h(VK.SvgText, { x: 760, y: 660, size: 19, weight: 600, color: C.textMuted }, 'StopGate · điều kiện dừng')
+      );
+    }
+  });
+</script>
+</body>
+</html>

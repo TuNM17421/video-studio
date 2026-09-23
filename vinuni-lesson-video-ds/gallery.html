@@ -40,19 +40,18 @@
     ['Spacing', [['guidelines/layout-canvas.html', 700, 394], ['guidelines/shape-stroke.html', 700, 250]]],
     ['Motion', [['guidelines/motion-beats.html', 700, 300]]],
     ['Brand', [['guidelines/brand-scene-chrome.html', 700, 394]]],
-    ['Iconography', [['components/icons/card.html', 700, 300]]],
-    ['Components', [
-      ['components/chrome/card.html', 700, 270], ['components/text/card.html', 700, 220], ['components/cards/card.html', 700, 330],
-      ['components/labels/card.html', 700, 220], ['components/flow/card.html', 700, 250], ['components/marks/card.html', 700, 240],
-      ['components/data/card.html', 700, 360], ['components/beats/card.html', 700, 394],
-      ['components/roadmap/card.html', 700, 300], ['components/figures/card.html', 700, 300]
-    ]],
+    // 'Iconography' và 'Components' được điền từ dist/cards.json (tools/build.mjs sinh ra) — đừng
+    // chép tay danh sách card vào đây: lần trước evidence/ và shapes/ có card mà vẫn vô hình vì bị
+    // quên trong mảng này, và component không ai thấy là component không ai dùng.
+    ['Iconography', []],
+    ['Components', []],
     ['Lesson Video', [['ui_kits/lesson-video/index.html', 1280, 720, 0.75]]],
     ['Video mẫu', [['ui_kits/lesson-video/videos/n2-00-gioi-thieu-ngay-2/card.html', 1280, 720, 0.5]]],
     ['Scenes', ['hook-question', 'brand-title', 'section-card', 'flow-compare', 'glassbox-model', 'next-token', 'pipeline-guard', 'recap-rail', 'check-question', 'editorial-platform']
       .map(function (id) { return ['ui_kits/lesson-video/cards/' + id + '.html', 1280, 720, 0.5]; })]
   ];
   var root = document.getElementById('groups');
+  function render() {
   GROUPS.forEach(function (g) {
     var h2 = document.createElement('h2');
     h2.textContent = g[0];
@@ -71,6 +70,26 @@
     });
     root.appendChild(grid);
   });
+  }
+
+  function seat(name, list) {
+    for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][0] === name) GROUPS[i][1] = list;
+  }
+  fetch('dist/cards.json')
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (cards) {
+      seat('Iconography', cards.filter(function (c) { return c.group === 'icons'; })
+        .map(function (c) { return [c.path, c.width, c.height]; }));
+      seat('Components', cards.filter(function (c) { return c.group !== 'icons'; })
+        .map(function (c) { return [c.path, c.width, c.height]; }));
+    })
+    .catch(function (e) {
+      var p = document.createElement('p');
+      p.style.cssText = 'margin:12px 32px;color:var(--color-red);font-weight:700';
+      p.textContent = 'Không đọc được dist/cards.json (' + e.message + ') — chạy `npm run build` rồi tải lại.';
+      root.appendChild(p);
+    })
+    .then(render);
 </script>
 </body>
 </html>

@@ -1,0 +1,117 @@
+<!-- @dsCard group="Components" viewport="700x210" name="UI · cửa sổ trình duyệt, khung điện thoại, khung chat, thư, khay, nút, con trỏ" subtitle="BrowserFrame bọc ChatWindow đang trả lời dần · EmailCard chờ duyệt · Tray đếm việc · UIButton 4 kiểu × trạng thái · Cursor bấm có gợn sóng · PhoneFrame plain/chat/camera + ví dụ Do/Don't" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>UI</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 210px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var PATH = [
+    { x: 980, y: 250, at: 0 },
+    { x: 1180, y: 590, at: 90 },
+    { x: 1180, y: 590, at: 110, click: true }
+  ];
+
+  // -- PhoneFrame demo geometry: one row to the right of the existing UI kit, same height band --
+  var PF_X = 1320;
+  var PF_LABEL_Y = 40;
+  var PF_Y = 60;
+  var PF1 = { x: PF_X, y: PF_Y, w: 210, h: 455 };          // compact (w < 300): no appName, 'plain'
+  var PF2 = { x: PF1.x + PF1.w + 40, y: PF_Y, w: 300, h: 650 }; // 'chat', appName visible
+  var PF3 = { x: PF2.x + PF2.w + 40, y: PF_Y, w: 300, h: 650 }; // 'camera', appName visible
+
+  // Do/Don't pair + caption cards, continuing the same row
+  var DO_L = { x: PF3.x + PF3.w + 60, y: PF_Y, w: 300, h: 650 };
+  var DO_R = { x: DO_L.x + DO_L.w + 40, y: PF_Y, w: 300, h: 650 };
+  var CAP_Y = PF_Y + 650 + 16;
+  var CAP_H = 120;
+
+  var CANVAS_W = DO_R.x + DO_R.w + 40;
+  var CANVAS_H = Math.max(720, CAP_Y + CAP_H + 40);
+
+  VK.mountCard('#root', {
+    width: CANVAS_W, height: CANVAS_H, duration: 240,
+    render: function (f) {
+      var pf2b = VK.phoneContentBox(PF2, 26);
+      var pf3b = VK.phoneContentBox(PF3, 26);
+      var doLb = VK.phoneContentBox(DO_L, 22);
+      var doRb = VK.phoneContentBox(DO_R, 18);
+      return h(VK.Fragment, null,
+        h(VK.BrowserFrame, { x: 40, y: 50, w: 620, h: 620, url: 'lms.truong.edu.vn/tro-ly', active: 1 },
+          h(VK.ChatWindow, {
+            x: 64, y: 132, w: 572, h: 514, title: 'Trợ lý học vụ', subtitle: 'trả lời theo sổ tay nhà trường',
+            messages: [
+              { role: 'user', text: 'Hạn nộp bài tuần này là khi nào?' },
+              { role: 'tool', text: 'tra_han_nop(ma_lop="AI20K", tuan=6)' },
+              { role: 'assistant', text: 'Hạn nộp là 23:59 thứ Sáu, ngày 19 tháng 9.' }
+            ],
+            frame: f, streamStart: 40, cps: 34
+          })
+        ),
+
+        h(VK.EmailCard, {
+          x: 700, y: 50, w: 300, h: 230, subject: 'Nhắc hạn nộp bài tuần 6',
+          lines: 3, status: 'CHỜ DUYỆT', statusTone: 'waiting', attachment: 'huong-dan.pdf', active: 0
+        }),
+        h(VK.Tray, { x: 1030, y: 50, w: 210, h: 230, label: 'HÀNG CHỜ', count: 3, icon: 'inbox', tone: 'accent', active: 1 }),
+
+        h(VK.UIButton, { x: 700, y: 330, label: 'Gửi', variant: 'primary' }),
+        h(VK.UIButton, { x: 830, y: 330, label: 'Sửa lại', variant: 'secondary' }),
+        h(VK.UIButton, { x: 990, y: 330, label: 'Xoá', variant: 'danger' }),
+        h(VK.UIButton, { x: 1120, y: 330, label: 'Bỏ qua', variant: 'ghost' }),
+        h(VK.UIButton, { x: 700, y: 420, label: 'Đang gửi…', variant: 'primary', state: 'disabled' }),
+        h(VK.UIButton, { x: 880, y: 420, label: 'Cần quyền', variant: 'secondary', state: 'locked', icon: 'lock' }),
+
+        h(VK.SvgText, { x: 700, y: 530, size: 19, weight: 600, anchor: 'start', color: C.textMuted },
+          'UIButton · primary · secondary · danger · ghost'),
+        h(VK.SvgText, { x: 700, y: 566, size: 19, weight: 600, anchor: 'start', color: C.textMuted },
+          'trạng thái disabled và locked mờ đi, không bấm được'),
+        h(VK.UIButton, { x: 1090, y: 560, label: 'Duyệt', variant: 'primary', frame: f, pressAt: 110 }),
+        h(VK.Cursor, { path: PATH, frame: f, size: 40 }),
+
+        h(VK.SvgText, { x: PF_X, y: PF_LABEL_Y, size: 22, weight: 700, anchor: 'start' }, 'PhoneFrame'),
+
+        // -- variant sweep: plain (compact, no appName) · chat (appName) · camera (appName) --
+        h(VK.PhoneFrame, Object.assign({}, PF1, { time: '9:41' })),
+
+        h(VK.PhoneFrame, Object.assign({}, PF2, { appName: 'Flora', variant: 'chat' }),
+          h(VK.SvgText, { x: pf2b.x, y: pf2b.y + 30, size: 16, weight: 700, anchor: 'start', color: C.accent }, 'HÔM NAY'),
+          h(VK.SvgText, { x: pf2b.x, y: pf2b.y + 72, size: 24, weight: 700, anchor: 'start' }, 'Tưới cây lúc 7:00'),
+          h(VK.SvgText, { x: pf2b.x, y: pf2b.y + 104, size: 17, weight: 500, anchor: 'start', color: C.textMuted }, 'nhắc mỗi sáng thứ Hai/Năm')
+        ),
+
+        h(VK.PhoneFrame, Object.assign({}, PF3, { appName: 'ChefAI', variant: 'camera' }),
+          h(VK.SvgText, { x: pf3b.x, y: pf3b.y + 30, size: 16, weight: 700, anchor: 'start', color: C.accent }, 'CHỤP MÓN ĂN'),
+          h(VK.SvgText, { x: pf3b.x, y: pf3b.y + 72, size: 20, weight: 700, anchor: 'start' }, 'Đưa món vào khung')
+        ),
+
+        // -- Do/Don't: hai PhoneFrame cạnh nhau + thẻ chú thích, xem PhoneFrame.prompt.md --
+        h(VK.PhoneFrame, Object.assign({}, DO_L, { appName: 'Flora', variant: 'chat' }),
+          h(VK.SvgText, { x: doLb.x, y: doLb.y + 30, size: 16, weight: 700, anchor: 'start', color: C.accent }, 'HÔM NAY'),
+          h(VK.SvgText, { x: doLb.x, y: doLb.y + 72, size: 24, weight: 700, anchor: 'start' }, 'Tưới cây lúc 7:00'),
+          h(VK.UIButton, { x: doLb.x, y: doLb.y + 112, w: doLb.w, label: 'Xác nhận', icon: 'check' })
+        ),
+        h(VK.Card, { x: DO_L.x, y: CAP_Y, w: DO_L.w, h: CAP_H, icon: 'check', accent: C.accent, size: 17, lineHeight: 24, lines: ['NÊN', 'CTA rõ ràng', 'nội dung thưa'] }),
+
+        h(VK.PhoneFrame, Object.assign({}, DO_R, { appName: 'Flora', variant: 'chat' }),
+          ['Tưới cây 7:00', 'Bón phân thứ Ba', 'Kiểm tra sâu bệnh', 'Cắt tỉa cuối tuần', 'Đo pH đất'].map(function (t, i) {
+            return h(VK.SvgText, { key: i, x: doRb.x, y: doRb.y + 28 + i * 30, size: 17, weight: 600, anchor: 'start', color: C.textMuted }, t);
+          })
+        ),
+        h(VK.Card, { x: DO_R.x, y: CAP_Y, w: DO_R.w, h: CAP_H, icon: 'x', accent: C.red, size: 17, lineHeight: 24, lines: ['KHÔNG NÊN', 'liệt kê hết', 'không CTA rõ'] })
+      );
+    }
+  });
+</script>
+</body>
+</html>

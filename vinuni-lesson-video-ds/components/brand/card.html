@@ -1,0 +1,38 @@
+<!-- @dsCard group="Components" viewport="700x220" name="Brand · logo hãng, bản màu và bản một màu" subtitle="8 dấu hiệu có sẵn (Simple Icons, CC0) · variant color / mono · label bật tên bên dưới — chỉ dùng để chỉ đúng sản phẩm đang nói tới" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Brand</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 220px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var NAMES = VK.BRAND_NAMES;
+  VK.mountCard('#root', {
+    width: 1400, height: 440, duration: 1,
+    render: function () {
+      var gap = 1300 / NAMES.length;
+      return h(VK.Fragment, null,
+        h(VK.SvgText, { x: 50, y: 60, size: 21, weight: 700, anchor: 'start', color: C.textMuted }, 'BẢN MÀU · CÓ TÊN'),
+        NAMES.map(function (n, i) {
+          return h(VK.Brand, { key: 'c' + n, name: n, x: 100 + i * gap, y: 150, size: 64, label: true });
+        }),
+        h(VK.SvgText, { x: 50, y: 300, size: 21, weight: 700, anchor: 'start', color: C.textMuted }, 'BẢN MỘT MÀU · KHÔNG TÊN'),
+        NAMES.map(function (n, i) {
+          return h(VK.Brand, { key: 'm' + n, name: n, x: 100 + i * gap, y: 380, size: 52, variant: 'mono' });
+        })
+      );
+    }
+  });
+</script>
+</body>
+</html>
