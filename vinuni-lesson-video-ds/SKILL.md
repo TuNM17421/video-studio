@@ -6,8 +6,12 @@ user-invocable: true
 
 # VinUni Lesson Video design
 
-Read `README.md` completely before designing — it holds the twelve core rules, every token,
-the content voice, the motion grammar and the scene patterns. Then work from the files:
+Trước khi thiết kế, đọc trong `README.md` đúng hai mục: **"Hai dòng video: slide · poster"** (chọn
+dòng — luật nào áp, luật nào không) và **"Mười hai luật cốt lõi"** (≈5,4 KB cả hai). Các mục còn lại
+— token, giọng nội dung, motion grammar, scene pattern, bảng component — **tra khi cần**, đừng đọc
+trước. Video dòng poster: doctrine ở `styles/poster.md`, không ở đây.
+
+Rồi làm việc từ các file:
 
 1. **Tokens** — `styles.css` (entry) → `tokens/colors_and_type.css` (CSS variables, type roles,
    Montserrat `@font-face`); `lib/tokens.js` for JS (`C` = the 9 allowed colors, `LAYOUT`).

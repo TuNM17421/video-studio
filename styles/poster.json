@@ -1,0 +1,99 @@
+{
+  "id": "poster",
+  "name": "Poster Vector Style",
+  "order": 3,
+  "summary": "Dòng video poster vector: full-frame, một carrier chạy suốt, mốc nhấn neo vào lời. Hai theme: vinuni-light (nền trắng, mặc định) và night (bảng màu của ba video đã render).",
+  "palette": [
+    {
+      "hex": "#ffffff",
+      "name": "Trắng",
+      "role": "nền canvas của theme vinuni-light (mặc định video mới)"
+    },
+    {
+      "hex": "#243155",
+      "name": "Đêm",
+      "role": "nền chính của theme night"
+    },
+    {
+      "hex": "#2e3d68",
+      "name": "Đêm 2",
+      "role": "thân thẻ / pill / bảng trên nền đêm"
+    },
+    {
+      "hex": "#181f38",
+      "name": "Đêm sâu",
+      "role": "thanh phụ đề, nền ngoài khung"
+    },
+    {
+      "hex": "#f3e9d2",
+      "name": "Kem",
+      "role": "chữ chính, giấy, khối sáng trên nền đêm"
+    },
+    {
+      "hex": "#ffd98a",
+      "name": "Vàng",
+      "role": "nhấn ấm: con dấu, trục hội tụ, gạch chân header"
+    },
+    {
+      "hex": "#f0956a",
+      "name": "San hô",
+      "role": "cảnh báo / khoảng cách / ✕ nhỏ"
+    },
+    {
+      "hex": "#e0604a",
+      "name": "Đỏ",
+      "role": "nét ✕ gạch bỏ"
+    },
+    {
+      "hex": "#5d6c96",
+      "name": "Thép",
+      "role": "nét vẽ, viền, đường kẻ — KHÔNG dùng cho chữ nhỏ (2,6:1)"
+    },
+    {
+      "hex": "#9fb6d8",
+      "name": "Băng",
+      "role": "chữ phụ trên nền đêm (6,7:1)"
+    },
+    {
+      "hex": "#9fd6a8",
+      "name": "Bạc hà",
+      "role": "trạng thái đúng"
+    },
+    {
+      "hex": "#4a5985",
+      "name": "Vạch",
+      "role": "vạch giấy / thanh nền mờ"
+    }
+  ],
+  "showcase": [
+    {
+      "component": "PhotoCard",
+      "group": "media",
+      "image": "media__PhotoCard.png"
+    },
+    {
+      "component": "MascotRevamp",
+      "group": "mascot",
+      "image": "mascot__MascotRevamp.png"
+    },
+    {
+      "component": "Evidence",
+      "group": "evidence",
+      "image": "evidence__Evidence.png"
+    },
+    {
+      "component": "Shapes",
+      "group": "shapes",
+      "image": "shapes__Shapes.png"
+    }
+  ],
+  "sampleVideo": null,
+  "rules": [
+    "Hướng dẫn đầy đủ của style: styles/poster.md (quy trình · ngôn ngữ chuyển động · API engine).",
+    "motion và theme là HAI trục riêng: createPosterStage quyết định motion, theme khai bằng posterTheme ('vinuni-light' mặc định cho video mới, 'night' giữ nguyên cho ba video đã render).",
+    "Màu đọc qua usePosterTheme() / themeByName(); không hard-code token POSTER trong cảnh.",
+    "Mọi primitive là HÀM THUẦN của T (giây authored): không GSAP, không @keyframes, không requestAnimationFrame — điều kiện để render.mjs chụp song song mà frame nào cũng tái tạo được.",
+    "Import theo NAMESPACE (poster, posterTheme, posterMarks, posterFigures, posterBridge, posterMascot, posterPhone, posterVach, posterCan, posterPanels, posterHcai): Easing/interpolate/Card/Pill trùng tên với dòng slide.",
+    "Ảnh tư liệu đi đường images.js + <PhotoCard> (tools/image-search|check|apply.mjs), gate G6 của storyboard-gate soát chính images.js."
+  ]
+}

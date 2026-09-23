@@ -229,6 +229,9 @@ export declare function drawOn(d: string, t: number): { strokeDasharray: string;
 export declare function morphPath(a: string, b: string, t: number): string;
 /** Color between two tokens at t. */
 export declare function mixColor(a: string, b: string, t: number): string;
+/** Mực đọc được trên nền `bg`: `light` (mặc định C.bg) khi nền tối, `dark` (mặc định C.text) khi nền
+ *  sáng. Chỉ chọn giữa hai token có sẵn, không sinh màu mới. Dùng cho chữ đặt ĐÈ LÊN một mảng màu. */
+export declare function readableInk(bg: string, dark?: string, light?: string): string;
 export declare function scaleLinear(domain?: number[], range?: number[]): any;
 export declare function scaleBand(domain?: string[], range?: number[]): any;
 /** Auto-layout a directed graph with dagre. Boxes are top-left in scene px. */
@@ -241,3 +244,184 @@ export declare function layoutGraph(
 /* ---------------------------------------------------------------- assets */
 /** Absolute URL of a file addressed from the design-system root ("ui_kits/lesson-video/videos/<id>/img/s3.jpg"); URLs pass through. */
 export declare function dsUrl(path: string): string;
+// ── Dòng video "poster vector" ────────────────────────────────────────────────────────────────
+// Engine + sân khấu + primitive dùng chung cho mọi video poster. Export theo NAMESPACE vì
+// `Easing`/`interpolate`/`Card`/`Pill` trùng tên với dòng slide.
+export declare namespace posterMarks {
+  /** Con dấu viền đôi. `style` trải ra TRƯỚC (vị trí + `M.pop` + `rotate` do cảnh đặt). */
+  function Stamp(p: { text: any; color: string; size?: number; weight?: number; radius?: number; padding?: string; border?: number; style?: any }): any;
+  /** Bia đá khắc chữ: mỗi dòng chạy `width` 0→100%. `reveal == null` = đã khắc xong. */
+  function Plaque(p: {
+    box: { left: number; right: number; top: number; padding: string };
+    lines: ReadonlyArray<{ node: any; size: number; color: string; reveal?: number | null }>;
+    sub?: { node: any; size: number; color: string; opacity?: number };
+    rule?: number | null;
+    style?: any;
+  }): any;
+  function Pill(p: { x: number; y: number; text: any; T: number; at: number; color?: string }): any;
+  function XMark(p: { x: number; y: number; size: number; color: string; T: number; at: number; ease?: (t: number) => number }): any;
+  function Card(p: { x: number; y: number; r?: number; w?: number; h?: number; children?: any; label?: string; labelBg?: string; style?: any }): any;
+  function Critter(p: { kind: 'dog' | 'cat' | 'fish' | 'bird'; size?: number; ink: string }): any;
+  const CARD_RADIUS: number;
+  const CARD_SHADOW: string;
+}
+export declare namespace posterFigures {
+  /** Đường cong tự vẽ ra (`pathLength=1` + `strokeDashoffset`). `p` = tiến độ 0→1. */
+  function DrawPath(p: { d: string; stroke: string; width: number | string; cap?: string; p: number; opacity?: number | string }): any;
+  /** Đoạn thẳng tự vẽ ra. */
+  function DrawLine(p: { x1: any; y1: any; x2: any; y2: any; stroke: string; width: number | string; cap?: string; p: number; opacity?: number | string }): any;
+  /** Băng chuyền: `since` giây kể từ lúc mở; âm thì trả `[]`. Hàm thuần, không `Math.random`. */
+  function lane(since: number, o: { cycle: number; count: number; stagger: number; on?: boolean }): Array<{ i: number; p: number }>;
+  /** Độ hiện sao cho phần tử tan BÊN TRONG hộp đích, không tan giữa đường (luật F8). */
+  function reachFade(p: number, o: { enter?: number; arrive: number; sink?: number }): number;
+}
+export declare namespace posterBridge {
+  /** Mang một hộp/nhóm từ trạng thái cảnh trước sang cảnh sau trong đúng một cửa sổ. */
+  function carry<T extends Record<string, number>>(T_: number, o: { at: number; dur: number; from: T; to: T; ease?: (t: number) => number }): T & { p: number };
+}
+// ── LEXCE trên nền đêm + khung điện thoại tông poster (PROBE-01 còn nợ hai khối này) ───────────
+export declare namespace posterMascot {
+  /** Lớp SVG 1600×900 cho mascot và chữ `<text>` đi kèm — gate `data-vk-occupies` chỉ so được
+   *  chữ với mascot khi cả hai nằm trong CÙNG một lớp. */
+  function MascotLayer(p: { children?: any; zIndex?: number; style?: any }): any;
+  /**
+   * LEXCE đặt trên nền đêm. `variant="halo"` là mặc định đã chốt (viền cream nở từ `SourceAlpha`,
+   * median tương phản đường bao 6,35:1 so với 1,5–1,74 của bốn phương án kia — PROBE.md §A);
+   * `badge` khi nhân vật đứng cố định một góc cả chương. `ground="cut"` che đĩa `revampGround`.
+   */
+  function PosterMascot(p: {
+    x: number; y: number; size?: number;
+    variant?: 'bare' | 'halo' | 'plinth' | 'cabin' | 'badge';
+    pose?: string; emotion?: string; facing?: 'left' | 'right';
+    frame?: number; look?: any; talking?: boolean; opacity?: number;
+    ground?: 'cut' | 'keep';
+  }): any;
+  /** Chữ `<text>` trong `MascotLayer`. */
+  function LayerText(p: { x: number; y: number; size?: number; weight?: number; color?: string; anchor?: string; opacity?: number; children?: any }): any;
+  const W: number;
+  const H: number;
+  const MASCOT_ASPECT: number;
+  const MASCOT_VARIANTS: readonly string[];
+  const MASCOT_VARIANT_LABEL: Readonly<Record<string, string>>;
+}
+export declare namespace posterPhone {
+  /** Khung máy tông đêm. Thân `deep` (TỐI hơn nền) nên đọc ra là một VẬT, không phải ô nội dung. */
+  function PosterPhone(p: {
+    x: number; y: number; w?: number; h?: number;
+    appName?: string; time?: string;
+    tone?: 'neutral' | 'do' | 'dont'; variant?: 'plain' | 'chat';
+    opacity?: number; children?: any;
+  }): any;
+  /** Ô ruột của khung máy (trừ chrome + padding) — dùng để đặt nội dung bên trong. */
+  function posterPhoneBox(box: { x: number; y: number; w: number; h: number }, pad?: number): { x: number; y: number; w: number; h: number };
+  function PhoneText(p: { x: number; y: number; size?: number; weight?: number; color?: string; anchor?: string; opacity?: number; children?: any }): any;
+  function PhoneBubble(p: { x: number; y: number; w: number; h?: number; text: string; size?: number; color?: string; fill?: string; stroke?: string; opacity?: number }): any;
+  function PhoneButton(p: { x: number; y: number; w: number; h?: number; label: string; tone?: 'neutral' | 'do' | 'dont'; filled?: boolean; opacity?: number }): any;
+  /** Rung ngang tắt dần — hàm thuần của `T`, không RAF. */
+  function shakeX(T_: number, at: number, o?: { amp?: number; hz?: number; dur?: number }): number;
+  const PHONE_TONE: Readonly<Record<'neutral' | 'do' | 'dont', string>>;
+}
+
+// ── CÁI VẠCH — carrier xuyên phim của d05-v06 ─────────────────────────────────────────────────
+export declare namespace posterVach {
+  /** Lớp SVG 1600×900 cho cái vạch và mọi thứ vẽ chung hệ toạ độ với nó. */
+  function VachLayer(p: { children?: any; zIndex?: number; style?: any }): any;
+  function VachText(p: { x: number; y: number; size?: number; weight?: number; color?: string; anchor?: string; opacity?: number; letterSpacing?: number; children?: any }): any;
+  /**
+   * Cái vạch tham số hoá — MỘT primitive cho cả 11 phút. Mỗi chương chỉ đổi tham số, không ai vẽ
+   * lại một cái vạch mới. Xem bảng tham số ở đầu `lib/poster/vach.jsx`.
+   */
+  function Vach(p: {
+    T?: number; y?: number; x0?: number; x1?: number;
+    p?: number; shift?: number; divide?: number;
+    band?: { from: number; to: number; h?: number; label?: string } | null;
+    zones?: Array<{ from: number; to: number; tone?: 'block' | 'ask' | 'auto' | 'warm' | 'cold'; label?: string }> | null;
+    tilt?: number; cracks?: number;
+    gapAt?: { at: number; w?: number } | null; branches?: number;
+    notches?: Array<{ at: number; on?: number; lit?: boolean; label?: string }> | null;
+    labels?: boolean; leftLabel?: string; rightLabel?: string;
+    weight?: number; glow?: number; pulse?: number; opacity?: number; style?: any;
+  }): any;
+  /** Bốn ngọn đèn câu hỏi treo TRÊN vạch (c1-bon-cau · c5-flora callback · outro). */
+  function LampRow(p: { x0?: number; x1?: number; y?: number; items?: string[]; lit?: boolean[]; drop?: number; size?: number; T?: number; opacity?: number }): any;
+  /** Độ chắc hiển thị bằng một KHOẢNG — `spread` 0 là một ĐIỂM (độ chính xác giả). */
+  function RangeBar(p: { x: number; y: number; w: number; h?: number; at?: number; spread?: number; label?: string; pointLabel?: string; tone?: string; T?: number; opacity?: number }): any;
+  /** Trục "cái giá khi sai" dựng vuông góc với vạch. `load` dương = quả cân đè xuống. */
+  function CostAxis(p: { x: number; yTop?: number; yBottom?: number; load?: number; label?: string; T?: number; p?: number; opacity?: number }): any;
+  /** Hộp bo góc bằng `<path>` — thay cho `<rect>` (gate `data-vk-occupies` đếm mọi rect). */
+  function boxPath(x: number, y: number, w: number, h: number, r?: number): string;
+  /** Toạ độ tuyệt đối của một điểm 0…1 trên vạch. */
+  function vachX(u: number, o?: { x0?: number; x1?: number }): number;
+  function slide(T_: number, at: number, to: number, dur?: number): number;
+  const VACH: Readonly<{
+    y: number; x0: number; x1: number; w: number; weight: number; shiftMax: number;
+    labelY: number; lampY: number; leftLabel: string; rightLabel: string; leftInk: string; rightInk: string;
+  }>;
+  const W: number;
+  const H: number;
+}
+// ── CÁI CÂN — carrier xuyên phim của d05-v01 ──────────────────────────────────────────────────
+export declare namespace posterCan {
+  /** Lớp SVG 1600×900 cho cái cân và mọi thứ vẽ chung hệ toạ độ với nó. */
+  function CanLayer(p: { children?: any; zIndex?: number; style?: any }): any;
+  function CanText(p: { x: number; y: number; size?: number; weight?: number; color?: string; anchor?: string; opacity?: number; letterSpacing?: number; children?: any }): any;
+  /** Một khối CÔNG SỨC đặt lên đĩa. */
+  function Block(p: { x: number; y: number; w?: number; h?: number; ink?: string; opacity?: number; label?: string; labelSize?: number }): any;
+  /** Dấu hỏi — thứ chất lên đĩa TÍN HIỆU. */
+  function QMark(p: { x: number; y: number; size?: number; ink?: string; opacity?: number }): any;
+  /** Một xấp tiền — tín hiệu nặng nhất của phim (C4). */
+  function Cash(p: { x: number; y: number; w?: number; h?: number; ink?: string; opacity?: number; count?: number }): any;
+  /**
+   * Cái cân tham số hoá — MỘT primitive cho cả phim. `tilt` DƯƠNG = đĩa TRÁI chìm.
+   * Bảng tham số đầy đủ ở đầu `lib/poster/can.jsx`.
+   */
+  function Can(p: {
+    T?: number; p?: number; tilt?: number; left?: number; right?: number;
+    leftItems?: Array<{ kind?: 'block' | 'q' | 'cash'; label?: string; ink?: string; on?: number; w?: number; h?: number; dx?: number; size?: number; count?: number }>;
+    rightItems?: Array<{ kind?: 'block' | 'q' | 'cash'; label?: string; ink?: string; on?: number; w?: number; h?: number; dx?: number; size?: number; count?: number }>;
+    shift?: number; lift?: number; hooks?: number; scale?: number;
+    labels?: boolean; labelsOn?: number; leftLabel?: string; rightLabel?: string;
+    dim?: boolean; opacity?: number; style?: any;
+  }): any;
+  /** Độ nghiêng (độ, DƯƠNG = đĩa TRÁI chìm) suy từ hai mức tải 0…1. */
+  function tiltFor(left?: number, right?: number, max?: number): number;
+  /** Tâm đĩa ở độ nghiêng `tilt` — để cảnh thả vật đúng chỗ. */
+  function panAt(side: 'left' | 'right', tilt?: number, o?: { shift?: number }): { x: number; y: number };
+  function boxPath(x: number, y: number, w: number, h: number, r?: number): string;
+  const CAN: Readonly<{
+    pivot: { x: number; y: number }; arm: number; beam: number; cord: number;
+    panW: number; panLip: number; baseY: number; tiltMax: number; labelDy: number; blockH: number;
+    leftLabel: string; rightLabel: string;
+  }>;
+  const W: number;
+  const H: number;
+}
+export declare namespace posterPanels {
+  /** Một tờ giấy vector: séc · hoá đơn · hồ sơ · giấy hẹn. `grow` phóng quanh tâm. */
+  function Paper(p: {
+    x: number; y: number; w: number; h: number;
+    title?: string; lines?: string[]; amount?: string;
+    tone?: 'neutral' | 'do' | 'dont' | 'warm';
+    grow?: number; tilt?: number; sealed?: number; sealText?: string; opacity?: number; style?: any;
+  }): any;
+  /** Nút ở đúng MỘT trong hai trạng thái; trạng thái đọc bằng MÀU, không bằng thẻ NÊN/KHÔNG NÊN. */
+  function StatePill(p: {
+    x: number; y: number; w: number; h?: number; text: string;
+    state?: 'neutral' | 'do' | 'dont' | 'warm';
+    T?: number; at?: number; filled?: boolean; size?: number; opacity?: number; style?: any;
+  }): any;
+  /** Chồng lớp theo chiều sâu: cột kịch bản · chồng hồ sơ · ngăn xếp phiên bản. */
+  function Stack(p: {
+    x: number; y: number; w: number; h?: number;
+    count?: number; pitch?: number; active?: number; reveal?: number; lost?: number;
+    labels?: string[]; tones?: string[]; T?: number; opacity?: number; style?: any;
+  }): any;
+  /** Hai–ba `PosterPhone` thành hàng + đường nối mảnh (thứ chống "hai card-bullet"). */
+  function PhoneRow(p: {
+    x: number; y: number;
+    items?: Array<{ appName?: string; tone?: 'neutral' | 'do' | 'dont'; time?: string; children?: any }>;
+    w?: number; h?: number; gap?: number; link?: boolean; enter?: number; T?: number; opacity?: number; style?: any;
+  }): any;
+  const TONE_INK: Readonly<Record<string, string>>;
+  const MIN_TEXT: number;
+}

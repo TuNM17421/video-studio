@@ -7,8 +7,45 @@ Design system này được trích xuất từ repo Remotion **Video-studio** (c
 thumbnail, poster** đúng style của khoá học. Mọi kích thước là px trên khung 1920×1080
 (1 px CSS = 1 px video); mọi thời gian là **frame ở 30 fps**.
 
-> Đọc hết **Mười hai luật** và **VISUAL FOUNDATIONS** trước khi thiết kế. Khi cần một bố cục, mở
+> Đọc hết **Mười hai luật** trước khi thiết kế; các mục còn lại tra khi cần. Khi cần một bố cục, mở
 > template gần nhất trong `ui_kits/lesson-video/scenes/` rồi sửa chữ, toạ độ, mốc frame.
+
+---
+
+## Hai dòng video: slide · poster — đọc trước, chọn đúng dòng
+
+File này là doctrine của dòng **slide-vector**. Có một dòng thứ hai và nó **không theo các luật dưới
+đây**. Chọn dòng ở `projects/<id>/REQUEST.md`, trước khi dựng cảnh đầu tiên.
+
+**HAI TRỤC, không phải hai dòng.** `motion` (ngôn ngữ chuyển động) và `theme` (màu + nền) khai
+RIÊNG trong `REQUEST.md`. **`theme: vinuni-light` — NỀN TRẮNG + bảng màu VinUni — là MẶC ĐỊNH của
+series với CẢ HAI giá trị `motion`.** `theme: night` chỉ là thiết kế riêng của `demo-ai-history-…`,
+dùng khi REQUEST ghi rõ và owner xác nhận bằng chữ. Bảng theme: `lib/poster/theme.jsx`; cảnh đọc màu
+qua `usePosterTheme()`, không hard-code. Gộp hai trục ngày 22/09/2026 tốn ≈0,75M token + 1h50.
+
+| | **`motion: slide`** (`center`) | **`motion: poster`** |
+|---|---|---|
+| Nền | theo `theme` (mặc định trắng) | theo `theme` (mặc định trắng; `night` là ngoại lệ) |
+| Doctrine | **file này** | **`styles/poster.md` — nguồn DUY NHẤT** |
+| Chuyển chương | cắt thẳng giữa scene (§5) | carrier element (vật thể đi tiếp); **không** dùng `transition` của `Series` |
+| Chữ | không nảy (bounce/elastic); `center` là chuẩn (§7) | `easeOutBack` trên chữ được phép |
+| Camera | không zoom/pan | pull-back ở outro được phép |
+| Vòng lặp | không vòng lặp vô cớ (§5) | vòng `sin` được phép, **phải chặn dưới** |
+| Màu | 9 token + 4 màu vai trò | qua `usePosterTheme()`: `vinuni-light` ánh xạ về ĐÚNG 9 token + 4 màu vai trò đó; `night` dùng nhóm `POSTER` (17 token) |
+| Chữ mang nghĩa | ≥16px | ≥22px trên 1920×1080; `steel` chỉ cho nét vẽ/viền, không bao giờ cho chữ |
+
+**Luật chỉ áp cho dòng slide** — đừng mang sang dòng poster: §5 "Giữa các scene: cắt thẳng" · §5
+danh sách "Không: camera zoom/pan, xoay, nảy trên chữ, lắc lư, vòng lặp vô cớ" · §6 "3Blue1Brown là
+mặc định" · §7 "`center` (**chuẩn**) | mọi video mới" · Do/Don't "dùng nền tối cho scene nội dung".
+
+**Luật áp cho CẢ HAI dòng:** §1 khung 1920×1080 / 30 fps + toạ độ px tuyệt đối · §3 chỉ Montserrat ·
+§6 watermark + phụ đề burned-in ≤78 ký tự · §7 vùng an toàn của thanh phụ đề (y 984) · §11 chuyển
+động tất định (không `Math.random`, không `Date.now`, không CSS transition, không đồng hồ thật) ·
+§12 trung thực · gate `off-palette` (thêm màu = khai vào `lib/tokens.js`, đừng rải hex).
+
+Thái thích NGÔN NGỮ CHUYỂN ĐỘNG của dòng poster hơn dòng đang có — **không phải nền đêm của nó**.
+Không chắc → hỏi owner **hai câu tách rời** ("chuyển động nào?" và "nền/màu nào?"), đừng hỏi gộp
+"poster hay slide" và đừng mặc định.
 
 ---
 
@@ -230,15 +267,16 @@ Mọi scene là hàm thuần của `frame` (30 fps) — `useFrame()` ở đây, 
 
 - **Nhịp scene**: đầu vào 15–20 % · biến đổi 50–60 % · đầu ra 20–25 %. Tham số quét phải **dừng ở
   hai thái cực ≥ 45 f**. Trạng thái cuối giữ ≥ 60 f.
-- **Giữa các scene: cắt thẳng** (hard cut). Nội dung tự dựng dần trong scene. Khi thay cả sơ đồ, sơ
-  đồ cũ rời bằng opacity và không bao giờ có hai sơ đồ đầy đủ chồng nhau.
-- **Không**: camera zoom/pan, xoay, nảy (bounce/elastic) trên chữ, lắc lư, hạt tự lượn sóng,
-  vòng lặp vô cớ. Ngoại lệ có chủ đích: kết nối "đang chạy" kiểu Day28 (3 chấm lặp mỗi 90 f).
+- **[dòng slide] Giữa các scene: cắt thẳng** (hard cut). Nội dung tự dựng dần trong scene. Khi thay
+  cả sơ đồ, sơ đồ cũ rời bằng opacity và không bao giờ có hai sơ đồ đầy đủ chồng nhau.
+  *(Dòng poster chuyển chương bằng carrier element — xem mục "Hai dòng video" ở đầu file.)*
+- **[dòng slide] Không**: camera zoom/pan, xoay, nảy (bounce/elastic) trên chữ, lắc lư, hạt tự lượn
+  sóng, vòng lặp vô cớ. Ngoại lệ có chủ đích: kết nối "đang chạy" kiểu Day28 (3 chấm lặp mỗi 90 f).
 - **Số liệu liên tục**: số và độ dài bar lấy từ cùng một giá trị liên tục; chỉ làm tròn khi hiển thị.
 
 Chi tiết connector, hạt, pulse, geometry guard: [`guidelines/motion-and-connectors.md`](guidelines/motion-and-connectors.md).
 
-### 6 · Kỹ thuật dựng hình (3Blue1Brown, là mặc định)
+### 6 · Kỹ thuật dựng hình (3Blue1Brown — mặc định của **dòng slide**)
 
 - **Flow-based**: dữ liệu không đứng yên — hạt `accent` chảy vào cỗ máy, đổi sang `red` khi đã biến
   đổi xong, rồi phân nhánh tới đầu ra.
@@ -250,14 +288,17 @@ Chi tiết connector, hạt, pulse, geometry guard: [`guidelines/motion-and-conn
 - Icon trong vòng tròn chỉ cho **nhãn phụ** (năng lực ở cuối luồng), không làm phương tiện kể chuyện
   chính.
 
-### 7 · Biến thể
+### 7 · Biến thể (trong **dòng slide**)
 
 | Biến thể | Khi nào | Khác biệt |
 |---|---|---|
-| `center` (**chuẩn**) | mọi video mới | header căn giữa như trên |
+| `center` (**chuẩn của dòng slide**) | mọi video slide mới | header căn giữa như trên |
 | `editorial` (Day28) | chủ đề hệ thống / platform / kiến trúc | lưới 120 px mờ 38 %, kicker đỏ trái 22 px, tiêu đề trái 54 px có **cụm đỏ nhấn**, subtitle muted, `GlassNode` trắng, `ZoneLabel`, logo sản phẩm thật |
 | legacy icon + mũi tên | đã có trong video cũ | `IconBadge` + `→`; chấp nhận cho nhãn phụ, không tự áp ngược |
-| legacy dark | — | không dùng |
+
+Nền đêm là một **theme** (`theme: night`), KHÔNG phải một dòng video và KHÔNG phải mặc định của
+`motion: poster` — doctrine ở `styles/poster.md` §0. (Dòng "legacy dark — không dùng" đã bỏ khỏi bảng
+này ngày 21/09/2026: luật đó đã chết và nay còn gây hiểu nhầm là cấm nền tối ở mọi dòng.)
 
 ---
 
@@ -292,6 +333,12 @@ Chi tiết connector, hạt, pulse, geometry guard: [`guidelines/motion-and-conn
 Mọi component là React thuần: giá trị động (opacity, active, progress) đi vào qua props, tính từ
 `frame`. Import từ `components/index.js`. Props: `*.d.ts` · cách dùng: `*.prompt.md`.
 
+**Số đo `node tools/component-usage.mjs` (22/09/2026): kho 121 component · đã dùng trong video thật 41 · chưa dùng bao giờ 80.** Chạy lại lệnh đó thay vì tin con số chép ở đây. Bảng ngay dưới là phần **đã dùng** — bắt đầu từ đây. Phần chưa dùng nằm
+ở bảng sau và **không nằm trong đường đọc bắt buộc**: mở khi bảng trên không có gì hợp. Không
+component nào bị xoá; quyết định bỏ là của chủ repo, không phải của agent.
+
+### Đã dùng trong video thật
+
 | Nhóm | Component | Dùng cho |
 |---|---|---|
 | chrome | `SceneFrame` | khung scene đầy đủ: header (center / editorial), watermark, footer, phụ đề; con = SVG 1920×1080, `overlay` = HTML |
@@ -305,20 +352,14 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | labels | `NumberBadge`, `StatusDot`, `ZoneLabel` | số bước, chấm trạng thái, nhãn làn editorial |
 | flow | `Flow`, `Particle`, `StaticPath` | connector động có hạt + mũi tên; hạt đơn có nhãn; đường tĩnh |
 | marks | `Check`, `Cross`, `Bracket`, `Enclosure` | dấu đúng/sai vẽ tay, ngoặc gom nhóm, khung nét đứt có tên |
-| data | `ProbabilityBars`, `MiniBar`, `Slider` | phân bố xác suất, đồng hồ nhỏ, thanh tham số |
-| data | `TokenChip`, `VectorColumn`, `Heatmap` | token, vector có ngoặc thật, ma trận / attention |
-| beats | `HookOverlay`, `BrandTitle`, `SectionCard`, `Statement` | hook 150 f, thẻ tiêu đề, thẻ chương, câu chốt |
-| beats | `Recap`, `QuestionCard` | recap rail có số, câu hỏi kiểm tra |
+| beats | `HookOverlay`, `Recap` | hook 150 f, recap rail có số |
 | roadmap | `DayMap` | bản đồ ngày học của video tổng quan: 3 thẻ câu hỏi (full) ↔ dải 6 phần dưới header (strip) |
 | figures | `Person`, `DocumentSheet`, `FormSheet`, `SpeechBubble`, `Stopwatch` | nhân vật và đồ vật cho tình huống MINH HỌA; phiếu có ô trống = chưa đo; đồng hồ không số |
 | icons | `Icon` + 20 `*Icon`, `LineIcon` | đặt icon trong SVG theo tâm; `LineIcon` = 40 icon Lucide chuẩn hóa |
-| brand | `Brand` | logo sản phẩm có tên (gọi đúng tên, không trang trí) |
 | labels | `IllustrativeStamp` | dấu nhãn (tag / stamp / watermark); **lab: nhãn chứa "MINH HỌA" không được vẽ** — prop `illustrative` vẫn nhận nhưng không hiện card MINH HỌA |
-| control | `Gate`, `PermissionBoundary`, `ApprovalStep` | cổng quyền / duyệt / đối chiếu (mở · chặn · lỗi · chờ), vùng quyền, bước người duyệt |
-| control | `StopGate`, `StepCounter` | cửa dừng của vòng agent, bộ đếm lượt 0/3 → 3/3 |
+| control | `Gate`, `StopGate` | cổng quyền / duyệt / đối chiếu (mở · chặn · lỗi · chờ), cửa dừng của vòng agent |
 | ui | `BrowserFrame`, `ChatWindow`, `Cursor`, `UIButton`, `EmailCard`, `Tray` | giao diện giả lập (luôn MINH HỌA): cửa sổ web, chat nhả chữ theo token, con trỏ, nút, thư, khay |
-| code | `CodeBlock`, `JsonView`, `LogCard` | code tô màu theo palette, JSON có chú thích tiếng Việt + nối mã khớp, nhật ký thực thi |
-| system | `Swimlane`, `ToolCard`, `ArchitectureNode` | làn hệ thống, thẻ khai báo công cụ 3 vùng, khối kiến trúc host/client/server/API |
+| system | `Swimlane`, `ToolCard` | làn hệ thống, thẻ khai báo công cụ 3 vùng |
 | system | `DecisionNode`, `BranchRouter` | nút quyết định hình thoi, rẽ nhánh theo độ tự tin / 4 nhánh |
 | loop | `AgentLoop` | vòng ReAct / 4 khối agent / bánh đà, hạt chạy vòng, nhánh thoát và nhánh lỗi |
 | table | `DataTable` | bảng hiện từng hàng, ô trạng thái (đạt · chặn · chờ · chưa thử · lỗi), cột TRƯỚC/SAU |
@@ -330,6 +371,24 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | structure | `Matrix2x2`, `Iceberg` | lưới quyết định 2 × 2 có một ô được chọn, phần nổi / phần chìm |
 | data | `Gauge`, `RangeBand`, `UnitGrid` | đồng hồ bán nguyệt có ngưỡng, ước lượng kèm khoảng dao động, đếm bằng ô (18 trên 60) |
 | marks | `Spotlight` | làm mờ cả khung trừ một vùng để dẫn mắt, không dịch chuyển gì |
+### Chưa từng dùng trong video nào — không đọc trước, mở khi cần
+
+Không component nào ở đây bị xoá. Chúng vẫn build, vẫn có `.d.ts` + `.prompt.md` + card, vẫn qua
+`verify`. Chỉ là chưa video nào gọi tới — nên đừng để chúng chiếm chỗ trong đầu khi đang chọn hình.
+Số liệu SỐNG (đừng chép vào đây, remote thêm component liên tục): `node tools/component-usage.mjs --unused` — chỉ in, không sửa gì. Đo 22/09/2026: 80/121.
+
+| Nhóm | Component | Dùng cho |
+|---|---|---|
+| data (0/6) | `ProbabilityBars`, `MiniBar`, `Slider`, `TokenChip`, `VectorColumn`, `Heatmap` | phân bố xác suất, đồng hồ nhỏ, thanh tham số, token, vector có ngoặc thật, ma trận / attention — xương sống của §6, chưa dùng vì chưa có video model-internals |
+| code (0/5) | `CodeBlock`, `JsonView`, `LogCard`, `CodeCard`, `CodeLine` | code tô màu theo palette, JSON có chú thích tiếng Việt, nhật ký thực thi — video lab Day02 sẽ cần |
+| context (0/4) | `Envelope`, `ContextBudget`, `ContextTray`, `FilingCabinet` | gói gửi đi / không gửi, ngân sách ngữ cảnh, khay ngữ cảnh, tủ hồ sơ ngoài |
+| brand (0/1) | `Brand` | logo sản phẩm có tên (gọi đúng tên, không trang trí) |
+| icons (2/22) | 20 `*Icon` chưa dùng | đã có `LineIcon` (40 icon Lucide chuẩn hoá) phủ phần lớn nhu cầu |
+| beats | `BrandTitle`, `SectionCard`, `Statement`, `QuestionCard` | thẻ tiêu đề, thẻ chương, câu chốt, câu hỏi kiểm tra |
+| control | `PermissionBoundary`, `ApprovalStep`, `BlockedBadge`, `StepCounter` | vùng quyền, bước người duyệt, nhãn bị chặn, bộ đếm lượt 0/3 → 3/3 |
+| figures | `SourceCard`, `Countdown`, `DialogueCard` | thẻ nguồn trích đoạn, đồng hồ đếm ngược, thẻ hội thoại nhiều người nói |
+| cards | `GlassNode`, `IconBadge` | node hệ thống editorial; icon trong vòng tròn (legacy / nhãn phụ) |
+| khác | `EvidenceBoard` · `Particle` · `ZoneLabel` · `Mascot` · `ArchitectureNode` · `RichText` · `PhoneFrame` | bảng nhiều Evidence · hạt đơn có nhãn · nhãn làn editorial · mascot bản cũ · khối kiến trúc · câu có từ đổi màu · khung điện thoại |
 
 Helpers mới: `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
 (`@remotion/paths`, d3-shape/scale/interpolate, flubber, dagre: `curvePath`, `pointOnPath`, `drawOn`, `morphPath`, `layoutGraph`).
@@ -375,7 +434,7 @@ Quy trình dựng video trong Claude Design, prompt mẫu, xuất file và port 
 
 ---
 
-## Do / Don't
+## Do / Don't — **dòng slide**
 
 **Do**
 - Bắt đầu từ template gần nhất; đổi copy, toạ độ, mốc frame `T`.
@@ -385,7 +444,8 @@ Quy trình dựng video trong Claude Design, prompt mẫu, xuất file và port 
 - Gắn `MINH HỌA` cho mọi con số / log / model ví dụ.
 
 **Don't**
-- Thêm màu, gradient, font, emoji; dùng nền tối cho scene nội dung.
+- Thêm màu, gradient, font, emoji. *(Nền tối: xem mục "Hai dòng video" — cấm ở dòng slide, là mặc
+  định ở dòng poster.)*
 - Để flex/grid tự dàn sơ đồ có phần tử hiện lần lượt.
 - Cho hạt bay tự do, lượn sóng, dịch chuyển tức thời hay đi xuyên mặt thẻ.
 - Lộ đáp án trước frame reveal; để hai sơ đồ đầy đủ chồng lên nhau khi chuyển.

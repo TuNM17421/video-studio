@@ -16,6 +16,7 @@ import { scaleLinear, scaleBand } from 'd3-scale';
 import { interpolateRgb } from 'd3-interpolate';
 import { interpolate as flubberInterpolate } from 'flubber';
 import dagre from '@dagrejs/dagre';
+import { C } from './tokens.js';
 
 export { evolvePath, getLength, getPointAtLength, getTangentAtLength, interpolatePath, reversePath, scaleLinear, scaleBand };
 
@@ -59,6 +60,21 @@ export function morphPath(a, b, t) {
 /** Color between two tokens at t (0–1), e.g. mixColor(C.dotInactive, C.red, weight). */
 export function mixColor(a, b, t) {
   return interpolateRgb(a, b)(Math.max(0, Math.min(1, t)));
+}
+
+/**
+ * Mực đọc được trên nền `bg`: trắng khi nền tối, chữ navy khi nền sáng.
+ * Không sinh màu mới — chỉ chọn giữa hai token có sẵn. Dùng cho chữ đặt ĐÈ LÊN một mảng màu
+ * (nhãn giữa Pie, chữ trong chip đặc): navy trên xanh accent là đúng palette mà vẫn chìm.
+ */
+export function readableInk(bg, dark = C.text, light = C.bg) {
+  const hex = String(bg).trim();
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return dark;
+  const n = parseInt(m[1], 16);
+  const lin = (v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const L = 0.2126 * lin(((n >> 16) & 255) / 255) + 0.7152 * lin(((n >> 8) & 255) / 255) + 0.0722 * lin((n & 255) / 255);
+  return L < 0.4 ? light : dark;
 }
 
 /**

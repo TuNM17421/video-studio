@@ -48,24 +48,34 @@ export const ROLE_OF = Object.freeze({
   memory: [ROLE.amber, ROLE.amberSoft],
 });
 
-/** Palette for the approved LEXCE mascot artwork. */
+/**
+ * Bảng màu của LEXCE — mascot chính thức của VinUniversity, người dẫn chuyện trong video bài giảng.
+ *
+ * Lấy từ bản plush chính thức (Thái duyệt 14/09/2026). LEXCE thay hẳn con chim xanh cũ; bảng màu
+ * cũ (`body`/`belly`/`feet` xanh dương–kem–cam của chim) đã bị bỏ cùng nhân vật đó.
+ *
+ * Chỉ MỘT nhân vật, MỘT bảng màu. Các màu `vest`/`bow`/`formalEye`/`professor*` từng tồn tại cho
+ * pose 'formal' và nhân vật giáo sư, bỏ ngày 14/09/2026 — đừng thêm lại: một nhân vật vẽ bằng bảng
+ * màu khác sẽ đọc ra là người khác, và đó đúng là thứ làm mấy bản trước trông gợn.
+ */
 export const MASCOT = Object.freeze({
-  outline: '#1B2E5A',
-  shadow: '#0B2E4A',
-  fur: '#F7EFDD',
-  cheek: '#F4A4B4',
-  ear: '#4457C9',
-  earInner: '#7FA6E4',
-  eye: '#1E2B7A',
-  beak: '#FA8842',
-  mouth: '#E23A2E',
-  suit: '#3C50C4',
-  patch: '#F0D9AC',
-  logoNavy: '#1F3573',
-  logoRed: '#E8322A',
-  wing: '#F3E3C4',
-  hand: '#F9D374',
-  foot: '#A6CBEF',
+  outline: '#1B2E5A', //   nét viền chung (bản plush không có viền; video cần, xem Mascot.prompt.md)
+  shadow: '#0B2E4A', //    bóng đổ dưới chân
+  fur: '#F7EFDD', //       lông kem: đầu, khăn cổ
+  cheek: '#F4A4B4', //     má hồng
+  ear: '#4457C9', //       tai xanh royal
+  earInner: '#7FA6E4', //  lòng tai, lọn tóc trán, lông mày
+  eye: '#1E2B7A', //       mắt navy
+  beak: '#FA8842', //      mỏ cam
+  mouth: '#E23A2E', //     trong miệng khi mỏ há
+  suit: '#3C50C4', //      bộ liền thân xanh
+  patch: '#F0D9AC', //     yếm be trước bụng
+  logoNavy: '#1F3573', //  chữ V trên yếm
+  logoRed: '#E8322A', //   tam giác đỏ của logo
+  wing: '#F3E3C4', //      lông cánh kem
+  hand: '#F9D374', //      bàn tay vàng
+  foot: '#A6CBEF', //      bàn chân xanh nhạt
+  // Màu lấy trực tiếp từ vector LEXCE revamp; phần chân đứng mới phải khớp ảnh gốc.
   revampSuit: '#2B58B4',
   revampFoot: '#8CC1FC',
   revampFootHighlight: '#C2DFFF',
@@ -74,9 +84,25 @@ export const MASCOT = Object.freeze({
   revampEye: '#102352',
   revampMouth: '#D31F1F',
   revampPointer: '#B97839',
-  tail: '#EE3B33',
-  tear: '#6FB6E8',
-  motion: '#F2C14E',
+  tail: '#EE3B33', //      đuôi lửa đỏ
+  tear: '#6FB6E8', //      giọt nước mắt (pose sad)
+  motion: '#F2C14E', //    vạch tốc độ, bóng đèn emote
+});
+
+/**
+ * Evidence card — ảnh chụp nguồn thật dán lên khung, kiểu phóng sự (xem components/evidence/).
+ * Tách riêng khỏi palette 9 màu vì đây là "vật liệu" (giấy, băng keo, mực dấu), không phải màu dữ liệu.
+ */
+export const EVIDENCE = Object.freeze({
+  board: '#6B4A38', //     nền gỗ/nâu sau tấm ảnh
+  boardDeep: '#553A2C', // viền tối của nền
+  paper: '#ffffff', //     giấy chụp màn hình
+  paperEdge: '#d8d2c8', // mép giấy
+  tape: '#E8DCAF', //      băng keo giấy
+  tapeEdge: '#D2C48C', //  mép băng keo
+  mark: '#d92b2b', //      khung highlight đỏ vẽ tay
+  stampInk: '#c0202a', //  mực con dấu
+  caption: '#141414', //   nền thanh chú thích
 });
 
 export const FONT = "'Montserrat', 'Segoe UI', system-ui, sans-serif";
@@ -114,6 +140,45 @@ export const SHADOW = Object.freeze({
   soft: '0 8px 20px #e0edf8',
   caption: '0 -8px 24px #e0edf8',
 });
+
+/**
+ * POSTER — bảng màu của dòng video "poster vector" (thêm 21/09/2026).
+ *
+ * MỤC ĐÍCH. Đây KHÔNG phải màu bài giảng nền trắng ở `C`/`ROLE`. Đây là bảng màu của một dòng video
+ * riêng: animation full-frame trên nền đêm, không header chrome, không mascot — thiết kế do sếp của
+ * Thái dựng sẵn (`lighthill-scene.jsx`, `dl-scene.jsx`, `tree-scene.jsx` + theme `poster` trong
+ * `dl-scene.jsx`), harness port lại nguyên hình. Khai ở đây vì `tools/verify.mjs` lấy PALETTE =
+ * 9 màu gốc + **mọi hex khai trong chính file này** — một chỗ duy nhất để soát màu mới, đúng luật 2
+ * của README.
+ *
+ * PHẠM VI. Chỉ scene của dòng poster được dùng nhóm này; scene bài giảng nền trắng vẫn chỉ `C`.
+ * Hai bảng không trộn vào nhau trong cùng một khung hình.
+ *
+ * Toàn bộ hex lẻ của ba file gốc đã được quy về đúng 17 token dưới đây (các hex be/nâu/xám lạnh
+ * riêng lẻ gộp vào token gần nhất); chỉ giữ thêm `ice` (băng lạnh của chương 1973) và `red` (nét ✕)
+ * vì gộp tiếp thì mất nghĩa.
+ */
+export const POSTER = Object.freeze({
+  night: '#243155', //   nền đêm chính
+  night2: '#2e3d68', //  thân thẻ / pill / bảng trên nền đêm
+  deep: '#181f38', //    nền thanh phụ đề, nền ngoài khung
+  shade: '#101a3a', //   lớp phủ lạnh dần cuối chương 1973
+  cream: '#f3e9d2', //   chữ chính, giấy, khối sáng
+  gold: '#ffd98a', //    nhấn ấm: dấu 2006, trục hội tụ, gạch chân header
+  coral: '#f0956a', //   cảnh báo / khoảng cách / ✕ nhỏ
+  red: '#e0604a', //     nét ✕ gạch bỏ (đậm hơn coral để không lẫn)
+  steel: '#5d6c96', //   nét vẽ, viền, đường kẻ — KHÔNG dùng cho chữ nhỏ (tương phản 2,6:1)
+  ice: '#9fb6d8', //     chữ phụ trên nền đêm (6,7:1) + băng/lạnh của mùa đông AI
+  mint: '#9fd6a8', //    trạng thái "đúng" (TOY WORLD ✓, MÈO ✓)
+  stripe: '#4a5985', //  vạch giấy / thanh nền mờ
+  pink: '#d98fb8', //    nhánh encoder-only (BERT…)
+  green: '#7db88a', //   nhánh encoder-decoder (T5…)
+  blue: '#8ea6d6', //    nhánh decoder-only (GPT…) — trục hội tụ
+  tan: '#c9a86a', //     nhánh non-Transformer (RNN · LSTM)
+  purple: '#a08ac9', //  nhánh phụ / nhãn "chim"
+});
+
+export const POSTER_FONT = "'Be Vietnam Pro', 'Montserrat', system-ui, sans-serif";
 
 /** A palette token (or hex) at alpha, e.g. alpha('red', 0.24) → "rgba(199,33,39,0.24)". */
 export function alpha(token, a) {
