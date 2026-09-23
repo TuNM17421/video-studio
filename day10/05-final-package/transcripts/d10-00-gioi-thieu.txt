@@ -1,0 +1,54 @@
+00:00 - 00:05: Điều gì xảy ra nếu agent của bạn chạy đúng mọi bước… nhưng vẫn trả lời sai? Ở
+00:05 - 00:10: Ngày 8, chúng ta cho agent biết tìm tài liệu. Sang Ngày 9, nhiều agent đã biết
+00:10 - 00:15: phối hợp. Nhưng tất cả đều đang đặt niềm tin vào một nền tảng chung: dữ liệu.
+00:16 - 00:21: Để thấy rõ vì sao điều đó nguy hiểm, hãy lấy một sự cố cụ thể. Chính sách
+00:21 - 00:25: nghỉ phép của công ty vừa được cập nhật từ phiên bản một lên phiên bản hai.
+00:25 - 00:30: Thế nhưng, đường ống nạp dữ liệu lại âm thầm ngừng hoạt động lúc hai giờ sáng.
+00:31 - 00:36: Đến tám giờ sáng hôm sau, một nhân viên vào hỏi về quyền lợi nghỉ phép.
+00:36 - 00:39: Hệ thống vẫn tìm thấy tài liệu, nhưng là phiên bản một đã cũ.
+00:39 - 00:44: Agent dùng nó để soạn ra câu trả lời: rất trôi chảy, rất tự tin… và sai.
+00:45 - 00:50: Đáng sợ nhất là khi sự cố xảy ra, không hề có một tiếng còi báo động nào.
+00:50 - 00:54: Tool gọi thành công, trace chạy đủ bước, mã nguồn không có ngoại lệ. Toàn bộ
+00:54 - 00:59: hạ tầng đều xanh, thứ duy nhất hỏng là câu trả lời mà người dùng nhận được.
+01:00 - 01:04: Hãy nhìn lại các bảng điều khiển trước đây: dữ liệu cũ luôn
+01:04 - 01:08: để lại dấu vết rõ ràng ở dòng thời gian cập nhật. Nhưng với agent,
+01:08 - 01:12: lỗi dữ liệu bị che giấu hoàn toàn đằng sau lớp ngôn ngữ tự nhiên mượt mà.
+01:13 - 01:16: Từ bài toán đó, Day 10 đặt ra một câu hỏi sống còn:
+01:16 - 01:20: Làm thế nào để phát hiện và ngăn chặn dữ liệu hỏng trên đường ống,
+01:20 - 01:24: trước khi agent kịp biến nó thành câu trả lời cho người dùng?
+01:25 - 01:29: Để giải quyết trọn vẹn câu hỏi này, toàn bộ bài học Day 10
+01:29 - 01:33: được tổ chức thành bốn cụm lớn với mười tám nội dung thực chiến:
+01:33 - 01:36: đi từ Nền móng của đường ống, sang Độ tin cậy và Quan sát,
+01:36 - 01:40: đến Vận hành phục hồi và cuối cùng là Thực hành Lab.
+01:41 - 01:44: Cụm một là Nền móng và đường đi của dữ liệu.
+01:44 - 01:48: Chúng ta sẽ nhìn lại hành trình ba mươi năm từ Internet Boom đến Agent
+01:48 - 01:52: để hiểu vì sao khi người tiêu thụ dữ liệu không còn là con người,
+01:52 - 01:55: cách xây dựng data pipeline phải thay đổi từ gốc rễ.
+01:57 - 02:01: Tiếp theo, bạn sẽ theo chân dòng dữ liệu qua ba trạm kỹ thuật cốt lõi:
+02:01 - 02:06: Ingestion để thu thập đa nguồn, Transform để làm sạch và chuẩn hóa văn bản,
+02:06 - 02:10: rồi đưa vào Storage và Serving để phục vụ Agent một cách tối ưu.
+02:11 - 02:15: Sang Cụm hai, chúng ta kiểm soát Độ tin cậy của dữ liệu.
+02:15 - 02:18: Bạn sẽ nắm vững sáu chiều chất lượng dữ liệu
+02:18 - 02:22: và cách thiết lập Quality Gate cùng Data Contract ngay tại cửa vào,
+02:22 - 02:26: để kiên quyết chặn đứng dữ liệu rác trước khi nó lọt vào hệ thống.
+02:28 - 02:30: Đặc biệt, bài học sẽ giúp bạn ánh xạ trực tiếp:
+02:30 - 02:35: một lỗi cụ thể trên đường ống như dữ liệu trễ, thiếu trường hay sai định dạng
+02:35 - 02:39: sẽ biến thành triệu chứng dị thường nào khi Agent giao tiếp với người dùng.
+02:41 - 02:45: Để kiểm soát hệ thống lúc vận hành, chúng ta trang bị Data Observability
+02:45 - 02:49: để đo lường liên tục, phát hiện bất thường tự động,
+02:49 - 02:53: và dùng Data Lineage để lần ngược từ câu trả lời sai của Agent về đúng
+02:53 - 02:57: nơi phát sinh lỗi lúc hai giờ sáng, xác định rõ người chịu trách nhiệm.
+02:59 - 03:02: Cụm ba đưa bạn vào bài toán Vận hành thực tế. Khi có sự cố,
+03:02 - 03:06: hệ thống sẽ phát tín hiệu cảnh báo theo cam kết SLA,
+03:06 - 03:10: kích hoạt Incident Runbook từng bước, và điều phối tự động hóa
+03:10 - 03:13: để cách ly vùng lỗi, chạy lại pipeline và phục hồi an toàn.
+03:15 - 03:20: Bên cạnh kỹ thuật, chúng ta sẽ phân tích bài toán chi phí hạ tầng dữ liệu,
+03:20 - 03:24: mổ xẻ những sự cố dữ liệu đắt giá có thật trong ngành, phân biệt các con
+03:24 - 03:29: số phóng đại, và cập nhật những xu hướng công nghệ mới nhất của năm 2026.
+03:30 - 03:34: Cụm bốn là phần thực hành cốt lõi trong Lab 10. Bạn sẽ dùng bộ
+03:34 - 03:39: checklist chẩn đoán để tự tay tìm lỗi trong một pipeline đang hỏng,
+03:39 - 03:43: sửa chữa, rồi đo lường số liệu trước và sau để chứng minh độ tin cậy.
+03:43 - 03:46: Phần phụ lục sẽ mở cầu nối kiến thức sang Ngày 13.
+03:47 - 03:50: Và để bắt đầu hành trình chinh phục Day 10,
+03:50 - 03:55: trước khi kiểm tra dữ liệu đúng hay sai, chúng ta cần biết nó bắt đầu từ đâu.
+03:55 - 03:59: Hãy cùng theo chân dòng dữ liệu từ Source trong video ngay sau đây.

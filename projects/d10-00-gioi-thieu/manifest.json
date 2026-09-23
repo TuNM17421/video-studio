@@ -1,0 +1,99 @@
+{
+  "id": "d10-00-gioi-thieu",
+  "index": 0,
+  "title": "Khi pipeline hỏng, vì sao agent vẫn trả lời?",
+  "subtitle": "Giới thiệu Day 10 · Bức tranh toàn cảnh 4 cụm & 18 nội dung thực chiến",
+  "duration": {
+    "frames": 7208,
+    "seconds": 240.267,
+    "timecode": "04:00.3",
+    "fps": 30
+  },
+  "video_spec": {
+    "resolution": "1920x1080",
+    "aspect_ratio": "16:9",
+    "codec": "H.264 High Profile",
+    "pixel_format": "yuv420p",
+    "fps": 30
+  },
+  "audio_spec": {
+    "voice": "Nhật Phong",
+    "model": "k2-fsa/OmniVoice",
+    "codec": "AAC",
+    "channels": 2,
+    "sample_rate": 24000,
+    "integrated_loudness_lufs": -16.1,
+    "true_peak_dbtp": -1.8,
+    "music_track": "none"
+  },
+  "content_stats": {
+    "cues_count": 16,
+    "caption_pages": 54,
+    "chapters_count": 7
+  },
+  "files": {
+    "master_video_mp4": {
+      "path": "projects/d10-00-gioi-thieu/render/d10-00-gioi-thieu.mp4",
+      "bytes": 18188283,
+      "sha256": "2842e0c136d753de987efb2bf56ea6cf5137465933955c9daae5c7ac2e2b0197"
+    },
+    "narration_wav": {
+      "path": "day10/02-production/voice/d10-00-gioi-thieu/voice.wav",
+      "bytes": 11532844,
+      "sha256": "5d9e9cd0269a2bf682792e37d1287563a40b16f9659965d14682aad8f7f03618"
+    },
+    "timing_manifest_json": {
+      "path": "day10/02-production/voice/d10-00-gioi-thieu/voice.cues.json",
+      "bytes": 16918,
+      "sha256": "5e10dd994e0b9f9c15a753209db3b19e8875c13a5c859b8f4250d1db2df1569a"
+    },
+    "transcript_txt": {
+      "path": "day10/05-final-package/transcripts/d10-00-gioi-thieu.txt",
+      "bytes": 5568,
+      "sha256": "cf9a7746f06a5c878fb54f6f3c3113c7f9de368a02c38f7a8df7c54acdc3ee25"
+    },
+    "chapters_txt": {
+      "path": "day10/05-final-package/chapters/d10-00-gioi-thieu-chương.txt",
+      "bytes": 458,
+      "sha256": "da5e68547a8223abee71afb74720e43f0d08d44fff277149fb4a4f184a9987bc"
+    },
+    "source_directory": "vinuni-lesson-video-ds/ui_kits/lesson-video/videos/d10-00-gioi-thieu/"
+  },
+  "chapters": [
+    {
+      "timecode": "00:00",
+      "seconds": 0,
+      "title": "Vấn đề trung tâm — Chạy đúng vẫn có thể trả lời sai"
+    },
+    {
+      "timecode": "01:25",
+      "seconds": 85,
+      "title": "Bản đồ bài học — 4 cụm · 18 nội dung thực chiến"
+    },
+    {
+      "timecode": "01:41",
+      "seconds": 101,
+      "title": "Cụm 1 — Nền móng & Đường đi của dữ liệu"
+    },
+    {
+      "timecode": "02:11",
+      "seconds": 131,
+      "title": "Cụm 2 — Độ tin cậy & Quan sát dữ liệu"
+    },
+    {
+      "timecode": "02:58",
+      "seconds": 178,
+      "title": "Cụm 3 — Vận hành & Phục hồi hệ thống"
+    },
+    {
+      "timecode": "03:30",
+      "seconds": 210,
+      "title": "Cụm 4 — Thực hành Lab 10 & Cầu nối Day 13"
+    },
+    {
+      "timecode": "03:47",
+      "seconds": 227,
+      "title": "Chuyển tiếp — Theo chân dòng dữ liệu từ Source"
+    }
+  ]
+}

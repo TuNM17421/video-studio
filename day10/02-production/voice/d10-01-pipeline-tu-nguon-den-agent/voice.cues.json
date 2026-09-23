@@ -1,0 +1,360 @@
+{
+  "source": "OmniVoice (Nhật Phong)",
+  "fps": 30,
+  "sampleRate": 24000,
+  "durationInFrames": 32315,
+  "cues": [
+    {
+      "n": 1,
+      "text": "Ở video trước, chúng ta đã thấy một sự cố đầy nghịch lý: chính sách phiên bản hai đã cập nhật ở nguồn lúc hai giờ sáng, nhưng Agent vẫn tự tin dùng phiên bản một cũ rích để trả lời nhân viên. Tại sao hệ thống chạy đúng mọi bước mà kết quả cuối cùng lại sai?",
+      "startFrame": 0,
+      "endFrame": 523,
+      "durationInFrames": 523,
+      "speechFrames": 481
+    },
+    {
+      "n": 2,
+      "text": "Để trả lời câu hỏi đó, bài học này sẽ cùng bạn theo dấu tài liệu V2 qua bốn nội dung cốt lõi: Thứ nhất, bản chất của Data Pipeline và rủi ro Data Cascade; Thứ hai, hai quyết định kiến trúc định hình hệ thống; Thứ ba, các kỹ thuật sống còn ở trạm Ingestion và Transform; Và thứ tư, cách Lưu trữ cũng như Phục vụ dữ liệu an toàn cho Agent.",
+      "startFrame": 523,
+      "endFrame": 1199,
+      "durationInFrames": 676,
+      "speechFrames": 634
+    },
+    {
+      "n": 3,
+      "text": "Trước hết, Data Pipeline là gì? Hiểu một cách mộc mạc nhất, đây là con đường tự động giúp dữ liệu đi từ nơi sinh ra đến nơi được sử dụng. Trong hệ thống AI, pipeline gồm năm trạm liên hoàn: Nguồn dữ liệu, Thu thập Ingest, Biến đổi Transform, Lưu trữ Storage, và Lớp phục vụ Serving trước khi chuyển tới Agent.",
+      "startFrame": 1199,
+      "endFrame": 1823,
+      "durationInFrames": 624,
+      "speechFrames": 582
+    },
+    {
+      "n": 4,
+      "text": "Điều cốt tử bạn cần nhớ là: Agent không có mắt thần để tự tìm kiếm dữ liệu trôi nổi bên ngoài. Nó hoàn toàn phụ thuộc vào những gì mà pipeline đã kịp chuẩn bị và đưa đến cửa. Nếu pipeline không cung cấp, Agent sẽ hoàn toàn mù tịt về tài liệu mới.",
+      "startFrame": 1823,
+      "endFrame": 2318,
+      "durationInFrames": 495,
+      "speechFrames": 453
+    },
+    {
+      "n": 5,
+      "text": "Chỉ cần phiên bản hai bị kẹt lại ở một trạm nào đó, các bước phía sau vẫn âm thầm chạy tiếp bằng phiên bản một. Hiện tượng một lỗi nhỏ ở đầu nguồn tích tụ và phóng đại qua nhiều tầng được gọi là Data Cascade — khiến câu trả lời của Agent bị sai lệch nghiêm trọng mà toàn bộ hệ thống vẫn xanh đèn.",
+      "startFrame": 2319,
+      "endFrame": 2910,
+      "durationInFrames": 591,
+      "speechFrames": 549
+    },
+    {
+      "n": 6,
+      "text": "Trước khi bắt tay viết code kéo dữ liệu, mọi kiến trúc sư dữ liệu đều phải trả lời hai câu hỏi lớn: Một là biến đổi dữ liệu trước hay sau khi lưu trữ? Và hai là nên xử lý theo từng đợt hay xử lý liên tục theo thời gian thực?",
+      "startFrame": 2910,
+      "endFrame": 3364,
+      "durationInFrames": 454,
+      "speechFrames": 412
+    },
+    {
+      "n": 7,
+      "text": "Câu hỏi thứ nhất đưa ta đến ngã rẽ giữa ETL và ELT. Với ETL, dữ liệu được rút trích (Extract), biến đổi làm sạch (Transform), rồi mới nạp vào kho (Load). Hướng đi này là bắt buộc khi dữ liệu chứa thông tin cá nhân nhạy cảm như căn cước công dân hay số tài khoản, cần phải che giấu hoặc mã hóa ngay lập tức trước khi được phép lưu vào đĩa cứng.",
+      "startFrame": 3364,
+      "endFrame": 4060,
+      "durationInFrames": 696,
+      "speechFrames": 654
+    },
+    {
+      "n": 8,
+      "text": "Ngược lại, với ELT, dữ liệu được rút trích và nạp thẳng bản thô vào kho trước, rồi sau này mới biến đổi. Nhờ chi phí lưu trữ đám mây ngày nay rất rẻ, cách làm này giữ lại nguyên vẹn bản gốc, giúp đội ngũ kỹ sư có quyền chạy lại từ đầu hoặc thử nghiệm các thuật toán AI mới mà không cần làm phiền hệ thống nguồn.",
+      "startFrame": 4060,
+      "endFrame": 4693,
+      "durationInFrames": 633,
+      "speechFrames": 591
+    },
+    {
+      "n": 9,
+      "text": "Vì vậy, câu hỏi quyết định không phải ETL hay ELT công nghệ nào hiện đại hơn. Hãy tự hỏi: Tổ chức của bạn có được phép lưu trữ dữ liệu thô hay không, và trong tương lai bạn có nhu cầu xử lý lại từ bản gốc hay không?",
+      "startFrame": 4692,
+      "endFrame": 5140,
+      "durationInFrames": 448,
+      "speechFrames": 406
+    },
+    {
+      "n": 10,
+      "text": "Câu hỏi thứ hai là về nhịp độ: chọn Batch hay Streaming? Xử lý theo lô, tức là Batch, gom dữ liệu lại và chạy định kỳ theo giờ hoặc theo ngày. Cách này rất rẻ, đơn giản, dễ kiểm soát lỗi và dễ chạy lại, nhưng chấp nhận có độ trễ nhất định.",
+      "startFrame": 5140,
+      "endFrame": 5621,
+      "durationInFrames": 481,
+      "speechFrames": 439
+    },
+    {
+      "n": 11,
+      "text": "Ngược lại, xử lý theo dòng sự kiện, tức là Streaming, đẩy dữ liệu đi gần như ngay lập tức sau vài mili-giây. Thời gian thực nghe rất hấp dẫn, nhưng cái giá phải trả là hạ tầng đắt đỏ, vận hành phức tạp, và đặc biệt là khi có dữ liệu rác thì lỗi cũng lan truyền với tốc độ chóng mặt.",
+      "startFrame": 5621,
+      "endFrame": 6181,
+      "durationInFrames": 560,
+      "speechFrames": 518
+    },
+    {
+      "n": 12,
+      "text": "Tiêu chí lựa chọn ở đây hoàn toàn phụ thuộc vào hậu quả kinh doanh. Với chính sách nghỉ phép, cập nhật chậm vài giờ không gây nguy hại; nhưng với phát hiện giao dịch lừa đảo hay cập nhật giá cổ phiếu, trễ vài giây đã là thảm họa. Hãy để hậu quả quyết định kiến trúc, đừng chạy theo công nghệ một cách mù quáng.",
+      "startFrame": 6181,
+      "endFrame": 6796,
+      "durationInFrames": 615,
+      "speechFrames": 573
+    },
+    {
+      "n": 13,
+      "text": "Bây giờ, tài liệu V2 bắt đầu hành trình tại trạm đầu tiên: Ingestion, hay thu thập dữ liệu. Khâu này không chỉ đơn thuần là kết nối API, mà phải giải quyết ba bài toán kỹ thuật lớn: phân loại nguồn dữ liệu, đồng bộ tăng dần không mất dấu, và cơ chế tự vệ khi nguồn bị quá tải.",
+      "startFrame": 6795,
+      "endFrame": 7363,
+      "durationInFrames": 568,
+      "speechFrames": 526
+    },
+    {
+      "n": 14,
+      "text": "Bài toán thứ nhất là nhận diện bốn loại nguồn dữ liệu và kiểu hỏng riêng biệt: Cơ sở dữ liệu có thể âm thầm đổi tên cột; API bên ngoài có thể bị nghẽn mạng hoặc giới hạn số lượt gọi; Tệp văn bản có thể lỗi font chữ tiếng Việt; Còn luồng sự kiện thì dễ bị gửi trùng lặp. Mỗi nguồn bắt buộc phải có một cảm biến theo dõi sức khỏe riêng.",
+      "startFrame": 7363,
+      "endFrame": 8031,
+      "durationInFrames": 668,
+      "speechFrames": 626
+    },
+    {
+      "n": 15,
+      "text": "Bài toán thứ hai là đồng bộ dữ liệu lớn. Nếu hệ thống cứ vài tiếng lại quét lại toàn bộ hàng triệu dòng dữ liệu thì sẽ làm sập máy chủ. Thay vào đó, kỹ thuật CDC — tức bắt thay đổi dữ liệu qua log giao dịch — sẽ chỉ nhặt đúng những bản ghi vừa được thêm mới, chỉnh sửa hoặc xóa bỏ.",
+      "startFrame": 8031,
+      "endFrame": 8592,
+      "durationInFrames": 561,
+      "speechFrames": 519
+    },
+    {
+      "n": 16,
+      "text": "Tuy nhiên, CDC thường dùng một mốc thời gian gọi là Watermark để đánh dấu phần dữ liệu đã đọc xong. Nếu tài liệu V2 của chúng ta đến muộn do mạng chập chờn nhưng lại mang dấu thời gian cũ hơn mốc Watermark này, hệ thống sẽ coi nó là dữ liệu quá khứ và bỏ sót vĩnh viễn mà không hề có tiếng còi báo động nào.",
+      "startFrame": 8593,
+      "endFrame": 9222,
+      "durationInFrames": 629,
+      "speechFrames": 587
+    },
+    {
+      "n": 17,
+      "text": "Tương tự, khi lấy dữ liệu qua API, nếu phân trang bằng vị trí Offset thông thường, một dòng mới chèn vào đầu danh sách sẽ làm toàn bộ số trang bị xô lệch, khiến trang tiếp theo vừa đọc lặp lại dữ liệu cũ, vừa bỏ sót dữ liệu mới. Sử dụng con trỏ Cursor neo vào ID cố định của bản ghi cuối cùng sẽ giải quyết triệt để lỗi này.",
+      "startFrame": 9221,
+      "endFrame": 9869,
+      "durationInFrames": 648,
+      "speechFrames": 606
+    },
+    {
+      "n": 18,
+      "text": "Bài toán thứ ba là tự vệ khi nguồn bị nghẽn. Khi API bên ngoài trả về lỗi quá tải, nếu chúng ta cứ liên tục bấm thử lại dồn dập, hành động đó sẽ tạo ra một cơn bão yêu cầu làm sập luôn máy chủ. Kỹ thuật Backoff giúp kéo dài thời gian chờ sau mỗi lần thử, kết hợp với Jitter là một khoảng trễ ngẫu nhiên nhỏ để các luồng không cùng ùa vào thử lại một lúc.",
+      "startFrame": 9870,
+      "endFrame": 10572,
+      "durationInFrames": 702,
+      "speechFrames": 660
+    },
+    {
+      "n": 201,
+      "text": "Trước khi bước sang bài học tiếp theo, tôi có ba câu hỏi tình huống thực tế cho các bạn để cùng củng cố kiến thức về Data Cascade và trạm Ingestion vừa học.",
+      "startFrame": 10571,
+      "endFrame": 10900,
+      "durationInFrames": 329,
+      "speechFrames": 287
+    },
+    {
+      "n": 101,
+      "text": "Câu hỏi một: Tình huống: Chính sách cập nhật bản V2 lúc hai giờ sáng. Đến sáng, AI Agent vẫn tự tin dùng bản V1 để trả lời nhân viên dù mọi service đều báo hai trăm OK. Nguyên nhân gốc rễ là gì? Đáp án A: Mô hình LLM bị ảo giác, tự ghi nhớ và sinh ra câu trả lời cũ rích. Đáp án B: V2 bị nghẽn ở đầu nguồn, các bước phía sau âm thầm chạy tiếp bằng V1. Đáp án C: Kết nối mạng internet của người dùng bị trễ khiến ứng dụng không kịp tải phiên bản mới. Đáp án D: AI Agent từ chối định dạng file PDF khiến tài liệu V2 bị loại bỏ khỏi hàng đợi. Đáp án chính xác là B. Đây là cơ chế Data Cascade. Agent không tự tìm kiếm dữ liệu mà phụ thuộc hoàn toàn vào pipeline. Khi phiên bản hai bị nghẽn ở đầu nguồn, các bước phía sau vẫn âm thầm chạy tiếp bằng bản cũ mà không hề có cảnh báo.",
+      "startFrame": 10901,
+      "endFrame": 12750,
+      "durationInFrames": 1849,
+      "speechFrames": 1759
+    },
+    {
+      "n": 102,
+      "text": "Câu hỏi hai: Tình huống: Hồ sơ nhân sự đầu vào chứa Số Căn cước công dân, Mức lương và Bệnh án y tế nhạy cảm. Đội ngũ kỹ sư dữ liệu bắt buộc phải chọn kiến trúc nào để bảo vệ thông tin trước khi nạp kho? Đáp án A: ELT — Nạp toàn bộ dữ liệu thô vào Data Lake rồi mới viết script che dữ liệu nhạy cảm sau. Đáp án B: ETL — Rút trích và che hoặc mã hóa PII ngay lập tức trước khi được phép ghi xuống đĩa cứng lưu trữ. Đáp án C: Direct Query — Cho Agent truy vấn trực tiếp vào cơ sở dữ liệu nhân sự để tự lọc thông tin. Đáp án D: Bỏ qua bước Transform để tăng tốc và yêu cầu Agent tự bảo mật bằng System Prompt. Đáp án chính xác là B. Đối với dữ liệu nhạy cảm PII, bắt buộc phải dùng kiến trúc ETL để che và mã hóa dữ liệu ngay trong bộ nhớ trước khi ghi xuống đĩa cứng, tuyệt đối không nạp dữ liệu thô vào Data Lake.",
+      "startFrame": 12750,
+      "endFrame": 14626,
+      "durationInFrames": 1876,
+      "speechFrames": 1786
+    },
+    {
+      "n": 103,
+      "text": "Câu hỏi ba: Tình huống: Mạng bị ngắt giữa chừng, service Ingest phải chạy lại cho lô một nghìn file. Kỹ thuật nào đảm bảo dù thử lại bao nhiêu lần thì kho lưu trữ vẫn không bị nhân đôi dữ liệu? Đáp án A: Tính lũy đẳng Idempotency, dựa trên Deduplication Key hoặc Content Hash duy nhất. Đáp án B: Tăng thời gian Timeout của kết nối mạng lên vô hạn để tránh bị ngắt kết nối giữa chừng. Đáp án C: Chuyển sang cơ chế Push trực tiếp để nguồn tự đẩy dữ liệu mà không cần kiểm tra. Đáp án D: Xóa trắng toàn bộ kho dữ liệu cũ mỗi khi có lỗi mạng để nạp lại từ đầu. Đáp án chính xác là A. Tính lũy đẳng Idempotency là nguyên tắc vàng. Dù dịch vụ Ingest retry bao nhiêu lần thì với khóa Content Hash duy nhất, trạng thái kho lưu trữ vẫn không bị nhân đôi dữ liệu.",
+      "startFrame": 14626,
+      "endFrame": 16430,
+      "durationInFrames": 1804,
+      "speechFrames": 1714
+    },
+    {
+      "n": 202,
+      "text": "Rất xuất sắc! Bây giờ, chúng ta hãy cùng đến với bài học tiếp theo: Xử lý nghẽn dữ liệu và trạm Transform.",
+      "startFrame": 16429,
+      "endFrame": 16674,
+      "durationInFrames": 245,
+      "speechFrames": 203
+    },
+    {
+      "n": 19,
+      "text": "Khi nguồn phát dữ liệu quá nhanh mà hệ thống phía sau chưa kịp tiêu thụ, tín hiệu Backpressure sẽ phát ra lệnh yêu cầu bên gửi phải tạm giảm tốc độ truyền, giúp các hàng đợi bộ nhớ không bị tràn vỡ.",
+      "startFrame": 16675,
+      "endFrame": 17087,
+      "durationInFrames": 412,
+      "speechFrames": 370
+    },
+    {
+      "n": 20,
+      "text": "Đối với những bản ghi bị lỗi định dạng mà thử lại nhiều lần vẫn thất bại, hệ thống sẽ tự động tách chúng vào một hàng đợi riêng gọi là Dead-Letter Queue để kỹ sư điều tra nguyên nhân. Hãy nhớ: Dead-Letter Queue là nơi cách ly bệnh nhân để chữa trị, tuyệt đối không phải là thùng rác để ném bỏ dữ liệu.",
+      "startFrame": 17087,
+      "endFrame": 17686,
+      "durationInFrames": 599,
+      "speechFrames": 557
+    },
+    {
+      "n": 21,
+      "text": "Vượt qua Ingestion an toàn, tài liệu V2 tiến vào trạm thứ hai: Transform. Dữ liệu thô từ nguồn không thể đưa thẳng cho Agent đọc vì nó chứa rất nhiều rác và nhiễu. Trạm này có nhiệm vụ làm sạch và chuẩn hóa dữ liệu qua ba bước công việc bắt buộc.",
+      "startFrame": 17686,
+      "endFrame": 18196,
+      "durationInFrames": 510,
+      "speechFrames": 468
+    },
+    {
+      "n": 22,
+      "text": "Bước thứ nhất là rà soát năm dạng dữ liệu bẩn kinh điển: trường thông tin bị bỏ trống, giá trị đo đạc bất thường vượt ngưỡng, bản ghi bị trùng lặp, sai định dạng ngày tháng, và lỗi bảng mã hiển thị. Với AI, dữ liệu bẩn nguy hiểm ở chỗ mô hình ngôn ngữ lớn vẫn tự tin bịa ra câu trả lời rất trôi chảy, che giấu hoàn toàn lỗi bên dưới.",
+      "startFrame": 18196,
+      "endFrame": 18864,
+      "durationInFrames": 668,
+      "speechFrames": 626
+    },
+    {
+      "n": 23,
+      "text": "Bước thứ hai là phân luồng xử lý: Những lỗi sai định dạng hiển nhiên thì code sẽ tự động chuẩn hóa; Những bản ghi nghi vấn thì gắn cờ cảnh báo để chuyên viên nghiệp vụ duyệt; Còn những dữ liệu độc hại hoặc sai lệch nghiêm trọng thì lập tức cách ly, tuyệt đối không cho phép đi tiếp vào hệ thống.",
+      "startFrame": 18864,
+      "endFrame": 19442,
+      "durationInFrames": 578,
+      "speechFrames": 536
+    },
+    {
+      "n": 24,
+      "text": "Bước thứ ba là chuẩn bị chuyên biệt cho mô hình tìm kiếm thông tin RAG. Văn bản cần được bóc tách toàn bộ mã HTML rác, chuyển về bảng mã Unicode tiếng Việt dựng sẵn đồng nhất, và dùng thuật toán nhận diện để che toàn bộ thông tin cá nhân nhạy cảm trước khi đưa vào mô hình AI.",
+      "startFrame": 19442,
+      "endFrame": 19992,
+      "durationInFrames": 550,
+      "speechFrames": 508
+    },
+    {
+      "n": 25,
+      "text": "Sau đó, tài liệu dài được cắt thành các đoạn nhỏ có nghĩa hoàn chỉnh, gọi là Semantic Chunking, tránh việc cắt đứt giữa chừng làm mất ngữ cảnh. Đặc biệt, mỗi đoạn cắt bắt buộc phải gắn kèm Metadata gồm tên văn bản, phiên bản, tác giả và ngày bắt đầu có hiệu lực — chính Metadata này sẽ giúp Agent biết V2 mới là bản đang có hiệu lực pháp lý.",
+      "startFrame": 19992,
+      "endFrame": 20684,
+      "durationInFrames": 692,
+      "speechFrames": 650
+    },
+    {
+      "n": 26,
+      "text": "Nguyên tắc vàng ở trạm Transform là: Việc mở file ra sửa tay một vài dòng trước buổi demo không bao giờ tạo nên một hệ thống tin cậy. Mọi quy tắc làm sạch dữ liệu đều phải được viết thành mã nguồn và tự động hóa, để bất cứ khi nào có tài liệu mới, hệ thống đều xử lý chuẩn xác như nhau.",
+      "startFrame": 20684,
+      "endFrame": 21251,
+      "durationInFrames": 567,
+      "speechFrames": 525
+    },
+    {
+      "n": 27,
+      "text": "Sau khi được làm sạch hoàn hảo, tài liệu V2 tiến vào trạm Lưu trữ và Phục vụ. Ở đây, chúng ta phải giải quyết ba câu hỏi then chốt: Tổ chức dữ liệu theo kiến trúc nào? Lưu trữ ở loại kho nào? Và làm sao để Agent luôn đọc được phiên bản mới nhất?",
+      "startFrame": 21251,
+      "endFrame": 21753,
+      "durationInFrames": 502,
+      "speechFrames": 460
+    },
+    {
+      "n": 28,
+      "text": "Câu hỏi thứ nhất về tổ chức dữ liệu được giải quyết bằng kiến trúc Medallion ba lớp: Lớp Bronze lưu trữ bản thô ban đầu để phục vụ đối soát; Lớp Silver lưu dữ liệu đã được làm sạch và chuẩn hóa; Và lớp Gold là dữ liệu tinh gọn đã sẵn sàng phục vụ nghiệp vụ. Nguyên tắc bất di bất dịch là Agent tuyệt đối không được đọc dữ liệu trực tiếp từ lớp Bronze.",
+      "startFrame": 21753,
+      "endFrame": 22432,
+      "durationInFrames": 679,
+      "speechFrames": 637
+    },
+    {
+      "n": 29,
+      "text": "Câu hỏi thứ hai là chọn loại kho phù hợp: Data Warehouse tối ưu cho các bảng số liệu tài chính có cấu trúc; Data Lake chứa được mọi loại tệp tài liệu thô khổng lồ; Lakehouse kết hợp sự linh hoạt của Lake với khả năng quản trị bảng của Warehouse; Còn Vector Store chuyên lưu trữ các vector nhúng ngữ nghĩa để phục vụ tìm kiếm thông minh cho Agent.",
+      "startFrame": 22432,
+      "endFrame": 23122,
+      "durationInFrames": 690,
+      "speechFrames": 648
+    },
+    {
+      "n": 30,
+      "text": "Câu hỏi thứ ba là lớp Phục vụ Serving. Bạn hãy lưu ý: Dữ liệu được ghi vào kho thành công không có nghĩa là Agent đã nhìn thấy ngay! Lớp Serving đứng ở giữa phải chịu trách nhiệm xóa bỏ bộ nhớ đệm Cache phiên bản cũ, kiểm tra quyền truy cập, và bảo đảm chỉ mục Vector Index đã cập nhật dữ liệu mới nhất trong giới hạn thời gian cho phép.",
+      "startFrame": 23122,
+      "endFrame": 23790,
+      "durationInFrames": 668,
+      "speechFrames": 626
+    },
+    {
+      "n": 31,
+      "text": "Khi chỉ cập nhật một vài điều khoản trong chính sách mà không thay đổi mô hình AI, hệ thống chỉ cần dùng lệnh Upsert — tức là nếu chưa có thì chèn mới, nếu đã có thì cập nhật đè lên bản ghi cũ — để tiết kiệm chi phí tính toán.",
+      "startFrame": 23789,
+      "endFrame": 24245,
+      "durationInFrames": 456,
+      "speechFrames": 414
+    },
+    {
+      "n": 32,
+      "text": "Nhưng nếu bạn quyết định nâng cấp mô hình nhúng embedding mới hoặc đổi kích thước chia đoạn chunk, bạn tuyệt đối không được cập nhật chắp vá vào chỉ mục đang chạy. Thay vào đó, hãy dựng một Vector Index mới hoàn toàn song song, chạy thử nghiệm đánh giá chất lượng đạt chuẩn, rồi mới gạt công tắc chuyển toàn bộ truy vấn của người dùng sang — kỹ thuật này gọi là Cutover an toàn.",
+      "startFrame": 24246,
+      "endFrame": 24991,
+      "durationInFrames": 745,
+      "speechFrames": 703
+    },
+    {
+      "n": 33,
+      "text": "Như vậy, tài liệu chính sách phiên bản hai đã vượt qua trọn vẹn hành trình năm trạm: Được Ingestion lấy đúng mốc, Transform làm sạch và gắn metadata đầy đủ, lưu trữ đúng lớp Gold và phục vụ qua một chỉ mục Index đã kiểm tra cẩn thận. Chỉ khi đi trọn con đường này, Agent mới có đủ căn cứ chuẩn xác để phục vụ người dùng.",
+      "startFrame": 24991,
+      "endFrame": 25638,
+      "durationInFrames": 647,
+      "speechFrames": 605
+    },
+    {
+      "n": 203,
+      "text": "Trước khi khép lại bài học hôm nay, mời bạn cùng chinh phục ba câu hỏi thử thách cuối bài về kỹ thuật Chunking và lớp Serving.",
+      "startFrame": 25638,
+      "endFrame": 25913,
+      "durationInFrames": 275,
+      "speechFrames": 233
+    },
+    {
+      "n": 104,
+      "text": "Câu hỏi bốn: Tình huống: Khi chuẩn bị tài liệu chính sách cho Agent RAG, nếu kỹ sư cắt đoạn chunk size quá ngắn dưới hai mươi từ thì rủi ro kỹ thuật lớn nhất đối với câu trả lời của Agent là gì? Đáp án A: Tốn quá nhiều dung lượng ổ cứng khiến máy chủ database bị hết dung lượng lưu trữ. Đáp án B: Làm đứt gãy ngữ cảnh hoàn chỉnh, khiến vector embedding bị sai lệch ý nghĩa thực tế. Đáp án C: Máy chủ Vector DB bị tràn bộ nhớ GPU khiến toàn bộ hệ thống tìm kiếm ngữ nghĩa bị sập. Đáp án D: Agent không tính toán được độ tương đồng do các vector quá ngắn không hỗ trợ cosine similarity. Đáp án chính xác là B. Cắt đoạn quá ngắn sẽ làm đứt gãy ngữ cảnh hoàn chỉnh, khiến các câu điều kiện bị tách rời và vector embedding phản ánh sai lệch ý nghĩa thực tế của tài liệu.",
+      "startFrame": 25913,
+      "endFrame": 27730,
+      "durationInFrames": 1817,
+      "speechFrames": 1727
+    },
+    {
+      "n": 105,
+      "text": "Câu hỏi năm: Tình huống: Bảng dữ liệu nguồn bất ngờ đổi tên cột employee id thành staff code mà không báo trước. Hiện tượng này là gì và kiến trúc pipeline cần làm gì để tránh làm sập các câu truy vấn của Agent? Đáp án A: Data Drift — Tự động đào tạo lại mô hình để mô hình AI tự đoán tên cột mới. Đáp án B: Schema Drift — Dùng Schema Validation và Data Contract để bắt lỗi và cách ly vào Dead Letter Queue. Đáp án C: Tăng gấp đôi bộ nhớ RAM máy chủ để database tự động tương thích với schema mới. Đáp án D: Bỏ qua cột đó và tiếp tục nạp vào kho, chờ khi nào người dùng phàn nàn mới sửa. Đáp án chính xác là B. Đây là hiện tượng Schema Drift. Pipeline cần áp dụng Data Contract và Schema Validation để tự động phát hiện sai lệch và cách ly bản ghi lỗi vào Dead Letter Queue.",
+      "startFrame": 27730,
+      "endFrame": 29575,
+      "durationInFrames": 1845,
+      "speechFrames": 1755
+    },
+    {
+      "n": 106,
+      "text": "Câu hỏi sáu: Tình huống: Lớp Serving đã cache kết quả tìm kiếm của Agent trong hai mươi bốn giờ để tăng tốc. Khi bản V2 nạp xong lúc mười giờ, làm sao để Agent thấy ngay V2 mà không phải đợi hết hai mươi bốn giờ? Đáp án A: Khởi động lại toàn bộ máy chủ Agent và yêu cầu người dùng ngắt kết nối tạm thời. Đáp án B: Kích hoạt Cache Invalidation theo sự kiện hoặc gắn Version Tag vào Cache Key khi V2 nạp xong. Đáp án C: Tắt vĩnh viễn tính năng Cache và chấp nhận hệ thống bị chậm đi đáng kể. Đáp án D: Gửi prompt nhắc Agent bỏ qua cache và yêu cầu Agent tự tìm kiếm lại từ đầu nguồn. Đáp án chính xác là B. Kích hoạt cơ chế Cache Invalidation theo sự kiện hoặc gắn Version Tag vào Cache Key để Agent nhận ngay tài liệu mới nhất mà không phải chờ hết thời gian TTL.",
+      "startFrame": 29575,
+      "endFrame": 31414,
+      "durationInFrames": 1839,
+      "speechFrames": 1749
+    },
+    {
+      "n": 204,
+      "text": "Chúc mừng bạn đã vượt qua toàn bộ thử thách! Bây giờ, chúng ta cùng đến với phần đúc kết bài học và chuẩn bị cho chủ đề tiếp theo.",
+      "startFrame": 31414,
+      "endFrame": 31693,
+      "durationInFrames": 279,
+      "speechFrames": 237
+    },
+    {
+      "n": 34,
+      "text": "Chúng ta đã thấy rõ con đường dữ liệu đi qua và các trạm kỹ thuật trong pipeline. Nhưng ở mỗi trạm, dựa vào những tiêu chuẩn cụ thể nào để hệ thống tự động quyết định dữ liệu đạt chuẩn đi tiếp hay phải bị chặn đứng? Câu trả lời sống còn đó sẽ được giải mã trong video tiếp theo: Data Quality và Quality Gates.",
+      "startFrame": 31693,
+      "endFrame": 32315,
+      "durationInFrames": 622,
+      "speechFrames": 580
+    }
+  ]
+}

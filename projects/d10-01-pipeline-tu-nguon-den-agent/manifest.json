@@ -1,0 +1,199 @@
+{
+  "id": "d10-01-pipeline-tu-nguon-den-agent",
+  "index": 1,
+  "title": "Dữ liệu đi từ nguồn đến agent như thế nào?",
+  "subtitle": "Bản đồ 5 trạm pipeline · Quyết định kiến trúc & Kỹ thuật sống còn",
+  "duration": {
+    "frames": 32315,
+    "seconds": 1077.167,
+    "timecode": "17:57.2",
+    "fps": 30
+  },
+  "video_spec": {
+    "resolution": "1920x1080",
+    "aspect_ratio": "16:9",
+    "codec": "H.264 High Profile",
+    "pixel_format": "yuv420p",
+    "fps": 30
+  },
+  "audio_spec": {
+    "voice": "Nhật Phong",
+    "model": "k2-fsa/OmniVoice",
+    "codec": "AAC",
+    "channels": 2,
+    "sample_rate": 24000,
+    "integrated_loudness_lufs": -16.1,
+    "true_peak_dbtp": -1.8,
+    "music_track": "none"
+  },
+  "content_stats": {
+    "cues_count": 44,
+    "caption_pages": 218,
+    "chapters_count": 27
+  },
+  "files": {
+    "master_video_mp4": {
+      "path": "projects/d10-01-pipeline-tu-nguon-den-agent/render/d10-01-pipeline-tu-nguon-den-agent.mp4",
+      "bytes": 70324174,
+      "sha256": "7b3f06e33cdb8b02d86770fbe22a747e496c4c5f8070b42368b3fd8688debde0"
+    },
+    "narration_wav": {
+      "path": "day10/02-production/voice/d10-01-pipeline-tu-nguon-den-agent/voice.wav",
+      "bytes": 51704044,
+      "sha256": "f5609497593176b4ee2a1b37f516cdc621208893c4f0dba1dcc5eef73483bbec"
+    },
+    "timing_manifest_json": {
+      "path": "day10/02-production/voice/d10-01-pipeline-tu-nguon-den-agent/voice.cues.json",
+      "bytes": 27005,
+      "sha256": "abfd1f9a0572172938cff50bc6976858cf752e5ee95bb08d3edc066c8692c19a"
+    },
+    "transcript_txt": {
+      "path": "day10/05-final-package/transcripts/d10-01-pipeline-tu-nguon-den-agent.txt",
+      "bytes": 23402,
+      "sha256": "e2aeb1e6acbbbd5859dbf9dd12a37bac2152f253ed409b96e537545a85bfa35f"
+    },
+    "chapters_txt": {
+      "path": "day10/05-final-package/chapters/d10-01-pipeline-tu-nguon-den-agent-chương.txt",
+      "bytes": 2143,
+      "sha256": "79dfb004e80a98234c5aff2b5f54a33f078a19068a64cfb9636f64e9083d9051"
+    },
+    "source_directory": "vinuni-lesson-video-ds/ui_kits/lesson-video/videos/d10-01-pipeline-tu-nguon-den-agent/"
+  },
+  "chapters": [
+    {
+      "timecode": "00:00",
+      "seconds": 0,
+      "title": "Sự cố 02:00 — V2 ở Nguồn nhưng Agent vẫn cầm V1"
+    },
+    {
+      "timecode": "00:17",
+      "seconds": 17,
+      "title": "Bản đồ bài học — 4 Module cốt lõi"
+    },
+    {
+      "timecode": "00:39",
+      "seconds": 39,
+      "title": "Data Pipeline là gì? — 5 trạm liên hoàn & Không có đường tắt"
+    },
+    {
+      "timecode": "01:17",
+      "seconds": 77,
+      "title": "Data Cascade — Lỗi nhỏ đầu nguồn phóng đại ở Agent"
+    },
+    {
+      "timecode": "01:36",
+      "seconds": 96,
+      "title": "Quyết định 1: ETL vs ELT — Biến đổi trước hay sau khi nạp?"
+    },
+    {
+      "timecode": "02:15",
+      "seconds": 135,
+      "title": "Quyết định 2: Batch vs Streaming — Xử lý theo lô hay dòng sự kiện?"
+    },
+    {
+      "timecode": "02:51",
+      "seconds": 171,
+      "title": "Trạm 1: Ingestion — 3 Thách thức lớn & 4 Cặp rủi ro nguồn"
+    },
+    {
+      "timecode": "03:46",
+      "seconds": 226,
+      "title": "Đồng bộ CDC — Bẫy Watermark & Giải pháp Cursor neo an toàn"
+    },
+    {
+      "timecode": "05:29",
+      "seconds": 329,
+      "title": "Tự vệ API — Backoff Jitter & Tối ưu luồng Ingestion"
+    },
+    {
+      "timecode": "05:52",
+      "seconds": 352,
+      "title": "Dẫn nhập Checkpoint 1 — Thử thách trắc nghiệm giữa bài"
+    },
+    {
+      "timecode": "06:03",
+      "seconds": 363,
+      "title": "Checkpoint 1 — Trắc nghiệm 01: Data Cascade & Ẩn số 200 OK"
+    },
+    {
+      "timecode": "07:05",
+      "seconds": 425,
+      "title": "Checkpoint 1 — Trắc nghiệm 02: Bảo mật PII & Lựa chọn ETL vs ELT"
+    },
+    {
+      "timecode": "08:07",
+      "seconds": 487,
+      "title": "Checkpoint 1 — Trắc nghiệm 03: Tính lũy đẳng (Idempotency) khi Retry"
+    },
+    {
+      "timecode": "09:07",
+      "seconds": 547,
+      "title": "Chuyển tiếp bài học — Đến Trạm Transform & Xử lý dữ liệu"
+    },
+    {
+      "timecode": "09:15",
+      "seconds": 555,
+      "title": "Trạm Ingestion nâng cao — Backpressure & Dead-Letter Queue (DLQ)"
+    },
+    {
+      "timecode": "09:49",
+      "seconds": 589,
+      "title": "Trạm 2: Transform — 5 Dạng dữ liệu bẩn & 3 Nhánh phân luồng"
+    },
+    {
+      "timecode": "11:06",
+      "seconds": 666,
+      "title": "Chuẩn bị cho RAG — Làm sạch Unicode, Che PII, Chunking & Metadata"
+    },
+    {
+      "timecode": "12:27",
+      "seconds": 747,
+      "title": "Trạm 3 & 4: Storage & Serving — 3 Câu hỏi lớn định hình hệ thống"
+    },
+    {
+      "timecode": "12:50",
+      "seconds": 770,
+      "title": "Kiến trúc Medallion — Bronze (Thô), Silver (Sạch) & Gold (Agent)"
+    },
+    {
+      "timecode": "13:13",
+      "seconds": 793,
+      "title": "4 Loại kho dữ liệu — Warehouse, Data Lake, Lakehouse & Vector Store"
+    },
+    {
+      "timecode": "13:28",
+      "seconds": 808,
+      "title": "Lớp Serving & Phục vụ — Xóa Cache cũ, Upsert & Cutover an toàn"
+    },
+    {
+      "timecode": "14:14",
+      "seconds": 854,
+      "title": "Dẫn nhập Checkpoint 2 — Thử thách trắc nghiệm cuối bài"
+    },
+    {
+      "timecode": "14:23",
+      "seconds": 863,
+      "title": "Checkpoint 2 — Trắc nghiệm 04: Cắt đoạn quá ngắn (Chunking) & Ngữ cảnh"
+    },
+    {
+      "timecode": "15:24",
+      "seconds": 924,
+      "title": "Checkpoint 2 — Trắc nghiệm 05: Kiểm soát Schema Drift & Data Contract"
+    },
+    {
+      "timecode": "16:25",
+      "seconds": 985,
+      "title": "Checkpoint 2 — Trắc nghiệm 06: Serving & Cơ chế Cache Invalidation"
+    },
+    {
+      "timecode": "17:27",
+      "seconds": 1047,
+      "title": "Đúc kết thử thách — Hoàn thành 6/6 câu hỏi thực tế"
+    },
+    {
+      "timecode": "17:36",
+      "seconds": 1056,
+      "title": "Đúc kết hành trình V2 & Cầu nối sang Video 02 (Quality Gates)"
+    }
+  ]
+}
