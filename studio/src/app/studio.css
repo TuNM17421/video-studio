@@ -5,13 +5,6 @@
   gap: 9px;
   margin-left: 8px;
 }
-.vs-key-status {
-  cursor: default;
-}
-.vs-key-status:hover {
-  background: transparent;
-  color: var(--muted);
-}
 .vs-workflow {
   grid-template-columns: repeat(5, 1fr);
 }
@@ -146,10 +139,12 @@
   max-width: calc(100% - 8px);
   overflow: hidden;
   padding: 2px 4px;
-  border: 1px solid var(--vu-blue-100);
+  /* Ba màu đứng yên: nhãn này nằm đè lên ảnh preview nướng sẵn nền sáng, nên nó phải giữ nguyên ở chế
+     độ tối. Dùng thang màu bình thường thì chữ lật thành sáng mà nền vẫn trắng — không đọc được. */
+  border: 1px solid var(--vu-media-chip-border);
   border-radius: 3px;
-  background: rgb(255 255 255 / 92%);
-  color: var(--vu-blue-900);
+  background: color-mix(in srgb, var(--vu-media-chip-surface) 92%, transparent);
+  color: var(--vu-media-chip-text);
   font-family: var(--vu-font-utility);
   font-size: var(--vu-text-2xs);
   font-weight: var(--vu-font-medium);
@@ -508,7 +503,7 @@ button.vs-tile:hover {
   font-weight: var(--vu-font-medium);
   line-height: 16px;
 }
-.vs-agent-warning.ant-alert {
+.vs-agent-warning {
   flex: 1 0 100%;
   margin-top: var(--vu-space-2);
 }
@@ -545,6 +540,9 @@ button.vs-tile:hover {
 }
 .vs-validation-message.is-ok {
   color: var(--vu-green-700);
+}
+.vs-validation-message.is-warn {
+  color: var(--vu-amber-700);
 }
 .field input[aria-invalid="true"],
 .field input[aria-invalid="true"]:hover,
@@ -635,7 +633,7 @@ button.vs-tile:hover {
 }
 
 /* Cảnh báo máy yếu nằm ngay dưới tiêu đề, trước khi người dùng kịp bấm cài. */
-.vs-local-warning.ant-alert {
+.vs-local-warning {
   margin: 14px 18px 0;
 }
 
@@ -682,7 +680,7 @@ button.vs-tile:hover {
 .vs-local-step.is-now .vs-local-num {
   border-color: var(--vu-blue-700);
   background: var(--vu-blue-700);
-  color: #fff;
+  color: var(--vu-text-inverse);
 }
 .vs-local-step.is-done .vs-local-num {
   border-color: var(--vu-green-700);
@@ -764,18 +762,6 @@ button.vs-tile:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 39 dòng câu sẽ nuốt cả bước 4, nên gấp lại — nhưng tự bung khi có câu lỗi, vì lúc đó nó là thứ
-   người dùng cần nhìn chứ không phải thứ để giấu. */
-.vs-local-map > summary {
-  color: var(--vu-neutral-600);
-  cursor: pointer;
-  font-size: 12px;
-  list-style-position: inside;
-  margin-bottom: var(--vu-space-2);
-}
-.vs-local-map > summary:hover {
-  color: var(--vu-brand-primary);
-}
 /* Server Gradio là tiện ích ngoài luồng, nên gấp lại: mở ra mới thấy, không chen vào bốn bước. */
 .vs-local-extra {
   border-top: 1px solid var(--vu-neutral-200);
@@ -791,10 +777,32 @@ button.vs-tile:hover {
 .vs-local-extra > summary:hover {
   color: var(--vu-brand-primary);
 }
+/* Thân mục gập: mỗi ghi chú/cảnh báo một hàng, không chảy inline cạnh nhau như <small> mặc định. */
 .vs-local-extra > p {
+  margin: 8px 0 10px;
+  max-width: 78ch;
   color: var(--vu-neutral-500);
   font-size: 12px;
-  margin: 8px 0;
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-local-extra > small {
+  display: block;
+  margin-top: 10px;
+}
+.vs-local-actions > small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+/* Mục gập cuối thẻ là một dải chân, không phải một dòng chữ rơi khỏi lề: canh đúng lề trong của bốn bước
+   (18px, xem .vs-local-flow) và đổ nền nhạt để nó đọc như tiện ích bên lề luồng chính. Chỉ nhắm mục gập
+   là con trực tiếp của thẻ — mục gập "nhân bản từ file" nằm trong thân một bước không dính quy tắc này. */
+.vs-local > .vs-local-extra {
+  margin-top: 0;
+  padding: 12px 18px 14px;
+  background: var(--vu-neutral-50);
+}
+.vs-local > .vs-local-extra[open] {
+  padding-bottom: 18px;
 }
 .vs-source-picker {
   width: 100%;
@@ -1140,31 +1148,8 @@ button.vs-tile:hover {
 .vs-cue-list .vs-cue-text {
   white-space: normal;
 }
-
-/* ── voice ──────────────────────────────────────────────────────────────── */
-.vs-key-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 18px;
-  color: var(--vu-blue-700);
-}
 .vs-key-field {
   flex: 1;
-  margin: 0;
-}
-.vs-key-on {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text);
-  flex: 1;
-}
-.vs-key-on .connection-dot {
   margin: 0;
 }
 .vs-dry {
@@ -1280,9 +1265,6 @@ button.vs-tile:hover {
   font-size: 12px;
   border-bottom: 1px solid var(--line);
 }
-.vs-map-row.has-play {
-  grid-template-columns: 34px 132px minmax(0, 1fr) 54px 46px 30px;
-}
 .vs-map-row:last-child {
   border-bottom: 0;
 }
@@ -1341,16 +1323,6 @@ button.vs-tile:hover {
 }
 .vs-map-row.is-error .vs-map-match.is-weak {
   color: var(--vu-red-800);
-}
-.vs-map-play {
-  justify-self: end;
-}
-/* The button must not make its row taller than a row without one. */
-.vs-map-play .ant-btn {
-  height: auto;
-  min-width: 0;
-  padding: 0;
-  line-height: 1;
 }
 .vs-map-notes {
   grid-column: 2 / -1;
@@ -1412,23 +1384,37 @@ button.vs-tile:hover {
   color: var(--subtle);
 }
 
-/* ── music picker (background on render, quiz on plan) ────────────────────── */
-.vs-music-compact {
+/* ── captions + music pickers (render step) ─────────────────────────────── */
+.vs-captions-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vu-space-3);
+  margin-bottom: 18px;
+}
+.vs-captions-picker > small {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-music-picker {
   min-width: 0;
   display: grid;
   gap: var(--vu-space-1);
+  margin-bottom: 18px;
 }
-.vs-music-compact-control {
+.vs-music-picker-control {
   min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--vu-space-2);
 }
-.vs-music-compact-control .ant-select {
+.vs-music-picker-control .ant-select {
   min-width: 0;
   flex: 1;
 }
-.vs-music-compact > small {
+.vs-music-picker > small {
   overflow: hidden;
   color: var(--vu-text-muted);
   font-family: var(--vu-font-utility);
@@ -1436,53 +1422,6 @@ button.vs-tile:hover {
   line-height: var(--vu-leading-normal);
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.vs-music.ant-radio-group {
-  display: grid;
-  gap: 6px;
-  width: 100%;
-  margin-bottom: 18px;
-}
-.vs-music-item.ant-radio-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.vs-music-item.ant-radio-wrapper:hover {
-  border-color: var(--vu-blue-300);
-}
-.vs-music-item.ant-radio-wrapper-checked {
-  border-color: var(--vu-blue-700);
-  background: var(--vu-blue-50);
-}
-/* Ant wraps the label in a span that defaults to inline — the row needs it to lay out its children */
-.vs-music-item.ant-radio-wrapper > span:last-child {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-width: 0;
-  padding-inline-end: 0;
-}
-.vs-music-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-.vs-music-item strong {
-  color: var(--vu-blue-900);
-  font-size: 13px;
-}
-.vs-music-item small {
-  color: var(--vu-neutral-600);
-  font-family: var(--vu-font-utility);
-  font-size: 11px;
 }
 .vs-music-play.ant-btn {
   flex: 0 0 auto;
@@ -1545,7 +1484,7 @@ button.vs-tile:hover {
 }
 .vs-qa-mode button[aria-pressed="true"] {
   background: var(--vu-blue-800);
-  color: white;
+  color: var(--vu-text-inverse);
 }
 .vs-qa-filter {
   display: flex;
@@ -2042,44 +1981,6 @@ button.vs-tile:hover {
 .editor-panel {
   scroll-margin-top: var(--vu-space-6);
 }
-
-.vs-gate-navigation {
-  min-height: 76px;
-  padding: 14px 28px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  border-top: 1px solid var(--vu-border-subtle);
-  background: var(--vu-surface-subtle);
-}
-
-.vs-gate-navigation-back {
-  justify-self: start;
-}
-
-.vs-gate-navigation-next {
-  justify-self: end;
-}
-
-.vs-gate-navigation-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  color: var(--vu-text-muted);
-  font-size: var(--vu-text-2xs);
-  line-height: var(--vu-leading-normal);
-  text-align: center;
-}
-
-.vs-gate-navigation-status.is-ready svg {
-  color: var(--vu-green-700);
-}
-
-.vs-gate-navigation-status.is-locked svg {
-  color: var(--vu-neutral-500);
-}
 .vs-production-rail-head {
   min-height: var(--vu-workflow-header-height);
   padding: 0 20px;
@@ -2088,7 +1989,7 @@ button.vs-tile:hover {
   justify-content: space-between;
   gap: 18px;
   background: var(--vu-lesson-ink);
-  color: white;
+  color: var(--vu-text-inverse);
   font-family: var(--vs-font-display);
   font-size: 10px;
   font-weight: var(--vu-font-bold);
@@ -2106,6 +2007,28 @@ button.vs-tile:hover {
   margin: 0;
   border: 0;
   border-radius: 0;
+}
+.vs-workflow-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.vs-workflow-tiles > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.vs-workflow-tiles span,
+.vs-workflow-tiles small {
+  color: var(--vu-text-muted);
+  font-size: 11px;
+}
+.vs-workflow-tiles strong {
+  color: var(--vu-blue-900);
+  font-size: 17px;
+}
+@media (max-width: 900px) {
+  .vs-workflow-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .vs-showcase-details {
@@ -2158,7 +2081,7 @@ button.vs-tile:hover {
   place-items: center;
   border: 1px solid var(--vu-blue-200);
   border-radius: 4px;
-  background: white;
+  background: var(--vu-surface-card);
   font-family: var(--vs-font-utility);
 }
 .vs-showcase-details[open] .vs-details-action::after {
@@ -2521,8 +2444,59 @@ button.vs-tile:hover {
 .vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item-selected {
   border-left: 3px solid var(--vu-blue-700);
 }
-.vs-key-status .ant-badge {
+/* Nút chọn giao diện ở chân sidebar, cùng dáng một sidebar-item; giá trị đang chọn nằm bên phải. */
+.vs-theme-toggle {
+  cursor: pointer;
+}
+.vs-theme-value {
   margin-left: auto;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+}
+
+/* ── ảnh và khung xem trước ở chế độ tối ──────────────────────────────────────
+   Ảnh chụp component, ảnh QA và khung xem trước cảnh đều là nền trắng đã bake vào
+   pixel (hoặc là chính khung hình thật của MP4) — CSS không đổi được, và cũng
+   KHÔNG NÊN đổi: đó là màu thật của video.
+
+   Nên khung đựng ảnh preview là "tờ giấy" trắng cùng màu với ảnh: khung mà tối thì
+   phần ảnh không phủ kín hiện thành viền đen quanh một ô trắng. Chỉ đổi khi khung
+   đang chứa ảnh/khung hình — khung rỗng (Empty, icon thay ảnh) vẫn theo nền tối để
+   chữ của nó đọc được.
+
+   Cả tờ giấy (khung + ảnh + nhãn đè lên) hạ sáng một nhịp cho đỡ chói, và trả lại
+   đủ sáng khi rê chuột vào để xem kỹ. Bộ lọc đặt trên KHUNG chứ không trên ảnh:
+   đặt trên ảnh thì ảnh xám đi còn khung vẫn trắng, lộ ra một ô xám trong khung. */
+:root[data-theme="dark"] .vs-style-scene-frame,
+:root[data-theme="dark"] .vs-tile-image,
+:root[data-theme="dark"] .vs-preview-frame:has(> img, iframe),
+:root[data-theme="dark"] .vs-drawer-image {
+  border-color: var(--vu-media-chip-border);
+  background: var(--vu-media-surface);
+}
+/* Ảnh bìa trong khung VIDEO PREVIEW tự có nền (globals.css `.slide-visual > img`), phủ cả phần viền do
+   object-fit: contain chừa ra — nền đó cũng phải là giấy. */
+:root[data-theme="dark"] .vs-preview-frame > img {
+  background: var(--vu-media-surface);
+}
+:root[data-theme="dark"] .vs-style-scene-frame,
+:root[data-theme="dark"] .vs-tile-image,
+:root[data-theme="dark"] .vs-preview-frame:has(> img, iframe),
+:root[data-theme="dark"] .vs-drawer-image,
+:root[data-theme="dark"] .vs-qa img,
+:root[data-theme="dark"] .vs-finding-still img,
+:root[data-theme="dark"] iframe:not(.vs-preview-frame iframe) {
+  filter: brightness(0.9);
+  transition: filter var(--vu-duration-normal) var(--vu-ease-standard);
+}
+:root[data-theme="dark"] .vs-style-scene-frame:hover,
+:root[data-theme="dark"] .vs-tile-image:hover,
+:root[data-theme="dark"] .vs-preview-frame:hover,
+:root[data-theme="dark"] .vs-drawer-image:hover,
+:root[data-theme="dark"] .vs-qa img:hover,
+:root[data-theme="dark"] .vs-finding-still img:hover,
+:root[data-theme="dark"] iframe:hover {
+  filter: none;
 }
 
 @media (min-width: 681px) {
@@ -2612,7 +2586,7 @@ button.vs-tile:hover {
   .sidebar.ant-layout-sider-collapsed .sidebar-bottom {
     width: var(--vu-shell-sidebar-collapsed-width);
   }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status {
+  .sidebar.ant-layout-sider-collapsed .vs-theme-toggle {
     position: relative;
     width: var(--vu-shell-sidebar-rail-item);
     min-height: var(--vu-shell-sidebar-rail-item);
@@ -2623,17 +2597,6 @@ button.vs-tile:hover {
     border: 1px solid var(--vu-border-subtle);
     border-left-color: var(--vu-border-subtle);
     border-radius: var(--vu-radius-sm);
-  }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge {
-    position: absolute;
-    inset-block-start: 7px;
-    inset-inline-end: 7px;
-    margin-left: 0;
-    line-height: 0;
-  }
-  .sidebar.ant-layout-sider-collapsed .vs-key-status .ant-badge-status-dot {
-    width: 6px;
-    height: 6px;
   }
 }
 
@@ -2728,7 +2691,7 @@ button.vs-tile:hover {
   border: 0;
   background: transparent;
 }
-.vs-script-field .ant-upload-drag {
+.vs-script-field .vs-drop .ant-upload-drag {
   min-height: var(--vu-capability-card-min-height);
   border-color: var(--vu-blue-300);
   background: var(--vu-blue-50);
@@ -2824,7 +2787,9 @@ button.vs-tile:hover {
 }
 .vs-modules {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--vu-capability-card-min-width), 1fr));
+  /* Tối đa --vu-capability-grid-columns cột (2×2): mỗi cột ít nhất bằng phần của nó trong hàng, nên không bao
+     giờ thành ba cột với card thứ tư lẻ loi; hẹp hơn hai lần card tối thiểu thì xuống một cột. */
+  grid-template-columns: repeat(auto-fit, minmax(max(var(--vu-capability-card-min-width), calc((100% - (var(--vu-capability-grid-columns) - 1) * var(--vu-space-3)) / var(--vu-capability-grid-columns))), 1fr));
   gap: var(--vu-space-3);
   padding: var(--vu-space-4);
 }
@@ -2964,35 +2929,6 @@ button.vs-tile:hover {
   outline: none;
   box-shadow: var(--vu-shadow-focus);
 }
-.vs-module-config {
-  margin: 0 var(--vu-space-4) var(--vu-space-4);
-  padding: var(--vu-space-4);
-  display: grid;
-  grid-template-columns: minmax(0, 0.7fr) minmax(var(--vu-capability-card-min-width), 1.3fr);
-  gap: var(--vu-space-5);
-  align-items: end;
-  border: 1px solid var(--vu-border-default);
-  border-radius: var(--vu-radius-md);
-  background: var(--vu-neutral-0);
-}
-.vs-module-config-head h4 {
-  margin: 0;
-  color: var(--vu-blue-900);
-  font-family: var(--vs-font-display);
-  font-size: var(--vu-text-sm);
-  font-weight: var(--vu-font-bold);
-}
-.vs-module-config-head p {
-  margin: var(--vu-space-1) 0 0;
-  color: var(--vu-text-muted);
-  font-size: var(--vu-text-xs);
-  line-height: var(--vu-leading-normal);
-}
-.vs-module-config-field {
-  min-width: 0;
-  display: grid;
-  gap: var(--vu-space-2);
-}
 .vs-cast {
   display: grid;
   gap: 8px;
@@ -3041,6 +2977,114 @@ button.vs-tile:hover {
   font-weight: 500;
   color: var(--vu-text-muted);
 }
+/* ── chọn giọng cho từng nhân vật (model local) ──────────────────────────── */
+/* Mỗi vai một hàng: mặt, tên, giọng. Đặt tên và giọng cạnh nhau để đọc được cả dàn vai theo chiều dọc,
+   vì câu hỏi thường gặp là "ai đang đọc bằng giọng nào", không phải "vai này có mấy tuỳ chọn". */
+.vs-cast-pick ul {
+  display: grid;
+  gap: var(--vu-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-cast-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-3);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-cast-row.is-error {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-cast-face {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-500);
+  font-size: 13px;
+}
+.vs-cast-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vs-cast-who {
+  display: grid;
+  min-width: 0;
+}
+.vs-cast-who strong {
+  color: var(--vu-blue-900);
+  font-size: var(--vu-text-sm);
+}
+.vs-cast-who small {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-cast-voice {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-cast-voice .ant-select {
+  min-width: 190px;
+}
+/* Ô đường dẫn và ghi chú chiếm trọn hàng dưới: đường dẫn tuyệt đối dài hơn mọi cột ta có. */
+.vs-cast-file,
+.vs-cast-note {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.vs-cast-file .ant-input-affix-wrapper {
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-xs);
+}
+.vs-cast-file small,
+.vs-cast-note {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-cast-file small.is-error,
+.vs-cast-note.is-error {
+  color: var(--vu-red-700);
+}
+/* Thẻ chọn file nằm trong một hàng nhân vật: hạ xuống cỡ hai dòng; lối nhập tay là một dòng nhỏ bên dưới.
+   `.vs-cast-file small` ở trên bắt cả <small> trong thẻ — trả nó về cỡ chữ của thẻ. */
+.vs-cast-file .vs-source-picker {
+  min-height: 0;
+  padding: 10px 12px;
+}
+.vs-cast-file .vs-source-picker-copy small {
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.vs-cast-file .vs-source-manual {
+  margin-top: var(--vu-space-2);
+}
+.vs-cast-file .vs-cast-file-manual {
+  justify-self: start;
+  padding-inline: 0;
+}
+/* Người dẫn của video một giọng: bộ chọn thư viện là chính, file trên máy là lối rẽ — gập lại cho gọn. */
+.vs-local-body .vs-cast-other {
+  margin-top: var(--vu-space-2);
+}
+.vs-local-body .vs-cast-other .vs-cast-file {
+  margin-top: var(--vu-space-2);
+}
+
 /* ── voice picker ───────────────────────────────────────────────────────── */
 .vs-voice-picker {
   display: grid;
@@ -3280,21 +3324,11 @@ button.vs-tile:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.vs-workflow.ant-steps .vs-workflow-item-content {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--subtle);
-  font-size: var(--vu-text-2xs);
-  line-height: var(--vu-leading-snug);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .vs-workflow.ant-steps .ant-steps-item-rail {
   height: 1px;
   background: var(--vu-blue-100);
 }
 .vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-icon,
-.vs-workflow.ant-steps .ant-steps-item-wait .vs-workflow-item-content,
 .vs-workflow.ant-steps .ant-steps-item-wait .ant-steps-item-rail {
   opacity: var(--vu-emphasis-future);
 }
@@ -3329,6 +3363,9 @@ button.vs-tile:hover {
 .feedback.ant-alert .ant-alert-message {
   font-family: var(--vs-font-display);
   font-weight: var(--vu-font-bold);
+}
+.vs-production-state {
+  margin: 0 0 18px;
 }
 .step-empty.ant-empty {
   padding: 42px 24px;
@@ -3711,6 +3748,8 @@ button.vs-tile:hover {
     font-size: 15px;
   }
 
+
+
   .vs-sidebar-menu.ant-menu .ant-menu-title-content {
     min-width: 0;
     overflow: hidden;
@@ -3780,10 +3819,6 @@ button.vs-tile:hover {
     text-align: center;
     text-overflow: clip;
     white-space: normal;
-  }
-
-  .vs-workflow.ant-steps .vs-workflow-item-content {
-    display: none;
   }
 
   .vs-workflow.ant-steps .vs-workflow-item-icon {
@@ -3859,30 +3894,6 @@ button.vs-tile:hover {
     flex-direction: column;
   }
 
-  .vs-gate-navigation {
-    min-height: 0;
-    padding: 14px 17px 17px;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-
-  .vs-gate-navigation-status {
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: start;
-    text-align: left;
-  }
-
-  .vs-gate-navigation-back,
-  .vs-gate-navigation-next {
-    width: 100%;
-    justify-self: stretch;
-  }
-
-  .vs-gate-navigation > span[aria-hidden="true"] {
-    display: none;
-  }
-
   .panel-footer .ant-btn-primary {
     width: 100%;
   }
@@ -3922,17 +3933,11 @@ button.vs-tile:hover {
 }
 
 @media (max-width: 680px) {
-  .vs-modules,
-  .vs-module-config {
+  .vs-modules {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .vs-module-config {
-    align-items: stretch;
-    gap: var(--vu-space-3);
-  }
-
-  .vs-music-compact > small {
+  .vs-music-picker > small {
     white-space: normal;
   }
 }
@@ -3946,6 +3951,13 @@ button.vs-tile:hover {
 .ant-menu-item:focus-visible {
   outline: 3px solid var(--vu-border-focus) !important;
   outline-offset: 2px;
+}
+/* An input inside an affix wrapper (password, prefix/suffix icon, counted textarea) shows its focus on
+   the wrapper above; its own ring drew a second blue box inside the first. */
+.ant-input-affix-wrapper .ant-input:focus-visible,
+.ant-input-affix-wrapper input:focus-visible,
+.ant-input-affix-wrapper textarea:focus-visible {
+  outline: none !important;
 }
 
 /* ── trang Hướng dẫn ───────────────────────────────────────────────────────── */
@@ -4099,3 +4111,1542 @@ button.vs-tile:hover {
   background: var(--vu-amber-50);
   color: var(--vu-amber-700) !important;
 }
+
+/* ── Đóng gói kịch bản (beta) · pipeline research ─────────────────────────────
+   Trang một lượt: hàng đầu trang (56 px), dải sơ đồ bảy ô (112 px, HTML thuần, không thu phóng), vùng làm việc của ô
+   đang chọn với thanh "Việc của bạn" dính đáy, ngăn Chi tiết. Lớp vs-rs- là riêng trang này; vs-scout- còn lại là
+   phần nhật ký dùng chung từ bản đầu. Không lớp nào dùng chung với bước sản xuất video. */
+.vs-nav-beta {
+  padding: 1px 6px;
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-100);
+  color: var(--vu-blue-800);
+  font-size: 9px;
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-wide);
+  text-transform: uppercase;
+}
+@keyframes vs-rs-pulse { 50% { opacity: 0.35; } }
+@keyframes vs-rs-dash { to { background-position: var(--vu-space-2) 0; } }
+@keyframes vs-rs-halo { 0% { box-shadow: 0 0 0 0 var(--vu-amber-700); } 70%, 100% { box-shadow: 0 0 0 var(--vu-space-2) transparent; } }
+
+/* ── hàng đầu trang ── */
+.vs-rs-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2) var(--vu-space-3); min-height: var(--vu-research-header-height); margin-bottom: var(--vu-space-2); }
+.vs-rs-title { margin: 0; font: var(--vu-font-bold) var(--vu-text-lg) / var(--vu-leading-tight) var(--vu-font-brand); color: var(--vu-text-primary); white-space: nowrap; }
+.vs-rs-title small { margin-left: var(--vu-space-1); font: var(--vu-font-medium) var(--vu-text-xs) / 1 var(--vu-font-body); color: var(--vu-text-muted); }
+.vs-rs-switch { flex: 1 1 auto; min-width: 0; max-width: var(--vu-reading-max); }
+.vs-rs-switch-label { font: var(--vu-font-semibold) var(--vu-text-md) / var(--vu-leading-snug) var(--vu-font-brand); color: var(--vu-text-primary); }
+.vs-rs-switch-popup { min-width: var(--vu-research-sources-width); }
+.vs-rs-switch-option { display: grid; gap: 2px; min-width: 0; }
+.vs-rs-switch-option > span { overflow: hidden; font-size: var(--vu-text-sm); white-space: nowrap; text-overflow: ellipsis; }
+.vs-rs-switch-option small { display: flex; align-items: center; gap: var(--vu-space-1); font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-dot { flex: none; width: 6px; height: 6px; border-radius: var(--vu-radius-pill); background: var(--vu-border-strong); }
+.vs-rs-dot.is-waiting { background: var(--vu-amber-700); }
+.vs-rs-dot.is-running { background: var(--vu-lesson-data); }
+.vs-rs-dot.is-error { background: var(--vu-text-danger); }
+.vs-rs-dot.is-done { background: var(--vu-green-700); }
+.vs-rs-head-actions { display: flex; align-items: center; gap: var(--vu-space-2); margin-left: auto; }
+.vs-rs-help { display: grid; gap: var(--vu-space-2); max-width: var(--vu-research-sources-width); font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-rs-help p { margin: 0; }
+/* Màn hẹp: bộ chọn lượt xuống hàng hai, hai nút chỉ còn biểu tượng — đầu trang không quá hai hàng. */
+@media (max-width: 680px) {
+  .vs-rs-switch { flex-basis: 100%; max-width: none; order: 3; }
+  .vs-rs-head-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .vs-rs-title small { display: none; }
+}
+
+/* ── dải sơ đồ ── */
+.vs-rs-strip {
+  position: relative;
+  min-height: var(--vu-research-strip-height);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-lg);
+  background-color: var(--vu-surface-subtle);
+  background-image: radial-gradient(circle, var(--vu-border-default) 1px, transparent 1.5px);
+  background-size: var(--vu-space-4) var(--vu-space-4);
+}
+.vs-rs-strip-row {
+  display: flex;
+  align-items: flex-start;
+  box-sizing: border-box;
+  height: calc(var(--vu-research-strip-height) - 2px);
+  min-width: calc(4 * var(--vu-research-node-min) + 3 * var(--vu-research-gate) + 6 * var(--vu-space-6) + 2 * var(--vu-space-4));
+  margin: 0;
+  padding: calc((var(--vu-research-strip-height) - var(--vu-research-node-height)) / 2 - 1px) var(--vu-space-4);
+  list-style: none;
+}
+.vs-rs-node-slot { display: flex; flex: 1 1 var(--vu-research-node-max); min-width: var(--vu-research-node-min); max-width: var(--vu-research-node-max); }
+.vs-rs-gate-slot { display: flex; flex: 0 0 var(--vu-research-gate); }
+.vs-rs-node {
+  width: 100%;
+  height: var(--vu-research-node-height);
+  box-sizing: border-box;
+  display: grid;
+  align-content: center;
+  gap: var(--vu-space-1);
+  min-width: 0;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border: 1px solid var(--vu-border-default);
+  border-left: 4px solid var(--vu-neutral-300);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  box-shadow: var(--vu-shadow-xs);
+  color: var(--vu-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-rs-node-title { display: flex; align-items: center; gap: var(--vu-space-2); min-width: 0; font: var(--vu-font-semibold) var(--vu-text-sm) / var(--vu-leading-snug) var(--vu-font-brand); }
+.vs-rs-node-title > span:last-child,
+.vs-rs-node-status > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.vs-rs-node-status { display: flex; align-items: center; gap: var(--vu-space-1); min-width: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-snug); color: var(--vu-text-secondary); }
+.vs-rs-node:hover { border-color: var(--vu-border-strong); }
+.vs-rs-node:focus-visible,
+.vs-rs-gate:focus-visible { outline: none; box-shadow: var(--vu-shadow-focus); }
+.vs-rs-node[aria-pressed="true"],
+.vs-rs-gate[aria-pressed="true"] .vs-rs-gate-mark { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; }
+.vs-rs-node.is-running { border-left-color: var(--vu-brand-primary); box-shadow: 0 0 0 3px var(--vu-blue-100); }
+.vs-rs-node.is-running .vs-rs-node-status { color: var(--vu-brand-primary); }
+.vs-rs-node.is-done,
+.vs-rs-node.is-skipped { border-left-color: var(--vu-green-700); }
+.vs-rs-node.is-done .vs-rs-node-icon { opacity: var(--vu-emphasis-complete); }
+.vs-rs-node.is-done .vs-rs-node-status .anticon,
+.vs-rs-node.is-skipped .vs-rs-node-status .anticon { color: var(--vu-green-700); }
+.vs-rs-node.is-error { border-left-color: var(--vu-text-danger); }
+.vs-rs-node.is-error .vs-rs-node-status { color: var(--vu-text-danger); }
+.vs-rs-node.is-stopped { border-left-color: var(--vu-border-strong); }
+.vs-rs-node.is-skipped { border-style: dashed; border-left-style: solid; }
+.vs-rs-node.is-pending .vs-rs-node-icon { opacity: var(--vu-emphasis-future); }
+.vs-rs-node.is-pending .vs-rs-node-title { color: var(--vu-text-secondary); }
+.vs-rs-node.is-pending .vs-rs-node-status { color: var(--vu-text-muted); }
+.vs-rs-strip.is-preview .vs-rs-node,
+.vs-rs-strip.is-preview .vs-rs-gate { cursor: default; }
+.vs-rs-strip.is-preview .vs-rs-node:hover { border-color: var(--vu-border-default); }
+.vs-rs-gate { position: relative; width: 100%; height: var(--vu-research-node-height); padding: 0; border: 0; background: transparent; font: inherit; color: var(--vu-text-secondary); cursor: pointer; }
+.vs-rs-gate-mark {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--vu-research-node-height) / 2);
+  box-sizing: border-box;
+  width: calc(var(--vu-research-gate) * 0.7071);
+  height: calc(var(--vu-research-gate) * 0.7071);
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--vu-border-default);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-card);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.vs-rs-gate-mark .anticon { transform: rotate(-45deg); font-size: var(--vu-text-sm); }
+.vs-rs-gate-label { position: absolute; left: 50%; top: calc(var(--vu-research-node-height) / 2 + var(--vu-research-gate) / 2 + var(--vu-space-1)); transform: translateX(-50%); white-space: nowrap; font-size: var(--vu-text-xs); line-height: var(--vu-leading-snug); }
+.vs-rs-gate.is-pending .vs-rs-gate-mark { opacity: var(--vu-emphasis-future); }
+.vs-rs-gate.is-waiting .vs-rs-gate-mark { border-color: var(--vu-amber-700); background: var(--vu-amber-50); color: var(--vu-amber-700); animation: vs-rs-halo var(--vu-duration-idle) var(--vu-ease-standard) infinite; }
+.vs-rs-gate.is-waiting .vs-rs-gate-label { color: var(--vu-amber-700); font-weight: var(--vu-font-semibold); }
+.vs-rs-gate:is(.is-done, .is-auto) .vs-rs-gate-mark { border-color: var(--vu-green-700); color: var(--vu-green-700); }
+.vs-rs-gate.is-auto .vs-rs-gate-mark { border-style: dashed; border-color: var(--vu-border-strong); }
+.vs-rs-edge { flex: 1 1 var(--vu-space-6); min-width: var(--vu-space-6); height: 2px; margin-top: calc(var(--vu-research-node-height) / 2 - 1px); background: var(--vu-brand-primary); }
+.vs-rs-edge.is-done { opacity: var(--vu-emphasis-complete); }
+.vs-rs-edge.is-waiting { background: var(--vu-amber-700); }
+.vs-rs-edge.is-active { background: repeating-linear-gradient(90deg, var(--vu-brand-primary) 0 var(--vu-space-1), transparent var(--vu-space-1) var(--vu-space-2)); animation: vs-rs-dash 0.6s linear infinite; }
+.vs-rs-edge.is-pending { background: repeating-linear-gradient(90deg, var(--vu-border-strong) 0 var(--vu-space-1), transparent var(--vu-space-1) var(--vu-space-2)); opacity: var(--vu-emphasis-future); }
+.vs-rs-cells { display: flex; gap: 1px; height: var(--vu-space-2); min-width: 0; }
+.vs-rs-cells > i,
+.vs-rs-claimrow-mark { flex: 1 1 0; min-width: 2px; border-radius: 1px; background: var(--vu-neutral-300); }
+:is(.vs-rs-cells > i, .vs-rs-claimrow-mark).is-ok { background: var(--vu-green-700); }
+:is(.vs-rs-cells > i, .vs-rs-claimrow-mark).is-fixed { background: var(--vu-amber-700); }
+:is(.vs-rs-cells > i, .vs-rs-claimrow-mark).is-thin { background: transparent; box-shadow: inset 0 0 0 1px var(--vu-amber-700); }
+:is(.vs-rs-cells > i, .vs-rs-claimrow-mark).is-bad { background: var(--vu-text-danger); }
+:is(.vs-rs-cells > i, .vs-rs-claimrow-mark).is-busy { background: var(--vu-lesson-data); animation: vs-rs-pulse 1.6s ease-in-out infinite; }
+:is(.vs-rs-cells > i, .vs-rs-claimrow-mark).is-none { background: transparent; box-shadow: inset 0 0 0 1px var(--vu-border-strong); }
+
+/* ── vùng làm việc ── */
+.vs-rs-work { container-type: inline-size; margin-top: var(--vu-space-3); padding: var(--vu-space-4) var(--vu-space-6) 0; border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-lg); background: var(--vu-surface-card); }
+.vs-rs-work-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vu-space-1) var(--vu-space-3); margin-bottom: var(--vu-space-2); }
+.vs-rs-work-head h2 { margin: 0; font: var(--vu-font-semibold) var(--vu-text-md) / var(--vu-leading-snug) var(--vu-font-brand); color: var(--vu-text-primary); }
+.vs-rs-work-meta { margin: 0; font-size: var(--vu-text-sm); color: var(--vu-text-muted); }
+.vs-rs-work-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2) var(--vu-space-3); margin-left: auto; font-size: var(--vu-text-sm); }
+.vs-rs-body { display: grid; gap: var(--vu-space-3); min-width: 0; }
+.vs-rs-alert { margin-bottom: var(--vu-space-3); }
+.vs-rs-lead { margin: 0; font-size: var(--vu-text-sm); color: var(--vu-text-secondary); }
+.vs-rs-note { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-muted); }
+.vs-rs-pending { max-width: var(--vu-reading-max); margin: 0; font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-rs-link { padding: 0; border: 0; background: none; font: inherit; color: var(--vu-text-link); cursor: pointer; }
+.vs-rs-link:hover { text-decoration: underline; }
+.vs-rs-link:focus-visible,
+.vs-rs-idlink:focus-visible,
+.vs-rs-group-toggle:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 1px; border-radius: var(--vu-radius-sm); }
+.vs-rs-idlink { margin-left: var(--vu-space-1); padding: 0; border: 0; background: none; font: var(--vu-text-xs) var(--vu-font-utility); color: var(--vu-text-link); cursor: pointer; }
+.vs-rs-term { border-bottom: 1px dotted var(--vu-border-strong); cursor: help; }
+.vs-rs-switchline { display: inline-flex; align-items: center; gap: var(--vu-space-2); font-size: var(--vu-text-sm); color: var(--vu-text-secondary); }
+.vs-rs-grid { display: grid; grid-template-columns: minmax(0, 1fr) var(--vu-research-sources-width); align-items: start; }
+.vs-rs-main { min-width: 0; padding-right: var(--vu-space-6); }
+.vs-rs-aside {
+  position: sticky;
+  top: var(--vu-space-4);
+  max-height: calc(100vh - var(--vu-step-bar-height) - 2 * var(--vu-space-4));
+  overflow: auto;
+  padding-left: var(--vu-space-4);
+  border-left: 1px solid var(--vu-border-subtle);
+}
+.vs-rs-aside-head { margin: 0 0 var(--vu-space-2); font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-aside .vs-rs-switchline { margin-bottom: var(--vu-space-2); font-size: var(--vu-text-xs); }
+@container (max-width: 900px) {
+  .vs-rs-grid { grid-template-columns: minmax(0, 1fr); }
+  .vs-rs-main { padding-right: 0; }
+  .vs-rs-aside { position: static; max-height: none; padding: var(--vu-space-4) 0 0; border-left: 0; border-top: 1px solid var(--vu-border-subtle); }
+  .vs-rs-aside.is-sheet { display: none; }
+}
+
+/* "Agent vừa làm" — năm dòng agent vừa nói, gọn một dòng mỗi câu. */
+.vs-rs-feed { display: grid; gap: var(--vu-space-1); max-width: var(--vu-reading-max); padding: var(--vu-space-3) var(--vu-space-4); border-radius: var(--vu-radius-md); background: var(--vu-surface-subtle); }
+.vs-rs-feed-head { display: flex; justify-content: space-between; gap: var(--vu-space-3); margin: 0; font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-feed ul { display: grid; gap: 2px; margin: 0; padding-left: var(--vu-space-4); font-size: var(--vu-text-sm); color: var(--vu-text-secondary); }
+
+/* Dàn ý slide (bước Đọc slide, cột phải của cổng 1). */
+.vs-rs-slide { display: grid; gap: var(--vu-space-2); }
+.vs-rs-outline { margin: 0; padding-left: var(--vu-space-6); font-size: var(--vu-text-xs); color: var(--vu-text-secondary); line-height: var(--vu-leading-normal); }
+.vs-rs-outline > li + li { margin-top: 2px; }
+.vs-rs-outline ul { margin: 2px 0 var(--vu-space-1); padding-left: var(--vu-space-4); color: var(--vu-text-muted); }
+
+/* ── thanh "Việc của bạn" ── */
+.vs-rs-decide {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-4);
+  min-height: var(--vu-step-bar-height);
+  margin: var(--vu-space-4) calc(-1 * var(--vu-space-6)) 0;
+  padding: var(--vu-space-3) calc(var(--vu-tour-launcher) + var(--vu-space-6)) var(--vu-space-3) var(--vu-space-6);
+  border-top: 1px solid var(--vu-border-subtle);
+  border-radius: 0 0 var(--vu-radius-lg) var(--vu-radius-lg);
+  background: var(--vu-surface-card);
+  box-shadow: var(--vu-step-bar-shadow);
+}
+/* Nền tối nuốt bóng: thêm viền đậm để thanh vẫn tách khỏi nội dung đang cuộn bên dưới. */
+:root[data-theme="dark"] .vs-rs-decide { border-top-color: var(--vu-border-strong); }
+.vs-rs-decide-dot { flex: none; width: var(--vu-space-2); height: var(--vu-space-2); border-radius: var(--vu-radius-pill); background: var(--vu-border-strong); }
+.vs-rs-decide.is-running .vs-rs-decide-dot { background: var(--vu-lesson-data); animation: vs-rs-pulse 1.6s ease-in-out infinite; }
+.vs-rs-decide.is-waiting .vs-rs-decide-dot { background: var(--vu-amber-700); }
+.vs-rs-decide.is-done .vs-rs-decide-dot { background: var(--vu-green-700); }
+.vs-rs-decide.is-error .vs-rs-decide-dot { background: var(--vu-text-danger); }
+.vs-rs-decide-text { flex: 1 1 0; min-width: 0; display: grid; gap: 2px; }
+.vs-rs-decide-line,
+.vs-rs-decide-detail { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.vs-rs-decide-line { font-size: var(--vu-text-sm); color: var(--vu-text-secondary); }
+.vs-rs-decide-line strong { font-weight: var(--vu-font-semibold); color: var(--vu-text-primary); }
+.vs-rs-decide.is-error .vs-rs-decide-line strong { color: var(--vu-text-danger); }
+.vs-rs-decide-clock,
+.vs-rs-decide-detail { font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-decide-info { margin-left: var(--vu-space-1); color: var(--vu-text-muted); }
+.vs-rs-decide-actions { display: flex; flex-wrap: wrap; gap: var(--vu-space-2); }
+.vs-rs-decide .is-short { display: none; }
+@container (max-width: 720px) {
+  .vs-rs-decide-text { flex-basis: calc(100% - var(--vu-space-2) - var(--vu-space-4)); }
+  .vs-rs-decide-line { white-space: normal; }
+  .vs-rs-decide .is-long { display: none; }
+  .vs-rs-decide .is-short { display: inline; }
+}
+/* Hẹp tới mức hai nút xếp chồng: thanh cao ba hàng mà dính đáy thì che nửa màn hình — để nó nằm cuối cổng. */
+@container (max-width: 440px) {
+  .vs-rs-g1 .vs-rs-decide { position: static; padding-inline-end: var(--vu-space-6); box-shadow: none; }
+  .vs-rs-decide-actions,
+  .vs-rs-decide-actions > .vs-rs-g1-tip,
+  .vs-rs-decide-actions .ant-btn { flex: 1 1 auto; }
+}
+
+/* ── kịch bản: đọc như tài liệu ── */
+.vs-rs-script { max-width: calc(var(--vu-reading-max) + var(--vu-space-6)); }
+.vs-rs-script h3 { margin: var(--vu-space-5) 0 var(--vu-space-1); font: var(--vu-font-semibold) var(--vu-text-sm) / var(--vu-leading-snug) var(--vu-font-brand); color: var(--vu-text-primary); }
+.vs-rs-script > div:first-of-type > h3,
+.vs-rs-script > h3:first-child { margin-top: 0; }
+.vs-rs-sent {
+  display: grid;
+  grid-template-columns: var(--vu-space-8) minmax(0, 1fr);
+  column-gap: var(--vu-space-2);
+  padding: var(--vu-space-2) var(--vu-space-2) var(--vu-space-2) 0;
+  border-left: 2px solid transparent;
+  scroll-margin-block: var(--vu-space-4) calc(var(--vu-step-bar-height) + var(--vu-space-4));
+}
+.vs-rs-sent.is-fixed { border-left-color: var(--vu-amber-700); }
+.vs-rs-sent.is-linked { background: var(--vu-blue-50); border-left-color: var(--vu-brand-primary); }
+.vs-rs-sent-n { align-self: start; justify-self: end; padding: var(--vu-space-1) 0 0; border: 0; background: none; font: var(--vu-text-xs) / var(--vu-leading-snug) var(--vu-font-utility); color: var(--vu-text-muted); }
+button.vs-rs-sent-n { cursor: pointer; }
+button.vs-rs-sent-n:hover { color: var(--vu-text-link); text-decoration: underline; }
+.vs-rs-sent-line { margin: 0; font-size: var(--vu-text-md); line-height: var(--vu-leading-relaxed); color: var(--vu-text-primary); }
+.vs-rs-sent-screen,
+.vs-rs-sent-notes,
+.vs-rs-sent-issue { margin: var(--vu-space-1) 0 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-muted); }
+.vs-rs-sent-screen { display: flex; gap: var(--vu-space-1); }
+.vs-rs-sent-issue.is-problem { color: var(--vu-text-danger); }
+.vs-rs-sent-issue.is-warning { color: var(--vu-amber-700); }
+.vs-rs-cite { margin-left: var(--vu-space-1); padding: 0 var(--vu-space-1); border: 1px solid var(--vu-border-default); border-radius: var(--vu-radius-pill); background: transparent; font: var(--vu-text-xs) / var(--vu-leading-snug) var(--vu-font-utility); color: var(--vu-text-secondary); cursor: pointer; vertical-align: 1px; }
+.vs-rs-cite.is-fixed { border-color: var(--vu-amber-700); background: var(--vu-amber-50); color: var(--vu-amber-700); }
+.vs-rs-cite.is-thin { border-style: dashed; border-color: var(--vu-amber-700); color: var(--vu-amber-700); }
+.vs-rs-cite.is-bad { border-color: var(--vu-text-danger); color: var(--vu-text-danger); }
+.vs-rs-cite.is-active { border-color: var(--vu-brand-primary); background: var(--vu-brand-primary); color: var(--vu-text-inverse); }
+.vs-rs-cite:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 1px; }
+.vs-rs-history { margin-bottom: var(--vu-space-3); font-size: var(--vu-text-xs); color: var(--vu-text-secondary); }
+.vs-rs-history > summary { width: fit-content; cursor: pointer; color: var(--vu-text-link); }
+.vs-rs-history ul { margin: var(--vu-space-1) 0 0; padding-left: var(--vu-space-4); }
+.vs-rs-history small { color: var(--vu-text-muted); }
+.vs-rs-coverage { margin-top: var(--vu-space-4); }
+
+/* ── danh sách điều cần kiểm và phần nguồn ── */
+.vs-rs-group-head { display: flex; align-items: baseline; gap: var(--vu-space-1); margin: var(--vu-space-3) 0 var(--vu-space-1); font: var(--vu-font-semibold) var(--vu-text-xs) / var(--vu-leading-snug) var(--vu-font-body); color: var(--vu-text-secondary); }
+.vs-rs-claimgroups > section:first-child > .vs-rs-group-head { margin-top: 0; }
+.vs-rs-group-toggle { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.vs-rs-claims,
+.vs-rs-dropped { margin: 0; padding: 0; list-style: none; }
+.vs-rs-dropped li { padding: var(--vu-space-2) 0; border-top: 1px solid var(--vu-border-subtle); font-size: var(--vu-text-sm); color: var(--vu-text-muted); }
+.vs-rs-claimrow {
+  display: grid;
+  grid-template-columns: var(--vu-space-2) auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--vu-space-2);
+  width: 100%;
+  padding: var(--vu-space-2) 0;
+  border: 0;
+  border-top: 1px solid var(--vu-border-subtle);
+  background: transparent;
+  font: inherit;
+  font-size: var(--vu-text-sm);
+  text-align: left;
+  color: var(--vu-text-primary);
+  cursor: pointer;
+}
+.vs-rs-claimrow:hover { background: var(--vu-surface-subtle); }
+.vs-rs-claimrow[aria-expanded="true"] { background: var(--vu-blue-50); }
+.vs-rs-claimrow:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: -2px; }
+.vs-rs-claimrow-mark { height: var(--vu-space-2); align-self: center; }
+.vs-rs-claimrow-id { font: var(--vu-text-xs) var(--vu-font-utility); color: var(--vu-text-muted); }
+.vs-rs-claimrow-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.vs-rs-claimrow-where { font-size: var(--vu-text-xs); color: var(--vu-text-muted); white-space: nowrap; }
+.vs-rs-claims.is-column .vs-rs-claimrow-where,
+.vs-rs-claimgroups.is-column .vs-rs-claimrow-where { white-space: normal; text-align: right; }
+.vs-rs-claimbody { display: grid; gap: var(--vu-space-2); padding: var(--vu-space-2) 0 var(--vu-space-3) var(--vu-space-4); font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); overflow-wrap: anywhere; }
+.vs-rs-claimbody p { margin: 0; }
+.vs-rs-claimbody-title { font-weight: var(--vu-font-semibold); color: var(--vu-text-primary); }
+.vs-rs-claimbody-title:is(.is-fixed, .is-thin) { color: var(--vu-amber-700); }
+.vs-rs-claimbody-title.is-bad { color: var(--vu-text-danger); }
+.vs-rs-claimbody-title.is-ok { color: var(--vu-green-700); }
+.vs-rs-sources { display: grid; gap: var(--vu-space-2); }
+.vs-rs-sources-head { font-weight: var(--vu-font-semibold); color: var(--vu-text-primary); }
+.vs-rs-source { display: grid; gap: var(--vu-space-1); padding-left: var(--vu-space-3); border-left: 2px solid var(--vu-border-subtle); }
+.vs-rs-source-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--vu-space-2); }
+.vs-rs-source-head a { font-weight: var(--vu-font-semibold); }
+.vs-rs-source-head small { font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-quote { display: flex; gap: var(--vu-space-2); }
+.vs-rs-quote q { flex: 1; overflow-wrap: anywhere; }
+.vs-rs-quote small { white-space: nowrap; font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-quote small.is-contradicts { color: var(--vu-amber-700); }
+.vs-rs-check { font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-more > summary { width: fit-content; cursor: pointer; font-size: var(--vu-text-xs); color: var(--vu-text-link); }
+.vs-rs-more > summary:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; border-radius: var(--vu-radius-sm); }
+.vs-rs-more-body { display: grid; gap: var(--vu-space-1); margin-top: var(--vu-space-1); font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-more-body ul { margin: 0; padding-left: var(--vu-space-4); }
+.vs-scout-sid {
+  padding: 0 5px;
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-2xs);
+}
+.vs-scout-empty { margin: 0; font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+
+/* ── cổng 2 ── */
+.vs-rs-g2-wrap { display: grid; grid-template-columns: minmax(0, 1fr); }
+.vs-rs-g2 { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; max-width: var(--vu-reading-max); }
+.vs-rs-g2-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-1); padding: var(--vu-space-4) 0; border-top: 1px solid var(--vu-border-subtle); }
+.vs-rs-g2-item:first-child { border-top: 0; padding-top: 0; }
+.vs-rs-g2-item p { margin: 0; }
+.vs-rs-g2-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vu-space-1) var(--vu-space-2); }
+.vs-rs-g2-head strong { flex: 1 1 0; min-width: 0; font-weight: var(--vu-font-semibold); color: var(--vu-text-primary); overflow-wrap: anywhere; }
+.vs-rs-g2-head small { font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-g2-why { font-size: var(--vu-text-sm); color: var(--vu-amber-700); }
+.vs-rs-g2-answer,
+.vs-rs-g2-quote { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--vu-text-sm); color: var(--vu-text-secondary); overflow-wrap: anywhere; }
+.vs-rs-g2-quote { color: var(--vu-text-muted); }
+.vs-rs-g2-choice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2) var(--vu-space-3); margin-top: var(--vu-space-1); }
+/* Ba lựa chọn không xuống dòng được — màn hẹp thì cho dải lựa chọn cuộn ngang thay vì đẩy cả trang. */
+.vs-rs-g2-choice .ant-segmented { max-width: 100%; overflow-x: auto; }
+.vs-rs-g2-consequence { font-size: var(--vu-text-sm); color: var(--vu-text-muted); }
+.vs-rs-g2-others { padding-top: var(--vu-space-4); border-top: 1px solid var(--vu-border-subtle); }
+.vs-rs-g2-others > summary { margin-bottom: var(--vu-space-2); font-size: var(--vu-text-sm); }
+
+/* ── cổng 1 · duyệt điều cần kiểm ──
+   Thẻ đọc như chữ: nhãn nhỏ, câu slide trong một khối trích, câu hỏi bên dưới, hai nút ở góc. Cảnh báo chỉ hiện khi có
+   gì lệch. Dàn ý slide ở cột phải, dính khi cuộn. Cỡ chữ và bố cục theo bề rộng của chính cổng (container query). */
+.vs-rs-g1 { display: grid; gap: var(--vu-space-4); container-type: inline-size; }
+.vs-rs-g1-main { display: grid; gap: var(--vu-space-4); align-content: start; }
+.vs-rs-g1-tip { display: inline-flex; }
+.vs-rs-g1-group { display: grid; gap: var(--vu-space-2); }
+.vs-rs-g1-ghead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vu-space-1) var(--vu-space-2); }
+.vs-rs-g1-ghead h4 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-semibold);
+  line-height: var(--vu-leading-snug);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-slide {
+  margin-right: var(--vu-space-2);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-g1-ghead .ant-tag { margin: 0 0 0 var(--vu-space-2); }
+.vs-rs-g1-count { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-rs-g1-skipnote {
+  margin: 0;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-left: 3px solid var(--vu-amber-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-amber-50);
+  color: var(--vu-amber-700);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-rs-g1-source > summary { width: fit-content; cursor: pointer; font-size: var(--vu-text-xs); color: var(--vu-text-link); }
+.vs-rs-g1-source > summary:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; border-radius: var(--vu-radius-sm); }
+.vs-rs-g1-points {
+  margin: var(--vu-space-2) 0 0;
+  padding: var(--vu-space-2) var(--vu-space-3) var(--vu-space-2) var(--vu-space-6);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-subtle);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-muted);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-points li.is-claimed { color: var(--vu-text-primary); }
+.vs-rs-g1-points .vs-rs-ref { margin-left: var(--vu-space-1); }
+.vs-rs-g1-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-2); margin: 0; padding: 0; list-style: none; }
+.vs-rs-g1-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--vu-space-2) var(--vu-space-3);
+  padding: var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-surface-card);
+  min-width: 0;
+  scroll-margin-block: var(--vu-space-4) calc(var(--vu-step-bar-height) + var(--vu-space-4));
+}
+/* Thẻ có tabindex=-1 để chip đưa tới được; bấm chuột vào chữ cũng focus thẻ nên chỉ vẽ vòng khi tới bằng bàn phím hay chip. */
+.vs-rs-g1-card:focus { outline: none; }
+.vs-rs-g1-card:focus-visible,
+.vs-rs-g1-card.is-target:focus { outline: 2px solid var(--vu-border-focus); outline-offset: 2px; }
+.vs-rs-g1-card > * { grid-column: 1 / -1; }
+.vs-rs-g1-card > .vs-rs-g1-top { grid-column: 1; grid-row: 1; }
+.vs-rs-g1-card > .vs-rs-g1-actions { grid-column: 2; grid-row: 1; }
+.vs-rs-g1-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-1) var(--vu-space-2); min-height: var(--vu-control-sm); }
+.vs-rs-g1-top .ant-tag { margin: 0; }
+.vs-rs-g1-kind {
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-semibold);
+  letter-spacing: var(--vu-tracking-caps);
+  text-transform: uppercase;
+  color: var(--vu-text-muted);
+}
+.vs-rs-g1-also { font-size: var(--vu-text-2xs); color: var(--vu-text-muted); }
+.vs-rs-g1-actions { display: flex; gap: var(--vu-space-1); }
+.vs-rs-g1-text {
+  margin: 0;
+  max-width: var(--vu-reading-max);
+  padding: var(--vu-space-1) var(--vu-space-3);
+  border-left: 3px solid var(--vu-blue-300);
+  border-radius: 0 var(--vu-radius-sm) var(--vu-radius-sm) 0;
+  background: var(--vu-surface-subtle);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-normal);
+  color: var(--vu-text-primary);
+  overflow-wrap: anywhere;
+}
+.vs-rs-g1-question { margin: 0; max-width: var(--vu-reading-max); font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); overflow-wrap: anywhere; }
+.vs-rs-g1-question b { margin-right: var(--vu-space-1); font-weight: var(--vu-font-semibold); color: var(--vu-text-muted); }
+.vs-rs-g1-warn { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-amber-700); }
+.vs-rs-g1-warn .anticon { margin-right: var(--vu-space-1); }
+.vs-rs-g1-card.is-off {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-style: dashed;
+  border-color: var(--vu-border-default);
+  background: var(--vu-surface-subtle);
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-rs-g1-offtext { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Nhãn mã dùng nền surface-subtle — trên dòng đã bỏ qua (cũng nền đó) thì đổi sang nền thẻ để còn thấy. */
+.vs-rs-g1-card.is-off .vs-scout-sid { background: var(--vu-surface-card); }
+.vs-rs-g1-card.is-editing { grid-template-columns: minmax(0, 1fr); border-color: var(--vu-border-focus); box-shadow: var(--vu-shadow-xs); }
+.vs-rs-g1-editor { display: grid; gap: var(--vu-space-3); min-width: 0; }
+.vs-rs-g1-edithead { margin: 0; font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-g1-form { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; gap: var(--vu-space-3) var(--vu-space-4); }
+.vs-rs-g1-form > :is(label, .vs-rs-g1-label) { padding-top: var(--vu-space-2); font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-g1-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-1); min-width: 0; }
+.vs-rs-g1-field > .ant-select { width: 100%; }
+.vs-rs-g1-field > .ant-segmented { justify-self: start; }
+.vs-rs-g1-help { margin: 0; font-size: var(--vu-text-xs); line-height: var(--vu-leading-normal); color: var(--vu-text-muted); }
+.vs-rs-g1-reuse {
+  margin: 0;
+  padding: var(--vu-space-1) var(--vu-space-2);
+  border-left: 3px solid var(--vu-amber-700);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-amber-50);
+  color: var(--vu-amber-700);
+  font-size: var(--vu-text-xs);
+}
+.vs-rs-g1-editbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-2); }
+.vs-rs-g1-editbar > :first-child { margin-right: auto; }
+@container (max-width: 560px) {
+  .vs-rs-g1-form { grid-template-columns: minmax(0, 1fr); gap: var(--vu-space-1); }
+  .vs-rs-g1-form > .vs-rs-g1-field + :is(label, .vs-rs-g1-label) { margin-top: var(--vu-space-2); }
+  .vs-rs-g1-field > .ant-segmented { justify-self: stretch; }
+}
+.vs-rs-ref {
+  padding: 0 6px;
+  border: 1px solid var(--vu-blue-300);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-blue-50);
+  color: var(--vu-blue-800);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  cursor: pointer;
+}
+.vs-rs-ref:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 1px; }
+.vs-badge.is-running { color: var(--vu-brand-primary); }
+.vs-badge.is-waiting { color: var(--vu-amber-700); }
+.vs-badge.is-failed { color: var(--vu-text-danger); }
+.vs-badge.is-done { color: var(--vu-green-700); }
+
+/* ── cổng 3: hộp góp ý ── */
+.vs-rs-feedback { display: grid; gap: var(--vu-space-2); width: var(--vu-research-sources-width); max-width: 80vw; }
+
+/* ── ngăn Chi tiết ── */
+.vs-rs-drawer .ant-drawer-content-wrapper { max-width: 100vw; }
+.vs-rs-drawer-summary { margin: 0 0 var(--vu-space-3); font-size: var(--vu-text-sm); line-height: var(--vu-leading-normal); color: var(--vu-text-secondary); }
+.vs-rs-checks,
+.vs-rs-files { display: grid; gap: var(--vu-space-2); font-size: var(--vu-text-sm); color: var(--vu-text-secondary); }
+.vs-rs-checks p,
+.vs-rs-files p { margin: 0; overflow-wrap: anywhere; }
+.vs-rs-checks ul { margin: 0; padding-left: var(--vu-space-4); font-size: var(--vu-text-xs); }
+.vs-rs-checks li.is-problem { color: var(--vu-text-danger); }
+.vs-rs-checks li.is-warning { color: var(--vu-amber-700); }
+.vs-rs-checks li.is-done { color: var(--vu-text-muted); }
+.vs-rs-files code { font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+.vs-rs-reruns-list { display: grid; gap: var(--vu-space-3); }
+.vs-rs-rerun { display: flex; align-items: center; justify-content: space-between; gap: var(--vu-space-3); }
+.vs-rs-rerun > div { display: grid; gap: 2px; font-size: var(--vu-text-sm); }
+.vs-rs-rerun small { font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-runs { overflow-x: auto; }
+.vs-rs-runs table { width: 100%; border-collapse: collapse; font-size: var(--vu-text-xs); }
+.vs-rs-runs th,
+.vs-rs-runs td { padding: 4px var(--vu-space-2); border-bottom: 1px solid var(--vu-border-subtle); text-align: left; white-space: nowrap; }
+.vs-rs-runs th { color: var(--vu-text-muted); font-weight: var(--vu-font-semibold); }
+.vs-rs-runs td.mono { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── nhật ký ── */
+.vs-scout-flow {
+  display: grid;
+  gap: 2px;
+  max-height: 460px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-scout-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--vu-space-2);
+  padding: 5px 6px;
+  border-radius: var(--vu-radius-sm);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-snug);
+}
+.vs-scout-row.is-search { background: var(--vu-blue-50); }
+.vs-scout-row.is-error { background: var(--vu-red-50); }
+.vs-scout-row.is-done { background: var(--vu-green-50); }
+.vs-scout-time { color: var(--vu-neutral-400); font-size: var(--vu-text-2xs); }
+.vs-scout-body { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vu-space-2); min-width: 0; }
+.vs-scout-body small { color: var(--vu-text-muted); font-size: var(--vu-text-2xs); overflow-wrap: anywhere; }
+.vs-scout-say,
+.vs-scout-error { flex-basis: 100%; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.vs-scout-say { color: var(--vu-text-secondary); }
+.vs-scout-error { color: var(--vu-text-danger); }
+
+/* ── màn trống và lượt mới ── */
+.vs-rs-empty { display: grid; justify-items: start; gap: var(--vu-space-3); margin-top: var(--vu-space-3); padding: var(--vu-space-8) var(--vu-space-6); border: 1px solid var(--vu-border-subtle); border-radius: var(--vu-radius-lg); background: var(--vu-surface-card); }
+.vs-rs-empty h2 { margin: 0; font: var(--vu-font-semibold) var(--vu-text-lg) / var(--vu-leading-snug) var(--vu-font-brand); color: var(--vu-text-primary); }
+.vs-rs-empty > p { max-width: var(--vu-reading-max); margin: 0; color: var(--vu-text-secondary); }
+.vs-rs-empty-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vu-space-3); }
+.vs-rs-recent { width: 100%; max-width: var(--vu-reading-max); }
+.vs-rs-recent h3 { margin: var(--vu-space-2) 0 var(--vu-space-1); font-size: var(--vu-text-xs); font-weight: var(--vu-font-semibold); color: var(--vu-text-secondary); }
+.vs-rs-recent ul { margin: 0; padding: 0; list-style: none; }
+.vs-rs-recent button { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--vu-space-2); width: 100%; padding: var(--vu-space-2) 0; border: 0; border-top: 1px solid var(--vu-border-subtle); background: none; font: inherit; font-size: var(--vu-text-sm); text-align: left; color: var(--vu-text-primary); cursor: pointer; }
+.vs-rs-recent button:hover { background: var(--vu-surface-subtle); }
+.vs-rs-recent button:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: -2px; }
+.vs-rs-recent-status { font-size: var(--vu-text-xs); color: var(--vu-text-muted); white-space: nowrap; }
+.vs-rs-recent-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.vs-rs-recent small { font-size: var(--vu-text-xs); color: var(--vu-text-muted); }
+.vs-rs-new { display: grid; gap: var(--vu-space-3); }
+.vs-rs-new .field-grid { gap: var(--vu-space-3); }
+.vs-scout-field {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  /* Ô bên cạnh có dòng gợi ý thì hàng cao hơn — giữ nhãn và ô ở mép trên, đừng giãn xuống. */
+  align-content: start;
+}
+.vs-scout-field small { color: var(--vu-text-muted); font-size: var(--vu-text-2xs); line-height: var(--vu-leading-snug); }
+
+@media (prefers-reduced-motion: reduce) {
+  .vs-rs-edge.is-active,
+  .vs-rs-gate.is-waiting .vs-rs-gate-mark,
+  .vs-rs-cells > i.is-busy,
+  .vs-rs-claimrow-mark.is-busy,
+  .vs-rs-decide.is-running .vs-rs-decide-dot { animation: none; }
+}
+
+/* Cross-review switch (review-control.tsx): plan form and scenes step. */
+.vs-review {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-50);
+}
+.vs-review.is-on {
+  border-color: var(--vu-blue-200);
+  background: var(--vu-lesson-surface);
+}
+.vs-review.is-problem {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-review-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.vs-review-head > .anticon {
+  margin-top: 3px;
+  color: var(--vu-lesson-data);
+}
+.vs-review-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.vs-review-copy strong {
+  font-size: 13px;
+}
+.vs-review-copy small {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-review.is-problem .vs-review-copy small {
+  color: var(--vu-brand-secondary);
+}
+.vs-review-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding-left: 24px;
+}
+.vs-review-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-review-field .ant-select {
+  min-width: 180px;
+}
+
+/* Automated checks of a stage (harness-panel.tsx): live steps, review verdict, findings by scene. */
+.vs-harness {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-harness.is-running {
+  border-color: var(--vu-blue-200);
+}
+.vs-harness-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.vs-harness-head > .anticon {
+  color: var(--vu-lesson-data);
+}
+.vs-harness-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.vs-harness-head .ant-tag {
+  margin-inline-end: 0;
+}
+.vs-harness-meta {
+  margin-left: auto;
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+}
+.vs-harness-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-harness-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+}
+.vs-harness-steps li.is-running {
+  border-color: var(--vu-blue-300);
+  background: var(--vu-lesson-surface);
+}
+.vs-harness-steps li.is-done .vs-harness-icon { color: var(--vu-green-700); }
+.vs-harness-steps li.is-error {
+  border-color: var(--vu-red-100);
+  background: var(--vu-red-50);
+}
+.vs-harness-steps li.is-error .vs-harness-icon { color: var(--vu-brand-secondary); }
+.vs-harness-steps li.is-running .vs-harness-icon { color: var(--vu-lesson-data); }
+.vs-harness-steps li.is-pending,
+.vs-harness-steps li.is-skipped {
+  color: var(--vu-neutral-500);
+}
+.vs-harness-icon {
+  margin-top: 1px;
+}
+.vs-harness-step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.vs-harness-step strong {
+  font-size: 12px;
+}
+.vs-harness-step small {
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.vs-harness-time {
+  color: var(--vu-neutral-600);
+  font-size: 11px;
+}
+.vs-verdict {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--vu-green-50);
+}
+.vs-verdict > .anticon {
+  margin-top: 3px;
+  color: var(--vu-green-700);
+}
+.vs-verdict.is-needs_changes {
+  background: var(--vu-amber-50);
+}
+.vs-verdict.is-needs_changes > .anticon {
+  color: var(--vu-amber-700);
+}
+.vs-verdict strong {
+  font-size: 13px;
+}
+.vs-verdict p {
+  margin: 2px 0 0;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-group {
+  margin-top: 14px;
+}
+.vs-finding-group h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.vs-finding-note {
+  margin: 6px 0;
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-finding-group ul,
+.vs-finding-resolved ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-finding {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--vu-neutral-300);
+  border-radius: 6px;
+}
+.vs-finding.is-blocker { border-left-color: var(--vu-brand-secondary); }
+.vs-finding.is-major { border-left-color: var(--vu-amber-700); }
+.vs-finding.is-verified { opacity: 0.7; }
+.vs-finding-still .ant-image,
+.vs-finding-still img {
+  display: block;
+  width: 160px;
+  border-radius: 4px;
+}
+.vs-finding-nostill {
+  display: grid;
+  place-items: center;
+  width: 160px;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  background: var(--vu-neutral-100);
+  color: var(--vu-neutral-500);
+  font-size: 11px;
+}
+.vs-finding-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.vs-finding-tags .ant-tag {
+  margin-inline-end: 0;
+}
+.vs-finding-scene,
+.vs-finding-code,
+.vs-finding-status {
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-code {
+  font-weight: 600;
+}
+.vs-finding-status {
+  color: var(--vu-lesson-data);
+}
+.vs-finding-message {
+  margin: 6px 0 4px;
+  font-size: 13px;
+}
+.vs-finding-accept {
+  margin: 0;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-finding-evidence summary {
+  margin-top: 4px;
+  color: var(--vu-lesson-data);
+  font-size: 12px;
+  cursor: pointer;
+}
+.vs-finding-evidence p {
+  margin: 4px 0 0;
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+.vs-finding-resolved {
+  margin-top: 14px;
+}
+.vs-approve-hint {
+  color: var(--vu-amber-700);
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .vs-finding { grid-template-columns: 1fr; }
+}
+.vs-approve {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.vs-qa li .ant-btn {
+  position: relative;
+}
+.vs-qa-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--vu-neutral-0);
+  border-radius: 50%;
+  background: var(--vu-neutral-500);
+}
+.vs-qa-mark.is-blocker { background: var(--vu-brand-secondary); }
+.vs-qa-mark.is-major { background: var(--vu-amber-700); }
+.vs-finding-control {
+  margin-left: auto;
+}
+.vs-finding.is-wontfix {
+  border-left-color: var(--vu-neutral-300);
+}
+.vs-skip-reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.vs-skip-reason label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-neutral-700);
+  font-size: 12px;
+}
+.vs-skip-reason .ant-select {
+  min-width: 170px;
+}
+.vs-skip-reason .ant-input {
+  flex: 1;
+  min-width: 200px;
+}
+.vs-triage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.vs-triage-bar .ant-input-textarea,
+.vs-triage-bar textarea {
+  flex-basis: 100%;
+}
+.vs-triage-summary {
+  color: var(--vu-neutral-600);
+  font-size: 12px;
+}
+
+/* ── step frame: heading chip, agent line, sticky decision bar ──────────── */
+.vs-step-heading {
+  align-items: center;
+}
+.vs-step-heading .vs-badge {
+  margin-inline-end: 0;
+}
+.vs-agent-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-agent-line strong {
+  display: inline-flex;
+  align-items: center;
+  color: var(--vu-lesson-ink);
+}
+.vs-agent-line .anticon-lock {
+  color: var(--vu-neutral-500);
+}
+
+/* Sticks to the bottom of the viewport while the step is taller than it; the decision never scrolls away. */
+.vs-step-bar,
+.editor-panel .panel-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  min-height: var(--vu-step-bar-height);
+  padding: 12px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  border-top: 1px solid var(--vu-border-subtle);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--vu-neutral-0);
+  box-shadow: var(--vu-step-bar-shadow);
+}
+.vs-step-bar-state {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--vu-neutral-700);
+  font-size: var(--vu-text-sm);
+}
+.vs-step-bar-state > .anticon {
+  color: var(--vu-neutral-500);
+}
+.vs-step-bar-state > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-step-bar.is-done .vs-step-bar-state > .anticon { color: var(--vu-green-700); }
+.vs-step-bar.is-running .vs-step-bar-state > .anticon { color: var(--vu-lesson-data); }
+.vs-step-bar.is-review .vs-step-bar-state > .anticon { color: var(--vu-amber-700); }
+.vs-step-bar.is-error .vs-step-bar-state > .anticon,
+.vs-step-bar.is-error .vs-step-bar-state { color: var(--vu-red-700); }
+.vs-step-bar-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.vs-step-bar-tag.ant-tag {
+  margin-inline: 4px 0;
+  font-family: var(--vu-font-utility);
+}
+
+/* ── preview panel: frame first, facts folded ────────────────────────────── */
+.vs-preview-facts.ant-collapse {
+  margin: 0 18px 18px;
+  background: transparent;
+}
+.vs-preview-facts .project-facts {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.vs-preview-facts .vs-workflow-tiles {
+  grid-template-columns: 1fr;
+  margin-top: 12px;
+}
+
+/* ── shared "three steps" frame: prepare → check → bind ──────────────────── */
+.vs-flow {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.vs-flow-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px dashed var(--vu-border-subtle);
+}
+.vs-flow-step:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+.vs-flow-num {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--vu-brand-primary);
+  color: var(--vu-neutral-0);
+  font: var(--vu-font-bold) var(--vu-text-xs) var(--vu-font-brand);
+}
+.vs-flow-num.is-done {
+  background: var(--vu-green-50);
+  color: var(--vu-green-700);
+}
+.vs-flow-body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.vs-flow-body h4 {
+  margin: 3px 0 0;
+  color: var(--vu-lesson-ink);
+  font-size: var(--vu-text-sm);
+}
+.vs-flow-body > .ant-btn {
+  justify-self: start;
+}
+.vs-flow-hint {
+  margin-left: 6px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-regular);
+}
+.vs-flow-note {
+  margin: 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-flow-more.ant-collapse,
+details.vs-flow-more {
+  background: transparent;
+}
+details.vs-flow-more {
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: 6px;
+}
+details.vs-flow-more > summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-semibold);
+}
+details.vs-flow-more[open] > summary {
+  border-bottom: 1px solid var(--vu-border-subtle);
+}
+.vs-flow-more .ant-collapse-header .quiet-label {
+  margin-left: 8px;
+}
+.vs-tune .ant-form-item {
+  margin-bottom: 8px;
+}
+.vs-key-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-key-line .vs-key-field {
+  max-width: 320px;
+}
+.vs-source-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 18px;
+}
+
+/* ── voice result card ───────────────────────────────────────────────────── */
+.vs-voice-result {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: var(--radius);
+  background: var(--vu-blue-50);
+}
+.vs-voice-result h3 {
+  margin: 0;
+  color: var(--vu-lesson-ink);
+  font-size: var(--vu-text-md);
+}
+.vs-voice-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 0;
+}
+.vs-voice-facts div {
+  display: flex;
+  gap: 6px;
+  font-size: var(--vu-text-xs);
+}
+.vs-voice-facts dt {
+  color: var(--vu-text-muted);
+}
+.vs-voice-facts dd {
+  margin: 0;
+  color: var(--vu-lesson-ink);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-voice-master {
+  width: 100%;
+}
+.vs-voice-cues.ant-collapse {
+  background: var(--vu-neutral-0);
+}
+.vs-voice-cues ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-voice-cues li {
+  display: grid;
+  grid-template-columns: 28px 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--vu-text-xs);
+}
+.vs-voice-cue-n,
+.vs-voice-cue-time {
+  color: var(--vu-text-muted);
+}
+.vs-voice-redo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.vs-voice-redo small {
+  color: var(--vu-text-muted);
+}
+.vs-cast-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-cast-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 3px;
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-neutral-0);
+  font-size: var(--vu-text-xs);
+}
+.vs-cast-chips img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.vs-cast-chips small {
+  color: var(--vu-text-muted);
+}
+
+/* ── harness: one line when clean ────────────────────────────────────────── */
+.vs-harness.is-compact .vs-harness-head {
+  margin-bottom: 0;
+}
+.vs-harness-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--vu-text-xs);
+}
+.vs-harness-line li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vs-harness-line li.is-done > .anticon { color: var(--vu-green-700); }
+.vs-harness-line li.is-error > .anticon { color: var(--vu-red-700); }
+.vs-harness-line li.is-skipped { color: var(--vu-neutral-500); }
+.vs-harness-line small {
+  color: var(--vu-text-muted);
+}
+.vs-harness-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vs-verdict p.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vs-verdict .ant-btn-link {
+  padding: 0;
+  height: auto;
+  font-size: var(--vu-text-xs);
+}
+.vs-verdict-line {
+  margin: 10px 0 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-review-popover {
+  width: 340px;
+}
+.vs-review-popover .vs-review {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+/* ── findings: big still for what blocks, small for the rest ─────────────── */
+.vs-finding {
+  grid-template-columns: var(--vu-finding-still-width) minmax(0, 1fr) auto;
+  align-items: start;
+}
+.vs-finding-still .ant-image,
+.vs-finding-still img,
+.vs-finding-nostill {
+  width: var(--vu-finding-still-width);
+}
+.vs-finding.is-compact {
+  grid-template-columns: var(--vu-finding-still-compact-width) minmax(0, 1fr) auto;
+  align-items: center;
+}
+.vs-finding.is-compact .vs-finding-still .ant-image,
+.vs-finding.is-compact .vs-finding-still img,
+.vs-finding.is-compact .vs-finding-nostill {
+  width: var(--vu-finding-still-compact-width);
+}
+.vs-finding.is-compact .vs-finding-message {
+  margin: 2px 0 0;
+  font-size: var(--vu-text-xs);
+}
+.vs-finding-control {
+  align-self: start;
+  white-space: nowrap;
+}
+/* A compact card is one row: its control ("Sửa luôn", "Mở lại") sits on the card's vertical centre. */
+.vs-finding.is-compact .vs-finding-control {
+  align-self: center;
+}
+.vs-finding-group h4 .quiet-label {
+  margin-left: 6px;
+  font-weight: var(--vu-font-regular);
+}
+
+/* ── composer: the one way to talk to the scenes agent ───────────────────── */
+.vs-composer {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: var(--radius);
+  background: var(--vu-blue-50);
+}
+.vs-composer h4 {
+  margin: 0;
+  font-size: var(--vu-text-sm);
+}
+.vs-composer-picked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vs-composer-picked li {
+  padding: 1px 10px;
+  border: 1px solid var(--vu-blue-200);
+  border-radius: var(--vu-radius-pill);
+  background: var(--vu-neutral-0);
+  font-size: var(--vu-text-xs);
+}
+.vs-composer-picked li.is-skip {
+  border-color: var(--vu-border-subtle);
+  color: var(--vu-text-muted);
+}
+.vs-composer-warn {
+  color: var(--vu-red-700);
+}
+.vs-composer-later.ant-collapse,
+.vs-render-settings.ant-collapse,
+.vs-summary.ant-collapse,
+.vs-qa-section.ant-collapse {
+  margin-bottom: 18px;
+  background: var(--vu-neutral-0);
+}
+.vs-composer-later .vs-composer {
+  margin-top: 0;
+}
+
+/* ── folded summary and QA grid ──────────────────────────────────────────── */
+.vs-summary.ant-collapse {
+  padding: 0;
+  border: 1px solid var(--vu-blue-100);
+  border-left: 3px solid var(--vu-blue-700);
+}
+.vs-summary .ant-collapse-title {
+  min-width: 0;
+  overflow: hidden;
+}
+.vs-summary .vs-summary-heading {
+  margin-bottom: 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+.vs-summary-lead {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  margin-left: 6px;
+  color: var(--vu-text-muted);
+  font-weight: var(--vu-font-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-qa-section.ant-collapse {
+  overflow: visible;
+}
+.vs-qa-section .ant-collapse-content-box {
+  padding: 0 !important;
+}
+.vs-qa-label .quiet-label {
+  margin-left: 8px;
+}
+.vs-qa-section .vs-qa-toolbar {
+  align-items: center;
+}
+.vs-qa-count {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-lightbox-frames {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+@media (max-width: 760px) {
+  .vs-step-bar,
+  .editor-panel .panel-footer {
+    padding: 10px 16px;
+  }
+  .vs-step-bar-state {
+    flex-basis: 100%;
+  }
+  .vs-step-bar-actions {
+    flex-wrap: wrap;
+  }
+  .vs-finding,
+  .vs-finding.is-compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vs-finding-still .ant-image,
+  .vs-finding-still img,
+  .vs-finding-nostill {
+    width: 100%;
+  }
+}
+.vs-qa-section .vs-qa-toolbar > div:first-child {
+  flex: 0 0 auto;
+}
+
+/* ── Ảnh đề xuất (năng lực images) ───────────────────────────────────────────────── */
+.vs-images {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-images.is-running { border-color: var(--vu-blue-200); }
+.vs-images-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vs-images-head > .anticon { color: var(--vu-lesson-data); }
+.vs-images-head h3 { margin: 0; font-size: 14px; }
+.vs-images-head .ant-tag { margin-inline-end: 0; }
+.vs-images-tools { display: flex; gap: 8px; margin-left: auto; }
+.vs-images-lede {
+  margin: 8px 0 12px;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-image-slots, .vs-image-grid, .vs-image-rejected ul { margin: 0; padding: 0; list-style: none; }
+.vs-image-slots { display: grid; gap: 12px; }
+.vs-image-slot {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+}
+.vs-image-slot-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.vs-image-slot-head .mono { color: var(--vu-neutral-600); font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+.vs-image-slot-head .ant-tag { margin-inline-end: 0; }
+.vs-image-status { margin-left: auto; color: var(--vu-neutral-600); font-size: var(--vu-text-xs); }
+.vs-image-status.is-decided { color: var(--vu-green-700); font-weight: var(--vu-font-semibold); }
+.vs-image-cue {
+  margin: 8px 0 4px;
+  padding: 4px 10px;
+  border-left: 3px solid var(--vu-blue-200);
+  color: var(--vu-lesson-ink);
+  font-style: italic;
+}
+.vs-image-reason, .vs-image-none { margin: 4px 0 10px; font-size: var(--vu-text-xs); color: var(--vu-neutral-700); }
+.vs-image-warn { color: var(--vu-amber-700); font-size: var(--vu-text-xs); }
+/* Thẻ nằm ngang và chia đều hàng (auto-fit gộp cột trống): hai ảnh là hai nửa, không dồn trái để phải trống. */
+.vs-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--vu-image-card-min-width)), 1fr));
+  gap: 10px;
+}
+.vs-image-card {
+  display: grid;
+  grid-template-columns: var(--vu-image-candidate-width) minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-0);
+  overflow: hidden;
+}
+.vs-image-card.is-chosen { border-color: var(--vu-brand-primary); box-shadow: 0 0 0 1px var(--vu-brand-primary); }
+.vs-image-thumb {
+  grid-row: 1 / span 2;
+  display: block;
+  min-height: var(--vu-image-candidate-width);
+  background: var(--vu-lesson-surface);
+}
+.vs-image-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.vs-image-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px 4px; font-size: var(--vu-text-xs); }
+.vs-image-meta .ant-tag { align-self: flex-start; margin-inline-end: 0; }
+.vs-image-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.vs-image-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-image-license { color: var(--vu-neutral-700); }
+.vs-image-why { margin: 2px 0 0; color: var(--vu-neutral-700); }
+.vs-image-source { align-self: flex-start; }
+.vs-image-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 12px 10px; }
+.vs-image-slot-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.vs-image-caption { display: flex; gap: 6px; }
+.vs-image-caption .ant-input { width: 240px; }
+.vs-image-slot-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.vs-image-rejected { margin-top: 8px; font-size: var(--vu-text-xs); color: var(--vu-neutral-600); }
+.vs-image-rejected summary { cursor: pointer; }
+:root[data-theme="dark"] .vs-image-thumb img { filter: brightness(0.9); }
+:root[data-theme="dark"] .vs-image-thumb img:hover { filter: none; }
+.vs-image-confirm { display: grid; gap: 8px; max-width: 320px; }
+.vs-image-confirm p { margin: 0; }
+.vs-image-confirm .ant-select { width: 200px; }

@@ -5,10 +5,14 @@
  * Dựng `voice/.venv-omnivoice`, cài torch hợp phần cứng rồi cài `omnivoice` từ PyPI. Trọng số model
  * OmniVoice tự tải từ Hugging Face ở lần sinh giọng đầu tiên, nên bước này chỉ lo phần Python.
  *
- *   node tools/setup-omnivoice.mjs [--check] [--force] [--device cuda|mps|cpu]
+ *   node tools/setup-omnivoice.mjs [--check] [--force] [--local] [--device cuda|mps|cpu]
  *
  *   --check    chỉ báo trạng thái (Video Studio gọi cái này), không cài gì
- *   --force    xoá môi trường cũ rồi cài lại từ đầu
+ *   --force    xoá môi trường cũ rồi cài lại từ đầu (chỉ môi trường của checkout này hoặc thư mục dùng chung)
+ *   --local    cài vào voice/.venv-omnivoice của checkout này thay vì thư mục dùng chung
+ *
+ * Một bản cho cả máy (tools/lib/shared-env.mjs): checkout nào, worktree nào đã cài rồi thì dùng lại, không
+ * cài thêm; chưa có thì cài vào thư mục dùng chung để checkout sau cũng thấy.
  *   --device   ép loại phần cứng thay vì tự dò
  *
  * Tải về vài GB (riêng torch bản CUDA đã ~2,5 GB), nên chạy một lần rồi thôi.
@@ -17,7 +21,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { detectDevice, inferBatchBin, MODEL_ID, omnivoiceStatus, ROOT, torchArgs, VENV, venvPython } from './lib/omnivoice.mjs';
+import { detectDevice, inferBatchBin, MODEL_ID, omnivoiceStatus, omnivoiceVenv, ROOT, torchArgs } from './lib/omnivoice.mjs';
+import { displayPath, installDir, OMNIVOICE_VENV, venvBin } from './lib/shared-env.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(`--${name}`);
@@ -59,6 +64,15 @@ function run(cmd, args, opts = {}) {
   });
 }
 
+// Đã có ở đâu đó (checkout này, thư mục dùng chung, hay worktree khác) và chạy được thì thôi, không cài lại.
+const found = omnivoiceVenv();
+if (found && inferBatchBin() && !flag('force')) {
+  console.log(`✓ dùng lại môi trường có sẵn: ${displayPath(found.dir)} (${found.from}) · ${displayPath(inferBatchBin())}`);
+  process.exit(0);
+}
+// Chỉ cài/xoá ở chỗ của mình: venv của một worktree khác không bao giờ bị --force xoá hay bị pip ghi đè.
+const VENV = found && found.from !== 'worktree' && !flag('local') ? found.dir : installDir(OMNIVOICE_VENV, { local: flag('local') });
+const venvPython = () => venvBin(VENV, 'python');
 if (flag('force')) fs.rmSync(VENV, { recursive: true, force: true });
 
 const forced = value('device', null);
@@ -70,7 +84,7 @@ console.log(`· phần cứng: ${forced ? `${device} (ép bằng --device, máy 
 if (!venvPython()) {
   fs.mkdirSync(path.dirname(VENV), { recursive: true });
   if (has('uv')) {
-    console.log('· tạo môi trường bằng uv (Python 3.12)');
+    console.log(`· tạo môi trường bằng uv (Python 3.12) → ${displayPath(VENV)}`);
     // --seed: uv mặc định KHÔNG cài pip vào venv. Thiếu nó, lần chạy sau mà uv không còn trên PATH
     // (trình cài uv chỉ chèn PATH vào ~/.zshrc — Studio spawn từ Next.js không nạp file đó) thì
     // nhánh dự phòng `python -m pip` chết với "No module named pip".
@@ -78,12 +92,12 @@ if (!venvPython()) {
   } else {
     const python = ['python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => has(p));
     if (!python) fail('Cần Python 3.10+ (hoặc cài uv: https://docs.astral.sh/uv/). Không tìm thấy bản nào.');
-    console.log(`· tạo môi trường bằng ${python}`);
+    console.log(`· tạo môi trường bằng ${python} → ${displayPath(VENV)}`);
     if (await run(python, ['-m', 'venv', VENV], { stdio: ['ignore', 'pipe', 'pipe'] }) !== 0) fail('python -m venv thất bại.');
   }
 }
 const python = venvPython();
-if (!python) fail(`Không tạo được ${path.relative(ROOT, VENV)}.`);
+if (!python) fail(`Không tạo được ${displayPath(VENV)}.`);
 
 // Chốt trình cài một lần: hỏi lại has('uv') ở từng lệnh thì nửa chừng đổi đường là hỏng nửa môi trường.
 const useUv = has('uv');
@@ -97,8 +111,9 @@ if (await pip(torchArgs(device)) !== 0) fail('Cài torch thất bại.');
 console.log('· cài omnivoice từ PyPI');
 if (await pip(['omnivoice']) !== 0) fail('Cài omnivoice thất bại.');
 
-if (!inferBatchBin()) fail('Cài xong nhưng không thấy lệnh omnivoice-infer-batch trong môi trường.');
+const bin = venvBin(VENV, 'omnivoice-infer-batch');
+if (!bin) fail('Cài xong nhưng không thấy lệnh omnivoice-infer-batch trong môi trường.');
 
-console.log(`✓ sẵn sàng · ${path.relative(ROOT, inferBatchBin())}`);
+console.log(`✓ sẵn sàng · ${displayPath(bin)}`);
 console.log(`  Trọng số model (${MODEL_ID}) sẽ tự tải từ Hugging Face ở lần sinh giọng đầu tiên.`);
 console.log('  Mạng chặn Hugging Face thì đặt HF_ENDPOINT="https://hf-mirror.com" rồi chạy lại.');

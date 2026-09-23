@@ -164,15 +164,25 @@ export const BODY_MASK_HOLES = Object.freeze(
 );
 
 /**
+ * Huy hiệu VinUni trên ngực (idx 31 + 90 trong REVAMP_PATHS) nằm đúng vào vùng polygon armR ở tư
+ * thế nghỉ (tay buông sát thân che qua toạ độ ngực) — probe theo tâm bbox xếp nhầm nó vào tay, nên
+ * ở mọi pose rig nó biến mất hoặc bị xoay lệch theo tay thay vì đứng yên trên thân. Xác nhận bằng
+ * cách so ảnh render `stand` (không rig) và `armsEaseReal` (rig) cùng frame — 17/09/2026.
+ */
+export const BADGE_PATHS = Object.freeze([31, 90]);
+const BODY_OVERRIDE = new Set(BADGE_PATHS);
+
+/**
  * Chia REVAMP_PATHS thành sáu danh sách. Path lớn vào mọi vùng; path nhỏ vào vùng chứa tâm bbox
  * (thứ tự ưu tiên face → armL → armR → head → body — TAY THẮNG ĐẦU ở chỗ chồng lấn, vì ở đó
- * nét vẽ gốc là của tay; mảng kem của đầu nằm dưới vẫn đầy đủ). Thứ tự index gốc được giữ nguyên
- * trong từng vùng, nên lớp trong một vùng không đảo.
+ * nét vẽ gốc là của tay; mảng kem của đầu nằm dưới vẫn đầy đủ), trừ `BODY_OVERRIDE` luôn về `body`.
+ * Thứ tự index gốc được giữ nguyên trong từng vùng, nên lớp trong một vùng không đảo.
  */
 export function buildRegions(paths) {
   const out = { body: [], head: [], face: [], armL: [], armR: [], shared: [] };
   const probe = ['face', 'armL', 'armR', 'head'];
   paths.forEach((entry, index) => {
+    if (BODY_OVERRIDE.has(index)) { out.body.push(index); return; }
     const [d, , transform] = entry;
     const m = /translate\((-?[\d.]+),(-?[\d.]+)\)/.exec(transform || '');
     const b = bboxOf(d, m ? +m[1] : 0, m ? +m[2] : 0);

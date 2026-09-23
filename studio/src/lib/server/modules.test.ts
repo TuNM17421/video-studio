@@ -1,15 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { NO_MUSIC } from "../music";
 import { cleanModules, listModules } from "./modules";
 import { REPO } from "./paths";
 import { normalizeVideoState, requestMarkdown } from "./videos";
 
 describe("capability catalog read from templates/modules", () => {
-  it("lists dialogue and quiz from their files, not README", () => {
+  it("lists every capability from its file, not README", () => {
     const ids = listModules().map((m) => m.id);
-    expect(ids).toEqual(["dialogue", "quiz"]);
+    expect(ids).toEqual(["dialogue", "quiz", "mascot", "images"]);
     const dialogue = listModules()[0];
     expect(dialogue.name).toBe("Video có hội thoại");
     expect(dialogue.template).toBe("templates/modules/dialogue.md");
@@ -34,7 +33,7 @@ describe("capability catalog read from templates/modules", () => {
         request: { style: "lesson-lab", day: "Day04", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", modules: [],
           scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
       });
-      const md = requestMarkdown("x", { ...state.request, modules: ["zz-vitest-module"] }, "Claude", NO_MUSIC);
+      const md = requestMarkdown("x", { ...state.request, modules: ["zz-vitest-module"] }, "Claude");
       expect(md).toContain("`templates/kich-ban-co-ban.md`");
       expect(md).toContain("Năng lực thử");
       expect(md).toContain("`templates/modules/zz-vitest-module.md`");

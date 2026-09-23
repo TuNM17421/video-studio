@@ -18,6 +18,8 @@ export async function renderVideo(id: string, base: string) {
   const { background, quiz } = state.music;
   startJob(id, "render");
   setStage(id, "render", "running");
+  // Opens this run in the shared log — the scenes gate also starts with "Build design system".
+  log(id, "system", `Bắt đầu render · phụ đề ${state.captions ? "có" : "không"}`);
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
     log(id, "system", label);
     setProgress(id, null, label);
@@ -41,8 +43,10 @@ export async function renderVideo(id: string, base: string) {
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
   const renderOk = await step("Render MP4", process.execPath, [
     "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
-    ...(background !== NO_MUSIC ? ["--music-track", background] : []),
+    // always explicit: render.mjs falls back to the catalog's default bed when the flag is missing
+    "--music-track", background,
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
+    ...(state.captions ? [] : ["--no-captions"]),
     ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
     const m = line.match(/(\d+)\/(\d+) frames/);

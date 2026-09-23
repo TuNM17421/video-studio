@@ -1,10 +1,11 @@
 "use client";
 
 import { LoadingOutlined, LockOutlined, RobotOutlined } from "@ant-design/icons";
-import { Alert, Select, Tag } from "antd";
+import { Select, Tag } from "antd";
 import { AGENT_PROVIDER_OPTIONS, EXPERIMENTAL_NOTE, agentProviderLabel, isExperimentalProvider } from "@/lib/agent-providers";
 import type { AgentProvider } from "@/lib/types";
 import { AgentMark } from "./agent-mark";
+import { ProductionState } from "./production-state";
 
 export function PageAgentBinding({
   provider,
@@ -58,11 +59,11 @@ export function PageAgentBinding({
             label: <span className="vs-agent-option"><AgentMark provider={value} />{label}{flag && <Tag className="vs-agent-flag">{EXPERIMENTAL_NOTE}</Tag>}</span>,
           }))}
         />}
-    {!loading && experimental && <Alert
+    {!loading && experimental && <ProductionState
       className="vs-agent-warning"
-      type="warning"
-      showIcon
-      title={chosen?.description}
+      status="review"
+      title={chosen?.description || "Agent này đang ở giai đoạn thử nghiệm."}
+      detail={null}
     />}
   </section>;
 }

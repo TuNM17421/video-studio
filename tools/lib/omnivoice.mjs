@@ -9,13 +9,23 @@
  * OmniVoice tự tải từ Hugging Face trong lần chạy đầu.
  */
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runAlign, venvPython as alignPython } from './voice-align.mjs';
+import { AUDIO_EXT, isAudioFile } from './voice-files.mjs';
+import { mediaUrl } from './media.mjs';
+import { castSpeaker, readVoices, resolveVoice, speedFor } from './voices.mjs';
+import { displayPath, findVenv, installDir, OMNIVOICE_VENV, venvBin as sharedVenvBin } from './shared-env.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const VENV = path.join(ROOT, 'voice/.venv-omnivoice');
+/**
+ * Venv của OmniVoice (1–4 GB): một bản cho cả máy, tìm như venv của Whisper (tools/lib/shared-env.mjs) —
+ * trong checkout này, thư mục dùng chung, rồi các worktree khác.
+ */
+export const omnivoiceVenv = () => findVenv(OMNIVOICE_VENV);
 export const MODEL_ID = 'k2-fsa/OmniVoice';
 export const SETUP_HINT = 'Chưa cài model local. Chạy: npm run setup:omnivoice';
 
@@ -23,11 +33,7 @@ const exe = (name) => (process.platform === 'win32' ? `${name}.exe` : name);
 
 /** Đường dẫn một lệnh trong venv, hoặc null nếu chưa có. */
 export function venvBin(name) {
-  for (const dir of ['bin', 'Scripts']) {
-    const p = path.join(VENV, dir, exe(name));
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
+  return sharedVenvBin(omnivoiceVenv()?.dir, name);
 }
 
 export const venvPython = () => venvBin('python');
@@ -99,8 +105,175 @@ export function detectDevice() {
   });
 }
 
+// ── ai đọc câu nào ───────────────────────────────────────────────────────────
+
+const norm = (s) => String(s ?? '').trim().toLowerCase();
+
 /**
- * File mẫu của một giọng, tải sẵn về máy để OmniVoice dùng làm `ref_audio`.
+ * Studio lưu giá trị này cho một vai khi người dùng đã chọn "giọng từ file trên máy" nhưng chưa chọn
+ * file nào. Nó phải là một lỗi chặn lượt sinh — không được lặng lẽ rơi về giọng danh mục vừa bỏ.
+ * Giữ khớp với FROM_FILE trong studio/src/components/local-cast.tsx.
+ */
+export const FILE_PENDING = '__file__';
+
+/**
+ * Giá trị người dùng đưa vào là ĐƯỜNG DẪN tới một file mẫu, hay TÊN một giọng trong danh mục?
+ * Tên giọng không bao giờ mang dấu gạch chéo hay đuôi audio, nên hai thứ không lẫn vào nhau được.
+ */
+export function looksLikeFile(value) {
+  const v = String(value || '').trim();
+  return Boolean(v) && (/[\\/]/.test(v) || isAudioFile(path.basename(v)));
+}
+
+/** Nhân vật mang tên/bí danh này, để `--speaker toi=…` và `--speaker Lucas=…` cùng trúng một vai. */
+function characterFor(speaker) {
+  const lower = norm(speaker);
+  return readVoices().characters.find(
+    (c) => norm(c.id) === lower || norm(c.name) === lower || (c.aliases || []).some((a) => norm(a) === lower),
+  ) || null;
+}
+
+/**
+ * Phân vai cho một lượt sinh giọng dưới máy.
+ *
+ * Mỗi người nói trong cues.js thành một **vai**, và mỗi vai mang MỘT mẫu giọng riêng. Đó là tất cả những
+ * gì cần để hai nhân vật đọc bằng hai giọng khác nhau: `omnivoice-infer-batch` nhận `ref_audio` theo từng
+ * dòng JSONL chứ không phải theo cả lượt chạy, nên Tú và Lucas đi chung một lượt vẫn ra hai giọng.
+ *
+ *   voice     giọng cho video một người dẫn — tên/id trong danh mục, hoặc đường dẫn tới một file mẫu
+ *   speakers  { "<tên nhân vật>": "<tên giọng|id|đường dẫn>" } — đổi giọng cho riêng một vai
+ *
+ * Nhân vật thì vẫn phải có sẵn trong voices.json: `speaker` quyết định avatar, phía và màu của thẻ hội
+ * thoại, nên một cái tên lạ là lỗi kịch bản — không phải thứ bù được bằng một file mẫu.
+ */
+export function castLocal(cues, { voice = '', speakers = {} } = {}) {
+  const spoken = (cues || []).filter((c) => !c.silent && String(c.text || '').trim());
+  const { voices } = readVoices();
+  const fallback = String(voice || '').trim();
+  const roles = [];
+  const byKey = new Map();
+  const rows = [];
+
+  /** Người dùng gọi vai bằng tên trong kịch bản, tên nhân vật, id, hay tên giọng nó đang mượn — nhận hết. */
+  const override = (names) => {
+    for (const [who, value] of Object.entries(speakers || {})) {
+      const wanted = String(value ?? '').trim();
+      if (!wanted) continue;
+      if (names.some((n) => n && norm(n) === norm(who))) return wanted;
+    }
+    return '';
+  };
+
+  const build = (speaker) => {
+    const role = {
+      index: roles.length,
+      speaker: speaker || null,
+      name: speaker || 'Người dẫn',
+      character: null,
+      avatar: null,
+      side: 'left',
+      tone: 'accent',
+      speed: 1,
+      source: 'catalog',
+      voiceId: null,
+      voiceName: null,
+      file: null,
+      picked: false,
+      error: null,
+      cues: [],
+    };
+    let who = null;
+    let character = null;
+    if (speaker) {
+      character = characterFor(speaker);
+      try {
+        who = castSpeaker(speaker);
+      } catch (error) {
+        // A character listed without a voice yet (voices.json `"voice": null`) can still be read here when
+        // the member hands it one (--speaker "Tú=<giọng|file>"); without that it stays an error below.
+        if (!character || character.voice) {
+          role.error = error instanceof Error ? error.message : String(error);
+          return role;
+        }
+        const alias = (character.aliases || []).find((a) => norm(a) === norm(speaker));
+        who = { name: alias || character.name, voice: null, avatar: mediaUrl(character.avatar), side: character.side || 'left', tone: character.tone || 'accent', speed: character.speed ?? 1 };
+      }
+      Object.assign(role, {
+        name: who.name,
+        character: character?.id || null,
+        avatar: who.avatar,
+        side: who.side,
+        tone: who.tone,
+        speed: who.speed ?? 1,
+      });
+    }
+    // Kịch bản gọi "Lucas", danh mục ghi "Tới", id là "toi" — gọi bằng cái nào cũng phải trúng đúng vai.
+    const wanted = override([speaker, role.name, role.character, character?.name, who?.voice?.name]) || (speaker ? '' : fallback);
+    role.picked = Boolean(wanted);
+    // Đã rẽ sang "giọng từ file" nhưng chưa trỏ tới file nào: vai này chưa sẵn sàng, và tuyệt đối không
+    // dùng tạm giọng danh mục người dùng vừa bỏ — đó là lỗi đã ăn thật trên panel.
+    if (wanted === FILE_PENDING) {
+      role.source = 'file';
+      role.error = 'chưa chọn file giọng mẫu.';
+      return role;
+    }
+    // Một file trên máy là đường ngắn nhất cho giọng chưa có trong danh mục: không phải đẩy lên đâu cả,
+    // cũng không phải thêm vào voices.json chỉ để thử một lượt.
+    if (wanted && looksLikeFile(wanted)) {
+      role.source = 'file';
+      role.file = path.resolve(wanted);
+      role.voiceName = path.basename(role.file);
+      return role;
+    }
+    if (!wanted && character && !character.voice) {
+      role.error = `nhân vật "${character.name}" chưa được gán giọng trong voices.json — chọn một giọng hoặc một file mẫu cho vai này.`;
+      return role;
+    }
+    const picked = wanted ? resolveVoice(wanted) : who?.voice || voices.find((v) => v.default) || null;
+    if (!picked || picked.unknown) {
+      role.error = wanted
+        ? `không có giọng "${wanted}" trong voices.json. Model local nhân bản từ một đoạn mẫu, nên chỉ nhận giọng trong danh mục hoặc một file audio trên máy.`
+        : 'voices.json chưa khai giọng nào mặc định.';
+      return role;
+    }
+    Object.assign(role, { voiceId: picked.id, voiceName: picked.name, voice: picked });
+    if (!picked.sample) role.error = `giọng "${picked.name}" chưa có file mẫu trên kho media, không nhân bản được.`;
+    return role;
+  };
+
+  for (const c of spoken) {
+    const speaker = String(c.speaker || '').trim();
+    let role = byKey.get(norm(speaker));
+    if (!role) {
+      role = build(speaker);
+      byKey.set(norm(speaker), role);
+      roles.push(role);
+    }
+    role.cues.push(c.n);
+    const row = { n: c.n, text: String(c.text).trim(), role: role.index, speed: 1, error: null };
+    // Kiểu đọc đổi tốc độ, và OmniVoice nhận `speed` theo từng dòng đúng như ElevenLabs nhận theo từng
+    // câu. Câu không khai `delivery` thì speed vẫn là 1 và dòng JSONL không mang trường đó.
+    try {
+      row.speed = speedFor({ speed: role.speed }, c.delivery).speed;
+    } catch (error) {
+      row.error = `câu ${c.n}: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    rows.push(row);
+  }
+
+  const problems = [
+    ...roles.filter((r) => r.error).map((r) => `${r.speaker ? `nhân vật ${r.name}` : 'giọng người dẫn'}: ${r.error}`),
+    ...rows.filter((r) => r.error).map((r) => r.error),
+  ];
+  return { dialogue: roles.some((r) => r.speaker), roles, rows, problems, ok: problems.length === 0 };
+}
+
+// ── mẫu giọng để nhân bản ────────────────────────────────────────────────────
+
+const REFS = path.join(ROOT, 'voice/cache/refs');
+
+/**
+ * File mẫu của một giọng trong danh mục, tải sẵn về máy để OmniVoice dùng làm `ref_audio`.
  *
  * Mẫu nằm trên kho media (R2) và Studio vẫn phát thẳng từ URL, nhưng OmniVoice chạy dưới máy nên cần
  * một đường dẫn thật. Tải một lần rồi dùng lại; `ref_text` là câu mà mọi mẫu đều đọc, khai trong
@@ -114,12 +287,11 @@ export async function refAudioFor(voice, log = () => {}) {
   const base = (process.env.MEDIA_BASE || manifest.base || '').replace(/\/+$/, '');
   if (!base || !manifest.assets?.[voice.sample]) return null;
 
-  const cacheDir = path.join(ROOT, 'voice/cache/refs');
-  const file = path.join(cacheDir, path.basename(voice.sample));
+  const file = path.join(REFS, path.basename(voice.sample));
   const { sampleText } = JSON.parse(fs.readFileSync(path.join(ROOT, 'voices.json'), 'utf8'));
   if (fs.existsSync(file) && fs.statSync(file).size > 0) return { file, text: sampleText || '' };
 
-  fs.mkdirSync(cacheDir, { recursive: true });
+  fs.mkdirSync(REFS, { recursive: true });
   const url = `${base}/${voice.sample.split('/').map(encodeURIComponent).join('/')}`;
   try {
     log(`Tải mẫu giọng ${voice.name} về ${path.relative(ROOT, file)}`);
@@ -137,6 +309,136 @@ export async function refAudioFor(voice, log = () => {}) {
   }
 }
 
+/** Lời của đoạn mẫu do người dùng ghi sẵn: `mau.wav` → `mau.txt`, hoặc `mau.wav.txt`. */
+export function refSidecar(file) {
+  const stem = file.slice(0, file.length - path.extname(file).length);
+  for (const p of [`${stem}.txt`, `${file}.txt`]) {
+    try {
+      const text = fs.readFileSync(p, 'utf8').trim();
+      if (text) return { path: p, text };
+    } catch { /* không có thì thôi */ }
+  }
+  return null;
+}
+
+/** Khoá cache của một file mẫu, theo nội dung file — thay file là nhớ lại từ đầu. */
+const refKey = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 16);
+/** Lời đã nghe được của một file mẫu. */
+const refTextCache = (file) => path.join(REFS, `${refKey(file)}.txt`);
+/**
+ * Lần nghe đã THẤT BẠI của một file mẫu (không có tiếng nói…). Nhớ cả kết quả xấu, vì nếu không thì bước
+ * kiểm dàn vai vẫn khen "lần đầu sẽ nghe bằng Whisper" cho một file đã biết là hỏng, và lượt sinh lại
+ * chết ở đúng chỗ cũ. Một file .txt cùng tên đặt cạnh xoá được nó — lời người ghi luôn thắng.
+ */
+export const refFailCache = (file) => path.join(REFS, `${refKey(file)}.fail`);
+const refFailure = (file) => {
+  try { return fs.readFileSync(refFailCache(file), 'utf8').trim() || null; } catch { return null; }
+};
+
+/**
+ * Mẫu giọng là một file trên máy — "giọng khác" mà người dùng tự đưa vào.
+ *
+ * OmniVoice cần cả tiếng lẫn LỜI của đoạn mẫu, mà người đưa file thường chỉ có tiếng. Ưu tiên file `.txt`
+ * đặt cạnh (chính xác nhất, không phụ thuộc máy móc); không có thì nghe lại bằng đúng Whisper của bước
+ * nhập giọng (`voice/.venv`) rồi nhớ luôn kết quả — cùng một mẫu còn dùng cho nhiều video sau.
+ */
+export async function refFromFile(file, log = () => {}) {
+  const abs = path.resolve(file);
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return { error: `không thấy file mẫu giọng: ${abs}` };
+  if (!isAudioFile(path.basename(abs))) return { error: `${path.basename(abs)} không phải file audio (${AUDIO_EXT.join(' ')})` };
+
+  const sidecar = refSidecar(abs);
+  if (sidecar) return { file: abs, text: sidecar.text, from: 'sidecar' };
+  const cache = refTextCache(abs);
+  if (fs.existsSync(cache)) return { file: abs, text: fs.readFileSync(cache, 'utf8').trim(), from: 'cache' };
+  // Đã nghe rồi và không ra lời: trả lại đúng câu đó, không đốt thêm một lượt Whisper.
+  const failed = refFailure(abs);
+  if (failed) return { error: failed };
+  if (!alignPython()) {
+    return { error: `chưa biết lời đọc trong ${path.basename(abs)}. Đặt một file .txt cùng tên chứa đúng lời đó, hoặc cài môi trường nhận diện giọng (npm run setup:voice) để tự nghe.` };
+  }
+
+  log(`Nghe lời của mẫu giọng ${path.basename(abs)} bằng Whisper…`);
+  const res = await runAlign({ model: process.env.VOICE_ALIGN_MODEL || 'small', items: [{ n: 0, wav: abs }] }, {});
+  if (!res.ok) return { error: `không nhận diện được lời trong ${path.basename(abs)}: ${res.error}` };
+  const item = res.result?.items?.[0];
+  const text = String(item?.text || '').trim();
+  fs.mkdirSync(REFS, { recursive: true });
+  if (!text) {
+    // Không nhắc tên file: với file Studio chép về thì tên là một chuỗi hash, còn vai thì đã đứng trước câu này.
+    const error = 'mẫu giọng không có tiếng nói — Whisper không nghe ra lời nào. Chọn một đoạn 10–20 giây có người đó nói.';
+    fs.writeFileSync(refFailCache(abs), `${error}\n`);
+    return { error };
+  }
+  fs.writeFileSync(cache, `${text}\n`);
+  fs.rmSync(refFailCache(abs), { force: true });
+  const words = item.words || [];
+  return { file: abs, text, from: 'whisper', seconds: words.length ? words[words.length - 1][2] : null };
+}
+
+/**
+ * Mẫu càng dài thì mỗi câu sinh ra càng phải gánh thêm chừng ấy giây trong VRAM. Mẫu của danh mục dài
+ * khoảng 15 giây; trên mức này là lý do thường gặp nhất khiến card chật sinh được nửa video rồi tắc.
+ */
+export const REF_LONG_SECONDS = 40;
+
+/** Tải/đọc mẫu cho từng vai. Hai vai dùng chung một mẫu thì chỉ làm một lần. */
+export async function resolveRefs(roles, log = () => {}) {
+  const done = new Map();
+  for (const role of roles) {
+    if (role.error) continue;
+    const key = role.source === 'file' ? `f:${role.file}` : `v:${role.voiceId}`;
+    if (!done.has(key)) {
+      done.set(
+        key,
+        role.source === 'file'
+          ? await refFromFile(role.file, log)
+          : (await refAudioFor(role.voice, log)) || { error: `giọng "${role.voiceName}" chưa tải được mẫu từ kho media.` },
+      );
+    }
+    const ref = done.get(key);
+    if (ref.error) { role.error = ref.error; continue; }
+    if (ref.seconds && ref.seconds > REF_LONG_SECONDS) {
+      log(`! mẫu giọng ${role.voiceName} dài ${Math.round(ref.seconds)}s — nên cắt còn 10–20 giây, mẫu dài làm mỗi câu nặng thêm trong VRAM`);
+    }
+    role.ref = { file: ref.file, text: ref.text, from: ref.from || 'catalog' };
+  }
+  return roles;
+}
+
+/**
+ * Sinh được ngay chưa, hay còn phải tải mẫu về / nghe lời mẫu trước. Không đụng mạng, không chạy Whisper,
+ * để Studio nói trước được điều đó mà vẫn mở tab tức thì.
+ */
+export function refStatus(role) {
+  if (role.error) return { ready: false, note: role.error };
+  if (role.source === 'file') {
+    if (!fs.existsSync(role.file)) return { ready: false, note: `không thấy file ${role.file}` };
+    if (!isAudioFile(path.basename(role.file))) return { ready: false, note: `${path.basename(role.file)} không phải file audio` };
+    const sidecar = refSidecar(role.file);
+    if (sidecar) return { ready: true, note: `lời mẫu lấy từ ${path.basename(sidecar.path)}` };
+    if (fs.existsSync(refTextCache(role.file))) return { ready: true, note: 'đã biết lời của mẫu này' };
+    // Đã nghe rồi và hỏng: nói thẳng ở đây, đừng khen "lần đầu sẽ nghe" rồi để lượt sinh chết ở chỗ cũ.
+    const failed = refFailure(role.file);
+    if (failed) return { ready: false, note: failed };
+    return alignPython()
+      ? { ready: true, note: 'lần đầu sẽ nghe lời của mẫu bằng Whisper' }
+      : { ready: false, note: 'chưa biết lời của mẫu: đặt file .txt cùng tên, hoặc cài Whisper (npm run setup:voice)' };
+  }
+  let assets = {};
+  let base = '';
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'media/manifest.json'), 'utf8'));
+    assets = raw.assets || {};
+    base = (process.env.MEDIA_BASE || raw.base || '').replace(/\/+$/, '');
+  } catch { /* không có manifest thì coi như chưa có mẫu nào */ }
+  const sample = role.voice?.sample;
+  if (!sample || !assets[sample] || !base) return { ready: false, note: `giọng ${role.voiceName} chưa có mẫu trên kho media` };
+  return fs.existsSync(path.join(REFS, path.basename(sample)))
+    ? { ready: true, note: null }
+    : { ready: true, note: 'lần đầu sẽ tải mẫu giọng về máy' };
+}
+
 /** Các đối số pip cho torch theo phần cứng. */
 export function torchArgs(device) {
   if (device === 'cuda') {
@@ -150,8 +452,8 @@ export function omnivoiceStatus() {
   const bin = inferBatchBin();
   return {
     installed: Boolean(bin),
-    bin: bin ? path.relative(ROOT, bin) : null,
-    venv: path.relative(ROOT, VENV),
+    bin: bin ? displayPath(bin) : null,
+    venv: displayPath(omnivoiceVenv()?.dir ?? installDir(OMNIVOICE_VENV)),
     device: detectDevice(),
     modelId: MODEL_ID,
     modelGb: MODEL_GB,

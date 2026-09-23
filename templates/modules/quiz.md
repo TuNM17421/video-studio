@@ -2,6 +2,7 @@
 name: Video có quiz
 summary: Đặt câu hỏi, dành thời gian suy nghĩ và tách rõ phần hỏi khỏi phần chữa bài.
 icon: quiz
+preview: modules/quiz-mau.mp4
 order: 20
 ---
 
@@ -96,3 +97,12 @@ Thêm một dòng ở đầu kịch bản cho người dựng biết có bao nhi
 ```markdown
 - **Chỗ dừng:** ba chỗ, mỗi chỗ ba mươi giây.
 ```
+
+---
+
+## Tiêu chí QA
+
+Lượt QA ảnh chỉ đọc mục này khi video bật quiz (mã lỗi `module`).
+
+- Ảnh của khoảng chờ có vòng đếm ngược (`Countdown`) và vẫn giữ bối cảnh cùng câu hỏi trên màn hình.
+- Câu hỏi có đáp án thì câu mẫu được hỏi tới phải in sẵn trên màn hình, đọc được.

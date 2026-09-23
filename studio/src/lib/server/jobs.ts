@@ -1,8 +1,12 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type { JobInfo, JobKind, LogEntry } from "../types";
 import { REPO, stateDir } from "./paths";
+import { addRunMetrics, finishRun as finishWorkflowRun, startRun as startWorkflowRun } from "../../../../tools/workflow-ledger.mjs";
+
+export const machineLabel = () => (process.env.STUDIO_MACHINE_LABEL || os.hostname() || "unknown").trim();
 
 /** Server-side registry, kept on globalThis so dev hot-reload does not lose running jobs. */
 type Listener = (event: StudioEvent) => void;
@@ -10,14 +14,22 @@ export type StudioEvent = { type: "log"; entry: LogEntry } | { type: "job"; job:
 
 interface Registry {
   /** `anchor` is the job's first percent reading — where the countdown measures from. */
-  jobs: Map<string, JobInfo & { child?: ChildProcess; stopped?: boolean; anchor?: { at: number; percent: number } }>;
+  jobs: Map<string, JobInfo & {
+    child?: ChildProcess;
+    stopped?: boolean;
+    anchor?: { at: number; percent: number };
+    workflowRunId?: string;
+    workflowFinished?: boolean;
+  }>;
   logs: Map<string, LogEntry[]>;
   listeners: Map<string, Set<Listener>>;
   /** ElevenLabs API key: memory only, never written to disk or passed to the agent. */
   elevenKey: string | null;
+  /** Kaggle username + API key (from kaggle.json or typed in): memory only, same rule as elevenKey. */
+  kaggle: { username: string; key: string } | null;
 }
 const g = globalThis as typeof globalThis & { __videoStudio?: Registry };
-export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null });
+export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null });
 
 const MAX_LOGS = 1500;
 
@@ -71,12 +83,48 @@ export function isRunning(id: string) {
   return registry.jobs.get(id)?.status === "running";
 }
 
-export function startJob(id: string, kind: JobKind) {
+export function startJob(
+  id: string,
+  kind: JobKind,
+  meta: { actor?: string; mode?: "agent" | "deterministic"; label?: string } = {},
+) {
   if (isRunning(id)) throw new Error("Video này đang có một tác vụ chạy. Chờ xong hoặc bấm Dừng.");
-  const job = { kind, status: "running" as const, startedAt: Date.now(), progress: null };
+  // The workflow ledger lives in projects/<video id>/.studio. A research run is not a video: its job key
+  // (`research:<rid>`) is no folder under projects/ — on Windows the colon makes mkdir throw, elsewhere it
+  // would leave a stray "video" in the list. Research keeps its own run log in research/<rid>/.
+  // Image suggestions run beside the video's own job under `images:<id>` — the same folder problem.
+  const workflow = kind === "research" || kind === "images" ? null : startWorkflowRun(REPO, id, {
+    stage: kind,
+    actor: meta.actor || "system",
+    mode: meta.mode || "deterministic",
+    label: meta.label || kind,
+    machine: machineLabel(),
+  });
+  const job = {
+    kind,
+    status: "running" as const,
+    startedAt: Date.now(),
+    progress: null,
+    workflowRunId: workflow?.runId,
+    workflowFinished: false,
+  };
   registry.jobs.set(id, job);
   emit(id, { type: "job", job: currentJob(id) });
   return job;
+}
+
+export function recordJobMetrics(id: string, metrics: {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
+  toolCalls?: number;
+  turns?: number;
+  model?: string;
+}) {
+  const job = registry.jobs.get(id);
+  if (!job?.workflowRunId) return;
+  addRunMetrics(REPO, id, job.workflowRunId, metrics);
 }
 
 /**
@@ -103,6 +151,10 @@ export function finishJob(id: string, status: JobInfo["status"]) {
   if (!job) return;
   job.status = job.stopped ? "stopped" : status;
   job.child = undefined;
+  if (job.workflowRunId && !job.workflowFinished) {
+    finishWorkflowRun(REPO, id, job.workflowRunId, { status: job.status });
+    job.workflowFinished = true;
+  }
   emit(id, { type: "job", job: currentJob(id) });
   emit(id, { type: "state" });
 }
@@ -125,6 +177,18 @@ function killTree(child: ChildProcess | undefined) {
   child.kill("SIGTERM");
 }
 
+/**
+ * Giết tiến trình con đang chạy của một job mà không đánh dấu job là "đã dừng" — cho bộ canh kẹt của pipeline
+ * research: dừng một lượt agent đứng im không phải là người dùng bấm Dừng, và không được xoá dấu Dừng thật
+ * nếu người dùng bấm đúng lúc đó.
+ */
+export function killChild(id: string) {
+  const job = registry.jobs.get(id);
+  if (!job?.child) return false;
+  killTree(job.child);
+  return true;
+}
+
 export function stopJob(id: string) {
   const job = registry.jobs.get(id);
   if (!job || job.status !== "running") return false;
@@ -134,6 +198,7 @@ export function stopJob(id: string) {
 }
 
 interface RunOptions {
+  cwd?: string;
   env?: NodeJS.ProcessEnv;
   input?: string;
   onLine?: (line: string, stream: "stdout" | "stderr") => void;
@@ -146,12 +211,31 @@ interface RunOptions {
  */
 const needsShell = (cmd: string) => process.platform === "win32" && (cmd === "npm" || /\.(cmd|bat)$/i.test(cmd));
 
+/**
+ * One argument for cmd.exe. With `shell: true` Node joins the arguments with spaces and cmd.exe re-splits
+ * them, so a permission rule like `Bash(node tools/page.mjs *)` arrived as four arguments and never matched
+ * (measured). Quote anything cmd.exe or the program's argv parser would split or interpret; inner quotes
+ * and the backslashes before them are escaped the way MSVCRT-style parsers (node.exe behind every npm shim)
+ * read them back.
+ */
+export function quoteForCmd(arg: string) {
+  if (arg !== "" && !/[\s"&|<>^()!,;=%]/.test(arg)) return arg;
+  return `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
+}
+
 /** Run a command in the repo, attached to the video's current job (so Dừng can kill it). */
 export function run(id: string, cmd: string, args: string[], opts: RunOptions = {}) {
   return new Promise<number>((resolve) => {
-    const child = spawn(cmd, args, { cwd: REPO, env: opts.env ?? process.env, stdio: ["pipe", "pipe", "pipe"], shell: needsShell(cmd) });
+    const shell = needsShell(cmd);
+    const child = shell
+      ? spawn(quoteForCmd(cmd), args.map(quoteForCmd), { cwd: opts.cwd ?? REPO, env: opts.env ?? process.env, stdio: ["pipe", "pipe", "pipe"], shell: true })
+      : spawn(cmd, args, { cwd: opts.cwd ?? REPO, env: opts.env ?? process.env, stdio: ["pipe", "pipe", "pipe"] });
     const job = registry.jobs.get(id);
     if (job) job.child = child;
+    // A job outlives each process it runs (the research runner spends minutes between agents). Keeping an
+    // exited child here would make Dừng taskkill its PID — which Windows may already have handed to an
+    // unrelated process of the user's.
+    const release = () => { const current = registry.jobs.get(id); if (current?.child === child) current.child = undefined; };
     const pipe = (stream: NodeJS.ReadableStream, name: "stdout" | "stderr") => {
       let buf = "";
       stream.on("data", (chunk: Buffer) => {
@@ -164,8 +248,8 @@ export function run(id: string, cmd: string, args: string[], opts: RunOptions = 
     };
     pipe(child.stdout, "stdout");
     pipe(child.stderr, "stderr");
-    child.on("error", (error) => { opts.onLine?.(`${cmd}: ${error.message}`, "stderr"); resolve(127); });
-    child.on("close", (code) => resolve(code ?? 1));
+    child.on("error", (error) => { release(); opts.onLine?.(`${cmd}: ${error.message}`, "stderr"); resolve(127); });
+    child.on("close", (code) => { release(); resolve(code ?? 1); });
     if (opts.input !== undefined) child.stdin.end(opts.input);
     else child.stdin.end();
   });

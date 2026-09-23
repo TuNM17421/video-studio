@@ -9,10 +9,12 @@ import {
   RightOutlined,
 } from "@ant-design/icons";
 import { Alert, Button, Drawer, Empty, Input, Select, Spin, Tag } from "antd";
-import { api, dsUrl, fileUrl, useKeyStatus } from "@/lib/client";
+import { api, dsUrl, fileUrl } from "@/lib/client";
 import type { Library as LibraryData, LibraryComponent, StyleDef } from "@/lib/types";
 import { Shell, type LibrarySection } from "./shell";
 import { StyleShowcase } from "./style-showcase";
+import { CharacterLibrary } from "./character-library";
+import { MascotLibrary } from "./mascot-library";
 import styles from "./library.module.css";
 
 const PAGE_SIZE = 30;
@@ -62,7 +64,6 @@ export default function Library({ section }: { section: LibrarySection }) {
   const [stylesError, setStylesError] = useState<string | null>(null);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const { hasKey } = useKeyStatus();
 
   useEffect(() => {
     api<StyleDef[]>("/api/styles")
@@ -159,6 +160,8 @@ export default function Library({ section }: { section: LibrarySection }) {
       </li>)}</ul>
       {visibleCount < components.length && <div className={styles.loadMore}><span>Còn {components.length - visibleCount} component chưa hiển thị</span><Button icon={<DownOutlined />} iconPlacement="end" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>Hiển thị thêm</Button></div>}
     </section>,
+    characters: <CharacterLibrary />,
+    mascot: <MascotLibrary />,
     videos: <section className={styles.videoPanel}>
       <header className={styles.catalogHeader}>
         <div><span className={styles.sectionEyebrow}>Reference cuts</span><h1>Bản dựng tham chiếu</h1><p>Đối chiếu nhịp cảnh, caption và chuyển động trước khi bắt đầu video mới.</p></div>
@@ -190,7 +193,7 @@ export default function Library({ section }: { section: LibrarySection }) {
     </section>,
   } satisfies Record<LibrarySection, React.ReactNode>;
 
-  return <Shell page="library" section={section} hasKey={hasKey}>
+  return <Shell page="library" section={section}>
     <div className={styles.root}>
       {panels[section]}
       <footer className={styles.footer}>vinuni-lesson-video-ds <span>·</span> production reference library</footer>

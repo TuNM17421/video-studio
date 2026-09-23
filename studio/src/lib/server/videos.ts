@@ -6,6 +6,7 @@ import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoStat
 import { isAgentProvider } from "../agent-providers";
 import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
 import { BASE_TEMPLATE_PATH } from "../modules";
+import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { isRunning } from "./jobs";
@@ -14,15 +15,19 @@ import { chaptersPath, exists, HttpError, mp4Path, projectDir, REPO, rel, stateD
 const execFileP = promisify(execFile);
 const STAGES: StageId[] = ["cues", "voice", "scenes", "render", "deliver"];
 
-export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "" };
+export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model: "eleven_turbo_v2_5", language: "vi", pause: 1.4, importDir: "", speakers: {} as Record<string, string> };
 /** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
 export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
-type LegacyVideoState = Omit<VideoState, "agent" | "music"> & {
+type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions" | "review"> & {
+  /** Missing before cross-review became a per-video switch. */
+  review?: unknown;
   agent?: Partial<VideoState["agent"]>;
   sessionId?: unknown;
   /** Before quiz music there was one track, stored as a bare id — and "bg" was the only one. */
   music?: string | Partial<MusicChoice>;
+  /** Missing before captions became optional — every video had them. */
+  captions?: unknown;
 };
 
 /** The single pre-catalog track became bg-goc, the reference bed the catalog was built around. */
@@ -50,6 +55,9 @@ export function normalizeVideoState(value: unknown): VideoState {
     request: { ...state.request, modules },
     voice: { ...DEFAULT_VOICE, ...stored.voice },
     music,
+    captions: stored.captions !== false,
+    // Videos made before cross-review could be switched keep the behaviour they had: review on.
+    review: normalizeReview(stored.review),
   } as VideoState;
 }
 
@@ -121,7 +129,8 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
     const state = normalizeVideoState(JSON.parse(fs.readFileSync(stateFile(id), "utf8")));
     // a server restart kills running agents: never leave a stage stuck in "running"
     if (!isRunning(id)) for (const s of STAGES) if (state.stages[s] === "running") state.stages[s] = "error";
-    return { state, managed: true };
+    // a practice sample keeps its real state but is read-only, like a video made outside the studio
+    return { state, managed: !state.sample };
   }
   const day = findDay(id);
   const request: VideoRequest = {
@@ -130,7 +139,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   };
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, lastError: null },
+    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, captions: true, review: { ...DEFAULT_REVIEW }, lastError: null },
     managed: false,
   };
 }
@@ -165,10 +174,12 @@ export async function cuesInfo(id: string): Promise<CuesInfo | null> {
   }
 }
 
+/** Stills in qa/ (shot by hand) and qa/auto/ (the scene gate's own folder). */
 export function qaImages(id: string) {
   const dir = path.join(projectDir(id), "qa");
-  if (!exists(dir)) return [];
-  return fs.readdirSync(dir).filter((f) => /\.(png|jpe?g)$/i.test(f)).sort().map((f) => rel(path.join(dir, f)));
+  return [dir, path.join(dir, "auto")].flatMap((d) => exists(d)
+    ? fs.readdirSync(d).filter((f) => /\.(png|jpe?g)$/i.test(f)).sort().map((f) => rel(path.join(d, f)))
+    : []);
 }
 
 export function listVideos(): VideoSummary[] {
@@ -185,7 +196,7 @@ export function listVideos(): VideoSummary[] {
       title: state.request.title || id,
       cueCount: null,
       managed,
-      stages: managed ? state.stages : inferredStages(a),
+      stages: managed || state.sample ? state.stages : inferredStages(a),
       artifacts: a,
       running: isRunning(id),
       updatedAt: managed ? state.updatedAt : null,
@@ -215,8 +226,10 @@ function moduleSections(modules: string[]) {
   lines.push("");
   if (modules.includes("dialogue")) {
     const { voices, characters } = listVoices();
-    const names = characters.length
-      ? characters.map((c) => `${c.name} (giọng ${voices.find((v) => v.id === c.voice)?.name || c.voice})`).join(" · ")
+    // only characters someone has lent a voice to can be cast; the others would stop the dry-run
+    const cast = characters.filter((c) => c.voice);
+    const names = cast.length
+      ? cast.map((c) => `${c.name} (giọng ${voices.find((v) => v.id === c.voice)?.name || c.voice})`).join(" · ")
       : voices.map((v) => `${v.name}${v.gender ? ` (${v.gender})` : ""}`).join(" · ");
     lines.push(
       "## Hội thoại",
@@ -235,15 +248,14 @@ function moduleSections(modules: string[]) {
 }
 
 /** What the agent must do for a quiz — cues must be marked even when the video uses no quiz music. */
-function quizSection(enabled: boolean, quiz: string) {
+function quizSection(enabled: boolean) {
   if (!enabled) return [];
   return [
     "## Quiz",
     "",
-    quiz === NO_MUSIC
-      ? "Video này có quiz nhưng không dùng nhạc quiz. Trong `cues.js`, vẫn đánh dấu `quiz: true` cho **đúng khoảng chờ người"
-      : `Video này có nhạc quiz (\`${quiz}\`). Trong \`cues.js\`, đánh dấu \`quiz: true\` cho **đúng khoảng chờ người`,
-    "xem suy nghĩ** — cue `silent`, lúc đồng hồ chạy và không có lời đọc.",
+    "Video này có quiz. Trong `cues.js`, đánh dấu `quiz: true` cho **đúng khoảng chờ người xem suy nghĩ** — cue",
+    "`silent`, lúc đồng hồ chạy và không có lời đọc. Có dùng nhạc quiz hay không (và bài nào) chọn ở bước Render,",
+    "nên luôn đánh dấu dù chưa biết nhạc.",
     "",
     "**Không** đánh dấu câu đọc câu hỏi: người hỏi đang nói thì vẫn là nhạc nền, nhạc quiz chỉ vào khi câu hỏi đã",
     "dứt. Cũng **không** đánh dấu phần chữa bài — nhạc phải tắt trước khi bắt đầu giải thích.",
@@ -251,14 +263,40 @@ function quizSection(enabled: boolean, quiz: string) {
     "Các câu liền nhau cùng có `quiz: true` được gom thành một đoạn. Đặt trường này ở cuối phần khai của câu,",
     "**đừng** đặt ngay sau `n:` — `voice-timing.mjs --write-cues` ghi `frames`/`speech` vào đúng chỗ đó và sẽ xoá mất nó.",
     "",
-    quiz === NO_MUSIC
-      ? "Không có nhạc quiz; giữ nguyên khoảng suy nghĩ theo kịch bản."
-      : "Trong đoạn quiz, nhạc nền tự động tắt hẳn và nhạc quiz vào (có fade 0,5 giây hai đầu) — không phải làm gì thêm.",
+    "Nếu có nhạc quiz, trong đoạn quiz nhạc nền tự động tắt hẳn và nhạc quiz vào (fade 0,5 giây hai đầu) — không phải làm gì thêm.",
     "",
   ];
 }
 
-export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string, quizMusic: string = NO_MUSIC) {
+/**
+ * Griffin is opt-in. The design system ships the component and the agent would otherwise be free to use it,
+ * so the request says so either way — on: how to place it; off: not at all.
+ */
+function mascotSection(enabled: boolean) {
+  if (!enabled) {
+    return [
+      "## Linh vật",
+      "",
+      "Video này **không** có linh vật: không dùng `Griffin` / `GriffinBadge`, không để Griffin nói (`speaker`).",
+      "",
+    ];
+  }
+  return [
+    "## Linh vật Griffin",
+    "",
+    "Video này có Griffin. Đầu kịch bản ghi vai (**Đi cùng** hoặc **Dẫn**); câu có dòng **Griffin** là câu có linh vật,",
+    "câu không có dòng đó thì không vẽ Griffin.",
+    "",
+    "- Vẽ bằng `Griffin` (cả con) hoặc `GriffinBadge` từ `components/mascot/` — dáng, biểu cảm, đạo cụ theo",
+    "  `Griffin.prompt.md`; đặt mỗi lần đổi đúng chữ kịch bản gắn vào bằng `spokenAt(n, cụm từ)`.",
+    "- Vai **Dẫn**: mọi câu trong `cues.js` khai `speaker: 'Griffin'` (giọng mượn qua nhân vật trong `voices.json`),",
+    "  như video mẫu `ui_kits/lesson-video/videos/mau-huong-dan/`. Vai **Đi cùng**: Griffin không nói.",
+    "- Chân Griffin ở y ≈ 930 để cả con nằm trong vùng nội dung; một Griffin mỗi cảnh; nhường chỗ ở cảnh dày chữ.",
+    "",
+  ];
+}
+
+export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
   const lines = [
     `# Yêu cầu dựng video ${id}`,
     "",
@@ -273,7 +311,8 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
     ...moduleSections(r.modules),
-    ...quizSection(r.modules.includes("quiz") || quizMusic !== NO_MUSIC, quizMusic),
+    ...quizSection(r.modules.includes("quiz")),
+    ...mascotSection(r.modules.includes("mascot")),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

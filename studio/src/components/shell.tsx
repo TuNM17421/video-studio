@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { BookOutlined, KeyOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
-import { Badge, Button, Layout, Menu } from "antd";
+import { BookOutlined, FileSearchOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "./theme-toggle";
+import { StudioTour } from "./tour";
 
-type Page = "new" | "library" | "videos" | "guide";
-export type LibrarySection = "styles" | "components" | "videos";
+type Page = "new" | "library" | "videos" | "guide" | "scout";
+export type LibrarySection = "styles" | "components" | "characters" | "mascot" | "videos";
 
-/** The library's three sections are sidebar children, not tabs on the page. */
+/** The library's sections are sidebar children, not tabs on the page. */
 export const LIBRARY_SECTIONS: { id: LibrarySection; label: string }[] = [
   { id: "styles", label: "Style" },
   { id: "components", label: "Component" },
+  { id: "characters", label: "Nhân vật" },
+  { id: "mascot", label: "Mascot" },
   { id: "videos", label: "Video mẫu" },
 ];
 export const librarySectionPath = (section: LibrarySection) => `/library/${section}`;
@@ -22,6 +26,7 @@ const SIDEBAR_STORAGE_KEY = "video-studio.sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "video-studio:sidebar-change";
 const DESKTOP_SIDEBAR_QUERY = "(min-width: 681px)";
 const PAGE_ROUTES: Record<string, string> = {
+  scout: "/research",
   new: "/",
   videos: "/videos",
   library: librarySectionPath("styles"),
@@ -60,7 +65,7 @@ function SidebarPanelIcon() {
 }
 
 /** No top bar: the sidebar names where you are, and every page carries its own heading. */
-export function Shell({ page, section, hasKey, children }: { page: Page; section?: LibrarySection; hasKey?: boolean; children: ReactNode }) {
+export function Shell({ page, section, children }: { page: Page; section?: LibrarySection; children: ReactNode }) {
   const router = useRouter();
   const sidebarCollapsed = useSyncExternalStore(subscribeSidebarCollapsed, getSidebarCollapsed, () => false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
@@ -77,13 +82,16 @@ export function Shell({ page, section, hasKey, children }: { page: Page; section
     if (event.detail > 0) event.currentTarget.blur();
   };
   const navigation = [
-    { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới">Video mới</Link> },
-    { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video">Các video</Link> },
-    { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn">Hướng dẫn</Link> },
+    // Beta: agent tự tìm tài liệu rồi viết kịch bản. Chưa nối vào luồng tạo video, nên ghi rõ "Beta" — đứng
+    // đầu danh sách nhưng đừng để ai tưởng đây là đường chính thức.
+    { key: "scout", icon: <FileSearchOutlined />, label: <Link href="/research" title="Đóng gói kịch bản · beta">Đóng gói kịch bản <span className="vs-nav-beta">beta</span></Link> },
+    { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới" data-tour="nav.new">Video mới</Link> },
+    { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video" data-tour="nav.videos">Các video</Link> },
+    { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn" data-tour="nav.guide">Hướng dẫn</Link> },
     {
       key: "library",
       icon: <BookOutlined />,
-      label: <Link href={librarySectionPath("styles")} title="Thư viện">Thư viện</Link>,
+      label: <Link href={librarySectionPath("styles")} title="Thư viện" data-tour="nav.library">Thư viện</Link>,
       children: LIBRARY_SECTIONS.map(({ id, label }) => ({
         key: sectionKey(id),
         label: <Link href={librarySectionPath(id)} title={label}>{label}</Link>,
@@ -111,12 +119,13 @@ export function Shell({ page, section, hasKey, children }: { page: Page; section
         onClick={({ key }) => { if (sidebarCollapsed && PAGE_ROUTES[key]) router.push(PAGE_ROUTES[key]); }}
       />
       <div className="sidebar-bottom">
-        {hasKey !== undefined && <div className="sidebar-item vs-key-status" role="status" aria-label={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`} title={`ElevenLabs · ${hasKey ? "đã nhập key" : "chưa nhập key"}`}><KeyOutlined /><span className="vs-sidebar-label">ElevenLabs</span><Badge status={hasKey ? "success" : "default"} /></div>}
-        <div className="sidebar-footer"><span>VIDEO STUDIO</span><span>vinuni-lesson-video-ds</span></div>
+        <ThemeToggle />
+        <div className="sidebar-footer"><span>VIDEO STUDIO</span></div>
       </div>
     </Layout.Sider>
     <Layout className="workspace">
       <Layout.Content id="main-content" className="main-content">{children}</Layout.Content>
     </Layout>
+    <StudioTour />
   </Layout>;
 }

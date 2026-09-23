@@ -1,0 +1,50 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Structure · layers, timeline, concept map, 2×2, iceberg" subtitle="LayerStack focus walk · Timeline fill · ConceptMap edges drawing · Matrix2x2 highlight · Iceberg depth (each ~3.3 s)" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Structure</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 360px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, W = VK.fadeWindow, A = VK.appear, S = VK.smooth;
+  VK.mountCard('#root', {
+    width: 1400, height: 720, duration: 500,
+    render: function (f) {
+      var focus = f < 40 ? 0 : f < 70 ? 1 : 2;
+      return h(VK.Fragment, null,
+        h('g', { opacity: W(f, 0, 100, 12) },
+          h(VK.LayerStack, { x: 300, y: 130, w: 800, active: focus,
+            layers: [{ label: 'LỚP 3 · GIAO DIỆN' }, { label: 'LỚP 2 · ỨNG DỤNG', sub: 'kiểm tra trước khi chạy' }, { label: 'LỚP 1 · MÔ HÌNH' }] })),
+        h('g', { opacity: W(f, 100, 200, 12) },
+          h(VK.Timeline, { x: 160, y: 380, w: 1080, progress: S(f, 110, 170),
+            items: [{ year: '2017', label: 'TRANSFORMER' }, { year: '2020', label: 'MÔ HÌNH LỚN' },
+              { year: '2023', label: 'TRỢ LÝ', current: true }, { year: 'NAY', label: 'TÁC TỬ' }] })),
+        h('g', { opacity: W(f, 200, 300, 12) },
+          h(VK.ConceptMap, { x: 300, y: 130, w: 800, h: 460,
+            edgeReveal: [S(f, 215, 235), S(f, 225, 245), S(f, 245, 265)],
+            nodes: [{ cx: 0.1, cy: 0.06, label: 'DỮ LIỆU' }, { cx: 0.9, cy: 0.06, label: 'QUY TẮC' },
+              { cx: 0.5, cy: 0.5, label: 'MÔ HÌNH', strong: true }, { cx: 0.5, cy: 0.94, label: 'KẾT QUẢ', accent: true }],
+            edges: [{ from: 0, to: 2, label: 'SINH RA' }, { from: 1, to: 2, label: 'RÀNG BUỘC' }, { from: 2, to: 3, label: 'DẪN TỚI', accent: true }] })),
+        h('g', { opacity: W(f, 300, 400, 12) },
+          h(VK.Matrix2x2, { x: 580, y: 110, size: 440, highlight: f >= 350 ? 1 : -1,
+            axisX: ['TỰ CHỦ THẤP', 'TỰ CHỦ CAO'], axisY: ['RỦI RO THẤP', 'RỦI RO CAO'],
+            cells: [{ label: 'TỰ ĐỘNG' }, { label: 'TỰ ĐỘNG + LOG' }, { label: 'NGƯỜI DUYỆT' }, { label: 'KHÔNG GIAO' }] })),
+        h('g', { opacity: W(f, 400, 500, 12) },
+          h(VK.Iceberg, { x: 360, y: 120, w: 480, h: 460, depth: A(f, 430),
+            above: { label: 'THẤY ĐƯỢC', lines: ['câu trả lời'] },
+            below: { label: 'BÊN DƯỚI', lines: ['dữ liệu', 'ràng buộc', 'chi phí'] } }))
+      );
+    }
+  });
+</script>
+</body>
+</html>

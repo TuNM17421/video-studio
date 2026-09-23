@@ -2,6 +2,41 @@ import React from 'react';
 import { MASCOT_SPOTS } from './Mascot.jsx';
 import { MASCOT as M } from '../../lib/tokens.js';
 import { REVAMP_PATHS } from './revampArtwork.js';
+import { buildRegions, RIG_JOINTS, RIG_POLYS, REGION_ORDER, JOINT_PATCHES, BODY_MASK_HOLES, polyToPath, BADGE_PATHS } from './revampRig.js';
+
+/*
+ * Cutout-puppet rig — verified 2026-09-17, opt-in only.
+ *
+ * `revampRig.js` was built 14/09/2026, measured working within ±26° per its own comments, then
+ * abandoned wholesale and never wired into this component (see MascotRevamp.prompt.md, "Đã kiểm
+ * chứng bằng ảnh thật 2026-09-16"). Re-measured here with `node tools/shoot.mjs` screenshots at
+ * 300/700/1000px before touching any pose:
+ * - `head`/`face` rotated TOGETHER around RIG_JOINTS.head: clean up to -26° (no seam at the
+ *   neck/collar at any size tested). Safe for a real head-tilt pose.
+ * - `armL`/`armR` rotated around their shoulder joint: a real seam (a stray cream sliver from the
+ *   JOINT_PATCH disc peeking past the collar) is visible starting ~8-10° and grows continuously
+ *   with angle — there is no clean cutoff at 26°, the old comment's threshold was already at the
+ *   edge of visible breakage, not a safe zone. At slide size (300px, real production size) the
+ *   sliver is imperceptible through ~15°, faint at 20°, clearly visible by 26°+. At QA card size
+ *   (700-860px) it is visible on close inspection from ~12-15° on.
+ * Conclusion: arm rig rotation is capped at 14° here — enough to read as "tay hạ nhẹ hơn" / a
+ * clearer wave or point, not enough to expose the shoulder seam at any QA size. Head tilt is not
+ * capped as tightly (18°) since it measured clean well past that.
+ *
+ * Regions are computed once from the same 417 approved paths (`REVAMP_PATHS`) — no artwork is
+ * duplicated or hand-edited. Existing poses never call this path; only the four `rig:` poses
+ * below do, so nothing already rendered in a shipped video changes.
+ */
+const RIG_REGIONS = buildRegions(REVAMP_PATHS);
+const RIG_SHARED_SET = new Set(RIG_REGIONS.shared);
+const RIG_ARM_CAP = 14; // degrees — see measurement note above; do not raise without re-shooting QA.
+const RIG_HEAD_CAP = 22; // degrees — head/face measured clean to -26°; kept a margin below that.
+// Positive head tilt cap — MEASURED SEPARATELY 2026-09-17 with a dedicated probe page shot at
+// 300/700/1000px (`mascot-rig-probe.html`, deleted after use), not assumed to mirror RIG_HEAD_CAP
+// just because the artwork isn't symmetric left/right. At +22° the neck/collar and both ear tips
+// are clean at all three sizes — same result as the -22° `headTiltReal` pose, so this direction
+// gets the same cap. Do not raise past 22° without re-shooting.
+const RIG_HEAD_CAP_POS = 22;
 
 /*
  * LEXCE revamp — emotion changes facial features, pose adds readable action cues.
@@ -15,8 +50,22 @@ export const LEXCE_EMOTIONS = Object.freeze([
 
 /**
  * Pose metadata and public names. The upright artwork uses bodyTilt only for
- * leanFoot and look for facial gaze; the remaining fields are retained for API
- * compatibility with older lesson scripts.
+ * leanFoot and look for facial gaze; the remaining fields (liftL, liftR, tilt,
+ * nod, swing) are retained for API compatibility with older lesson scripts but
+ * are NOT read anywhere in the render path below — verified by screenshot diff
+ * on 2026-09-16 (see MascotRevamp.prompt.md).
+ *
+ * Concretely: `stand`/`idle`/`handsDown`/`nod` render 100% pixel-identical —
+ * same raised arms, same horizontal wings. `lookLeft`/`lookRight`/`profileLeft`/
+ * `profileRight`/`think`/`curious`/`lookUp`/`lookDown`/`peek`/`shrug`/`leanIn`
+ * differ only by a `look`-driven pupil shift of at most ~13 units in the
+ * 1122×1402 viewBox (a few px at slide size ~300px, invisible in practice) —
+ * the body/arms/wings never move. Only `leanFoot` (tilted stance) and `hop`
+ * (jump) change the actual silhouette; `wave`/`waveRight`/`bigWave`/`point*`/
+ * `teach`/`present`/`read`/`sketch`/`cheer`/`clap` add an ActionAccent overlay
+ * (motion lines, prop) on top of the same identical base pose. Do not add new
+ * "distinct pose" entries by tweaking liftL/liftR/tilt/nod/swing — they will
+ * silently do nothing. A real new pose needs new source artwork; see prompt.md.
  */
 export const POSE_SPEC = Object.freeze({
   // ── đứng yên ───────────────────────────────────────────────────────────────────────────
@@ -62,7 +111,61 @@ export const POSE_SPEC = Object.freeze({
   profileLeft: { look: -1, tilt: 0, nod: 0.05, liftL: -8, liftR: -10, bodyTilt: 0 },
   profileRight: { look: 1, tilt: 0, nod: 0.05, liftL: -10, liftR: -8, bodyTilt: 0 },
   peek: { look: 0.95, tilt: 8, bodyTilt: 4, nod: 0.15, liftR: -10 },
+
+  // ── rig thật: xoay riêng tay/đầu quanh khớp (revampRig.js), biên độ đã đo bằng ảnh ──────
+  // Đây là pose MỚI, dùng field `rig` mà MascotRevamp THỰC SỰ đọc (không như liftL/liftR ở
+  // trên). Không đổi hành vi của pose cũ nào. Biên độ giữ trong vùng đã đo sạch — xem chú
+  // thích RIG_ARM_CAP/RIG_HEAD_CAP phía trên import.
+  armsSlightDown: { rig: { armR: RIG_ARM_CAP, armL: -RIG_ARM_CAP } },
+  waveReal: { rig: { armLWave: true }, look: -0.18 },
+  pointRealR: { rig: { armR: RIG_ARM_CAP }, look: 0.5, tilt: 3 },
+  headTiltReal: { rig: { head: -RIG_HEAD_CAP }, look: -0.2 },
+
+  // ── rig thật, lô mở rộng 2026-09-17: xem chú thích "Lô mở rộng" phía dưới POSE_SPEC ─────
+  shrugRealR: { rig: { armR: RIG_ARM_CAP } },
+  explainTiltReal: { rig: { head: RIG_HEAD_CAP / 2, armR: RIG_ARM_CAP }, look: 0.35 },
+  headTiltRealR: { rig: { head: RIG_HEAD_CAP_POS }, look: 0.2 },
+  armsEaseReal: { rig: { armL: 9, armR: 9 } },
+
+  // ── rig thật, lô mở rộng lần 3 2026-09-17: xem chú thích "Lô mở rộng lần 3" phía dưới POSE_SPEC
+  pointRealL: { rig: { armL: RIG_ARM_CAP }, look: -0.5, tilt: -3 },
+  shrugRealL: { rig: { armL: RIG_ARM_CAP } },
+  waveRealR: { rig: { armRWave: true }, look: 0.18 },
+  explainBothReal: { rig: { armL: RIG_ARM_CAP, armR: RIG_ARM_CAP }, look: 0.1 },
+  calmGestureReal: { rig: { armR: 6, head: 5 }, look: 0.15 },
 });
+
+/*
+ * Lô mở rộng 2026-09-17 — bốn pose rig mới, TRONG đúng biên độ đã đo phía trên (RIG_ARM_CAP=14,
+ * RIG_HEAD_CAP=22), trừ `headTiltRealR` dùng RIG_HEAD_CAP_POS riêng — xem hằng số và ghi chú ngay
+ * trên import của file này về vì sao chiều dương KHÔNG đối xứng với chiều âm.
+ * - `shrugRealR`: chỉ armR hạ tới cap, armL giữ nguyên — dáng "nhún vai" bất đối xứng.
+ * - `explainTiltReal`: đầu nghiêng NỬA cap (11°, không dùng hết biên) + armR ra tới cap — dáng
+ *   giải thích/point nhẹ.
+ * - `headTiltRealR`: đầu nghiêng chiều DƯƠNG — đã tự shoot kiểm tra riêng, KHÔNG đối xứng với
+ *   headTiltReal (chiều âm); xem RIG_HEAD_CAP_POS.
+ * - `armsEaseReal`: hai tay cùng dấu (không phải gương nhau như armsSlightDown), biên độ 9° —
+ *   nhẹ hơn các pose full-cap khác.
+ *
+ * Lô mở rộng lần 3 2026-09-17 — năm pose rig mới. `armL` DƯƠNG tĩnh (pointRealL, shrugRealL,
+ * explainBothReal) và `armR` ÂM tới -6° khi wave (waveRealR ở đáy sóng) chưa từng xuất hiện trong
+ * hai lô trước; tự dựng `mascot-rig-probe3.html` (xoá sau khi dùng), shoot ở size=300/700/1000
+ * cho cả bốn tổ hợp mới, soi từng ảnh:
+ * - `pointRealL`: armL:+14° tĩnh, gương `pointRealR`. Vai trái sạch ở cả ba size — cùng kết quả
+ *   như armR:+14° vì JOINT_PATCH là đĩa tròn, xoay chiều nào cũng đối xứng về mặt hình học.
+ * - `shrugRealL`: armL:+14° tĩnh, armR:0 — gương `shrugRealR`, cùng ảnh vai với pointRealL (chỉ
+ *   khác look/tilt), sạch.
+ * - `waveRealR`: animated armR quét -6°..+14° (gương công thức `armLWave` của `waveReal`, thêm
+ *   nhánh `armRWave` trong `rigAngle`). Đáy sóng (armR:-6°, frame≈16) là lần đầu armR ÂM xuất
+ *   hiện — sạch ở cả ba size, khớp lý luận đối xứng đĩa tròn ở trên.
+ * - `explainBothReal`: armL:+14° VÀ armR:+14° CÙNG lúc — tổ hợp rủi ro nhất vì hai vùng xoay cùng
+ *   lúc có thể hở khác khi xoay riêng lẻ. Soi kỹ cả hai vai cùng một khung ở 300/700/1000px: vai
+ *   trái và vai phải đều sạch, không hở khe cổ áo, không đè lệch — không phát hiện tương tác xấu
+ *   giữa hai vùng xoay đồng thời.
+ * - `calmGestureReal`: armR:6°, head:5° — trong biên độ đã đo rộng rãi (nửa cap), rủi ro thấp;
+ *   vẫn lên probe cho chắc, sạch ở mọi size.
+ * Kết luận: cả năm pose giữ nguyên số đo đề xuất, không phải hạ biên độ.
+ */
 
 export const LEXCE_POSES = Object.freeze(Object.keys(POSE_SPEC));
 
@@ -293,6 +396,83 @@ export function MascotRevamp({
     return part === 'base' ? path : <g key={index} transform={partTransform[part]}>{path}</g>;
   };
 
+  /*
+   * Rig path — only entered for the four `rig:` poses above. Splits REVAMP_PATHS into the
+   * cutout-puppet regions (revampRig.js), rotates armR/armL/head by the measured-safe angle,
+   * and redraws the shared base paths clipped to each region's own polygon (that clip step is
+   * what `revampRig.js`'s own comment calls out and the abandoned prototype skipped — leaving it
+   * out is exactly what produced the shoulder-seam artifact re-measured here on 2026-09-17).
+   */
+  const rigSpec = P.rig;
+  // Shared wave curve for either arm: sweeps -6°..+RIG_ARM_CAP, static hold at RIG_ARM_CAP*0.4.
+  // armRWave (lô mở rộng lần 3) mirrors the armLWave formula used by waveReal — same joint
+  // physics (circular JOINT_PATCH, rotation-direction-invariant), re-verified for armR via
+  // mascot-rig-probe3.html before shipping (see the "Lô mở rộng lần 3" note above POSE_SPEC).
+  const armWave = animated ? clamp(-6 + (wave(f, 20) + 1) / 2 * (RIG_ARM_CAP + 6), -6, RIG_ARM_CAP) : RIG_ARM_CAP * 0.4;
+  const rigAngle = {
+    armR: rigSpec?.armRWave ? armWave : (rigSpec?.armR ?? 0),
+    armL: rigSpec?.armLWave ? armWave : (rigSpec?.armL ?? 0),
+    head: rigSpec?.head ?? 0,
+    face: rigSpec?.head ?? 0, // head and face tilt together — see safety note above the imports.
+  };
+  const wrappedPath = (index) => {
+    if (flatUpright && (index === 0 || index === 2)) {
+      return <g key={`w${index}`} clipPath="url(#lexce-flat-bottom-cut)">{drawPath(index)}</g>;
+    }
+    return drawPath(index);
+  };
+  const renderRigBody = () => {
+    const maskId = 'lexce-rig-body-mask';
+    return <>
+      <defs>
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="1122" height="1402">
+          <rect x="0" y="0" width="1122" height="1402" fill="#fff" />
+          {BODY_MASK_HOLES.map((d, i) => <path key={i} d={d} fill="#000" />)}
+        </mask>
+      </defs>
+      {REGION_ORDER.map((key) => {
+        if (key === 'body') {
+          // Mask chỉ nên áp cho path nền dùng chung (shared) — path riêng của body (ví dụ logo
+          // VinUni trên ngực) không nằm dưới đầu/tay nên không cần cắt lỗ; mask cả nhóm che mất
+          // luôn những path nhỏ này nếu bbox của chúng chồng lên vùng lỗ head/armL/armR.
+          const bodyShared = RIG_REGIONS.body.filter((i) => RIG_SHARED_SET.has(i));
+          const bodyOwn = RIG_REGIONS.body.filter((i) => !RIG_SHARED_SET.has(i));
+          return <g key="body">
+            <g mask={`url(#${maskId})`}>{bodyShared.map(wrappedPath)}</g>
+            {bodyOwn.map(wrappedPath)}
+          </g>;
+        }
+        const angle = rigAngle[key] ?? 0;
+        const patch = JOINT_PATCHES.find((p) => p.name === key);
+        const shared = RIG_REGIONS[key].filter((i) => RIG_SHARED_SET.has(i));
+        const own = RIG_REGIONS[key].filter((i) => !RIG_SHARED_SET.has(i));
+        const [jx, jy] = RIG_JOINTS[key];
+        const clipId = `lexce-rig-clip-${key}`;
+        return <g key={key}>
+          {patch && <g clipPath={`url(#lexce-rig-patch-${key})`}>
+            <clipPath id={`lexce-rig-patch-${key}`} clipPathUnits="userSpaceOnUse">
+              <circle cx={patch.cx} cy={patch.cy} r={patch.r} />
+            </clipPath>
+            {RIG_REGIONS.shared.map(wrappedPath)}
+          </g>}
+          <clipPath id={clipId} clipPathUnits="userSpaceOnUse"><path d={polyToPath(RIG_POLYS[key])} /></clipPath>
+          <g transform={angle ? `rotate(${angle} ${jx} ${jy})` : undefined}>
+            <g clipPath={`url(#${clipId})`}>{shared.map(wrappedPath)}</g>
+            {own.map(wrappedPath)}
+          </g>
+        </g>;
+      })}
+      {/*
+       * Huy hiệu ngực (BADGE_PATHS) đã được ép về vùng `body` trong buildRegions(), nhưng thứ tự vẽ
+       * theo REGION_ORDER (body trước, armR sau cùng) vẫn để tay đè lên nó ở tư thế nghỉ — đúng chỗ
+       * mà bản flat (không rig) không gặp vì giữ nguyên thứ tự index gốc. Vẽ lại một lần nữa, không
+       * mask/không clip, ở lớp trên cùng để huy hiệu luôn hiện đúng như bản không rig — đo bằng ảnh
+       * thật 17/09/2026 (reports/mascot-qa/actions-f16.png trước/sau).
+       */}
+      {BADGE_PATHS.map(wrappedPath)}
+    </>;
+  };
+
   const occupies = `${Math.round(px)},${Math.round(py)},${Math.round(height * 1122 / 1402)},${Math.round(height)}`;
   return <g transform={`translate(${px} ${py}) scale(${height / 1402})`}
     opacity={opacity * enterProgress} data-vk-occupies={occupies}
@@ -307,15 +487,17 @@ export function MascotRevamp({
                 <rect x="-100" y="-100" width="1400" height="1280" />
               </clipPath>
             </defs>}
-            {REVAMP_PATHS.map((_, index) => {
+            {rigSpec ? renderRigBody() : REVAMP_PATHS.map((_, index) => {
               if (flatUpright && index === SHADOW_PATH) return null;
               // The source's cream underpaint and outer outline extend below the feet.
               // Clip only those two paths; the suit and feet keep their full silhouettes.
               if (flatUpright && (index === 0 || index === 2)) return <g key={index} clipPath="url(#lexce-flat-bottom-cut)">{drawPath(index)}</g>;
               return drawPath(index);
             })}
-            <FaceOverlay emotion={mood} blink={blink} mouthScale={mouthScale} gaze={gaze} />
-            <ExpressionMarks emotion={mood} frame={f} animated={animated} />
+            <g transform={rigAngle.head ? `rotate(${rigAngle.head} ${RIG_JOINTS.head[0]} ${RIG_JOINTS.head[1]})` : undefined}>
+              <FaceOverlay emotion={mood} blink={blink} mouthScale={mouthScale} gaze={gaze} />
+              <ExpressionMarks emotion={mood} frame={f} animated={animated} />
+            </g>
             <ActionAccent pose={poseName} frame={f} animated={animated} />
         </g>
       </g>

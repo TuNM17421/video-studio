@@ -48,24 +48,24 @@ export const ROLE_OF = Object.freeze({
   memory: [ROLE.amber, ROLE.amberSoft],
 });
 
+/** Palette for the approved LEXCE mascot artwork. */
 export const MASCOT = Object.freeze({
-  outline: '#1B2E5A', //   nét viền chung (bản plush không có viền; video cần, xem Mascot.prompt.md)
-  shadow: '#0B2E4A', //    bóng đổ dưới chân
-  fur: '#F7EFDD', //       lông kem: đầu, khăn cổ
-  cheek: '#F4A4B4', //     má hồng
-  ear: '#4457C9', //       tai xanh royal
-  earInner: '#7FA6E4', //  lòng tai, lọn tóc trán, lông mày
-  eye: '#1E2B7A', //       mắt navy
-  beak: '#FA8842', //      mỏ cam
-  mouth: '#E23A2E', //     trong miệng khi mỏ há
-  suit: '#3C50C4', //      bộ liền thân xanh
-  patch: '#F0D9AC', //     yếm be trước bụng
-  logoNavy: '#1F3573', //  chữ V trên yếm
-  logoRed: '#E8322A', //   tam giác đỏ của logo
-  wing: '#F3E3C4', //      lông cánh kem
-  hand: '#F9D374', //      bàn tay vàng
-  foot: '#A6CBEF', //      bàn chân xanh nhạt
-  // Màu lấy trực tiếp từ vector LEXCE revamp; phần chân đứng mới phải khớp ảnh gốc.
+  outline: '#1B2E5A',
+  shadow: '#0B2E4A',
+  fur: '#F7EFDD',
+  cheek: '#F4A4B4',
+  ear: '#4457C9',
+  earInner: '#7FA6E4',
+  eye: '#1E2B7A',
+  beak: '#FA8842',
+  mouth: '#E23A2E',
+  suit: '#3C50C4',
+  patch: '#F0D9AC',
+  logoNavy: '#1F3573',
+  logoRed: '#E8322A',
+  wing: '#F3E3C4',
+  hand: '#F9D374',
+  foot: '#A6CBEF',
   revampSuit: '#2B58B4',
   revampFoot: '#8CC1FC',
   revampFootHighlight: '#C2DFFF',
@@ -74,9 +74,9 @@ export const MASCOT = Object.freeze({
   revampEye: '#102352',
   revampMouth: '#D31F1F',
   revampPointer: '#B97839',
-  tail: '#EE3B33', //      đuôi lửa đỏ
-  tear: '#6FB6E8', //      giọt nước mắt (pose sad)
-  motion: '#F2C14E', //    vạch tốc độ, bóng đèn emote
+  tail: '#EE3B33',
+  tear: '#6FB6E8',
+  motion: '#F2C14E',
 });
 
 export const FONT = "'Montserrat', 'Segoe UI', system-ui, sans-serif";
