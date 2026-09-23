@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Review player cho __ID__ (không phải card của design system):
+     phát / tua / nhảy tới từng câu. ?frame=N đóng băng một frame ở 1:1 để chụp QA. -->
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>__TITLE__ — player</title>
+<link rel="stylesheet" href="../../../../styles.css" />
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body { background: #181f38; }
+  #root { position: relative; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../../dist/vk.js"></script>
+<script>VK.mountSceneById('#root', '__ID__');</script>
+</body>
+</html>

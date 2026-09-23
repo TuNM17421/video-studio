@@ -282,6 +282,20 @@ vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
   mà mang cờ thì `npm run verify` báo problem, còn `render.mjs` bỏ câu đó khỏi đoạn nhạc quiz.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
+## Dòng video "poster vector" (harness poster)
+
+Một style thứ ba bên cạnh `lesson` / `lesson-lab`: full-frame, một carrier chạy suốt, mốc nhấn neo
+vào lời. Metadata `styles/poster.json`, doctrine đầy đủ `styles/poster.md` (quy trình · ngôn ngữ
+chuyển động · API `lib/poster`). Engine ở `vinuni-lesson-video-ds/lib/poster/**`.
+
+- Quy trình chạy bằng `node tools/stage.mjs <build|verify|shoot|sfx|render|transcript|qa> --video <id>`.
+- Gate riêng của dòng này: `storyboard-gate` (G1–G8) · `qa-layout` · `dead-frames` · `vach-boundary` ·
+  `text-gate` · `scene-pace` · `audio-qa` · `verify:baseline`. `npm run doctor:harness` soát chính kho harness
+  (`npm run doctor` vẫn là môi trường máy).
+- Tiếng động bốn lớp: `sfx.json` + `npm run sfx:fetch` / `sfx:mix`. Backend giọng thứ hai (ZeroTTS, CPU):
+  `tools/voice-zerotts.mjs`, khai bằng `voice: zerotts:<giọng>` trong REQUEST.md.
+- Ảnh tư liệu dùng đường `image-suggest` ở mục trên (`images.js` + `PhotoCard`).
+
 ## Media nặng (`media/`, Cloudflare R2)
 Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`
 (được commit) giữ base URL + danh sách asset, nên ai clone repo về cũng xem được mà không cần cấu hình gì.

@@ -14,6 +14,21 @@ script, optional feedback / old-video folders, notes and the scope. Read it firs
 
 Video dir below = `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/`. Reply in Vietnamese.
 
+## Style: đọc `styles/<id>.md`
+
+SKILL này là **lõi** — 5 stage, đúng cho mọi style. Mỗi style có hướng dẫn RIÊNG bên cạnh metadata
+của nó: `styles/<id>.json` (bảng màu, showcase, luật rút gọn) và `styles/<id>.md` khi style đó cần
+doctrine dài. Luật của style **ghi đè** mặc định ở đây.
+
+| Style | Metadata | Hướng dẫn riêng |
+|---|---|---|
+| `lesson` · `lesson-lab` | `styles/lesson.json` · `styles/lesson-lab.json` | — (luật nằm trong `rules[]`) |
+| `poster` | `styles/poster.json` | **`styles/poster.md`** — quy trình dòng poster · ngôn ngữ chuyển động · API `lib/poster` |
+
+Các file còn lại trong `.claude/skills/make-video/` là tra theo triệu chứng, không đọc trước:
+`failure-modes.md` (FM-01…, gồm checklist 8 lỗi Stage 3) · `script-craft.md` + `script-craft-appendix.md` ·
+`role-qa.md` · `video-anatomy.md` · `visual-assets.md` · `voice-kaggle.md` · `voice-zerotts.md`.
+
 ## Check the script before building — ask, never assume
 
 For a new or substantially rewritten lesson, assign one dedicated script lane before cues. That lane writes narration only; the owner still verifies sources, reads the whole script aloud, repairs continuity, and records the review in `PROMPTS.md`.
@@ -115,26 +130,8 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
   and lib/tokens.js; Montserrat; connectors = particle on the drawn path, hidden on card faces, one pulse per
   arrival; no numbers or results the script does not give; prefer the style's showcase components when the
   content fits. Several scene groups can be built in parallel with forked agents.
-- Recurring mistakes (QA d1, 09/2026) — check every scene against these:
-  1. `HookOverlay` hides scene 1 under a white backdrop for its first 96–150 f, and `spokenAt` is fixed by the
-     voice: clamp every beat anchored to a phrase spoken during the hook (`Math.max(spokenAt(N, …), T.hook)`)
-     or shorten the hook until the first anchored phrase lands after the fade-out.
-  2. No meaningless placeholders (grey bars, empty boxes, blank app windows) standing through a câu while the
-     narration names the content: dashed slots only when the script says "chưa biết / sẽ có" — otherwise
-     fill them with the words being spoken.
-  3. Never draw a connector or particle to an empty slot: card first, particle after, one pulse.
-  4. Labels ≥ 24 px from any outline and ≥ 32 px from other text — never wedged between two borders or
-     touching a pill / card edge; the câu's key concept is the biggest text in the diagram (`GlassBox`'s
-     `label` pill, not a loose 18 px text label of your own).
-  5. Cards start inside the frame and move along an empty lane — never slide in from outside across another
-     card's face.
-  6. Consecutive câu on one diagram inherit the frame and change only the text — keep positions, colors and
-     label names; no wipe-to-white and redraw in the same place (a blank second).
-  7. Captions: read each câu's pages with `paginate` from lib/captions.js (verify prints only the video's
-     total) and re-read every break before "từ / cho / bên"; a break that changes the meaning goes back to
-     Stage 1 — never edit the narration here.
-  8. `quiz: true` only on the `silent` cue (Stage 1 rule); `npm run verify` now reports a problem when it sits
-     on a spoken câu.
+- Recurring mistakes (QA d1, 09/2026) — the eight-item Stage 3 checklist lives in
+  `failure-modes.md` §"Checklist Stage 3" (single source). Walk every scene through it before QA.
 - `npm run build && npm run verify` must end with "all checks passed".
 - QA: shoot three frames per câu — `start + 20`, the middle, `end − 3` (`sNN-a/b/c.png` or `sNN-fNNN.png`) —
   to `projects/<id>/qa/` with `node tools/shoot.mjs --batch <jobs.json>`; build jobs.json from `timeline.js`

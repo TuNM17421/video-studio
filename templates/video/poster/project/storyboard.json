@@ -1,0 +1,180 @@
+{
+  "$comment": "Khung sinh bởi tools/new-video.mjs. Script lane nộp file này ở Stage 1 (cues), TRƯỚC khi ai viết cảnh. Gate: `npm run gate:storyboard -- --video __ID__` (G1–G6). JSON không có comment — mọi khoá bắt đầu bằng `_` hoặc `$` là ghi chú và MỌI gate bỏ qua.",
+  "video": "__ID__",
+
+  "$images": "Ảnh tư liệu KHÔNG khai ở đây. Đường ảnh là của remote: node tools/image-search.mjs → image-check.mjs → image-apply.mjs, ghi <thư mục video>/images.js, cảnh vẽ bằng <PhotoCard>. Gate G6 của storyboard-gate soát chính images.js.",
+
+  "_example": {
+    "$comment": "KHÔNG phải dữ liệu thật — khoá `_example` để mọi gate bỏ qua. Chép cấu trúc bên trong vào `scenes[]` rồi xoá khối này. Mọi `anchor` phải là chữ CÓ THẬT trong `text` của cue đó (G2), mọi `id` tiếng động phải có trong sfx.json và có file ở assets/sfx/ (G4).",
+    "scene": {
+      "id": "cold-open",
+      "chapter": "cold-open",
+      "authoredDur": 13,
+      "cues": [1, 2, 3],
+      "metaphor": "một ẩn dụ cho cả cảnh — người đọc hình dung ra ngay hay không",
+      "beats": [
+        {
+          "anchor": "cụm từ có thật trong cue",
+          "cue": 1,
+          "does": "chuyện gì xảy ra trên hình đúng lúc đọc tới cụm đó",
+          "inCode": true,
+          "sfx": { "id": "stamp", "pan": -0.25, "offsetMs": 600 }
+        }
+      ],
+      "onScreenText": ["1973", "33 năm"],
+      "ambience": { "id": "wind", "fromCue": 1, "toCue": 3, "gainDb": -4 },
+      "$illustration": "bỏ — xem khoá $images ở gốc file"
+    },
+    "layers": {
+      "$comment": "Bốn lớp tiếng động và trần của từng lớp: sfx.json `_layers`. `accent` có trần CỨNG 4 lần/video — luật của Thái, đừng nới.",
+      "accent": "kéo sự chú ý về một mốc · ≤4 mỗi video",
+      "transition": "ranh giới chương/section · sfx-mix tự đặt, không khai tay",
+      "foley": "tiếng của chính vật đang chuyển động trên hình",
+      "ambience": "bed liên tục, khai bằng `ambience` trong cảnh"
+    }
+  },
+
+  "scenes": [
+    {
+      "id": "intro",
+      "chapter": "intro",
+      "authoredDur": 3,
+      "cues": [1],
+      "metaphor": "(điền — một ẩn dụ cho cả cảnh; người đọc hình dung ra ngay hay không)",
+      "beats": [
+        { "anchor": "Placeholder", "cue": 1, "does": "(điền — hình làm gì đúng lúc đọc tới cụm đó)", "inCode": true }
+      ],
+      "onScreenText": ["__TITLE__"]
+    },
+
+    {
+        "id": "quiz-1",
+        "chapter": "quiz",
+        "authoredDur": 13,
+        "cues": [
+            4,
+            5,
+            6,
+            7
+        ],
+        "metaphor": "(điền — thẻ câu hỏi 1: ba lựa chọn, đúng một)",
+        "beats": [
+            {
+                "anchor": "placeholder",
+                "cue": 4,
+                "does": "(điền — hai lựa chọn đầu hiện ra)",
+                "inCode": true
+            }
+        ],
+        "onScreenText": [
+            {
+                "text": "1. placeholder lựa chọn 1",
+                "kind": "quiz"
+            },
+            {
+                "text": "2. placeholder lựa chọn 2",
+                "kind": "quiz"
+            },
+            {
+                "text": "3. placeholder lựa chọn 3",
+                "kind": "quiz"
+            },
+            {
+                "text": "Đáp án: 3",
+                "kind": "quiz"
+            }
+        ],
+        "quiz": {
+            "answer": 3,
+            "checks": "(điền — câu này kiểm ý lớn nào của bài)"
+        },
+        "$silent": 6
+    },
+    {
+        "id": "quiz-2",
+        "chapter": "quiz",
+        "authoredDur": 13,
+        "cues": [
+            8,
+            9,
+            10,
+            11
+        ],
+        "metaphor": "(điền — thẻ câu hỏi 2: ba lựa chọn, đúng một)",
+        "beats": [
+            {
+                "anchor": "placeholder",
+                "cue": 8,
+                "does": "(điền — hai lựa chọn đầu hiện ra)",
+                "inCode": true
+            }
+        ],
+        "onScreenText": [
+            {
+                "text": "1. placeholder lựa chọn 1",
+                "kind": "quiz"
+            },
+            {
+                "text": "2. placeholder lựa chọn 2",
+                "kind": "quiz"
+            },
+            {
+                "text": "3. placeholder lựa chọn 3",
+                "kind": "quiz"
+            },
+            {
+                "text": "Đáp án: 3",
+                "kind": "quiz"
+            }
+        ],
+        "quiz": {
+            "answer": 3,
+            "checks": "(điền — câu này kiểm ý lớn nào của bài)"
+        },
+        "$silent": 10
+    },
+    {
+        "id": "quiz-3",
+        "chapter": "quiz",
+        "authoredDur": 13,
+        "cues": [
+            12,
+            13,
+            14,
+            15
+        ],
+        "metaphor": "(điền — thẻ câu hỏi 3: ba lựa chọn, đúng một)",
+        "beats": [
+            {
+                "anchor": "placeholder",
+                "cue": 12,
+                "does": "(điền — hai lựa chọn đầu hiện ra)",
+                "inCode": true
+            }
+        ],
+        "onScreenText": [
+            {
+                "text": "1. placeholder lựa chọn 1",
+                "kind": "quiz"
+            },
+            {
+                "text": "2. placeholder lựa chọn 2",
+                "kind": "quiz"
+            },
+            {
+                "text": "3. placeholder lựa chọn 3",
+                "kind": "quiz"
+            },
+            {
+                "text": "Đáp án: 3",
+                "kind": "quiz"
+            }
+        ],
+        "quiz": {
+            "answer": 3,
+            "checks": "(điền — câu này kiểm ý lớn nào của bài)"
+        },
+        "$silent": 14
+    }
+  ]
+}

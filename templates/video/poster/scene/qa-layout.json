@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "note": "Video dòng poster-vector: chrome riêng (không dùng SceneFrame), mọi chữ đều do lane scene đặt nên chịu được ngưỡng chặt 64px / 22px. Video dựng bằng design system kiểu cũ (dòng slide) thì KHÔNG bật.",
+  "allow": []
+}
