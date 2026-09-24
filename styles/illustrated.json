@@ -118,7 +118,7 @@
       "image": "data__Heatmap.png"
     }
   ],
-  "sampleVideo": "n1-03-llm-sinh-tung-token",
+  "sampleVideo": "n1-05-co-che-chu-y",
   "unsupportedModules": [
     "dialogue",
     "mascot"

@@ -9,8 +9,11 @@ extends: lesson-lab
 `timeline.js`, phụ đề, beat theo `spokenAt` như mọi video. Nhưng **không** dùng `Series` và `sNN.jsx`:
 style này có cơ chế riêng, giống bảng trắng ở chỗ cả video là một mặt duy nhất.
 
-Video mẫu: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n1-03-llm-sinh-tung-token/` — đọc
-`canvas.jsx` (bố cục mặt phẳng, mốc camera, vùng soát) và `video.jsx`.
+Video mẫu: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n1-05-co-che-chu-y/` — đọc
+`canvas.jsx` (bố cục mặt phẳng, mốc camera, vùng soát) và `video.jsx`. Ở đó một câu văn đứng yên
+suốt bài rồi **chuyển thân** thành cụm ba thẻ, nên nó cho xem đủ cả ba việc: biến hình tại chỗ,
+máy quay đi giữa hai mặt phẳng, và chú thích lui khi máy quay rời khỏi chỗ của nó.
+`n1-03-llm-sinh-tung-token/` là bản dựng trước đó, vẫn đọc được để so.
 
 Component riêng, **hai nhóm**:
 - `components/illustrated/` — sân khấu và từ vựng nội dung: đọc `Canvas.prompt.md` trước, rồi
@@ -146,3 +149,8 @@ sai, và người xem không có cách nào biết. Nếu kịch bản không đ
 - Chụp cả **khung giữa** của mỗi phép biến hình, không chỉ đầu và cuối: hình ở giữa phải ra một hình
   trung gian hợp lý, không xoắn và không nhảy. Đây là lỗi ảnh đầu/cuối không bao giờ lộ.
 - Độ đặc chỉ rơi vào ba mức 100 / 40 / 15; trục toạ độ ở mức khung, không tranh chú ý với vật.
+- **Chú thích lui khi máy quay rời khỏi chỗ của nó.** Vật liệu ở lại, nhưng ngoặc, cung, nhãn hay dải
+  phụ của một câu thì tắt khi camera sang cụm khác — giữ chúng lại là cách chắc chắn nhất để một khung
+  zoom sau đó có chữ đè lên eyebrow hoặc có nửa tấm thẻ lòi ra mép. `checkCanvas` **không** bắt được,
+  vì nó chỉ soát vùng ta tự khai; chỉ mở ảnh ra nhìn mới thấy.
+- Không có cung chú ý nào nối một ô vào chính nó: ra một vệt gần thẳng đứng, người xem đọc thành lỗi vẽ.
