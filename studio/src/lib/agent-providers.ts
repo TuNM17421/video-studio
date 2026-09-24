@@ -13,7 +13,7 @@ export const AGENT_PROVIDER_OPTIONS: {
   experimental?: boolean;
 }[] = [
   { value: "claude", label: "Claude Code", description: "Chạy bằng Claude Code CLI đã đăng nhập trên máy." },
-  { value: "codex", label: "Codex", description: "Chạy bằng Codex CLI đã đăng nhập trên máy." },
+  { value: "codex", label: "Codex", description: "Chạy bằng Codex CLI đã đăng nhập trên máy. Sandbox workspace-write không giới hạn được theo thư mục, nên Codex ghi được khắp repo; phần soát trích đoạn vì thế tự tải lại trang gốc khi thấy chữ đã lưu bị sửa." },
   {
     value: "antigravity",
     label: "Antigravity",

@@ -99,14 +99,100 @@ từng file, sửa thì add lại; phần nặng (`voice.wav`, MP4, ảnh QA) �
 `video-studio:tour-step` và trang video tự mở bước đó. Dựng lại video mẫu thì đẩy lại ba loại file đó vào
 `media/files/samples/<id>/` rồi `npm run media`.
 
+## Đóng gói kịch bản: slide giảng viên → research → kịch bản (skill `research-script`)
+Pipeline riêng, tách khỏi luồng video; mỗi lượt là `research/<rid>/` — **gitignore, chỉ trên máy người dùng**, như
+video. Lượt mẫu chỉ-xem sẽ ở `research/template-research/` (`git add -f`, không kèm `sources/` và log) — **chưa có**,
+chờ chọn slide được phép commit; Studio đã hỗ trợ sẵn (`"sample": true` trong state.json). Không có API key
+LLM nào: Studio gọi agent coding của người dùng (Claude Code / Codex / Antigravity), từng chặng nhỏ, token chỉ dùng
+cho phán đoán. `.claude/skills/research-script/SKILL.md` là nguồn chuẩn; mỗi chặng một file (`extract.md`,
+`research.md`, `write.md`, `edit.md`) để agent chỉ đọc đúng phần của mình.
+- Chặng: nạp slide (code, `tools/research-slide.mjs`) → bóc tách claim (agent, không web) → **cổng 1** người duyệt →
+  research từng lô claim (agent có web search; đọc trang bằng `node tools/page.mjs research/<rid> <url> --find "…"`,
+  chỉ trả đoạn nguyên văn có từ khoá) → soát bằng chứng (code) → **cổng 2** tự qua nếu đạt → viết theo
+  `templates/kich-ban-co-ban.md`, mỗi câu có dòng `**Nguồn:** slide:N, cN` → soát mẫu (code) + agent biên tập →
+  **cổng 3** duyệt/góp ý → "Tạo video từ kịch bản này" mở bước Kế hoạch với kịch bản điền sẵn (`/?fromResearch=<rid>`).
+- Soát là một lệnh cho cả Studio và agent tự chạy: `node tools/research-verify.mjs research/<rid> --stage
+  extract|evidence|script` (ghi `checks/*.json`). Trích đoạn so với trang gốc Studio tự tải (WebFetch của Claude
+  trả bản một model nhỏ đã đọc lại); nguồn độc lập và độ mới tính theo `difficulty`/`timeSensitive` của claim.
+  Năm chỗ **không được tin vào chữ agent viết ra**, mỗi chỗ đã tái hiện được trước khi vá: (1) cờ `reused`
+  nằm trong `claims/**` nên phải khớp đúng dữ kiện thật trong `_facts/` (khoá, câu slide, ngày soát, từng
+  trích đoạn) mới miễn soát; (2) verdict `insufficient` **qua** được soát bằng chứng nhưng phải dừng ở cổng 2,
+  không thì một lượt agent mất mạng mở cổng với dòng "mọi claim đạt"; (3) nhãn `kind: official` là chữ agent
+  gõ — tên miền không tự nhận ra được thì thành cảnh báo cho người duyệt, và cổng 2 dừng khi claim `high`
+  hoặc `timeSensitive` có cảnh báo; (4) `sources/<sid>/page.txt` có vân tay sha256 do code ghi ở
+  `research/_pages/<rid>.json` (ngoài mọi glob `WRITABLE`) — lệch thì tải lại trang thật, nên "khớp trang gốc"
+  đúng cả với Codex/Antigravity, hai CLI ghi được khắp repo; (5) mỗi dòng của `checks/evidence.json` giữ vân tay
+  `finding.json` lúc soát — mỗi lượt chỉ soát claim của lô nó, nên finding của claim **ngoài lô** mà đổi (agent lô sau
+  ghi đè con số của claim đã đạt) thì bị soát lại ngay, kèm cảnh báo, thay vì giữ dấu "đạt" cũ.
+- Con số **người xem nghe thấy** cũng được soát: `spokenNumbers()` đọc lời đọc tiếng Việt về giá trị ("một
+  trăm triệu" → 100000000) rồi đối chiếu với slide và finding đã qua soát. Trước đó không phép soát nào nhìn
+  vào lời đọc — luật lint bắt viết số thành chữ, còn vòng quét chữ số chỉ đọc dòng **Trên màn hình**.
+  Số thập phân ("hai phẩy năm", "một phẩy năm triệu") là một con số và được soát cả khi dưới mười.
+- **Độ dài theo "Số câu"** người dùng đặt: ~24 từ mỗi câu (`WORDS_PER_CUE` trong `script-lint.mjs` =
+  `SCRIPT_BUDGET` trong `research.ts`, có test giữ khớp). Prompt viết báo trước mức đó; `--stage script` so cả số
+  câu lẫn số từ (quá 1,2 lần → cảnh báo, quá 1,5 lần → lỗi, lượt sửa rút gọn) và ghi lại dòng **Thời lượng dự
+  kiến:** theo lời đọc thật. Lượt thật đầu tiên: đặt 20 câu, ra 34 câu, khoảng 6 phút thay vì khoảng 3.
+- Lượt sửa không được "mua" hết cảnh báo: viết tắt có trong slide/finding (LLM, API) không bị cảnh báo; loại
+  `code: 'pronounce'` (tên có chữ số) là việc của bước làm video, không gửi agent sửa; câu dài thì cắt ý, không
+  tách câu. Góp ý biên tập mang `quote` để Studio gắn đúng câu sau khi lượt sửa đánh số lại.
+- **Chi phí** (lượt test 22/9: $8,06 giá API quy đổi, research 60%, và gần nửa tiền research là làm lại): agent
+  research **tự soát trước khi dừng** bằng `research-verify … --stage evidence --dry --claims …` (chỉ đọc, không tải
+  web; `--dry` ghép với chế độ ghi nào cũng bị từ chối, vì lệnh nằm trong allowlist); lượt làm lại nhận lỗi + bảng
+  nguồn + trang đã tải ngay trong prompt và đi từng cặp claim (`RETRY_BATCH`); bóc tách chọn tối đa `claimCap(cues)`
+  claim (nửa số câu); trang giá/docs chính thức của đúng hãng không ghi ngày tính là hiện hành (`asOf` = ngày tải);
+  vòng đầu sửa lỗi định dạng chạy Haiku (`lint` trong `CLAUDE_MODEL`), vòng hai lên Sonnet.
+- **Bóc tách đọc chữ, không đọc PDF:** nạp slide PDF thì `unpdf` (PDF.js, MIT, cần Node 22+) bóc chữ từng trang vào
+  `input/slides.json` + `slide.md`, bỏ chân trang lặp lại (`stripRepeated`). `outline.json` do **code** dựng
+  (`outlineFromSlides`, PPTX cũng vậy) và dựng lại mỗi lần `--stage extract` — agent bóc tách chỉ ghi `claims.json`
+  (kèm `skip` tuỳ chọn), chỉ mở trang PDF "ít chữ" khi cần xem hình. Đo trên bộ 78 trang: $0,69 / 8 phút → $0,26 /
+  48 giây, và số trang đúng tuyệt đối. PDF quét ảnh, mã hoá hay Node cũ thì agent đọc thẳng PDF như trước. PDF
+  nguồn khi research cũng qua PDF.js (`pdfTextAsync`) sau `pdftotext`.
+- Nguồn gốc hay là PDF (system card, báo cáo, bài nghiên cứu): `tools/lib/pdf-text.mjs` đọc được bằng Node
+  thuần (giải nén stream, mở `/ObjStm`, đọc bảng `/ToUnicode`), dùng `pdftotext` nếu máy có. Không ra chữ thì
+  trả "không đọc được" chứ không trả rác. Trước đó mọi PDF bị loại, nên phép soát **thưởng cho nguồn kém**.
+- Claim qua soát được lưu vào `research/_facts/` (theo `key`, hạn 90 ngày nếu hay đổi, 365 ngày nếu ổn định)
+  **chỉ khi cổng 2 đã qua** (`--save-facts`), kèm cảnh báo lúc soát — lưu sớm hơn thì claim người duyệt bỏ vẫn tự qua ở
+  bài sau. `--reuse` điền lại cho bài sau; lượt không bao giờ dùng lại dữ kiện của chính nó, và "Research lại" gỡ dữ
+  kiện lượt đó đã lưu (`--forget-facts`). Dòng "dùng lại dữ kiện…" là `notes`, không phải cảnh báo làm cổng 2 dừng.
+- Agent đọc slide và trang web của người khác, nên Claude chỉ được ghi **đúng file của chặng đó** (`WRITABLE` trong
+  `runner.ts`: bóc tách → outline/claims.json, research → `claims/<id>/**` của đúng các claim trong lô, viết/sửa → `output/**`, biên tập →
+  `checks/edit.json`). `sources/<sid>/page.txt`, `checks/evidence.json` và `state.json` chỉ đọc — agent ghi được vào
+  `page.txt` thì nó "chứng minh" trích đoạn bằng chính chữ nó viết. Đo thật: ghi vào `tools/` bị chặn, `node
+  tools/page.mjs … > tools/x` cũng bị chặn dù lệnh nằm trong allowlist, và chặng research bị chặn khi ghi vào
+  `sources/` — một câu chèn trong trang không thành lệnh chạy
+  trên máy. Codex (`workspace-write`) và Antigravity (không allowlist) không giới hạn được theo thư mục; bộ chọn ghi
+  Antigravity là "thử nghiệm, không giới hạn quyền".
+- Mỗi lượt Claude chạy `--tools` chỉ công cụ của chặng, `--strict-mcp-config` (không MCP), `--no-session-persistence`,
+  model `sonnet` trừ chặng viết (model mặc định của người dùng; `STUDIO_RESEARCH_MODELS='{"write":"opus"}'` đổi được).
+  Đo thật: ~21k token nạp sẵn mỗi lượt so với ~66k của một lượt mặc định. Dừng agent khi kẹt (không có hoạt động
+  vài phút) hoặc vượt trần tính theo số slide/claim/câu — không có thời gian cố định. Cờ Codex (`web_search`,
+  `sandbox_workspace_write.network_access`) theo tài liệu, **chưa chạy thử trên máy có Codex**.
+- Code: `studio/src/lib/server/research/` (store, runner, agent, prompts), `components/research/`, API
+  `/api/research/*`; luồng sự kiện của ba CLI đọc chung ở `lib/server/agent-stream.ts` (pipeline video dùng lại).
+- **Giao diện `/research`**: hàng đầu trang 56 px, dải sơ đồ bảy ô bằng HTML (`research-strip.tsx`, không React Flow —
+  N điều cần kiểm thành N ô nhỏ trong ô Tra nguồn), vùng làm việc của ô đang chọn (`node-views.tsx`) với **một** thanh
+  "Việc của bạn" dính đáy (`decision-bar.tsx`, luôn đúng một nút chính), ngăn **Chi tiết** cho nhật ký, chi phí, file và
+  làm lại một bước. Trạng thái và câu chữ là hàm thuần ở `lib/research-ui.ts` (có test); cổng 1/2 đang chờ thì panel
+  luôn được dựng để lựa chọn chưa gửi không mất. Soát giao diện: `node studio/scripts/research-ui-check.mjs` (Studio
+  đang chạy; chỉ GET, dựng tám trạng thái từ một lượt thật, ba bề ngang, sáng/tối).
+
 ## Mẫu kịch bản: một mẫu cơ bản, mỗi năng lực một file
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
 quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ
-bản — hiện có `dialogue.md`, `quiz.md` và `mascot.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
+bản — hiện có `dialogue.md`, `quiz.md`, `mascot.md` và `images.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
 `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
 code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
 id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem `templates/modules/README.md`.
+
+Mẫu này là **chỗ bàn giao** giữa hai pipeline (đóng gói kịch bản sinh ra, dựng video nhận vào), nên nó được
+soát bằng code, **một lệnh cho cả hai bên**: `node tools/script-check.mjs <kịch bản .md>` (thêm
+`--run research/<rid>` thì soát cả phần căn cứ: câu dẫn nguồn nào, con số *nghe thấy* có trong slide hay
+finding không). Bảng "mục nào bắt buộc" nằm trong chính `templates/kich-ban-co-ban.md`. Hai dòng chỉ pipeline
+đóng gói mới sinh ra — `- **Nguồn:** slide:4, c3` ở mỗi câu và `- **Nguồn kịch bản:**` ở phần đầu — là mục
+hợp lệ của mẫu: bên dựng video **giữ nguyên, không đọc thành tiếng, không đưa vào `text` của cue**. Kịch bản
+đời trước (khối `**Lời đọc nguyên văn:**` kèm mốc giờ, như bộ Day 2) bị báo bằng **đúng một** dòng "không
+theo mẫu hiện tại" — chuyển cả file, đừng vá từng câu.
 
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
@@ -144,6 +230,41 @@ media`, commit hai bảng + `media/manifest.json` (xem `assets/mascot/griffin/RE
 Griffin trong video là **năng lực chọn thêm** (`templates/modules/mascot.md`, card "Video có linh vật Griffin" ở
 bước Kế hoạch): bật thì kịch bản chọn vai *Đi cùng* hoặc *Dẫn* và đánh dấu câu nào có Griffin; tắt thì REQUEST.md
 ghi rõ không dùng `Griffin` / `GriffinBadge` — agent không tự thêm linh vật.
+
+## Ảnh tư liệu (đề xuất ảnh)
+Năng lực chọn thêm `images` (`templates/modules/images.md`, card "Video có ảnh tư liệu"): animation vẫn là mặc
+định, Studio chỉ **đề xuất** vài ảnh thật (người/sự kiện lịch sử, hiện vật, hình kinh điển) cho đúng những câu cần,
+**người dựng video duyệt**. Duyệt Lời & cue là tự chạy, song song với Giọng đọc, dưới job riêng `images:<id>`
+(`studio/src/lib/server/images.ts`) — không chặn bước nào; chỗ chưa quyết = animation. Luồng và định dạng file là
+của skill `.claude/skills/image-suggest/` và `tools/image-{search,check,apply}.mjs`: agent chọn chỗ (`triage.json`) →
+code tìm trên Wikimedia Commons + Openverse, lọc giấy phép theo `images.policy.json` (thương mại: **không NC/ND**, không
+ảnh không rõ giấy phép) → agent nhìn thumbnail xếp hạng (`suggest.json`) → panel "Ảnh đề xuất" ghi `decisions.json` →
+`image-apply` tải ảnh vào `<video>/img/` và sinh `<video>/images.js` (`src` tính từ gốc design system). Cảnh dùng
+`PhotoCard` (`components/media/`) cho kind `use`, vẽ lại cho kind `reference`. Agent chỉ được ghi đúng một file mỗi
+chặng (luật `Write`+`Edit` — Claude Code xét quyền ghi theo luật Edit). Openverse ẩn danh ~200 lượt/ngày
+(`OPENVERSE_TOKEN` nếu cần hơn). Video đóng gói từ "Đóng gói kịch bản" (dòng `**Nguồn kịch bản:** … research/<rid>`)
+có thêm nguồn `research` (`tools/lib/image-research.mjs`): og:image của đúng những trang research đã dẫn cho câu đó.
+Giấy phép không rõ → `referenceOnly`: mặc định chỉ tham khảo; dùng trong video thì người dựng tự kiểm trang nguồn
+và chọn giấy phép (`decision.license`, images.js ghi `licenseConfirmedBy`).
+
+## Bàn giao cho platform QA của trường (`manifest.json`)
+Mỗi MP4 gửi đi soát phải có **một `manifest.json` nằm cạnh nó**, nếu không platform từ chối upload. File
+này gắn mỗi lỗi người soát ghi vào đúng câu thoại, tìm ba bộ câu hỏi hiểu bài, và so bản dựng mới với bản
+cũ. `tools/qa-manifest.mjs` + `tools/lib/qa-manifest.mjs` là **bản do đội QA giao, chép vào nguyên văn** —
+luật trong lib là hợp đồng với platform, hỏng thì sửa video chứ đừng sửa luật; đội QA ra bản mới thì chép
+lại cả hai file. Studio chạy nó ngay sau transcript ở bước Render; CLI gọi ở Stage 4.
+- Hai thứ repo không tự biết, nên phải hỏi người dùng: **`item_id`** (ô "Mã item gửi QA" ở bước Kế hoạch,
+  để trống thì dùng id video) và **`build_no`** (ô chọn ở bước Render: gửi soát lần đầu / sau sửa / phát
+  hành). Lưu ý tài liệu của đội QA nói `item_id` **không** phải id thư mục và schema chặn ở 32 ký tự —
+  repo này dùng id video theo yêu cầu, ô nhập cảnh báo khi quá dài.
+- **Bộ quiz** là ba cue liền nhau platform đọc được: câu hỏi có lời mang `tag: 'CÂU HỎI'` → cue `silent`
+  (khoảng chờ) → câu chữa bài. Nó lấy **đúng câu ngay sau khoảng chờ** làm đáp án mẫu, nên một câu đệm
+  ("Hết giờ.") chen vào đó thành đáp án hiện cho người học — đã ăn thật ở `d2-v2-mr-toi`. Đừng lẫn với
+  `quiz: true`: trường đó chỉ là cờ nhạc, đặt ở cue im lặng.
+- Soát **sớm, không đợi tới render**: `tools/script-check.mjs` chặn cứng trên chính kịch bản (chỗ dừng
+  thiếu số giây, không có câu hỏi trước hoặc câu chữa bài sau, câu đệm thành đáp án; dưới ba chỗ dừng là
+  cảnh báo) — lúc đó chưa tốn một ký tự credit. `npm run verify` chỉ **cảnh báo** cho cả repo, vì video
+  làm xong trước khi có platform sẽ không thu lại.
 
 ## Nhạc nền và nhạc quiz
 `music.json` ở gốc repo là danh mục nhạc (giống `voices.json`): mỗi bản có `id`, `media` (key trên R2),

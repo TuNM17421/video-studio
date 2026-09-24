@@ -1,8 +1,11 @@
 import type { MusicChoice } from "./music";
+import type { BuildNo } from "./qa-manifest";
 
 export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
-export type JobKind = StageId | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate";
+import type { ImagesView } from "./images";
+
+export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
@@ -37,6 +40,11 @@ export interface VideoRequest {
   /** Tính năng nội dung chọn thêm (lib/modules.ts), ví dụ "dialogue" hoặc "quiz". */
   modules: string[];
   day: string;
+  /**
+   * Mã item gửi kèm MP4 cho platform QA (`item_id` trong manifest.json). Mặc định là id video; sửa được ở
+   * bước Kế hoạch vì platform khoá lỗi soát theo mã này, không theo thư mục. Rỗng = dùng id video.
+   */
+  itemId: string;
   title: string;
   scriptName: string;
   feedbackDir: string;
@@ -200,6 +208,11 @@ export interface VideoState {
   music: MusicChoice;
   /** Burn the navy subtitle bar into the MP4 (render step; off = render.mjs --no-captions). */
   captions: boolean;
+  /**
+   * Bản dựng thứ mấy của video này, gửi cho platform QA (`build_no`): 1 gửi soát lần đầu, 2 sau sửa,
+   * 3 bản phát hành. Người dựng chọn ở bước Render — số lần render không suy ra được điều này.
+   */
+  buildNo: BuildNo;
   review: ReviewSettings;
   lastError: string | null;
   /**
@@ -265,6 +278,8 @@ export interface Artifacts {
   scenes: boolean;
   mp4: string | null;
   transcript: string | null;
+  /** manifest.json beside the MP4 — what the QA platform needs to accept an upload. */
+  qaManifest: string | null;
   chapters: string | null;
   prompts: string | null;
 }
@@ -356,6 +371,8 @@ export interface VideoDetail {
   findings: QaFindingItem[];
   /** Feedback that stops the Duyệt button right now (the same rule the approve API applies). */
   blocking: Record<"cues" | "scenes", number>;
+  /** Image suggestions (capability `images`); null when the video does not use it. */
+  images: ImagesView | null;
 }
 
 export interface VideoSummary {

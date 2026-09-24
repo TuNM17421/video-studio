@@ -51,6 +51,8 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     review: "Review lại dựng cảnh",
     render: "Render MP4",
     deliver: "Bàn giao",
+    research: "Đóng gói kịch bản",
+    images: "Đề xuất ảnh",
     "dry-run": "Kiểm tra giọng",
     "voice-script": "Xuất lời đọc",
     "import-scan": "Kiểm tra thư mục audio",

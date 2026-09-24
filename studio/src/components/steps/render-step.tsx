@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircleFilled, ExportOutlined, PlayCircleFilled, RedoOutlined } from "@ant-design/icons";
-import { Button, Collapse, Empty, Segmented } from "antd";
+import { Button, Collapse, Empty, Segmented, Select } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
+import { BUILD_OPTIONS, buildLabel, DEFAULT_BUILD_NO, type BuildNo } from "@/lib/qa-manifest";
 import { AgentLog, JobProgress, stageLogs } from "../agent-panel";
 import { ConfirmDialog } from "../confirm-dialog";
 import { HarnessPanel } from "../harness-panel";
@@ -24,11 +25,14 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
   const [music, setMusic] = useState(detail.state.music.background);
   const [quizMusic, setQuizMusic] = useState(detail.state.music.quiz);
   const [captions, setCaptions] = useState(detail.state.captions);
+  // Which round of review this MP4 is. Not derivable from how many renders ran — a render repeated after
+  // a crash is still the same round — so the person sending it says.
+  const [buildNo, setBuildNo] = useState<BuildNo>(detail.state.buildNo ?? DEFAULT_BUILD_NO);
   const [catalog, setCatalog] = useState<MusicCatalog>({ background: [], quiz: [] });
   const quizCues = detail.cues?.cues.filter((c) => c.quiz).length ?? 0;
   useEffect(() => { api<MusicCatalog>("/api/music").then(setCatalog).catch(() => {}); }, []);
-  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic, captions }));
-  const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
+  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic, captions, buildNo }));
+  const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["Manifest QA", a.qaManifest], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
   const complete = status === "done" && deliver === "done";
   const running = status === "running" || deliver === "running";
 
@@ -43,6 +47,18 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
         options={[{ value: "on", label: "Có" }, { value: "off", label: "Không" }]}
       />
       <small>{captions ? "Thanh phụ đề xanh, chữ trắng ở cuối khung hình." : "Video không có phụ đề."}</small>
+    </div>
+    <div className="vs-section-title">Bản dựng gửi QA</div>
+    <div className="vs-captions-picker">
+      <Select
+        aria-label="Bản dựng gửi cho đội QA"
+        className="vs-build-picker"
+        value={buildNo}
+        disabled={busy}
+        onChange={setBuildNo}
+        options={BUILD_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+      />
+      <small>{BUILD_OPTIONS.find((o) => o.value === buildNo)?.hint} · ghi vào <code>manifest.json</code> cạnh MP4.</small>
     </div>
     <div className="vs-section-title">Nhạc nền</div>
     <MusicPicker tracks={catalog.background} value={music} disabled={busy} label="Chọn nhạc nền" noneLabel="Không có nhạc nền" noneHint="Video chỉ có giọng đọc." onChange={setMusic} />
@@ -66,6 +82,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
       {ready && <div className="render-specs">
         <div><span>Định dạng</span><strong>MP4 · 1920×1080 · 30 fps</strong></div>
         <div><span>Phụ đề</span><strong>{detail.state.captions ? "Có" : "Không"}</strong></div>
+        <div><span>Bản dựng</span><strong>{buildLabel(detail.state.buildNo ?? DEFAULT_BUILD_NO)}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
       {ready && a.mp4 && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
@@ -76,7 +93,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
       <HarnessPanel run={detail.harness.deliver} />
       {/* Before the first render the settings are the task; afterwards they only matter for a re-render. */}
       {ready && (a.mp4
-        ? <Collapse className="vs-render-settings" items={[{ key: "settings", label: "Cài đặt cho lần render lại", extra: <span className="quiet-label">phụ đề · nhạc</span>, children: settings }]} />
+        ? <Collapse className="vs-render-settings" items={[{ key: "settings", label: "Cài đặt cho lần render lại", extra: <span className="quiet-label">phụ đề · bản dựng · nhạc</span>, children: settings }]} />
         : settings)}
       <AgentLog logs={runLogs} open={running} />
     </div>

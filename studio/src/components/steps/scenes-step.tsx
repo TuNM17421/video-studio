@@ -9,10 +9,11 @@ import { HarnessPanel } from "../harness-panel";
 import { ProductionState } from "../production-state";
 import { ReviewControl } from "../review-control";
 import { findingMarks, QaGallery } from "./qa-gallery";
+import { ImagesPanel } from "./images-panel";
 import { ReviewComposer, ReviewFindings, useReviewDraft } from "./scenes-review";
 import { post, StepBar, type StepProps } from "./shared";
 
-export function ScenesStep({ detail, logs, job, busy, act, stop, nav }: StepProps) {
+export function ScenesStep({ detail, logs, job, busy, act, stop, nav, refresh }: StepProps) {
   const id = detail.state.id;
   const status = detail.state.stages.scenes;
   const runLogs = stageLogs(logs, ["scenes"]);
@@ -61,6 +62,8 @@ export function ScenesStep({ detail, logs, job, busy, act, stop, nav }: StepProp
       {!voiced && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tạo giọng đọc trước" />}
       {voiced && status === "idle" && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Agent chưa chạy" />}
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
+      {/* Trước khi dựng cảnh là lúc cuối để chọn ảnh; đã duyệt dựng cảnh thì đổi ảnh phải qua góp ý cho agent. */}
+      {!approved && <ImagesPanel detail={detail} act={act} refresh={refresh} />}
       <HarnessPanel run={run} tools={tools} approved={approved} />
       <ReviewFindings
         draft={draft}

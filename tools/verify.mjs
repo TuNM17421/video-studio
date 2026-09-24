@@ -10,7 +10,8 @@
  *  · example videos (ui_kits/lesson-video/videos/<dir>/): required files present, caption pages
  *    ≤ 78 characters covering every cue exactly, `quiz: true` only on silent cues, and a smoke render of
  *    every 3rd frame (plus each cue's first and last frame) that must not throw or write NaN / undefined
- *    into an attribute.
+ *    into an attribute. A folder with cues.js but no video.jsx is a video before its scenes step: a
+ *    warning, not a problem.
  *  · whiteboard videos (meta.board): no mark drawn off screen (problem); late beats, board text too small
  *    on screen, strokes past the end (warnings) — components/whiteboard/board.js checkBoard.
  *  · pictures in videos (PhotoCard): `src` is a design-system file given from its root (never http), every
@@ -22,6 +23,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { detectQuestions, QUIZ_TAG } from './lib/qa-manifest.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -167,6 +169,14 @@ function checkPictures(base, where) {
 for (const dir of videoDirs) {
   const base = path.join(VIDEOS_DIR, dir);
   const where = `videos/${dir}`;
+  // A video still before its scenes step (Studio has written cues.js / voice.js, nobody has built a scene yet)
+  // is work in progress, not a broken example: reporting it as a problem failed the scenes gate of every
+  // *other* video on the machine while one waited at the voice step.
+  if (!fs.existsSync(path.join(base, 'video.jsx')) && fs.existsSync(path.join(base, 'cues.js'))) {
+    warnings.push(`${where}: chưa dựng cảnh (có cues.js, chưa có video.jsx) — bỏ qua`);
+    videoReports.push(`  ${dir}: chưa dựng cảnh — bỏ qua`);
+    continue;
+  }
   for (const f of ['video.jsx', 'cues.js', 'card.html', 'player.html', 'STORYBOARD.md']) {
     if (!fs.existsSync(path.join(base, f))) problems.push(`${where} is missing ${f}`);
   }
@@ -247,6 +257,26 @@ for (const dir of videoDirs) {
       problems.push(`${where}: câu ${cue.n} có lời đọc nhưng đánh dấu quiz: true — cờ này chỉ dành cho khoảng chờ im lặng (xem CLAUDE.md "Nhạc nền và nhạc quiz")`);
     }
   }
+  // Quiz sets for the QA platform. It reads a set as three cues in a row — a spoken câu tagged CÂU HỎI,
+  // a silent pause, then the câu that answers it — and files the video's comprehension screen off that.
+  // The same field `tag` also draws the corner label, so a scene labelled CÂU HỎI with no pause after it
+  // is almost always a label, not a question; and a filler câu ("Hết giờ.") wedged between the pause and
+  // the real answer silently becomes the model answer.
+  // Warnings, not problems: verify covers the whole repo, and videos finished before the QA platform
+  // existed are not going to be re-recorded. What blocks a *new* video is tools/script-check.mjs, which
+  // runs on the one script being written — before a word of it is paid for.
+  const quizSets = detectQuestions(AUTHORED.map((c) => ({ n: c.n, text: String(c.text || '').trim(), tag: c.tag || null, silent: Number(c.silent) || 0 })));
+  const answered = new Set(quizSets.map((q) => q.q_cue_n));
+  for (const cue of AUTHORED) {
+    if (cue.tag !== QUIZ_TAG || !String(cue.text || '').trim() || answered.has(cue.n)) continue;
+    warnings.push(`${where}: câu ${cue.n} gắn tag "${QUIZ_TAG}" nhưng không thành bộ quiz (cần câu hỏi → câu im lặng → câu đáp án liền nhau) — platform QA sẽ bỏ qua`);
+  }
+  for (const q of quizSets) {
+    if (/^(hết giờ|hết thời gian|xong)[.!…]?$/i.test(q.model_answer.trim())) {
+      warnings.push(`${where}: bộ quiz ở câu ${q.q_cue_n} có đáp án mẫu là "${q.model_answer}" — platform QA lấy đúng câu ngay sau khoảng chờ làm đáp án, nên câu đó phải chữa bài (xem templates/modules/quiz.md)`);
+    }
+  }
+
   // smoke render
   const frames = new Set();
   for (let f = 0; f < meta.duration; f += 3) frames.add(f);

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { NO_MUSIC } from "../music";
+import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
 import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
 import { HttpError, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
@@ -60,6 +61,18 @@ export async function renderVideo(id: string, base: string) {
     const ok = await step("Transcript", process.execPath, ["tools/transcript.mjs", rel(path.join(voiceOut(id), "voice.cues.json")), rel(transcriptPath(day, id))]);
     if (!ok) return fail("Không tạo được transcript.");
   }
+  // manifest.json beside the MP4: what the QA platform keys every finding to a câu with. It reads only
+  // finished artefacts, so it cannot damage the render — but it refuses a stale voice or a mismatched
+  // MP4, which is exactly the build nobody should send out.
+  const manifestOk = await step("Manifest QA", process.execPath, [
+    "tools/qa-manifest.mjs", "--scene", id,
+    "--item", itemIdFor(state.request.itemId, id),
+    "--title", state.request.title || id,
+    "--build", String(state.buildNo),
+    "--captions", state.captions ? "yes" : "no",
+    "--mp4", rel(mp4Path(id)),
+  ]);
+  if (!manifestOk) return fail("Không tạo được manifest.json cho platform QA, xem nhật ký.");
   setStage(id, "render", "done");
   finishJob(id, "done");
   // chapters + PROMPTS.md need judgement (chapter titles), so the agent finishes the delivery

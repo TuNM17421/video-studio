@@ -28,6 +28,8 @@ export const voiceOutAll = (id: string) => [VOICE_OUT(id), VOICE_OUT_LEGACY(id)]
 export const voiceScriptDir = (id: string) => path.join(projectDir(id), "voice-script");
 export const mp4Path = (id: string) => path.join(projectDir(id), "render", `${id}.mp4`);
 export const transcriptPath = (day: string, id: string) => path.join(REPO, "transcripts", day, `${id}.txt`);
+/** tools/qa-manifest.mjs writes it next to the MP4, which is where the QA platform expects it. */
+export const qaManifestPath = (id: string) => path.join(projectDir(id), "render", "manifest.json");
 export const chaptersPath = (day: string, id: string) => path.join(REPO, "chapters", day, `${id}-chương.txt`);
 
 export function assertId(id: string) {

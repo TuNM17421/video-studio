@@ -2,93 +2,15 @@ import { randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
 import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
+import { createStreamParser, short, type AgentEvent } from "./agent-stream";
 import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
 import { REPO } from "./paths";
 import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
 import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
 import { styleGuideLine } from "./style-guides";
+import { scenesImagesLine } from "./images";
 import { readState, setStage, styleName, updateState } from "./videos";
 import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
-
-interface AgentStreamBlock {
-  type?: string;
-  text?: string;
-  name?: string;
-  input?: Record<string, unknown>;
-  is_error?: boolean;
-  content?: unknown;
-}
-
-interface AgentStreamMessage {
-  type?: string;
-  subtype?: string;
-  session_id?: string;
-  message?: { content?: AgentStreamBlock[] };
-  total_cost_usd?: number;
-  num_turns?: number;
-  usage?: {
-    input_tokens?: number;
-    cache_read_input_tokens?: number;
-    output_tokens?: number;
-  };
-  is_error?: boolean;
-  result?: string;
-  model?: string;
-}
-
-interface CodexStreamItem {
-  type?: string;
-  text?: string;
-  command?: string;
-  status?: string;
-  exit_code?: number | null;
-  aggregated_output?: string;
-  server?: string;
-  tool?: string;
-  query?: string;
-  changes?: { path?: string; kind?: string }[];
-}
-
-interface CodexStreamMessage {
-  type?: string;
-  thread_id?: string;
-  item?: CodexStreamItem;
-  message?: string;
-  error?: string | { message?: string };
-  usage?: {
-    input_tokens?: number;
-    cached_input_tokens?: number;
-    output_tokens?: number;
-  };
-}
-
-/** agy --output-format stream-json: one `init`, any number of `step_update`, exactly one `result`. */
-interface AntigravityStreamMessage {
-  event?: string;
-  conversation_id?: string;
-  init?: { cwd?: string; permission_mode?: string };
-  step_update?: {
-    conversation_id?: string;
-    step_index?: number;
-    state?: string;
-    step_type?: string;
-    text_delta?: string;
-    tool_name?: string;
-    tool_info?: {
-      name?: string;
-      parameters?: Record<string, unknown>;
-      output?: string;
-      error?: { type?: string; message?: string };
-    };
-  };
-  result?: {
-    conversation_id?: string;
-    status?: string;
-    response?: string;
-    error?: string;
-    num_turns?: number;
-  };
-}
 
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
 
@@ -139,6 +61,7 @@ function stagePrompt(id: string, stage: AgentStage, base: string) {
     `Yêu cầu của video: \`projects/${id}/REQUEST.md\`. Style: \`styles/${r.style}.json\` (luật của style được ưu tiên).`,
     styleGuideLine(r.style),
     `Việc cần làm lần này — ${STAGE_TASK[stage].replace("<id>", id)}`,
+    ...(stage === "scenes" ? [scenesImagesLine(id, r.modules)].filter((line): line is string => Boolean(line)) : []),
     `Preview server (dùng làm <base> khi chụp QA): ${base}/ds`,
     feedbackContext(id, stage),
     "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync.",
@@ -171,26 +94,6 @@ function focusPrompt(stage: AgentStage, items: FocusItem[], note?: string) {
   ].join("\n");
 }
 
-function short(value: unknown, max = 160) {
-  const s = String(value ?? "").replace(/\s+/g, " ").trim();
-  return s.length > max ? `${s.slice(0, max)}…` : s;
-}
-
-function describeTool(name: string, input: Record<string, unknown>) {
-  if (name === "Bash" || name === "PowerShell") return `$ ${short(input.command, 200)}`;
-  if (name === "Read" || name === "Write" || name === "Edit") return `${name} ${short(input.file_path)}`;
-  if (name === "Glob" || name === "Grep") return `${name} ${short(input.pattern)}`;
-  if (name === "Task" || name === "Agent") return `Agent phụ: ${short(input.description || input.prompt, 120)}`;
-  if (name === "TodoWrite") return "Cập nhật danh sách việc";
-  return `${name}`;
-}
-
-function errorText(value: unknown) {
-  if (typeof value === "string") return value;
-  if (value && typeof value === "object" && "message" in value) return String(value.message || "");
-  return short(value);
-}
-
 function saveSession(id: string, provider: AgentProvider, sessionId: string) {
   updateState(id, (state) => {
     // Provider is immutable after creation; an event can only update its own provider's session.
@@ -198,189 +101,90 @@ function saveSession(id: string, provider: AgentProvider, sessionId: string) {
   });
 }
 
-async function runClaude(id: string, prompt: string, sessionId: string | null) {
-  const resume = Boolean(sessionId);
-  const nextSessionId = sessionId ?? randomUUID();
-  let ok = false;
-  let tools = 0;
-  const metrics: { inputTokens?: number; cachedInputTokens?: number; outputTokens?: number; costUsd?: number; turns?: number; toolCalls: number; model?: string } = { toolCalls: 0 };
-  const configuredModel = process.env.STUDIO_CLAUDE_MODEL?.trim() || undefined;
-  const code = await run(id, process.env.CLAUDE_BIN || "claude", claudeExecArgs(nextSessionId, resume, ALLOWED, DENIED, configuredModel), {
-    env: sanitizedAgentEnv(),
-    input: prompt,
-    onLine(line, stream) {
-      if (stream === "stderr") return log(id, "error", short(line, 400));
-      let msg: AgentStreamMessage;
-      try { msg = JSON.parse(line); } catch { return; }
-      if (msg.type === "system" && msg.subtype === "init" && msg.session_id) {
-        saveSession(id, "claude", msg.session_id);
-        if (msg.model) metrics.model = msg.model;
-      } else if (msg.type === "assistant") {
-        for (const block of msg.message?.content || []) {
-          if (block.type === "text" && block.text?.trim()) log(id, "agent", block.text.trim());
-          if (block.type === "tool_use" && block.name) {
-            tools++;
-            log(id, "tool", describeTool(block.name, block.input || {}));
-            setProgress(id, null, `Claude Code đang làm việc · ${tools} thao tác`);
-          }
-        }
-      } else if (msg.type === "user") {
-        for (const block of msg.message?.content || []) {
-          if (block.type === "tool_result" && block.is_error) log(id, "error", short(typeof block.content === "string" ? block.content : JSON.stringify(block.content), 300));
-        }
-      } else if (msg.type === "result") {
-        ok = msg.subtype === "success" && !msg.is_error;
-        const turns = typeof msg.total_cost_usd === "number" ? ` · ${msg.num_turns ?? "?"} lượt` : "";
-        log(id, ok ? "result" : "error", `${ok ? "Claude Code đã dừng" : "Claude Code báo lỗi"}${turns}${msg.result ? `\n${msg.result}` : ""}`);
-        metrics.inputTokens = msg.usage?.input_tokens;
-        metrics.cachedInputTokens = msg.usage?.cache_read_input_tokens;
-        metrics.outputTokens = msg.usage?.output_tokens;
-        metrics.costUsd = msg.total_cost_usd;
-        metrics.turns = msg.num_turns;
-      }
-    },
-  });
-  metrics.toolCalls = tools;
-  return { ok, code, metrics };
+/** What the workflow ledger keeps about one agent run (`recordJobMetrics`). */
+interface AgentMetrics {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
+  turns?: number;
+  toolCalls: number;
+  model?: string;
 }
 
-function describeCodexItem(item: CodexStreamItem) {
-  if (item.type === "command_execution") return `$ ${short(item.command, 200)}`;
-  if (item.type === "file_change") {
-    const files = item.changes?.map((change) => change.path).filter(Boolean).join(", ");
-    return files ? `Cập nhật file: ${short(files, 180)}` : "Cập nhật file";
+/** The model a CLI is told to use for video stages; unset leaves it to the CLI's own default. */
+function configuredModel(provider: AgentProvider) {
+  const name = { claude: "STUDIO_CLAUDE_MODEL", codex: "STUDIO_CODEX_MODEL", antigravity: "STUDIO_ANTIGRAVITY_MODEL" }[provider];
+  return process.env[name]?.trim() || undefined;
+}
+
+/** How each CLI is started for a video stage: binary, arguments, and what goes on stdin. */
+function invocation(provider: AgentProvider, prompt: string, sessionId: string | null, model: string | undefined) {
+  if (provider === "codex") return { bin: process.env.CODEX_BIN || "codex", args: codexExecArgs(sessionId, model), input: prompt };
+  if (provider === "antigravity") return { bin: process.env.ANTIGRAVITY_BIN || "agy", args: antigravityExecArgs(sessionId, model), input: antigravityStdin(prompt) };
+  return {
+    bin: process.env.CLAUDE_BIN || "claude",
+    args: claudeExecArgs(sessionId ?? randomUUID(), Boolean(sessionId), ALLOWED, DENIED, model),
+    input: prompt,
+  };
+}
+
+/** The line a finished agent leaves in the log — worded per CLI, as it always has been. */
+function resultLine(provider: AgentProvider, e: Extract<AgentEvent, { type: "result" }>) {
+  if (provider === "codex") return e.ok ? `Codex đã dừng${e.text ? `\n${e.text}` : "."}` : `Codex báo lỗi: ${e.text}`;
+  const turns = typeof e.turns === "number" && (provider !== "claude" || typeof e.costUsd === "number") ? ` · ${e.turns} lượt` : "";
+  if (provider === "antigravity") {
+    return e.ok ? `Antigravity đã dừng${turns}${e.text ? `\n${e.text}` : "."}` : `Antigravity báo lỗi (${e.status})${turns}: ${e.text}`;
   }
-  if (item.type === "mcp_tool_call") return `MCP ${[item.server, item.tool].filter(Boolean).join(" · ") || "tool"}`;
-  if (item.type === "web_search") return `Tìm web: ${short(item.query, 160)}`;
-  return `Codex: ${item.type || "thao tác"}`;
+  return `${e.ok ? "Claude Code đã dừng" : "Claude Code báo lỗi"}${turns}${e.text ? `\n${e.text}` : ""}`;
 }
 
-async function runCodex(id: string, prompt: string, sessionId: string | null) {
+/** One agent process for a video: streams its events into the video's log, keeps its session for resume. */
+async function runProvider(id: string, provider: AgentProvider, prompt: string, sessionId: string | null) {
+  const label = agentProviderLabel(provider);
+  const parse = createStreamParser(provider);
+  const model = configuredModel(provider);
+  const { bin, args, input } = invocation(provider, prompt, sessionId, model);
+  // Claude names the model it ran in its init line; Codex and agy never say, so record what was asked for.
+  const metrics: AgentMetrics = { toolCalls: 0, ...(provider === "claude" ? {} : { model: model || "(mặc định CLI, chưa rõ)" }) };
   let ok = false;
-  let terminalEvent = false;
+  let terminal = false;
   let tools = 0;
-  let finalText = "";
-  const configuredModel = process.env.STUDIO_CODEX_MODEL?.trim() || undefined;
-  const metrics: { inputTokens?: number; cachedInputTokens?: number; outputTokens?: number; toolCalls: number; model?: string } = {
-    toolCalls: 0,
-    model: configuredModel || "(mặc định CLI, chưa rõ)",
-  };
-  const noteTool = (item: CodexStreamItem) => {
-    tools++;
-    log(id, "tool", describeCodexItem(item));
-    setProgress(id, null, `Codex đang làm việc · ${tools} thao tác`);
-  };
-  const code = await run(id, process.env.CODEX_BIN || "codex", codexExecArgs(sessionId, configuredModel), {
+  const code = await run(id, bin, args, {
     env: sanitizedAgentEnv(),
-    input: prompt,
+    input,
     onLine(line, stream) {
-      // In JSON mode stdout is the protocol; stderr can contain ordinary CLI diagnostics.
-      if (stream === "stderr") return log(id, "system", short(line, 400));
-      let msg: CodexStreamMessage;
-      try { msg = JSON.parse(line); } catch { return; }
-      if (msg.type === "thread.started" && msg.thread_id) {
-        saveSession(id, "codex", msg.thread_id);
-      } else if (msg.type === "item.started" && ["command_execution", "mcp_tool_call", "web_search"].includes(msg.item?.type || "")) {
-        noteTool(msg.item || {});
-      } else if (msg.type === "item.completed") {
-        const item = msg.item || {};
-        if (item.type === "agent_message" && item.text?.trim()) {
-          finalText = item.text.trim();
-          log(id, "agent", finalText);
-        } else if (item.type === "file_change") {
-          noteTool(item);
-        } else if (item.type === "command_execution" && (item.status === "failed" || (typeof item.exit_code === "number" && item.exit_code !== 0))) {
-          log(id, "error", short(item.aggregated_output || `${item.command || "Lệnh"} kết thúc với mã ${item.exit_code}.`, 400));
-        }
-      } else if (msg.type === "turn.completed") {
-        ok = true;
-        terminalEvent = true;
-        log(id, "result", `Codex đã dừng${finalText ? `\n${finalText}` : "."}`);
-        metrics.inputTokens = msg.usage?.input_tokens;
-        metrics.cachedInputTokens = msg.usage?.cached_input_tokens;
-        metrics.outputTokens = msg.usage?.output_tokens;
-      } else if (msg.type === "turn.failed") {
-        terminalEvent = true;
-        log(id, "error", `Codex báo lỗi: ${errorText(msg.error || msg.message) || "không có chi tiết."}`);
-      } else if (msg.type === "error") {
-        log(id, "error", `Codex: ${errorText(msg.error || msg.message) || "lỗi không xác định."}`);
-      }
-    },
-  });
-  if (!ok && !terminalEvent && !wasStopped(id)) log(id, "error", `Codex kết thúc với mã ${code} nhưng không có sự kiện turn.completed.`);
-  metrics.toolCalls = tools;
-  return { ok, code, metrics };
-}
-
-/** agy names its own tools; `run_command` carries the command under a capitalised parameter. */
-function describeAntigravityTool(tool: NonNullable<NonNullable<AntigravityStreamMessage["step_update"]>["tool_info"]>, fallback: string) {
-  const p = tool.parameters || {};
-  const name = tool.name || fallback || "thao tác";
-  const arg = p.CommandLine ?? p.command ?? p.Path ?? p.path ?? p.file_path ?? p.AbsolutePath ?? p.query ?? p.Query;
-  return arg ? `${name === "run_command" ? "$" : name} ${short(arg, 200)}` : name;
-}
-
-async function runAntigravity(id: string, prompt: string, sessionId: string | null) {
-  let ok = false;
-  let terminalEvent = false;
-  let tools = 0;
-  let finalText = "";
-  const configuredModel = process.env.STUDIO_ANTIGRAVITY_MODEL?.trim() || undefined;
-  const metrics: { turns?: number; toolCalls: number; model?: string } = {
-    toolCalls: 0,
-    model: configuredModel || "(mặc định CLI, chưa rõ)",
-  };
-  /**
-   * agy streams an answer as `text_delta` fragments across the ACTIVE updates of one step, and the DONE
-   * update carries only the trailing newline — reading the text off DONE alone (as a tool step is read)
-   * would log whitespace and drop the message. Accumulate per step, flush when the step finishes.
-   */
-  const saying = new Map<number, string>();
-  const code = await run(id, process.env.ANTIGRAVITY_BIN || "agy", antigravityExecArgs(sessionId, configuredModel), {
-    env: sanitizedAgentEnv(),
-    input: antigravityStdin(prompt),
-    onLine(line, stream) {
-      // stdout is the NDJSON protocol; stderr carries ordinary diagnostics and permission notices.
-      if (stream === "stderr") return log(id, "system", short(line, 400));
-      let msg: AntigravityStreamMessage;
-      try { msg = JSON.parse(line); } catch { return; }
-      if (msg.event === "init") {
-        if (msg.conversation_id) saveSession(id, "antigravity", msg.conversation_id);
-      } else if (msg.event === "step_update") {
-        const step = msg.step_update || {};
-        const index = step.step_index ?? -1;
-        if (step.step_type === "agent_response") {
-          if (step.text_delta) saying.set(index, (saying.get(index) ?? "") + step.text_delta);
-          if (step.state === "DONE") {
-            const said = (saying.get(index) ?? "").trim();
-            saying.delete(index);
-            if (said) log(id, "agent", said);
-          }
-          return;
-        }
-        // A tool repeats as ACTIVE then DONE; only the finished one carries its output.
-        if (step.state !== "DONE") return;
-        if (step.step_type === "tool") {
+      // Claude's stderr is a failure; the other two use stderr for ordinary diagnostics.
+      if (stream === "stderr") return log(id, provider === "claude" ? "error" : "system", short(line, 400));
+      for (const e of parse(line)) {
+        if (e.type === "session") {
+          saveSession(id, provider, e.id);
+          if (e.model) metrics.model = e.model;
+        } else if (e.type === "say") log(id, "agent", e.text);
+        else if (e.type === "tool") {
           tools++;
-          log(id, "tool", describeAntigravityTool(step.tool_info || {}, step.tool_name || ""));
-          setProgress(id, null, `Antigravity đang làm việc · ${tools} thao tác`);
-          const failure = step.tool_info?.error;
-          if (failure) log(id, "error", short(failure.message || failure.type || "Tool lỗi.", 300));
+          log(id, "tool", e.detail);
+          setProgress(id, null, `${label} đang làm việc · ${tools} thao tác`);
+        } else if (e.type === "toolError") log(id, "error", e.text);
+        else if (e.type === "error") log(id, "error", `${label}: ${e.text}`);
+        else if (e.type === "result") {
+          terminal = true;
+          ok = e.ok;
+          log(id, e.ok ? "result" : "error", resultLine(provider, e));
+          if (e.usage) {
+            metrics.inputTokens = e.usage.input;
+            metrics.cachedInputTokens = e.usage.cacheRead;
+            metrics.outputTokens = e.usage.output;
+          }
+          if (e.costUsd !== undefined) metrics.costUsd = e.costUsd;
+          if (e.turns !== undefined) metrics.turns = e.turns;
         }
-      } else if (msg.event === "result") {
-        const r = msg.result || {};
-        if (r.conversation_id) saveSession(id, "antigravity", r.conversation_id);
-        ok = r.status === "SUCCESS";
-        terminalEvent = true;
-        finalText = r.response?.trim() || "";
-        const turns = typeof r.num_turns === "number" ? ` · ${r.num_turns} lượt` : "";
-        metrics.turns = r.num_turns;
-        if (ok) log(id, "result", `Antigravity đã dừng${turns}${finalText ? `\n${finalText}` : "."}`);
-        else log(id, "error", `Antigravity báo lỗi (${r.status || "không rõ"})${turns}: ${r.error || finalText || "không có chi tiết."}`);
       }
     },
   });
-  if (!ok && !terminalEvent && !wasStopped(id)) log(id, "error", `Antigravity kết thúc với mã ${code} nhưng không có sự kiện result.`);
+  if (!ok && !terminal && provider !== "claude" && !wasStopped(id)) {
+    log(id, "error", `${label} kết thúc với mã ${code} nhưng không có sự kiện ${provider === "codex" ? "turn.completed" : "result"}.`);
+  }
   metrics.toolCalls = tools;
   return { ok, code, metrics };
 }
@@ -412,8 +216,7 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
     ? `Góp ý gửi agent (${stage}) · ${providerLabel}: sửa ${focus.map((item) => `${item.scope || item.id} · ${item.code || item.severity}`).join(", ")}${message ? ` — ${short(message, 200)}` : ""}`
     : message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
 
-  const runner = { codex: runCodex, antigravity: runAntigravity, claude: runClaude }[provider] ?? runClaude;
-  const result = await runner(id, prompt, state.agent.sessionId);
+  const result = await runProvider(id, provider, prompt, state.agent.sessionId);
   recordJobMetrics(id, result.metrics);
 
   if (wasStopped(id)) {
