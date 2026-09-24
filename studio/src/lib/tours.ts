@@ -106,24 +106,17 @@ export const TOURS: TourDef[] = [
   },
   {
     id: "plan",
-    version: 1,
+    version: 2,
     label: "Trang Kế hoạch — tạo video mới",
     routes: ["/"],
     auto: true,
     steps: [
       {
-        target: "plan.style",
-        title: "Chọn style hình ảnh",
-        body: "Style quyết định bảng màu và bộ component agent được dùng. Mở phần xem mẫu bên dưới để thấy cảnh thật của style đó.",
-        mascot: { pose: "stand", mood: "thinking" },
+        target: "plan.script",
+        title: "Thả kịch bản vào",
+        body: "Tệp .md hoặc .txt viết theo mẫu templates/kich-ban-co-ban.md. Lời trong kịch bản được đọc nguyên văn; ngày của bài học tự điền theo kịch bản.",
+        mascot: { pose: "stand", mood: "wink" },
         placement: "bottom",
-      },
-      {
-        target: "plan.modules",
-        title: "Tính năng nội dung",
-        body: "Chỉ bật khi kịch bản cần: hội thoại nhiều người nói, hay quiz có khoảng chờ. Không bật gì là clip một người dẫn.",
-        mascot: { pose: "stand", mood: "neutral", prop: "lightbulb" },
-        placement: "top",
       },
       {
         target: "plan.id",
@@ -133,10 +126,17 @@ export const TOURS: TourDef[] = [
         placement: "bottom",
       },
       {
-        target: "plan.script",
-        title: "Thả kịch bản vào",
-        body: "Tệp .md hoặc .txt viết theo mẫu templates/kich-ban-co-ban.md. Lời trong kịch bản được đọc nguyên văn, từng chữ.",
-        mascot: { pose: "stand", mood: "wink" },
+        target: "plan.style",
+        title: "Chọn style hình ảnh",
+        body: "Style quyết định bảng màu và bộ component agent được dùng. Bấm Xem video mẫu trên thẻ để thấy cảnh thật của style đó.",
+        mascot: { pose: "stand", mood: "thinking" },
+        placement: "top",
+      },
+      {
+        target: "plan.modules",
+        title: "Tính năng nội dung",
+        body: "Chỉ bật khi kịch bản cần: hội thoại nhiều người nói, hay quiz có khoảng chờ. Không bật gì là clip một người dẫn.",
+        mascot: { pose: "stand", mood: "neutral", prop: "lightbulb" },
         placement: "top",
       },
       {
