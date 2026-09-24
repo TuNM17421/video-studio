@@ -1,0 +1,66 @@
+{
+  "id": "illustrated",
+  "name": "Illustrated Style (lab)",
+  "order": 4,
+  "extends": "lesson-lab",
+  "summary": "Mổ xẻ cơ chế bằng hình: một câu thành hàng token, token thành dải vector, vector vào ma trận — một vật liệu chảy qua các trạm suốt cả video, camera bám theo nó thay vì cắt sang slide mới.",
+  "palette": [
+    {
+      "hex": "#1d6199",
+      "name": "Xanh (sắc độ)",
+      "role": "giá trị dương của vector / ma trận — đậm nhạt theo độ lớn"
+    },
+    {
+      "hex": "#c72127",
+      "name": "Đỏ (sắc độ)",
+      "role": "giá trị âm, và trọng số chú ý mạnh (w ≥ 0,6)"
+    },
+    {
+      "hex": "#134d8b",
+      "name": "Xanh đậm",
+      "role": "ngoặc vuông của vector và ma trận"
+    }
+  ],
+  "showcase": [
+    {
+      "component": "TokenRow",
+      "group": "illustrated",
+      "image": "illustrated__TokenRow.png"
+    },
+    {
+      "component": "AttentionLines",
+      "group": "illustrated",
+      "image": "illustrated__AttentionLines.png"
+    },
+    {
+      "component": "VectorStrip",
+      "group": "illustrated",
+      "image": "illustrated__VectorStrip.png"
+    },
+    {
+      "component": "MatrixGrid",
+      "group": "illustrated",
+      "image": "illustrated__MatrixGrid.png"
+    },
+    {
+      "component": "VectorColumn",
+      "group": "data",
+      "image": "data__VectorColumn.png"
+    },
+    {
+      "component": "Heatmap",
+      "group": "data",
+      "image": "data__Heatmap.png"
+    }
+  ],
+  "sampleVideo": null,
+  "unsupportedModules": ["dialogue", "mascot"],
+  "rules": [
+    "Chỉ chọn style này khi nội dung CÓ hình dạng dữ liệu để mổ xẻ (token hoá, embedding, chú ý, cửa sổ ngữ cảnh, RAG, fine-tune). Nội dung về quy trình, lựa chọn công cụ, rủi ro hay câu chuyện người dùng thì dùng Lesson hoặc Lesson Lab — ép vào đây sẽ thành trang trí.",
+    "Một vật liệu chảy suốt cả video: hàng token mở đầu phải sống tới cuối, mỗi cảnh biến đổi nó chứ không thay bằng hình mới. Giữ nguyên toạ độ gốc của hàng token giữa các cảnh để người xem không mất dấu.",
+    "Mọi con số — token, trọng số chú ý, giá trị vector / ma trận — lấy từ kịch bản. Không bịa bảng attention hay dãy số; cách cắt token chính là nội dung bài học.",
+    "AttentionLines luôn đặt `focus` một token: cả lưới n×n một lúc là mớ chỉ rối. Cần toàn cảnh thì dùng Heatmap.",
+    "Màu là SẮC ĐỘ của hai màu có sẵn (xanh dương, đỏ âm), không thêm hue mới; màu vai trò của Lesson Lab chỉ dùng cho nhãn vùng như bình thường.",
+    "Chi tiết dựng cảnh: styles/illustrated.md."
+  ]
+}

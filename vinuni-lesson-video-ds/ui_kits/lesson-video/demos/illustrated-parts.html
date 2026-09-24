@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Illustrated — component (thử nghiệm)</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Xem thử component của style Illustrated, mỗi cái một mẫu:
+  //   ?part=TokenRow | VectorStrip | MatrixGrid | AttentionLines   (?frame=N để chụp một khung)
+  // Số trong các mẫu là số minh hoạ cho trang này — cảnh thật lấy số từ kịch bản.
+  var h = VK.h, C = VK.C;
+  var q = new URLSearchParams(location.search);
+  var part = q.get('part') || 'TokenRow';
+
+  var TOKENS = ['Hôm', 'nay', 'mình', 'học', 'về', 'chú', 'ý'];
+  var LINKS = [
+    { from: 5, to: 0, w: 0.15 }, { from: 5, to: 1, w: 0.1 }, { from: 5, to: 2, w: 0.22 },
+    { from: 5, to: 3, w: 0.45 }, { from: 5, to: 4, w: 0.3 }, { from: 5, to: 6, w: 0.85 }
+  ];
+  var VALUES = [0.8, -0.35, 0.15, 0.62, -0.9, 0.4, 0.25, -0.55];
+  var MATRIX = [
+    [0.2, 0.9, -0.4, 0.1, 0.55], [0.7, -0.2, 0.5, 0.8, -0.3],
+    [-0.6, 0.3, 0.9, -0.1, 0.2], [0.4, 0.6, -0.8, 0.3, 0.7]
+  ];
+
+  var SAMPLES = {
+    TokenRow: function (f) {
+      var n = Math.min(TOKENS.length, Math.floor(VK.linearProgress(f, 10, 90) * TOKENS.length) + 1);
+      return h(VK.TokenRow, { x: 240, y: 430, tokens: TOKENS, size: 56, padX: 30, gap: 20, maxW: 1500, shown: n, highlight: 5, ids: true });
+    },
+    VectorStrip: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.TokenRow, { x: 690, y: 300, tokens: ['chú'], size: 56, padX: 30 }),
+        h(VK.VectorStrip, {
+          x: 300, y: 520, values: VALUES, cell: 130, h: 140, gap: 8,
+          label: 'Mỗi chiều một con số', reveal: VK.linearProgress(f, 10, 90)
+        })
+      );
+    },
+    MatrixGrid: function (f) {
+      return h(VK.MatrixGrid, {
+        x: 560, y: 260, values: MATRIX, cell: 140, gap: 8,
+        rowLabels: ['truy vấn', 'khoá', 'giá trị', 'ra'], label: 'Ma trận trọng số',
+        highlightRow: f > 110 ? 1 : -1, reveal: VK.linearProgress(f, 10, 100)
+      });
+    },
+    AttentionLines: function (f) {
+      var lay = { x: 240, y: 0, tokens: TOKENS, size: 56, padX: 30, gap: 20, maxW: 1500 };
+      var top = VK.tokenLayout(Object.assign({}, lay, { y: 250 }));
+      var bot = VK.tokenLayout(Object.assign({}, lay, { y: 760 }));
+      return h(VK.Fragment, null,
+        h(VK.TokenRow, Object.assign({}, lay, { y: 250, highlight: 5 })),
+        h(VK.AttentionLines, {
+          from: VK.anchorsBelow(top), to: VK.anchorsAbove(bot), links: LINKS,
+          focus: 5, maxWidth: 16, reveal: VK.linearProgress(f, 10, 100)
+        }),
+        h(VK.TokenRow, Object.assign({}, lay, { y: 760, color: C.accentStrong }))
+      );
+    }
+  };
+  var draw = SAMPLES[part] || SAMPLES.TokenRow;
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: 150,
+    render: function (f) { return draw(f); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Illustrated · token, vector, ma trận, chú ý" subtitle="TokenRow hiện từng token · VectorStrip dưới token đang nói · AttentionLines đổi focus theo lời đọc · MatrixGrid tô sáng một hàng" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Illustrated</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 360px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var TOKENS = ['Hôm', 'nay', 'mình', 'học', 'về', 'chú', 'ý'];
+  // trọng số minh hoạ cho card — cảnh thật lấy số từ kịch bản
+  var LINKS = [
+    { from: 5, to: 0, w: 0.15 }, { from: 5, to: 1, w: 0.1 }, { from: 5, to: 3, w: 0.45 },
+    { from: 5, to: 4, w: 0.3 }, { from: 5, to: 6, w: 0.85 },
+    { from: 3, to: 0, w: 0.2 }, { from: 3, to: 2, w: 0.7 }, { from: 3, to: 4, w: 0.25 }
+  ];
+  var VALUES = [0.8, -0.35, 0.15, 0.62, -0.9, 0.4];
+  var MATRIX = [
+    [0.2, 0.9, -0.4, 0.1], [0.7, -0.2, 0.5, 0.8], [-0.6, 0.3, 0.9, -0.1], [0.4, 0.6, -0.8, 0.3]
+  ];
+
+  VK.mountCard('#root', {
+    width: 1400, height: 720, duration: 260,
+    render: function (f) {
+      var top = VK.tokenLayout({ x: 60, y: 50, tokens: TOKENS, size: 30, maxW: 820 });
+      var bot = VK.tokenLayout({ x: 60, y: 330, tokens: TOKENS, size: 30, maxW: 820 });
+      var shown = Math.min(TOKENS.length, Math.floor(VK.linearProgress(f, 10, 80) * TOKENS.length) + 1);
+      var focus = f < 150 ? 5 : 3;
+      return h(VK.Fragment, null,
+        h(VK.TokenRow, { x: 60, y: 50, tokens: TOKENS, size: 30, maxW: 820, shown: shown, highlight: focus }),
+        h(VK.AttentionLines, {
+          from: VK.anchorsBelow(top), to: VK.anchorsAbove(bot), links: LINKS,
+          focus: focus, reveal: VK.linearProgress(f, 90, 140)
+        }),
+        h(VK.TokenRow, { x: 60, y: 330, tokens: TOKENS, size: 30, maxW: 820, color: C.accentStrong }),
+        h(VK.VectorStrip, {
+          x: 60, y: 500, values: VALUES, cell: 62, h: 68, label: 'Vector của token đang nói',
+          reveal: VK.linearProgress(f, 150, 210)
+        }),
+        h(VK.MatrixGrid, {
+          x: 950, y: 130, values: MATRIX, cell: 78, rowLabels: ['q', 'k', 'v', 'o'],
+          label: 'Ma trận trọng số', highlightRow: f > 190 ? 1 : -1,
+          reveal: VK.linearProgress(f, 40, 120)
+        })
+      );
+    }
+  });
+</script>
+</body>
+</html>
