@@ -12,6 +12,8 @@
  *    every 3rd frame (plus each cue's first and last frame) that must not throw or write NaN / undefined
  *    into an attribute. A folder with cues.js but no video.jsx is a video before its scenes step: a
  *    warning, not a problem.
+ *  · whiteboard videos (meta.board): no mark drawn off screen (problem); late beats, board text too small
+ *    on screen, strokes past the end (warnings) — components/whiteboard/board.js checkBoard.
  *  · pictures in videos (PhotoCard): `src` is a design-system file given from its root (never http), every
  *    PhotoCard has a `credit`, and the slots it uses exist in the video's images.js as kind `use`.
  *    The smoke render needs esbuild + react-dom (same lookup as build.mjs); skipped if absent.
@@ -27,6 +29,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { detectQuestions, QUIZ_TAG } from './lib/qa-manifest.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -210,7 +213,8 @@ for (const dir of videoDirs) {
     }
     import { cueCaptions } from ${JSON.stringify(path.join(DS, 'lib/captions.js'))};
     import { ConfigContext, FrameContext } from ${JSON.stringify(path.join(DS, 'lib/player.jsx'))};
-    export { meta, CUES, AUTHORED, cueCaptions };
+    import { checkBoard } from ${JSON.stringify(path.join(DS, 'components/whiteboard/board.js'))};
+    export { meta, CUES, AUTHORED, cueCaptions, checkBoard };
     export const renderAt = (frame) =>
       renderToStaticMarkup(
         React.createElement(ConfigContext.Provider, { value: { fps: 30, width: 1920, height: 1080, durationInFrames: meta.duration } },
@@ -237,9 +241,15 @@ for (const dir of videoDirs) {
     problems.push(`${where} does not build or load: ${String(e.message || e).split('\n')[0]}`);
     continue;
   }
-  const { meta, CUES, AUTHORED, cueCaptions, renderAt } = mod;
+  const { meta, CUES, AUTHORED, cueCaptions, checkBoard, renderAt } = mod;
   const last = CUES[CUES.length - 1];
   if (meta.duration !== last.end) problems.push(`${where}: meta.duration ${meta.duration} ≠ last cue end ${last.end}`);
+  // whiteboard style: the board is one timeline of marks, so check it as a whole (components/whiteboard/board.js)
+  if (meta.board) {
+    const board = checkBoard(meta.board, { duration: meta.duration });
+    for (const p of board.problems) problems.push(`${where}: board — ${p}`);
+    for (const w of board.warnings) warnings.push(`${where}: board — ${w}`);
+  }
   // captions
   const caps = cueCaptions(CUES.map((c) => ({ start: c.start, end: c.end, text: c.text, pause: c.pause })));
   let prev = 0;
@@ -261,6 +271,26 @@ for (const dir of videoDirs) {
       problems.push(`${where}: câu ${cue.n} có lời đọc nhưng đánh dấu quiz: true — cờ này chỉ dành cho khoảng chờ im lặng (xem CLAUDE.md "Nhạc nền và nhạc quiz")`);
     }
   }
+  // Quiz sets for the QA platform. It reads a set as three cues in a row — a spoken câu tagged CÂU HỎI,
+  // a silent pause, then the câu that answers it — and files the video's comprehension screen off that.
+  // The same field `tag` also draws the corner label, so a scene labelled CÂU HỎI with no pause after it
+  // is almost always a label, not a question; and a filler câu ("Hết giờ.") wedged between the pause and
+  // the real answer silently becomes the model answer.
+  // Warnings, not problems: verify covers the whole repo, and videos finished before the QA platform
+  // existed are not going to be re-recorded. What blocks a *new* video is tools/script-check.mjs, which
+  // runs on the one script being written — before a word of it is paid for.
+  const quizSets = detectQuestions(AUTHORED.map((c) => ({ n: c.n, text: String(c.text || '').trim(), tag: c.tag || null, silent: Number(c.silent) || 0 })));
+  const answered = new Set(quizSets.map((q) => q.q_cue_n));
+  for (const cue of AUTHORED) {
+    if (cue.tag !== QUIZ_TAG || !String(cue.text || '').trim() || answered.has(cue.n)) continue;
+    warnings.push(`${where}: câu ${cue.n} gắn tag "${QUIZ_TAG}" nhưng không thành bộ quiz (cần câu hỏi → câu im lặng → câu đáp án liền nhau) — platform QA sẽ bỏ qua`);
+  }
+  for (const q of quizSets) {
+    if (/^(hết giờ|hết thời gian|xong)[.!…]?$/i.test(q.model_answer.trim())) {
+      warnings.push(`${where}: bộ quiz ở câu ${q.q_cue_n} có đáp án mẫu là "${q.model_answer}" — platform QA lấy đúng câu ngay sau khoảng chờ làm đáp án, nên câu đó phải chữa bài (xem templates/modules/quiz.md)`);
+    }
+  }
+
   // smoke render
   const frames = new Set();
   for (let f = 0; f < meta.duration; f += 3) frames.add(f);

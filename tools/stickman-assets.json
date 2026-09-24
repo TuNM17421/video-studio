@@ -1,0 +1,61 @@
+{
+  "source": {
+    "file": "~/Downloads/Research whiteboard style/stick-figure-set-pictogram-stickman-free-vector.jpg",
+    "title": "Stick figure set / pictogram stickman",
+    "licence": "free vector — người dùng repo xác nhận được phép dùng thương mại (xem assets/stickman/README.md)",
+    "note": "Ảnh raster, không phải vector: script lấy nét giữa (centerline) của từng hình rồi quy về lưới 24×24 như Lucide."
+  },
+  "trace": {
+    "top": 120,
+    "threshold": 128,
+    "minComponent": 20,
+    "figureComponent": 1500,
+    "simplify": 0.9,
+    "grid": 24,
+    "inset": 1.0
+  },
+  "figures": {
+    "0": "nguoi-vay-tay",
+    "1": "nguoi-gio-hai-tay",
+    "4": "nguoi-reo-mung",
+    "6": "nguoi-chong-tay",
+    "7": "nguoi-chi-ngang",
+    "8": "nguoi-dang-tay",
+    "11": "nguoi-buoc-toi",
+    "13": "nguoi-da-chan",
+    "16": "nguoi-nhay-mung",
+    "17": "nguoi-nam-tay",
+    "19": "nguoi-chay",
+    "20": "nguoi-dua-tay",
+    "21": "nguoi-om-dau",
+    "22": "nguoi-voi-tay",
+    "26": "nguoi-chi-thang",
+    "27": "nguoi-dung-thoai-mai",
+    "30": "nguoi-buoc-nhanh",
+    "32": "nguoi-gio-tay-buoc",
+    "33": "nguoi-nhay-len",
+    "34": "nguoi-an-mung",
+    "35": "nguoi-gio-mot-tay",
+    "36": "nguoi-chay-mung",
+    "37": "nguoi-chay-nhanh",
+    "38": "nguoi-nam",
+    "39": "nguoi-dang-tay-rong"
+  },
+  "dropped": {
+    "2": "thân tô đặc → xương ra hình nơ",
+    "3": "trùng 1",
+    "5": "trùng 4",
+    "9": "tay cắt qua đầu",
+    "10": "mất đầu",
+    "12": "hai chân rối",
+    "14": "chân hỏng",
+    "15": "mất đầu sau khi lấy nét giữa",
+    "18": "thân tô đặc → hình nơ",
+    "23": "thân tô đặc → hình nơ",
+    "24": "mất đầu",
+    "25": "mất đầu sau khi lấy nét giữa",
+    "28": "chỉ còn mảnh vụn",
+    "29": "hai tay dính vào nhau",
+    "31": "thân tô đặc → hình nơ"
+  }
+}

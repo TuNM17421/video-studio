@@ -84,7 +84,7 @@ export function Shell({ page, section, children }: { page: Page; section?: Libra
   const navigation = [
     // Beta: agent tự tìm tài liệu rồi viết kịch bản. Chưa nối vào luồng tạo video, nên ghi rõ "Beta" — đứng
     // đầu danh sách nhưng đừng để ai tưởng đây là đường chính thức.
-    { key: "scout", icon: <FileSearchOutlined />, label: <Link href="/research" title="Đóng gói kịch bản · beta">Đóng gói kịch bản <span className="vs-nav-beta">beta</span></Link> },
+    { key: "scout", icon: <FileSearchOutlined />, label: <Link href="/research" className="vs-nav-link" title="Đóng gói kịch bản · beta"><span className="vs-nav-label">Đóng gói kịch bản</span><span className="vs-nav-beta">beta</span></Link> },
     { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới" data-tour="nav.new">Video mới</Link> },
     { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video" data-tour="nav.videos">Các video</Link> },
     { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn" data-tour="nav.guide">Hướng dẫn</Link> },

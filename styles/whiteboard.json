@@ -1,0 +1,136 @@
+{
+  "id": "whiteboard",
+  "name": "Whiteboard Style (lab)",
+  "order": 3,
+  "summary": "Bảng trắng vẽ tay: một tấm bảng cho cả video, bút dạ viết chữ tay và vẽ nét theo lời đọc, lau bảng khi đổi phần, camera lia tới từng vùng và lùi ra xem toàn cảnh.",
+  "palette": [
+    {
+      "hex": "#0b2a4d",
+      "name": "Navy",
+      "role": "mực chữ, nét chính"
+    },
+    {
+      "hex": "#1d6199",
+      "name": "Xanh",
+      "role": "mực vật, luồng, mũi tên"
+    },
+    {
+      "hex": "#c72127",
+      "name": "Đỏ",
+      "role": "câu hỏi, điểm nhấn, vòng khoanh"
+    },
+    {
+      "hex": "#f2f7fc",
+      "name": "Xanh nhạt",
+      "role": "nền ô, tờ giấy"
+    },
+    {
+      "hex": "#ffe0e1",
+      "name": "Hồng nhạt",
+      "role": "vệt highlight"
+    }
+  ],
+  "showcase": [
+    {
+      "component": "Whiteboard",
+      "group": "whiteboard",
+      "image": "whiteboard__Whiteboard.png"
+    },
+    {
+      "component": "WbMindMap",
+      "group": "whiteboard",
+      "image": "whiteboard__WbMindMap.png"
+    },
+    {
+      "component": "WbTitleCloud",
+      "group": "whiteboard",
+      "image": "whiteboard__WbTitleCloud.png"
+    },
+    {
+      "component": "WbSpeech",
+      "group": "whiteboard",
+      "image": "whiteboard__WbSpeech.png"
+    },
+    {
+      "component": "WbFlow",
+      "group": "whiteboard",
+      "image": "whiteboard__WbFlow.png"
+    },
+    {
+      "component": "WbCompare",
+      "group": "whiteboard",
+      "image": "whiteboard__WbCompare.png"
+    },
+    {
+      "component": "WbChecklist",
+      "group": "whiteboard",
+      "image": "whiteboard__WbChecklist.png"
+    },
+    {
+      "component": "WbCycle",
+      "group": "whiteboard",
+      "image": "whiteboard__WbCycle.png"
+    },
+    {
+      "component": "WbIdea",
+      "group": "whiteboard",
+      "image": "whiteboard__WbIdea.png"
+    },
+    {
+      "component": "WbTimeline",
+      "group": "whiteboard",
+      "image": "whiteboard__WbTimeline.png"
+    },
+    {
+      "component": "WbPhotoFrame",
+      "group": "whiteboard",
+      "image": "whiteboard__WbPhotoFrame.png"
+    },
+    {
+      "component": "WbAgentLoop",
+      "group": "whiteboard",
+      "image": "whiteboard__WbAgentLoop.png"
+    },
+    {
+      "component": "WbRagFlow",
+      "group": "whiteboard",
+      "image": "whiteboard__WbRagFlow.png"
+    },
+    {
+      "component": "WbPromptBox",
+      "group": "whiteboard",
+      "image": "whiteboard__WbPromptBox.png"
+    },
+    {
+      "component": "WbChatWindow",
+      "group": "whiteboard",
+      "image": "whiteboard__WbChatWindow.png"
+    },
+    {
+      "component": "WbTerminal",
+      "group": "whiteboard",
+      "image": "whiteboard__WbTerminal.png"
+    },
+    {
+      "component": "WbStickman",
+      "group": "whiteboard",
+      "image": "whiteboard__WbStickman.png"
+    },
+    {
+      "component": "WbDoodles",
+      "group": "whiteboard",
+      "image": "whiteboard__WbDoodles.png"
+    }
+  ],
+  "sampleVideo": null,
+  "unsupportedModules": [
+    "dialogue",
+    "quiz",
+    "mascot"
+  ],
+  "rules": [
+    "Cả video là MỘT tấm bảng, không cắt cảnh: board.js (createBoard) + một SceneFrame chứa Whiteboard. Chi tiết dựng cảnh: styles/whiteboard.md.",
+    "Mỗi câu 3–5 nét, chữ trên bảng là từ khoá ngắn; mực navy / xanh / đỏ, chữ tay chỉ trên bảng, chrome giữ Montserrat.",
+    "Camera lia tới vùng mới trước nét đầu tiên; không vẽ khi camera còn chạy; câu tổng kết lùi ra toàn bảng."
+  ]
+}

@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, CopyOutlined, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PictureOutlined, PlayCircleFilled, QuestionOutlined, SmileOutlined, TeamOutlined, WarningFilled } from "@ant-design/icons";
+import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PictureOutlined, PlayCircleFilled, QuestionOutlined, SmileOutlined, TeamOutlined, WarningFilled } from "@ant-design/icons";
 import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { inferDay } from "@/lib/day";
+import { ITEM_ID_MAX, itemIdFor } from "@/lib/qa-manifest";
 import type { AgentProvider, ReviewSettings, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
-import { DEFAULT_REVIEW } from "@/lib/review";
+import { DEFAULT_REVIEW, resolveReviewer } from "@/lib/review";
 import { AgentName } from "./agent-mark";
 import { ReviewControl } from "./review-control";
 import { SourcePickerField } from "./source-picker";
-import { BASE_TEMPLATE_PATH, moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
-import { StylePicker, StyleShowcase } from "./style-showcase";
+import { moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
+import { StylePicker, StyleSampleButton } from "./style-showcase";
 
 const DAYS = Array.from({ length: 30 }, (_, i) => `Day${String(i + 1).padStart(2, "0")}`);
 const SCOPE_LABELS: [keyof Scope, string][] = [["voice", "Giọng đọc"], ["render", "Render MP4"], ["transcript", "Transcript"], ["chapters", "File chương"]];
@@ -45,34 +46,9 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
   id: "",
   agentProvider,
   review: { ...DEFAULT_REVIEW },
-  request: { style, modules: [], day: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
+  request: { style, modules: [], day: "", itemId: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
-
-/** The prompt a member can paste into Claude Code (or Claude Design) instead of pressing Tạo video. */
-export function buildPrompt(draft: PlanDraft, style?: StyleDef, modules: ModuleInfo[] = []) {
-  const r = draft.request;
-  const id = draft.id || "<mã-video>";
-  const scope = [r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ");
-  const showcase = style ? [...(style.base?.showcase || []), ...style.showcase].map((s) => s.component).join(", ") : "";
-  return [
-    `Dựng video ${id} (${r.day || "<ngày>"}) theo style ${style?.name || r.style} (styles/${r.style}.json).`,
-    `Dùng skill make-video (.claude/skills/make-video/SKILL.md), thứ tự: cues → giọng → cảnh → render → bàn giao.`,
-    `Kịch bản: ${draft.script ? `projects/${id}/kich-ban-goc.md (chép từ ${draft.script.name})` : "<đường dẫn kịch bản>"}.`,
-    r.title && `Tên video: ${r.title}.`,
-    r.feedbackDir && `Feedback so với bản cũ: ${r.feedbackDir}`,
-    r.oldVideoDir && `Video cũ: ${r.oldVideoDir}`,
-    showcase && `Component tiêu biểu của style: ${showcase}. Dùng khi nội dung phù hợp.`,
-    `Kịch bản theo ${BASE_TEMPLATE_PATH}.`,
-    ...r.modules.map((id) => {
-      const m = modules.find((x) => x.id === id);
-      return m ? `${m.name}: đọc thêm ${m.template} (chỉ ghi phần thêm so với mẫu cơ bản).` : "";
-    }),
-    ...(style?.rules || []).map((rule) => `- ${rule}`),
-    `Làm đủ: ${scope}.`,
-    r.notes.trim() && `Ghi chú: ${r.notes.trim()}`,
-  ].filter(Boolean).join("\n");
-}
 
 /** "Bật cái này thì video trông thế nào?" — a question a checkbox cannot answer, so show the sample. */
 function ModulePreview({ module: m }: { module: ModuleInfo }) {
@@ -110,7 +86,7 @@ function ModuleGlyph({ icon }: { icon: ModuleInfo["icon"] }) {
 }
 
 /** The capability catalog: one card per templates/modules/<id>.md, served by /api/modules. */
-function useModules() {
+export function useModules() {
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   useEffect(() => {
     let alive = true;
@@ -128,7 +104,6 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const idCheckRun = useRef(0);
   // Once the member picks a day by hand, a later script only warns about a mismatch instead of overriding it.
   const dayPicked = useRef(false);
-  const [copied, setCopied] = useState(false);
   const [touched, setTouched] = useState({ id: false, day: false, script: false });
   const [scriptIssue, setScriptIssue] = useState<string | null>(null);
   const [idCheck, setIdCheck] = useState<{ value: string; taken: boolean } | null>(null);
@@ -137,9 +112,9 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const styleLabelId = useId();
   const idErrorId = useId();
   const dayMessageId = useId();
+  const itemIdMessageId = useId();
   const scriptLabelId = useId();
   const scriptErrorId = useId();
-  const prompt = useMemo(() => buildPrompt(draft, style, modules), [draft, style, modules]);
   const set = (patch: Partial<VideoRequest>) => setDraft((current) => ({ ...current, request: { ...current.request, ...patch } }));
   const setModule = (id: string, checked: boolean) => setDraft((current) => ({
     ...current,
@@ -153,6 +128,9 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   const formatError = videoIdError(draft.id);
   const duplicateError = idCheck?.value === draft.id && idCheck.taken ? `Đã có video “${draft.id}”. Chọn một mã khác.` : null;
   const shownIdError = touched.id ? formatError || duplicateError : null;
+  // What the manifest beside the MP4 will carry as item_id: the field when filled, else the video id.
+  const itemId = itemIdFor(draft.request.itemId, draft.id);
+  const itemIdTooLong = itemId.length > ITEM_ID_MAX;
   const requiredDayError = !draft.request.day ? "Chọn ngày của bài học (Day01, Day02…)." : null;
   const shownDayError = touched.day ? requiredDayError : null;
   const scriptDay = useMemo(() => draft.script ? inferDay(draft.script.name, draft.script.content) : null, [draft.script]);
@@ -252,100 +230,123 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
       return Upload.LIST_IGNORE;
     },
   };
+  const scopeOff = SCOPE_LABELS.filter(([key]) => !draft.request.scope[key]).map(([, label]) => label.toLowerCase());
+  const reviewer = resolveReviewer(draft.agentProvider, draft.review, installedAgents);
+  // The folded section still has to say what it will do: a member who never opens it gets these defaults.
+  const advancedSummary = [
+    `Mã item ${itemId || "theo mã video"}`,
+    scopeOff.length ? `bỏ ${scopeOff.join(", ")}` : "làm đủ các phần",
+    `review chéo ${!draft.review.enabled ? "tắt" : reviewer.ok ? agentProviderLabel(reviewer.provider) : "chưa chọn được"}`,
+  ].join(" · ");
+  const advancedProblem = itemIdTooLong || (draft.review.enabled && !reviewer.ok);
   return <div ref={formRef}><Form className="vs-plan-form" layout="vertical" requiredMark={false} aria-busy={loading} onFinish={() => { void submit(); }}>
     <div className="vs-section">
-      <Form.Item className="vs-style-form-item" data-tour="plan.style" label={<span id={styleLabelId} className="vs-section-title">Style hình ảnh<RequiredMark /></span>}>
-        {loading
-          ? <div className="vs-inline-state" role="status"><LoadingOutlined spin /><span>Đang tải style và cấu hình agent…</span></div>
-          : unavailable
-            ? <div className="vs-inline-state is-error" role="status"><WarningFilled /><span>Chưa thể tải cấu hình Studio.</span></div>
-            : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s })} disabled={busy} labelledBy={styleLabelId} />}
-      </Form.Item>
-      {style && <StyleShowcase style={style} collapsible />}
-      <section className="vs-capabilities" data-tour="plan.modules" aria-labelledby="vs-capabilities-title">
-        <div className="vs-capabilities-head">
-          <h3 id="vs-capabilities-title" className="vs-section-title">Tính năng nội dung</h3>
-          <p>Có thể chọn nhiều. Mỗi tính năng mở đúng phần cấu hình liên quan.</p>
-        </div>
-        <div className="vs-modules">
-          {modules.map((m) => {
-            const checked = draft.request.modules.includes(m.id);
-            return <article key={m.id} className={`vs-module ${checked ? "is-on" : ""} ${busy ? "is-disabled" : ""}`}>
-            <Checkbox
-              className="vs-module-toggle"
-              checked={checked}
-              disabled={busy}
-              onChange={(e) => setModule(m.id, e.target.checked)}
-            >
-              <span className="vs-module-identity">
-                <ModuleGlyph icon={m.icon} />
-                <span className="vs-module-copy">
-                  <strong>{m.name}</strong>
-                  <small>{m.summary}{m.template ? <> Dùng <code>{m.template}</code>.</> : null}</small>
-                  {checked && <span className="vs-module-status">Đã bật</span>}
-                </span>
-              </span>
-            </Checkbox>
-            <ModulePreview module={m} />
-            {/* A new tab, so the half-filled plan survives the look. */}
-            {m.id === "dialogue" && <a className="vs-module-play" href="/library/characters" target="_blank" rel="noreferrer">
-              <TeamOutlined /><span>Xem các nhân vật hiện có</span>
-            </a>}
-            {m.id === "mascot" && <a className="vs-module-play" href="/library/mascot" target="_blank" rel="noreferrer">
-              <SmileOutlined /><span>Xem dáng và biểu cảm của Griffin</span>
-            </a>}
-          </article>;
-          })}
-        </div>
-      </section>
-    </div>
-    <div className="vs-section">
-      <h3 className="vs-section-title">Nội dung video</h3>
-      <div className="field-grid vs-grid-3">
-        <Form.Item className="field" data-tour="plan.id" label={<span className="vs-field-label">Mã video<RequiredMark /></span>} validateStatus={shownIdError ? "error" : checkingId ? "validating" : touched.id && idCheck?.value === draft.id ? "success" : undefined} help={(shownIdError || checkingId || (touched.id && idCheck?.value === draft.id && !idCheck.taken)) ? <span id={idErrorId} className={`vs-validation-message ${shownIdError ? "is-error" : checkingId ? "is-checking" : "is-ok"}`} role={shownIdError ? "alert" : "status"}>{shownIdError ? <WarningFilled /> : checkingId ? <LoadingOutlined spin /> : <CheckCircleFilled />}{shownIdError || (checkingId ? "Đang kiểm tra mã…" : "Mã này có thể sử dụng.")}</span> : undefined}>
-          <Input ref={idInput} status={shownIdError ? "error" : undefined} aria-invalid={!!shownIdError || undefined} aria-describedby={shownIdError || checkingId ? idErrorId : undefined} value={draft.id} disabled={busy} maxLength={61} onBlur={() => { setTouched((current) => ({ ...current, id: true })); void checkVideoId(draft.id); }} onChange={(e) => { setIdCheck(null); setDraft((current) => ({ ...current, id: e.target.value })); }} placeholder="d2-01-lab-v3" spellCheck={false} autoComplete="off" />
-        </Form.Item>
-        <Form.Item className="field" label={<span className="vs-field-label">Ngày<RequiredMark /></span>} validateStatus={shownDayError ? "error" : dayMismatch ? "warning" : undefined} help={shownDayError || dayMismatch ? <span id={dayMessageId} className={`vs-validation-message ${shownDayError ? "is-error" : "is-warn"}`} role={shownDayError ? "alert" : "status"}><WarningFilled />{shownDayError || dayMismatch}</span> : undefined}>
-          <Select value={draft.request.day || undefined} placeholder="Day01, Day02…" status={shownDayError ? "error" : dayMismatch ? "warning" : undefined} aria-invalid={!!shownDayError || undefined} aria-describedby={shownDayError || dayMismatch ? dayMessageId : undefined} disabled={busy} onBlur={() => setTouched((current) => ({ ...current, day: true }))} onChange={(day) => { dayPicked.current = true; setTouched((current) => ({ ...current, day: true })); set({ day }); }} options={DAYS.map((day) => ({ value: day, label: day }))} />
-        </Form.Item>
-        <Form.Item className="field" label={<span className="vs-field-label">Tên video</span>}>
-          <Input value={draft.request.title} disabled={busy} maxLength={200} onChange={(e) => set({ title: e.target.value })} />
-        </Form.Item>
-      </div>
+      <h3 className="vs-section-title vs-plan-heading"><span className="vs-plan-number" aria-hidden="true">1</span>Kịch bản và thông tin video</h3>
       <Form.Item className="field vs-script-field" data-tour="plan.script" label={<span id={scriptLabelId} className="vs-field-label">Kịch bản<RequiredMark /></span>} validateStatus={shownScriptError ? "error" : undefined} help={shownScriptError ? <span id={scriptErrorId} className="vs-validation-message is-error" role="alert"><WarningFilled />{shownScriptError}</span> : undefined}>
         {draft.script
           ? <div className="vs-file"><FileTextOutlined /><span><strong>{draft.script.name}</strong><small>{draft.script.content.length.toLocaleString("vi-VN")} ký tự · {draft.script.content.split("\n")[0].slice(0, 90)}</small></span><Upload {...uploadProps}><Button type="link" disabled={busy}>Đổi tệp</Button></Upload></div>
           : <Upload.Dragger {...uploadProps} className={`vs-drop ${shownScriptError ? "is-invalid" : ""}`}>
               <p className="ant-upload-drag-icon"><InboxOutlined /></p>
               <p className="ant-upload-text">Thả tệp .md / .txt vào đây</p>
-              <p className="ant-upload-hint">Tối đa 300 KB. Nội dung tệp phải khác rỗng.</p>
+              <p className="ant-upload-hint">Tối đa 300 KB. Ngày của bài học được điền theo kịch bản.</p>
               <Button disabled={busy} data-validation-invalid={!!shownScriptError || undefined} aria-describedby={shownScriptError ? scriptErrorId : undefined} onBlur={() => setTouched((current) => ({ ...current, script: true }))}>Chọn tệp</Button>
             </Upload.Dragger>}
       </Form.Item>
-      <Collapse className="vs-optional-sources" items={[{
-        key: "sources",
-        label: <span className="vs-collapse-label"><strong><FolderOpenOutlined /> Nguồn tham chiếu</strong><small>Feedback, video cũ và ghi chú · tuỳ chọn</small></span>,
-        children: <>
-          <div className="field-grid">
-            <SourcePickerField label="Feedback bản cũ" purpose="feedback" value={draft.request.feedbackDir} disabled={busy} onChange={(v) => set({ feedbackDir: v })} />
-            <SourcePickerField label="Video cũ" purpose="video" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
-          </div>
-          <Form.Item className="field vs-counted-textarea" label={<span className="vs-field-label">Ghi chú</span>}>
-            <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount onChange={(e) => set({ notes: e.target.value })} />
-          </Form.Item>
-        </>,
-      }]} />
-      <Form.Item className="vs-scope" label="Phạm vi">
-        <div className="vs-scope-options">
-          <Checkbox checked disabled>Dựng cảnh + kiểm tra</Checkbox>
-          {SCOPE_LABELS.map(([key, label]) => <Checkbox key={key} checked={draft.request.scope[key]} disabled={busy} onChange={(e) => set({ scope: { ...draft.request.scope, [key]: e.target.checked } })}>{label}</Checkbox>)}
-        </div>
+      <div className="field-grid vs-grid-3">
+        <Form.Item className="field" data-tour="plan.id" label={<span className="vs-field-label">Mã video<RequiredMark /></span>} validateStatus={shownIdError ? "error" : checkingId ? "validating" : touched.id && idCheck?.value === draft.id ? "success" : undefined} help={(shownIdError || checkingId || (touched.id && idCheck?.value === draft.id && !idCheck.taken)) ? <span id={idErrorId} className={`vs-validation-message ${shownIdError ? "is-error" : checkingId ? "is-checking" : "is-ok"}`} role={shownIdError ? "alert" : "status"}>{shownIdError ? <WarningFilled /> : checkingId ? <LoadingOutlined spin /> : <CheckCircleFilled />}{shownIdError || (checkingId ? "Đang kiểm tra mã…" : "Mã này có thể sử dụng.")}</span> : undefined}>
+          <Input ref={idInput} status={shownIdError ? "error" : undefined} aria-invalid={!!shownIdError || undefined} aria-describedby={shownIdError || checkingId ? idErrorId : undefined} value={draft.id} disabled={busy} maxLength={61} onBlur={() => { setTouched((current) => ({ ...current, id: true })); void checkVideoId(draft.id); }} onChange={(e) => { setIdCheck(null); setDraft((current) => ({ ...current, id: e.target.value })); }} placeholder="vd. d2-01-lab-v3" spellCheck={false} autoComplete="off" />
+        </Form.Item>
+        <Form.Item className="field" label={<span className="vs-field-label">Ngày<RequiredMark /></span>} validateStatus={shownDayError ? "error" : dayMismatch ? "warning" : undefined} help={shownDayError || dayMismatch ? <span id={dayMessageId} className={`vs-validation-message ${shownDayError ? "is-error" : "is-warn"}`} role={shownDayError ? "alert" : "status"}><WarningFilled />{shownDayError || dayMismatch}</span> : undefined}>
+          <Select value={draft.request.day || undefined} placeholder="Chọn ngày" status={shownDayError ? "error" : dayMismatch ? "warning" : undefined} aria-invalid={!!shownDayError || undefined} aria-describedby={shownDayError || dayMismatch ? dayMessageId : undefined} disabled={busy} onBlur={() => setTouched((current) => ({ ...current, day: true }))} onChange={(day) => { dayPicked.current = true; setTouched((current) => ({ ...current, day: true })); set({ day }); }} options={DAYS.map((day) => ({ value: day, label: day }))} />
+        </Form.Item>
+        <Form.Item className="field" label={<span className="vs-field-label">Tên video</span>}>
+          <Input value={draft.request.title} disabled={busy} maxLength={200} placeholder="Tuỳ chọn" onChange={(e) => set({ title: e.target.value })} />
+        </Form.Item>
+      </div>
+    </div>
+    <div className="vs-section">
+      <h3 className="vs-section-title vs-plan-heading"><span className="vs-plan-number" aria-hidden="true">2</span>Hình thức</h3>
+      <Form.Item className="vs-style-form-item" data-tour="plan.style" label={<span id={styleLabelId} className="vs-field-label">Style hình ảnh<RequiredMark /></span>}>
+        {loading
+          ? <div className="vs-inline-state" role="status"><LoadingOutlined spin /><span>Đang tải style và cấu hình agent…</span></div>
+          : unavailable
+            ? <div className="vs-inline-state is-error" role="status"><WarningFilled /><span>Chưa thể tải cấu hình Studio.</span></div>
+            : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s, modules: draft.request.modules.filter((id) => !styles.find((x) => x.id === s)?.unsupportedModules?.includes(id)) })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
-      <ReviewControl author={draft.agentProvider} value={draft.review} installed={installedAgents} disabled={busy} onChange={(review) => setDraft((current) => ({ ...current, review }))} />
-      <Collapse className="vs-prompt" items={[{
-        key: "prompt",
-        label: <span><FolderOpenOutlined /> Prompt</span>,
-        children: <><pre>{prompt}</pre><Button icon={<CopyOutlined />} onClick={async () => { await navigator.clipboard.writeText(prompt); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>{copied ? "Đã copy" : "Copy prompt"}</Button></>,
+      <section className="vs-capabilities" data-tour="plan.modules" aria-labelledby="vs-capabilities-title">
+        <div className="vs-capabilities-head">
+          <h4 id="vs-capabilities-title" className="vs-field-label">Tính năng nội dung</h4>
+          <p>Tuỳ chọn, chọn được nhiều. Không bật gì là clip một người dẫn.</p>
+        </div>
+        <div className="vs-modules">
+          {modules.map((m) => {
+            const unsupported = style?.unsupportedModules?.includes(m.id) ?? false;
+            const checked = !unsupported && draft.request.modules.includes(m.id);
+            return <article key={m.id} className={`vs-module ${checked ? "is-on" : ""} ${busy || unsupported ? "is-disabled" : ""}`}>
+            <Checkbox
+              className="vs-module-toggle"
+              checked={checked}
+              disabled={busy || unsupported}
+              onChange={(e) => setModule(m.id, e.target.checked)}
+            >
+              <span className="vs-module-identity">
+                <ModuleGlyph icon={m.icon} />
+                <span className="vs-module-copy">
+                  <strong>{m.name}{checked && <span className="vs-module-status">Đã bật</span>}</strong>
+                  <small>{unsupported ? `${style?.name} chưa hỗ trợ tính năng này.` : m.summary}</small>
+                </span>
+              </span>
+            </Checkbox>
+            <div className="vs-module-links">
+              <ModulePreview module={m} />
+              {/* A new tab, so the half-filled plan survives the look. */}
+              {m.id === "dialogue" && <a className="vs-module-play" href="/library/characters" target="_blank" rel="noreferrer">
+                <TeamOutlined /><span>Nhân vật hiện có</span>
+              </a>}
+              {m.id === "mascot" && <a className="vs-module-play" href="/library/mascot" target="_blank" rel="noreferrer">
+                <SmileOutlined /><span>Dáng và biểu cảm</span>
+              </a>}
+            </div>
+          </article>;
+          })}
+        </div>
+      </section>
+    </div>
+    <div className="vs-section">
+      <Collapse className="vs-advanced" items={[{
+        key: "advanced",
+        forceRender: true,
+        label: <span className="vs-collapse-label"><strong><span className="vs-plan-number" aria-hidden="true">3</span>Tuỳ chọn nâng cao</strong><small className={advancedProblem ? "is-warn" : undefined}>{advancedProblem && <WarningFilled />}{advancedSummary}</small></span>,
+        children: <div className="vs-advanced-body">
+          <Form.Item
+            className="field vs-item-id"
+            label={<span className="vs-field-label">Mã item gửi QA</span>}
+            validateStatus={itemIdTooLong ? "warning" : undefined}
+            help={<span id={itemIdMessageId} className={`vs-validation-message${itemIdTooLong ? " is-warn" : ""}`} role="status">
+              {itemIdTooLong ? <><WarningFilled />{`Dài ${itemId.length} ký tự, platform QA chỉ nhận tối đa ${ITEM_ID_MAX}.`}</> : "Mã platform QA gắn lỗi soát vào. Để trống thì dùng mã video."}
+            </span>}
+          >
+            <Input value={draft.request.itemId} disabled={busy} maxLength={ITEM_ID_MAX * 2} placeholder={draft.id ? `Mặc định: ${draft.id}` : "Mặc định: mã video"} spellCheck={false} autoComplete="off" aria-describedby={itemIdMessageId} onChange={(e) => set({ itemId: e.target.value })} />
+          </Form.Item>
+          <fieldset className="vs-scope">
+            <legend className="vs-field-label">Phạm vi</legend>
+            <p className="vs-scope-note">Dựng cảnh và kiểm tra luôn được làm. Bỏ chọn phần bạn sẽ tự làm.</p>
+            <div className="vs-scope-options">
+              {SCOPE_LABELS.map(([key, label]) => <Checkbox key={key} checked={draft.request.scope[key]} disabled={busy} onChange={(e) => set({ scope: { ...draft.request.scope, [key]: e.target.checked } })}>{label}</Checkbox>)}
+            </div>
+          </fieldset>
+          <ReviewControl author={draft.agentProvider} value={draft.review} installed={installedAgents} disabled={busy} onChange={(review) => setDraft((current) => ({ ...current, review }))} />
+          <div className="vs-advanced-group">
+            <span className="vs-field-label"><FolderOpenOutlined /> Nguồn tham chiếu</span>
+            <div className="field-grid">
+              <SourcePickerField label="Feedback bản cũ" purpose="feedback" value={draft.request.feedbackDir} disabled={busy} onChange={(v) => set({ feedbackDir: v })} />
+              <SourcePickerField label="Video cũ" purpose="video" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
+            </div>
+            <Form.Item className="field vs-counted-textarea" label={<span className="vs-field-label">Ghi chú cho agent</span>}>
+              <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount onChange={(e) => set({ notes: e.target.value })} />
+            </Form.Item>
+          </div>
+        </div>,
       }]} />
     </div>
     <div className="panel-footer">
@@ -363,8 +364,9 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
   return <div className="vs-section">
     <Descriptions className="vs-facts" bordered column={1} size="small" items={[
       { key: "agent", label: "Agent", children: <AgentName provider={state.agent.provider} /> },
-      { key: "style", label: "Style", children: style?.name || r.style },
+      { key: "style", label: "Style", children: <span className="vs-summary-style">{style?.name || r.style}{style && <StyleSampleButton style={style} />}</span> },
       { key: "day", label: "Ngày", children: r.day || "—" },
+      { key: "item", label: "Mã item gửi QA", children: itemIdFor(r.itemId, state.id) },
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
       { key: "feedback", label: "Feedback bản cũ", children: r.feedbackDir || "—" },
       { key: "video", label: "Video cũ", children: r.oldVideoDir || "—" },
@@ -372,6 +374,5 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
       { key: "review", label: "Review chéo", children: state.review.enabled ? `Bật · ${state.review.provider === "auto" ? "tự chọn người review" : agentProviderLabel(state.review.provider)}` : "Tắt" },
       { key: "notes", label: "Ghi chú", children: r.notes || "—" },
     ]} />
-    {style && <StyleShowcase style={style} />}
   </div>;
 }

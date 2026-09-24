@@ -9,8 +9,12 @@ Arguments: `<video-id>` and optionally a stage (`cues`, `scenes`, `deliver`). Th
 `projects/<id>/REQUEST.md`, written by Video Studio (`studio/`) or by hand. It names the style, the Day, the
 script, optional feedback / old-video folders, notes and the scope. Read it first, then
 `styles/<style>.json` (palette, showcase components, rules — the style's rules override defaults),
-`vinuni-lesson-video-ds/README.md`, `vinuni-lesson-video-ds/SKILL.md` and the reference video
-`vinuni-lesson-video-ds/ui_kits/lesson-video/videos/d2-01-lab/` (+ `projects/d2-01-lab/PROMPTS.md`).
+`vinuni-lesson-video-ds/README.md` and `vinuni-lesson-video-ds/SKILL.md`.
+
+**This file is the core every style shares.** How a style builds its scenes — file layout, components,
+its reference video, its recurring mistakes, its extra QA criteria — lives in the style's own guide,
+`styles/<style>.md` (REQUEST.md names it). A guide whose front matter says `extends: <parent>` adds to
+the parent's guide: read the parent first. Where a guide and this file disagree on scenes, the guide wins.
 
 Video dir below = `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/<id>/`. Reply in Vietnamese.
 
@@ -75,6 +79,12 @@ and the matching `run finish`; this keeps token, time, machine, outcome and feed
   `seconds` a script estimate, `visual` what the scene shows. Export `SECTIONS`, `CUES`, `DURATION` and
   `export const { spokenAt, speechEnd } = createSpeech(RAW, VOICE);` with
   `import { VOICE } from './voice.js'` and `import { createSpeech } from '../../../../lib/speech.js'`.
+- A quiz set is three cues in a row the QA platform reads: a spoken câu with `tag: 'CÂU HỎI'` (the
+  question), the `silent` cue (the pause), then the câu that answers it. Nothing may sit between the pause
+  and the answer — the platform takes that câu as the model answer and stops the video there, so a filler
+  "Hết giờ." becomes the answer the learner is shown. Do not use `tag: 'CÂU HỎI'` as a decorative corner
+  label: `npm run verify` warns, and the platform ignores that set. Three sets per video
+  (`templates/modules/quiz.md`).
 - `quiz: true` marks a câu the quiz bed plays over — only the pause where the viewer thinks (the `silent` cue,
   while the timer runs). Never the câu that reads the question out loud: the background bed carries that, and
   the quiz track comes in once the question is finished. Never the explanation that follows either, so the
@@ -101,34 +111,20 @@ master từ một thư mục `01.wav, 02.wav …`. Kết quả và các bước 
 timestamps. Cached per câu: changing one câu's text re-bills only that câu.
 
 ## Stage 3 · scenes
-- Timing is final: every scene lasts exactly its cue's `frames`. Place beats with `spokenAt(n, 'cụm từ')`
+Read the style guide `styles/<style>.md` (and its `extends` parent) first: it says how this style builds
+scenes, which reference video to copy and which mistakes to check for. The rules below hold for every style.
+- Timing is final: every câu lasts exactly its cue's `frames`. Place beats with `spokenAt(n, 'cụm từ')`
   (real word start) a few frames early; hold the settled state through `speechEnd(n)` + pause.
-- Files, as in the reference: `shared.jsx` (eyebrow, captions, shell), `sNN.jsx` (one per cue), `video.jsx`
-  (Series over TIMELINE), `timeline.js`, `card.html`, `player.html`, `STORYBOARD.md`.
-- Rules: content zone y 250–960; captions ≤ 78 chars (lib/captions.js); colors only from `styles/<style>.json`
-  and lib/tokens.js; Montserrat; connectors = particle on the drawn path, hidden on card faces, one pulse per
-  arrival; no numbers or results the script does not give; prefer the style's showcase components when the
-  content fits. Several scene groups can be built in parallel with forked agents.
-- Recurring mistakes (QA d1, 09/2026) — check every scene against these:
-  1. `HookOverlay` hides scene 1 under a white backdrop for its first 96–150 f, and `spokenAt` is fixed by the
-     voice: clamp every beat anchored to a phrase spoken during the hook (`Math.max(spokenAt(N, …), T.hook)`)
-     or shorten the hook until the first anchored phrase lands after the fade-out.
-  2. No meaningless placeholders (grey bars, empty boxes, blank app windows) standing through a câu while the
-     narration names the content: dashed slots only when the script says "chưa biết / sẽ có" — otherwise
-     fill them with the words being spoken.
-  3. Never draw a connector or particle to an empty slot: card first, particle after, one pulse.
-  4. Labels ≥ 24 px from any outline and ≥ 32 px from other text — never wedged between two borders or
-     touching a pill / card edge; the câu's key concept is the biggest text in the diagram (`GlassBox`'s
-     `label` pill, not a loose 18 px text label of your own).
-  5. Cards start inside the frame and move along an empty lane — never slide in from outside across another
-     card's face.
-  6. Consecutive câu on one diagram inherit the frame and change only the text — keep positions, colors and
-     label names; no wipe-to-white and redraw in the same place (a blank second).
-  7. Captions: read each câu's pages with `paginate` from lib/captions.js (verify prints only the video's
-     total) and re-read every break before "từ / cho / bên"; a break that changes the meaning goes back to
-     Stage 1 — never edit the narration here.
-  8. `quiz: true` only on the `silent` cue (Stage 1 rule); `npm run verify` now reports a problem when it sits
-     on a spoken câu.
+- Colors only from `styles/<style>.json` and lib/tokens.js; chrome (eyebrow, captions, footer) in Montserrat;
+  no numbers or results the script does not give; prefer the style's showcase components when the content fits.
+- No meaningless placeholders (grey bars, empty boxes, blank app windows) standing through a câu while the
+  narration names the content: empty slots only when the script says "chưa biết / sẽ có" — otherwise fill
+  them with the words being spoken.
+- Captions ≤ 78 chars (lib/captions.js): read each câu's pages with `paginate` (verify prints only the
+  video's total) and re-read every break before "từ / cho / bên"; a break that changes the meaning goes back
+  to Stage 1 — never edit the narration here.
+- `quiz: true` only on the `silent` cue (Stage 1 rule); `npm run verify` reports a problem when it sits on a
+  spoken câu.
 - `npm run build && npm run verify -- --video <id>` must end with "all checks passed" — this video plus the
   design-system checks. Another local video's problem is not this video's to fix: never edit a different video.
 - QA: shoot three frames per câu — `start + 20`, the middle, `end − 3` (`sNN-a/b/c.png` or `sNN-fNNN.png`) —
@@ -142,7 +138,13 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
 ```console
 node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4 --base <preview base> [--no-captions]
 node tools/transcript.mjs voice/out/<id>/voice.cues.json transcripts/<Day>/<id>.txt
+node tools/qa-manifest.mjs --scene <id> --item <id> --title "<tên video>" --build 1 --captions yes|no --mp4 projects/<id>/render/<id>.mp4
 ```
+`manifest.json` goes next to the MP4 and is what the QA platform needs to accept the upload — without it,
+or with the wrong kind of file, the upload is refused. `--captions` must match how the MP4 was actually
+rendered, and `--build` is 1 for the first submission, 2 after fixes, 3 for the release. It refuses to
+write when cues.js and the recording disagree or the MP4 does not match the voice; both mean the MP4 is
+not the build to send. Never pass `--keep-frames` builds: the platform rejects them.
 
 ## Stage 5 · deliver
 - Before writing `chapters/<Day>/`, check the Day in REQUEST.md against the script head (`- **Ngày:** N`,

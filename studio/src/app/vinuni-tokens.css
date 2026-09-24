@@ -168,9 +168,10 @@
   --vu-workflow-header-height: 28px;
   --vu-workflow-step-height: 68px;
   --vu-workflow-step-icon: 36px;
-  --vu-style-card-min-width: 280px;
-  --vu-style-card-padding: 14px;
-  --vu-style-specimen-height: 156px;
+  --vu-style-card-min-width: 208px;
+  --vu-style-grid-columns: 3;
+  --vu-style-card-padding: 12px;
+  --vu-style-specimen-height: 128px;
   --vu-page-agent-width: 440px;
   --vu-page-agent-min-height: 84px;
   --vu-page-agent-control-width: 224px;

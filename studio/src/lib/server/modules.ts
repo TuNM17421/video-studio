@@ -13,7 +13,7 @@ const DIR = path.join(REPO, "templates", "modules");
 const ID = /^[a-z0-9-]+$/;
 
 /** `key: value` lines between the leading `---` fences. Deliberately tiny: no nesting, no lists. */
-function frontMatter(text: string): Record<string, string> {
+export function frontMatter(text: string): Record<string, string> {
   const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!m) return {};
   const out: Record<string, string> = {};
@@ -72,7 +72,7 @@ export const cleanModules = (value: unknown): string[] => {
 };
 
 /** The `## Tiêu chí QA` section of a capability's file: what visual QA checks only when it is on. */
-function qaSection(text: string) {
+export function qaSection(text: string) {
   const m = text.match(/^##\s+Tiêu chí QA\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
   return m ? m[1].replace(/^\s*---\s*$/gm, "").trim() : "";
 }
