@@ -76,3 +76,4 @@ export * from './whiteboard/board.js';
 export * from './whiteboard/doodles.js';
 export * from './whiteboard/handFonts.js';
 export * from './whiteboard/parts.js';
+export * from './whiteboard/stickman.js';

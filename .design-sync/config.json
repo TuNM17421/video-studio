@@ -145,6 +145,7 @@
     "WbSpeech": "components/whiteboard/Parts.prompt.md",
     "WbStickyNote": "components/whiteboard/Parts.prompt.md",
     "WbSteps": "components/whiteboard/Parts.prompt.md",
+    "WbStickman": "components/whiteboard/Parts.prompt.md",
     "WbTable": "components/whiteboard/Parts.prompt.md",
     "WbTimeline": "components/whiteboard/Parts.prompt.md",
     "WbTitleCloud": "components/whiteboard/Parts.prompt.md",

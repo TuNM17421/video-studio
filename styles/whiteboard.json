@@ -107,6 +107,11 @@
       "image": "whiteboard__WbTerminal.png"
     },
     {
+      "component": "WbStickman",
+      "group": "whiteboard",
+      "image": "whiteboard__WbStickman.png"
+    },
+    {
       "component": "WbDoodles",
       "group": "whiteboard",
       "image": "whiteboard__WbDoodles.png"

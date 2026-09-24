@@ -1,5 +1,6 @@
 /**
- * Doodles for the whiteboard: Lucide line icons (ISC, approved dependency) redrawn as marker strokes.
+ * Doodles for the whiteboard: Lucide line icons (ISC, approved dependency) redrawn as marker strokes,
+ * plus the `nguoi-…` stick-figure poses from stickman.js (same 24 grid, so they behave identically).
  * An icon's elements become one path on its 24 grid; roughenPath() then walks that path, jitters it by a
  * seeded wobble and rebuilds it as a smooth hand-drawn curve in board coordinates, so the marker can draw
  * it on (drawOn) and follow it (penOnPath) like any other stroke.
@@ -17,6 +18,7 @@ import {
 } from 'lucide';
 import { curvePath, getLength, getPointAtLength } from '../../lib/paths.js';
 import { rng } from '../../lib/text.js';
+import { STICKMEN } from './stickman.js';
 
 export const DOODLES = Object.freeze({
   'at-sign': AtSign, banknote: Banknote, 'book-open': BookOpen, bot: Bot, brain: Brain, bug: Bug, building: Building2,
@@ -34,6 +36,8 @@ export const DOODLES = Object.freeze({
   avatar: CircleUserRound, briefcase: Briefcase, 'map-pin': MapPin, 'phone-old': PhoneCall,
   antenna: Antenna, camera: Camera, gavel: Gavel, landmark: Landmark, medal: Medal, newspaper: Newspaper,
   percent: Percent, photo: ImageGlyph, 'radio-tower': RadioTower, 'satellite-dish': SatelliteDish, tv: Tv, wifi: Wifi,
+  // người que (tên bắt đầu bằng `nguoi-`): nét giữa lấy từ tấm ảnh gốc, cùng lưới 24 nên dùng y như icon
+  ...STICKMEN,
 });
 
 const n = (v) => Number(v) || 0;

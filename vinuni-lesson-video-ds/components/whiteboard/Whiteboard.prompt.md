@@ -24,7 +24,12 @@ video frame, not a `Series`.
   chart-bar / -line / -pie, trend-up, network, users, coins, banknote, target, trophy, speech-round, question,
   alert, sparkles, star…), đồ vật văn phòng (briefcase, phone-old, map-pin, avatar) và tư liệu lịch sử
   (radio-tower, antenna, satellite-dish, tv, wifi, newspaper, landmark, gavel, medal, percent, photo, camera);
-  add one by importing it there. Bảng đủ tên: `demos/whiteboard-parts.html?part=WbDoodles`. Line width follows `size` (a small doodle draws finer).
+  add one by importing it there. Bảng đủ tên: `demos/whiteboard-parts.html?part=WbDoodles`.
+- **Người que**: 25 tư thế tên `nguoi-…` (vẫy tay, chỉ, chạy, ăn mừng, ôm đầu, nằm…) cũng nằm trong
+  `DOODLES`, nên vẽ y như một doodle: `{ kind: 'doodle', name: 'nguoi-chi-ngang', x, y, size: 260 }`.
+  Chúng là nét giữa lấy từ tấm ảnh gốc (`assets/stickman/README.md`), sinh bởi `tools/stickman-assets.py`.
+  Bảng đủ tên: `demos/whiteboard-parts.html?part=WbStickman`. Dùng chúng khi cần một người **có dáng**;
+  `kind: 'person'` vẫn là người que nhỏ vẽ nhanh cho đám đông. Line width follows `size` (a small doodle draws finer).
 - `{ kind: 'cloud', x, y, w, h, fill? }` — puffy cloud around a box: thought bubble, title badge.
 - `{ kind: 'trail', points, dash: '14 14' }` — wandering dashed path (a paper plane's flight, a loose link);
   dashed strokes draw on too (masked).

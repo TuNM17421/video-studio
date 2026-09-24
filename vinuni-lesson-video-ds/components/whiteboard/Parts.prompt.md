@@ -44,6 +44,7 @@ vị bảng. Chữ và số lấy từ kịch bản — part không tự thêm g
 | `WbRagFlow` | Luồng RAG năm chặng (nhúng → kho → đoạn → prompt → trả lời) | `x, y, w, stages[], question, answer` |
 | `WbPromptBox` | Hộp mô hình: ngữ cảnh vào, trả lời ra; `cut` gạch phần tràn | `x, y, w, inputs[{ text, cut? }], model, output` |
 | `WbTerminal` | Cửa sổ dòng lệnh: `$` là lệnh người gõ, còn lại là đầu ra | `x, y, w, lines[{ text, prompt? }], title` |
+| `WbStickman` | Người que: 25 tư thế, dùng như doodle (`name: 'nguoi-…'`) | xem `?part=WbStickman` |
 | `WbDoodles` | Danh mục hình vẽ tay dùng cho `kind: 'doodle'` (81 hình, `DOODLES`) | xem `?part=WbDoodles` |
 
 - Mỗi câu lời đọc vẫn chỉ 3–5 nét chính: một part lớn (mind map, bảng) nên trải qua 2–3 câu, mỗi nhánh / hàng

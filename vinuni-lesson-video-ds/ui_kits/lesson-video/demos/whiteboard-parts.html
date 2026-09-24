@@ -77,8 +77,17 @@
     },
     WbFlight: function () { VK.WbFlight(b, 'fh', 6, { from: { x: 300, y: 800 }, to: { x: 1560, y: 360 }, bend: 280, size: 170 }); },
     WbSteps: function () { VK.WbSteps(b, 'st', 6, { x: 200, y: 900, stepW: 460, stepH: 170, size: 56, items: [{ text: 'Hiểu vấn đề' }, { text: 'Làm thử' }, { text: 'Mở rộng' }] }); },
+    WbStickman: function () {
+      var names = VK.STICKMAN_NAMES;
+      var cols = 7;
+      names.forEach(function (n, i) {
+        var x = 150 + (i % cols) * 270, y = 130 + Math.floor(i / cols) * 250;
+        b.draw(null, { id: 'sm-' + n, kind: 'doodle', name: n, x: x, y: y, size: 175, dur: 6 });
+        b.draw(null, { id: 'sn-' + n, kind: 'text', x: x, y: y + 118, text: n.replace('nguoi-', ''), size: 26, anchor: 'middle', color: C.textMuted, dur: 2 });
+      });
+    },
     WbDoodles: function () {
-      var names = Object.keys(VK.DOODLES);
+      var names = Object.keys(VK.DOODLES).filter(function (n) { return n.indexOf('nguoi-') !== 0; });
       var cols = 12;
       names.forEach(function (n, i) {
         var x = 85 + (i % cols) * 152, y = 65 + Math.floor(i / cols) * 148;
