@@ -25,6 +25,9 @@ function studioTheme(colors: Palette, dark: boolean): ThemeConfig {
       colorSuccess: status.success,
       colorWarning: status.warning,
       colorError: brand.secondary,
+      // Chữ trên nền màu đặc (nút chính, số bước đang chọn). Ở chế độ tối màu thương hiệu đã được nâng sáng,
+      // chữ trắng trên đó chỉ đạt ~2,6:1 — dùng mực tối của nền trang thay vào.
+      ...(dark ? { colorTextLightSolid: neutral[0] } : {}),
       // Ant derives its pale fills from the seed, and our seeds are dark ink colors — left to derive
       // them it produced mud (a "done" tag came out rgb(151 161 154)). The design system already names
       // the right surfaces, so hand them over instead of letting Ant guess.

@@ -6,13 +6,14 @@ import { Button, Collapse, Empty, Steps, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
 import { inferDay } from "@/lib/day";
-import type { AgentConfig, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
+import type { AgentConfig, AgentProvider, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { resolveReviewer } from "@/lib/review";
 import { STUDIO_STEP_EVENT } from "@/lib/tours";
 import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
-import { emptyDraft, PlanForm, PlanSummary, type PlanDraft } from "./plan-step";
+import { emptyDraft, PlanForm, PlanSummary, useModules, type PlanDraft } from "./plan-step";
+import { moduleNamesFrom } from "@/lib/modules";
 import { PageAgentBinding } from "./page-agent-binding";
 import { ProductionState } from "./production-state";
 import { StageBadge } from "./agent-panel";
@@ -109,7 +110,8 @@ function FramePreview({ src }: { src: string }) {
   </div>;
 }
 
-function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null; styles: StyleDef[]; draft: PlanDraft; hasKey: boolean }) {
+function Preview({ detail, styles, draft, hasKey, installed }: { detail: VideoDetail | null; styles: StyleDef[]; draft: PlanDraft; hasKey: boolean; installed: AgentProvider[] }) {
+  const modules = useModules();
   const request = detail?.state.request ?? draft.request;
   const style = styles.find((s) => s.id === request.style);
   const id = detail?.state.id || draft.id;
@@ -156,11 +158,21 @@ function Preview({ detail, styles, draft, hasKey }: { detail: VideoDetail | null
             <WorkflowHealth detail={detail} />
           </>,
         }]} />
-      : <dl className="project-facts">
-          <div><dt>Agent</dt><dd><AgentName provider={provider} /></dd></div>
-          <div><dt>Trạng thái</dt><dd>Chưa tạo</dd></div>
-        </dl>}
+      : <PlanChecklist draft={draft} provider={provider} modules={moduleNamesFrom(modules, draft.request.modules)} installed={installed} />}
   </aside>;
+}
+
+/** Before the video exists the panel is the summary to read before pressing Tạo video. */
+function PlanChecklist({ draft, provider, modules, installed }: { draft: PlanDraft; provider: AgentProvider; modules: string[]; installed: AgentProvider[] }) {
+  const reviewer = resolveReviewer(provider, draft.review, installed);
+  const missing = <span className="vs-preview-missing">Chưa chọn</span>;
+  return <dl className="project-facts">
+    <div><dt>Kịch bản</dt><dd>{draft.script ? <span className="vs-preview-file">{draft.script.name}</span> : missing}</dd></div>
+    <div><dt>Mã video</dt><dd>{draft.id ? <span className="mono">{draft.id}</span> : missing}</dd></div>
+    <div><dt>Tính năng</dt><dd>{modules.length ? modules.join(", ") : "Clip một người dẫn"}</dd></div>
+    <div><dt>Agent</dt><dd><AgentName provider={provider} /></dd></div>
+    <div><dt>Review chéo</dt><dd>{!draft.review.enabled ? "Tắt" : reviewer.ok ? agentProviderLabel(reviewer.provider) : "Chưa chọn được"}</dd></div>
+  </dl>;
 }
 
 /** The agent is fixed when the video is created: one line under the title, not a card beside it. */
@@ -379,7 +391,7 @@ export default function Studio() {
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}
         {step === "render" && stepProps && <RenderStep {...stepProps} />}
       </section>
-      <Preview detail={detail} styles={styles} draft={draft} hasKey={hasKey} />
+      <Preview detail={detail} styles={styles} draft={draft} hasKey={hasKey} installed={agentConfig.review.installed} />
     </div>
     <footer className="workspace-footer" />
   </Shell>;

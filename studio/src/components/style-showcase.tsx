@@ -1,7 +1,8 @@
 "use client";
 
-import { CheckOutlined } from "@ant-design/icons";
-import { Collapse, Radio } from "antd";
+import { useState } from "react";
+import { CaretRightFilled, CheckOutlined } from "@ant-design/icons";
+import { Collapse, Modal, Radio } from "antd";
 import { SampleMedia } from "@/components/sample-media";
 import { fileUrl } from "@/lib/client";
 import type { PaletteColor, Showcase, StyleDef } from "@/lib/types";
@@ -113,8 +114,26 @@ export function StyleShowcase({ style, collapsible = false }: { style: StyleDef;
   />;
 }
 
+/** The style's sample video in a dialog — the one look at a style the plan step keeps (the rest is in Thư viện). */
+function SampleModal({ style, onClose }: { style: StyleDef | null; onClose: () => void }) {
+  return <Modal open={!!style} onCancel={onClose} footer={null} width={900} destroyOnHidden title={style ? `Video mẫu · ${style.name}` : ""}>
+    {style && <SampleMedia asset={style.sampleVideo} />}
+  </Modal>;
+}
+
+export function StyleSampleButton({ style }: { style: StyleDef }) {
+  const [open, setOpen] = useState(false);
+  if (!style.sampleVideo) return null;
+  return <>
+    <button type="button" className="vs-module-play" onClick={() => setOpen(true)}><CaretRightFilled /><span>Xem video mẫu</span></button>
+    <SampleModal style={open ? style : null} onClose={() => setOpen(false)} />
+  </>;
+}
+
 export function StylePicker({ styles, value, onChange, disabled, labelledBy }: { styles: StyleDef[]; value: string; onChange: (id: string) => void; disabled?: boolean; labelledBy?: string }) {
-  return <Radio.Group className="vs-style-picker" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} aria-required="true" aria-labelledby={labelledBy}>
+  const [sample, setSample] = useState<StyleDef | null>(null);
+  return <>
+  <Radio.Group className="vs-style-picker" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} aria-required="true" aria-labelledby={labelledBy}>
     {styles.map((s) => {
       const colors = [...(s.base?.palette || []), ...s.palette];
       const palette = s.base ? [...s.palette, ...s.base.palette] : s.palette;
@@ -132,7 +151,13 @@ export function StylePicker({ styles, value, onChange, disabled, labelledBy }: {
             <span>{colors.length} màu</span>
           </span>
         </span>
+        {/* Inside the card's label: preventDefault keeps a look at the sample from also picking the style. */}
+        {s.sampleVideo && <button type="button" className="vs-module-play vs-style-sample" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setSample(s); }}>
+          <CaretRightFilled /><span>Xem video mẫu</span>
+        </button>}
       </Radio>;
     })}
-  </Radio.Group>;
+  </Radio.Group>
+  <SampleModal style={sample} onClose={() => setSample(null)} />
+  </>;
 }
