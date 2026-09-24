@@ -23,6 +23,8 @@ export interface AttentionLinesProps {
   strongColor?: string;
   /** Độ cong 0–1. Default 0.45. */
   bend?: number;
+  /** Đẩy hai điểm điều khiển xuống — dùng khi hai hàng neo nằm cùng độ cao. Default 0. */
+  dip?: number;
   /** Bỏ đường nhẹ hơn mức này. Default 0.08. */
   minWeight?: number;
   /** Chỉ vẽ đường từ một token — hầu như luôn nên dùng. */

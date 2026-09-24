@@ -71,6 +71,7 @@ export * from './data/Gauge.jsx';
 export * from './data/RangeBand.jsx';
 export * from './data/UnitGrid.jsx';
 export * from './marks/Spotlight.jsx';
+export * from './illustrated/Canvas.jsx';
 export * from './illustrated/TokenRow.jsx';
 export * from './illustrated/VectorStrip.jsx';
 export * from './illustrated/MatrixGrid.jsx';

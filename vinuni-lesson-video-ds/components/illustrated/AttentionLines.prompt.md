@@ -14,6 +14,8 @@ const bot = tokenLayout({ x: 240, y: 700, tokens: TOKENS });
 - **Luôn dùng `focus`**: vẽ cả lưới n×n một lúc là mớ chỉ rối không ai đọc được. Một token một lúc,
   đổi `focus` theo câu lời đọc; cần nhìn toàn cảnh thì dùng `Heatmap` chứ không phải đường nối.
 - Đường `w ≥ 0.6` chuyển sang đỏ — mắt bắt ngay chỗ mô hình đang nhìn nhất.
+- `dip` đẩy đường võng xuống khi hai neo nằm **cùng độ cao** (ô trống ở cuối hàng nhìn về các viên phía
+  trước): không có `dip` thì đường thành một gạch ngang chạy đè lên chính hàng token.
 - `minWeight` bỏ đường quá nhẹ (mặc định 0.08) để không vẽ nhiễu; `reveal` 0→1 kéo từng đường ra dần.
 - Neo lấy bằng `anchorsBelow` / `anchorsAbove` từ `tokenLayout()` của `TokenRow` — đừng tự tính toạ độ,
   lệch một chút là đường rời khỏi viên token.

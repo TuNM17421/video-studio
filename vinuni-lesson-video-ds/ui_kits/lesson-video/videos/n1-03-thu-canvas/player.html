@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Review player for N2-00 (bảng trắng) (not a design-system card): play / scrub / jump to any câu.
+     ?frame=N freezes one frame at 1:1 for capture. -->
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>N2-00 · bảng trắng — player</title>
+<link rel="stylesheet" href="../../../../styles.css" />
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body { background: var(--vu-blue-900); }
+  #root { position: relative; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../../dist/vk.js"></script>
+<script>VK.mountSceneById('#root', 'n1-03-thu-canvas');</script>
+</body>
+</html>

@@ -13,7 +13,7 @@ import { clamp01 } from '../../lib/motion.js';
  * Đường dưới `minWeight` bị bỏ để không vẽ nhiễu.
  */
 export function AttentionLines({
-  from, to, links, color = C.accent, strongColor = C.red, bend = 0.45, minWeight = 0.08,
+  from, to, links, color = C.accent, strongColor = C.red, bend = 0.45, dip = 0, minWeight = 0.08,
   focus = -1, reveal = 1, maxWidth = 9, opacity = 1,
 }) {
   if (opacity <= 0.001) return null;
@@ -26,9 +26,11 @@ export function AttentionLines({
         const b = to[l.to];
         if (!a || !b) return null;
         const w = clamp01(l.w);
-        // cong theo trục dọc: hai điểm điều khiển kéo về phía nhau nên đường rời neo theo chiều thẳng
+        // cong theo trục dọc: hai điểm điều khiển kéo về phía nhau nên đường rời neo theo chiều thẳng.
+        // `dip` đẩy cả hai điểm điều khiển xuống — cần khi hai neo nằm CÙNG độ cao (ô trống cuối hàng
+        // nhìn về các viên phía trước), vì lúc đó độ cong theo chênh lệch y bằng không.
         const dy = (b.y - a.y) * bend;
-        const d = `M ${a.x} ${a.y} C ${a.x} ${a.y + dy}, ${b.x} ${b.y - dy}, ${b.x} ${b.y}`;
+        const d = `M ${a.x} ${a.y} C ${a.x} ${a.y + dy + dip}, ${b.x} ${b.y - dy + dip}, ${b.x} ${b.y}`;
         const ink = l.color ?? (w >= 0.6 ? strongColor : color);
         // các đường hiện lần lượt, đường nặng trước
         const slot = drawn.length > 1 ? i / drawn.length : 0;
