@@ -1,0 +1,50 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Morph · một vật, nhiều trạng thái" subtitle="MorphSequence: dải ô → mũi tên → mũi tên khác hướng · Layer 100/40/15 · Axes là khung 15% · shapes.* trả path khép kín" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Morph</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 360px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C, S = VK.shapes;
+  var O = { x: 620, y: 500 };
+  var STRIP = { x: 380, y: 120, n: 6, size: 64, gap: 6, h: 78 };
+  var TIP_A = { x: O.x + 320, y: O.y - 240 };
+  var TIP_B = { x: O.x + 360, y: O.y - 100 };
+  var VALUES = [0.8, -0.35, 0.15, 0.62, -0.9, 0.4];
+
+  VK.mountCard('#root', {
+    width: 1400, height: 720, duration: 300,
+    render: function (f) {
+      var cellsOut = VK.appear(f, 66, 30);
+      return h(VK.Fragment, null,
+        h(VK.Layer, { level: 'frame', fade: VK.appear(f, 70, 40) },
+          h(VK.Axes, { o: O, x: 330, yUp: 330, yDown: 110, ticks: 3 })),
+        h(VK.Layer, { level: 'main', fade: 1 - cellsOut },
+          VALUES.map(function (v, i) {
+            return h('path', { key: i, d: S.cell({ x: STRIP.x, y: STRIP.y, i: i, size: STRIP.size, gap: STRIP.gap, h: STRIP.h }),
+              fill: v < 0 ? C.red : C.accent, fillOpacity: 0.12 + 0.88 * Math.abs(v) });
+          })),
+        h(VK.MorphSequence, {
+          frame: f,
+          states: [
+            { at: 0, shape: S.strip(STRIP), fill: C.accent, fillOpacity: 0.1, stroke: C.accentStrong, strokeWidth: 3 },
+            { at: 70, dur: 90, shape: S.arrow({ from: O, to: TIP_A }), fillOpacity: 0.92, stroke: C.accent, strokeWidth: 0 },
+            { at: 200, dur: 80, shape: S.arrow({ from: O, to: TIP_B }), fill: C.red, stroke: C.red }
+          ]
+        })
+      );
+    }
+  });
+</script>
+</body>
+</html>
