@@ -83,6 +83,22 @@ Cách làm cụ thể:
 - Thứ mới (bảng khả năng, ma trận) đặt ở một vùng **bên cạnh** trên cùng mặt phẳng, không đè lên vùng cũ.
   Chừa khoảng giữa các vùng đủ rộng để lúc lùi ra không có thẻ nào bị xén nửa ở mép khung.
 
+## Bảy hình mượn từ 3Blue1Brown
+
+Đọc prompt của từng cái trước khi dùng; đây chỉ là bảng chọn.
+
+| Muốn nói | Dùng |
+|---|---|
+| Ma trận **là một phép biến đổi không gian** | `GridTransform` — cả lưới bị kéo, lưới gốc mờ ở lại để so |
+| "Từ đây tới đây" — chú thích một **khoảng** | `Brace` (không dùng mũi tên: mũi tên chỉ được một điểm) |
+| Một **con số tính ra từ hình**, chạy theo hình | `ValueReadout` |
+| Nhấn **tạm thời** vào một chỗ | `Emphasis` (`indicate` · `flash` · `circumscribe`) |
+| Thuật toán lặp: từng bước, có lịch sử | `PathTrace` (`steps` = số vòng lặp kịch bản đưa) |
+| Một thang đo mà vật phải nằm đúng chỗ | `NumberLine` + `numberToPoint` |
+| Giá trị theo một trục (phân bố, đường loss) | `Plot` + `plotPoint` |
+
+Ba thứ **không** mượn: `Wiggle`, `ApplyWave`, `Blink` của Manim là gia vị — dùng nhiều thành rối.
+
 ## Vẽ gì, khi nào
 
 | Muốn nói | Dùng |

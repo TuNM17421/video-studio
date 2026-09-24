@@ -13,7 +13,9 @@
 <script src="../../../dist/vk.js"></script>
 <script>
   // Xem thử component của nhóm morph, mỗi cái một mẫu:
-  //   ?part=Morph | MorphSequence | Layer | Axes | shapes   (?frame=N để chụp một khung)
+  //   ?part=Morph | MorphSequence | Layer | Axes | shapes
+  //        | GridTransform | Brace | ValueReadout | Emphasis | PathTrace | NumberLine | Plot
+  //   (?frame=N để chụp một khung)
   var h = VK.h, C = VK.C, S = VK.shapes;
   var q = new URLSearchParams(location.search);
   var part = q.get('part') || 'MorphSequence';
@@ -22,12 +24,13 @@
   var TIP_A = { x: O.x + 380, y: O.y - 330 };
   var TIP_B = { x: O.x + 460, y: O.y - 130 };
   var VALUES = [0.85, -0.4, 0.2, 0.65, -0.9, 0.45, -0.3];
+  var lp = VK.linearProgress;
 
   var SAMPLES = {
     Morph: function (f) {
-      var t = VK.interpolate(f, [20, 130], [0, 1], VK.CLAMP);
       return h(VK.Morph, {
-        from: S.strip(STRIP), to: S.arrow({ from: O, to: TIP_A, width: 22, head: 60 }), t: t,
+        from: S.strip(STRIP), to: S.arrow({ from: O, to: TIP_A, width: 22, head: 60 }),
+        t: VK.interpolate(f, [20, 130], [0, 1], VK.CLAMP),
         fill: C.accent, fillOpacity: [0.12, 0.92], stroke: [C.accentStrong, C.accent], strokeWidth: [4, 0]
       });
     },
@@ -76,6 +79,79 @@
           return h(VK.SvgText, { key: 'n' + i, x: at[i], y: 640, size: 30, weight: 700, color: C.textMuted }, n);
         }),
         h(VK.SvgText, { x: 960, y: 780, size: 32, weight: 600, color: C.text }, 'mọi hình là path khép kín — biến hình được'));
+    },
+
+    GridTransform: function (f) {
+      var t = VK.interpolate(f, [30, 150], [0, 1], VK.CLAMP);
+      return h(VK.Fragment, null,
+        h(VK.GridTransform, { o: { x: 960, y: 560 }, m: [[2, 1], [0.4, 1]], t: t, unit: 76, span: 5, vectors: true,
+          clip: { x: 300, y: 130, w: 1320, h: 830, r: 16 } }),
+        h(VK.SvgText, { x: 960, y: 1010, size: 36, weight: 700, color: C.text }, 'ma trận không phải bảng số — nó là một phép biến đổi'));
+    },
+    Brace: function (f) {
+      var g = VK.appear(f, 20, 40);
+      return h(VK.Fragment, null,
+        h('path', { d: S.strip(STRIP), fill: C.accent, fillOpacity: 0.14, stroke: C.accentStrong, strokeWidth: 3 }),
+        VALUES.map(function (v, i) {
+          return h('path', { key: i, d: S.cell({ x: STRIP.x, y: STRIP.y, i: i, size: STRIP.size, gap: STRIP.gap, h: STRIP.h, r: 5 }),
+            fill: v < 0 ? C.red : C.accent, fillOpacity: 0.14 + 0.8 * Math.abs(v) });
+        }),
+        h(VK.Brace, { from: { x: STRIP.x, y: STRIP.y + STRIP.h + 16 }, to: { x: STRIP.x + 7 * 108 - 8, y: STRIP.y + STRIP.h + 16 },
+          label: 'bảy chiều', side: 'down', grow: g, size: 40 }),
+        h(VK.Brace, { from: { x: STRIP.x, y: STRIP.y - 16 }, to: { x: STRIP.x + 2 * 108 - 8, y: STRIP.y - 16 },
+          label: 'hai chiều đầu', side: 'up', grow: VK.appear(f, 90, 40), size: 34, color: C.red }));
+    },
+    ValueReadout: function (f) {
+      var t = VK.interpolate(f, [30, 170], [0, 1], VK.CLAMP);
+      var a1 = -1.0, a2 = VK.interpolate(t, [0, 1], [-0.1, -0.62]);
+      var R = 330;
+      var p = function (a) { return { x: O.x + Math.cos(a) * R, y: O.y + Math.sin(a) * R }; };
+      return h(VK.Fragment, null,
+        h(VK.Layer, { level: 'frame' }, h(VK.Axes, { o: O, x: 480, yUp: 460, yDown: 120 })),
+        h('path', { d: S.arrow({ from: O, to: p(a1), width: 16, head: 44 }), fill: C.accent, fillOpacity: 0.9 }),
+        h('path', { d: S.arrow({ from: O, to: p(a2), width: 16, head: 44 }), fill: C.red, fillOpacity: 0.85 }),
+        h(VK.ValueReadout, { x: 1820, y: 560, value: Math.cos(a1 - a2), label: 'ĐỘ TƯƠNG ĐỒNG', decimals: 2, size: 64, anchor: 'end' }));
+    },
+    Emphasis: function (f) {
+      var kinds = ['indicate', 'flash', 'circumscribe'];
+      return h(VK.Fragment, null, kinds.map(function (k, i) {
+        var box = { x: 260 + i * 520, y: 420, w: 320, h: 200 };
+        return h(VK.Fragment, { key: k },
+          h(VK.Emphasis, { kind: k, box: box, t: lp(f, 40, 130), color: C.red },
+            h('path', { d: S.rect({ x: box.x, y: box.y, w: box.w, h: box.h, r: 14 }), fill: C.accent, fillOpacity: 0.2, stroke: C.accent, strokeWidth: 3 })),
+          h(VK.SvgText, { x: box.x + box.w / 2, y: box.y + box.h + 70, size: 34, weight: 700, color: C.textMuted }, k));
+      }));
+    },
+    PathTrace: function (f) {
+      var plot = { o: { x: 300, y: 900 }, w: 1320, h: 520, from: -3.2, to: 3.2, min: 0, max: 5 };
+      var fn = function (x) { return 0.45 * x * x + 0.4; };
+      var pts = [];
+      for (var i = 0; i <= 40; i++) {
+        var x = -3 + (3.05 - -3) * (i / 40);
+        pts.push(VK.plotPoint(plot, x, fn(x)));
+      }
+      var walk = [];
+      var cur = -2.9;
+      for (var s = 0; s <= 8; s++) { walk.push(VK.plotPoint(plot, cur, fn(cur))); cur = cur * 0.62; }
+      return h(VK.Fragment, null,
+        h(VK.Plot, Object.assign({}, plot, { fn: fn, color: C.accentStrong, fill: true, reveal: 1, opacity: 0.5 })),
+        h(VK.PathTrace, { d: VK.curvePath(walk), t: lp(f, 30, 200), steps: 8, color: C.accent }),
+        h(VK.SvgText, { x: 960, y: 1010, size: 34, weight: 700, color: C.text }, 'mỗi nấc là một vòng lặp'));
+    },
+    NumberLine: function (f) {
+      var line = { o: { x: 320, y: 620 }, length: 1280, from: 0, to: 1 };
+      var v = VK.interpolate(f, [30, 170], [0.08, 0.86], VK.CLAMP);
+      var p = VK.numberToPoint(line, v);
+      return h(VK.Fragment, null,
+        h(VK.NumberLine, Object.assign({}, line, { step: 0.25, decimals: 2, label: 'xác suất của mảnh nối tiếp', size: 30 })),
+        h('circle', { cx: p.x, cy: p.y, r: 18, fill: C.red }),
+        h(VK.ValueReadout, { x: p.x, y: p.y - 60, value: v, decimals: 2, size: 44, anchor: 'middle', color: C.red }));
+    },
+    Plot: function (f) {
+      var plot = { o: { x: 320, y: 880 }, w: 1280, h: 480, from: -3, to: 3, min: 0, max: 1 };
+      return h(VK.Fragment, null,
+        h(VK.Plot, Object.assign({}, plot, { fn: function (x) { return Math.exp(-x * x / 2); }, fill: true, reveal: lp(f, 20, 160) })),
+        h(VK.NumberLine, { o: plot.o, length: plot.w, from: -3, to: 3, step: 1, decimals: 0, size: 28 }));
     }
   };
   var draw = SAMPLES[part] || SAMPLES.MorphSequence;

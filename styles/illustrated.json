@@ -73,6 +73,41 @@
       "image": "morph__Layer.png"
     },
     {
+      "component": "GridTransform",
+      "group": "morph",
+      "image": "morph__GridTransform.png"
+    },
+    {
+      "component": "Brace",
+      "group": "morph",
+      "image": "morph__Brace.png"
+    },
+    {
+      "component": "ValueReadout",
+      "group": "morph",
+      "image": "morph__ValueReadout.png"
+    },
+    {
+      "component": "Emphasis",
+      "group": "morph",
+      "image": "morph__Emphasis.png"
+    },
+    {
+      "component": "PathTrace",
+      "group": "morph",
+      "image": "morph__PathTrace.png"
+    },
+    {
+      "component": "NumberLine",
+      "group": "morph",
+      "image": "morph__NumberLine.png"
+    },
+    {
+      "component": "Plot",
+      "group": "morph",
+      "image": "morph__Plot.png"
+    },
+    {
       "component": "VectorColumn",
       "group": "data",
       "image": "data__VectorColumn.png"
@@ -94,6 +129,7 @@
     "Vật trên mặt phẳng BIẾN HÌNH chứ không bị thay: khai bằng MorphSequence (components/morph/), mỗi vật một danh sách trạng thái theo khung hình. Mọi hình phải là path khép kín từ components/morph/shapes.js — vẽ bằng <rect> / <circle> thì không biến hình được.",
     "Độ đặc chỉ ba mức (components/morph/Layer.jsx): main 100 % cho thứ đang nói tới, context 40 % cho thứ vừa nói xong hoặc sắp nói, frame 15 % cho trục và lưới. Không đặt opacity tự do.",
     "Nhịp chậm là một phần của style và phải nằm trong KỊCH BẢN: mỗi phép biến hình ít nhất khoảng hai giây rồi đứng yên cho người xem ngấm. Kịch bản cho năm phút ở đây có chừng mười lăm tới hai mươi câu, không phải bốn mươi — nói với người viết kịch bản TRƯỚC khi viết.",
+    "Nhấn bằng Emphasis (tạm thời: phình / toả tia / đường bao) thay vì đổi màu hẳn; một lúc chỉ nhấn một chỗ. Chú thích một KHOẢNG thì dùng Brace, không dùng mũi tên. Con số tính ra được từ hình thì để ValueReadout chạy theo hình, đừng viết số chết.",
     "Một vật liệu chảy suốt cả video: hàng token mở đầu phải sống tới cuối, mỗi cảnh biến đổi nó chứ không thay bằng hình mới. Giữ nguyên toạ độ gốc của hàng token giữa các cảnh để người xem không mất dấu.",
     "Mọi con số — token, trọng số chú ý, giá trị vector / ma trận — lấy từ kịch bản. Không bịa bảng attention hay dãy số; cách cắt token chính là nội dung bài học.",
     "AttentionLines luôn đặt `focus` một token: cả lưới n×n một lúc là mớ chỉ rối. Cần toàn cảnh thì dùng Heatmap.",
