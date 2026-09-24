@@ -1,0 +1,72 @@
+{
+  "id": "morph",
+  "name": "Morph Style (lab)",
+  "order": 5,
+  "summary": "Toán học biến hình: MỘT vật đổi hình liên tục trên nền trắng, không cắt cảnh — dãy số thành mũi tên, mũi tên quay thành góc. Nhịp chậm, ba mức đậm nhạt. Đang là lab thử nghiệm, chưa có video mẫu.",
+  "palette": [
+    {
+      "hex": "#1d6199",
+      "name": "Xanh",
+      "role": "vật thứ nhất — thứ đang biến hình"
+    },
+    {
+      "hex": "#c72127",
+      "name": "Đỏ",
+      "role": "vật thứ hai, giá trị âm, điểm nhấn"
+    },
+    {
+      "hex": "#134d8b",
+      "name": "Xanh đậm",
+      "role": "viền của trạng thái đầu (trước khi biến hình)"
+    },
+    {
+      "hex": "#0b2a4d",
+      "name": "Navy",
+      "role": "chữ, trục toạ độ (ở mức khung 15 %)"
+    }
+  ],
+  "showcase": [
+    {
+      "component": "MorphSequence",
+      "group": "morph",
+      "image": "morph__MorphSequence.png"
+    },
+    {
+      "component": "Morph",
+      "group": "morph",
+      "image": "morph__Morph.png"
+    },
+    {
+      "component": "shapes",
+      "group": "morph",
+      "image": "morph__shapes.png"
+    },
+    {
+      "component": "Layer",
+      "group": "morph",
+      "image": "morph__Layer.png"
+    },
+    {
+      "component": "Axes",
+      "group": "morph",
+      "image": "morph__Axes.png"
+    },
+    {
+      "component": "ProbabilityBars",
+      "group": "data",
+      "image": "data__ProbabilityBars.png"
+    }
+  ],
+  "sampleVideo": null,
+  "unsupportedModules": ["dialogue", "mascot", "images"],
+  "rules": [
+    "LAB THỬ NGHIỆM — chưa có video mẫu. Bản dựng đầu tiên bằng style này là một lượt thử: dựng xong rồi mới đánh giá có dùng cho bài thật hay không, đừng coi nó là đường đã thông.",
+    "Chỉ chọn style này khi khái niệm CÓ hình học: không gian vector, góc giữa hai vector, độ tương đồng, gradient đi xuống dốc, phân bố xác suất. Nội dung về quy trình, công cụ hay câu chuyện người dùng thì dùng Lesson / Lesson Lab.",
+    "Cơ chế bắt buộc: MỘT vật biến hình liên tục, không cắt cảnh. Khai bằng MorphSequence (components/morph/), mỗi vật một danh sách trạng thái theo khung hình. Không Series, không một SceneFrame cho mỗi câu, không tiêu đề cảnh.",
+    "Mọi hình phải là path khép kín từ components/morph/shapes.js. Vẽ bằng <rect> / <circle> thì không biến hình được — đó là kỷ luật của style, không phải gợi ý.",
+    "Độ đặc chỉ có ba mức (Layer): main 100 % cho thứ đang nói tới, context 40 % cho thứ vừa nói xong hoặc sắp nói, frame 15 % cho trục và lưới. Không đặt opacity tự do.",
+    "Nhịp chậm là một phần của style, và nó phải nằm trong KỊCH BẢN: mỗi phép biến hình ít nhất khoảng hai giây rồi đứng yên cho người xem ngấm. Kịch bản cho năm phút ở đây có chừng mười lăm câu, không phải bốn mươi.",
+    "Nền trắng và bảng 9 màu như mọi style khác. Nền tối kiểu 3Blue1Brown là câu hỏi CHƯA chốt: nó cần một bộ chrome thứ hai và một bảng màu đối ứng, phải được duyệt riêng trước khi ai đó thử.",
+    "Chi tiết dựng cảnh: styles/morph.md."
+  ]
+}
