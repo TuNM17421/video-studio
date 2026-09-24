@@ -42,6 +42,7 @@ export const QA_CODES = [
   "repetitive", // chuỗi cảnh lặp máy móc, không có nhịp
   "off-script", // chữ/số trên màn hình không có trong kịch bản
   "module", // vi phạm tiêu chí QA riêng của một năng lực đang bật
+  "style", // vi phạm tiêu chí QA riêng của style video (styles/<id>.md)
   "other",
 ];
 const QA_CODE_SET = new Set(QA_CODES);

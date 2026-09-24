@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Whiteboard — doodle (thử nghiệm)</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Thử bộ doodle của style bảng trắng: dựng lại bố cục kiểu "Start up" bằng tiếng Việt.
+  // Bút vẽ lần lượt từng nét (createBoard, không có lời đọc); ?frame=N để chụp một khung.
+  // ?font=Shantell+Sans:wght@700 thử một font viết tay khác (chỉ để so — bề rộng chữ vẫn đo theo Pangolin).
+  var font = new URLSearchParams(location.search).get('font');
+  if (font) {
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=' + font + '&display=block';
+    document.head.appendChild(link);
+    var fam = font.split(':')[0].replace(/\+/g, ' ');
+    var w = (font.match(/wght@(\d+)/) || [])[1] || 400;
+    var st = document.createElement('style');
+    st.textContent = 'svg text { font-family: "' + fam + '" !important; font-weight: ' + w + ' !important; }';
+    document.head.appendChild(st);
+  }
+  var C = VK.C;
+  var b = VK.createBoard({ timeline: [{ n: 1, start: 0 }], spokenAt: function () { return 0; } });
+  var d = function (id, m) { return b.draw(null, Object.assign({ id: id }, m)); };
+  b.look(0, { x: 960, y: 550, w: 1920 });
+
+  // giữa: đám mây + chữ viền rỗng
+  d('cloud', { kind: 'cloud', x: 700, y: 250, w: 540, h: 330 });
+  d('title', { kind: 'text', x: 970, y: 395, lines: ['Khởi', 'nghiệp'], size: 120, lineHeight: 125, outline: true, anchor: 'middle' });
+  // trên trái: tên lửa, sao, mây nhỏ
+  d('rocket', { kind: 'doodle', name: 'rocket', x: 560, y: 175, size: 170 });
+  d('star1', { kind: 'doodle', name: 'star', x: 380, y: 170, size: 44 });
+  d('star2', { kind: 'doodle', name: 'star', x: 330, y: 290, size: 34 });
+  d('star3', { kind: 'doodle', name: 'sparkles', x: 470, y: 330, size: 50 });
+  d('c1', { kind: 'cloud', x: 150, y: 90, w: 170, h: 70 });
+  d('c2', { kind: 'cloud', x: 110, y: 330, w: 140, h: 60 });
+  // trên phải: máy bay giấy bay theo đường nét đứt, bong bóng thoại
+  d('trail1', { kind: 'trail', points: [{ x: 1250, y: 330 }, { x: 1300, y: 180 }, { x: 1420, y: 120 }], dash: '14 14', width: 4 });
+  d('plane1', { kind: 'doodle', name: 'paper-plane', x: 1470, y: 110, size: 80, rotate: 10 });
+  d('bubble', { kind: 'doodle', name: 'speech-round', x: 1640, y: 290, size: 110 });
+  d('q', { kind: 'text', x: 1640, y: 312, text: '?', size: 64, color: C.red, anchor: 'middle' });
+  d('at', { kind: 'doodle', name: 'at-sign', x: 1520, y: 300, size: 64 });
+  d('alert', { kind: 'doodle', name: 'alert', x: 1780, y: 200, size: 70, color: C.red });
+  d('c3', { kind: 'cloud', x: 1720, y: 330, w: 150, h: 70, fill: 'hachure' });
+  // dưới phải: bóng đèn + mây "Ý tưởng", bánh răng
+  d('trail2', { kind: 'trail', points: [{ x: 1500, y: 170 }, { x: 1420, y: 360 }, { x: 1560, y: 470 }], dash: '14 14', width: 4 });
+  d('bulb', { kind: 'doodle', name: 'lightbulb', x: 1560, y: 600, size: 170 });
+  d('bang', { kind: 'text', x: 1400, y: 640, text: '!', size: 90, color: C.red });
+  d('idea-cloud', { kind: 'cloud', x: 1420, y: 740, w: 300, h: 130, fill: 'hachure', color: C.accent });
+  d('idea', { kind: 'text', x: 1570, y: 830, text: 'Ý tưởng', size: 72, outline: true, anchor: 'middle' });
+  d('gear1', { kind: 'doodle', name: 'gear', x: 1800, y: 700, size: 100 });
+  d('gear2', { kind: 'doodle', name: 'gear', x: 1790, y: 830, size: 70 });
+  // giữa dưới: sơ đồ kế hoạch, biểu đồ
+  d('trail3', { kind: 'trail', points: [{ x: 1000, y: 620 }, { x: 1150, y: 600 }, { x: 1330, y: 700 }], dash: '14 14', width: 4 });
+  d('plan', { kind: 'doodle', name: 'network', x: 960, y: 740, size: 190 });
+  d('plan-t', { kind: 'text', x: 960, y: 925, text: 'KẾ HOẠCH', size: 70, anchor: 'middle' });
+  d('pie', { kind: 'doodle', name: 'chart-pie', x: 740, y: 760, size: 100 });
+  d('bars', { kind: 'doodle', name: 'chart-bar', x: 1180, y: 740, size: 100, color: C.accent });
+  // dưới trái: tăng trưởng, người, tiền, thành công
+  d('grow', { kind: 'text', x: 90, y: 560, text: 'Tăng trưởng', size: 54, color: C.accent });
+  d('trend', { kind: 'doodle', name: 'trend-up', x: 470, y: 520, size: 80, color: C.accent });
+  d('line', { kind: 'doodle', name: 'chart-line', x: 220, y: 720, size: 170 });
+  d('plane2', { kind: 'trail', points: [{ x: 360, y: 640 }, { x: 470, y: 600 }, { x: 560, y: 640 }], dash: '12 12', width: 4 });
+  d('plane2-p', { kind: 'doodle', name: 'paper-plane', x: 600, y: 640, size: 60, rotate: 30 });
+  d('users', { kind: 'doodle', name: 'users', x: 520, y: 770, size: 110 });
+  d('coins', { kind: 'doodle', name: 'coins', x: 400, y: 880, size: 90 });
+  d('cash', { kind: 'doodle', name: 'banknote', x: 560, y: 890, size: 100 });
+  d('ok', { kind: 'check', x: 250, y: 900, s: 60, color: C.red });
+  d('success', { kind: 'text', x: 420, y: 1010, text: 'Thành công', size: 72, anchor: 'middle' });
+  d('success-u', { kind: 'underline', x1: 250, x2: 600, y: 1030, color: C.red });
+
+  var end = b.marks.reduce(function (e, m) { return Math.max(e, b.endOf(m)); }, 0) + 45;
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: end,
+    render: function (f) { return VK.h(VK.Whiteboard, { frame: f, marks: b.marks, camera: b.camera }); }
+  });
+</script>
+</body>
+</html>

@@ -20,6 +20,31 @@
   font-display: block;
 }
 
+/* Whiteboard style only (lab, 2026-09-22): handwriting for what the marker writes ON the board —
+   Playpen Sans (default), Shantell Sans, Pangolin; all SIL OFL 1.1 (fonts/OFL-*.txt).
+   Chrome (eyebrow, captions, footer) stays Montserrat. */
+@font-face {
+  font-family: "Playpen Sans";
+  src: url("../fonts/PlaypenSans-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Shantell Sans";
+  src: url("../fonts/ShantellSans-VariableFont.ttf") format("truetype");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Pangolin";
+  src: url("../fonts/Pangolin-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   /* ---------------------------------------------------------------- brand scale
      VinUni-inspired palette; names follow the original --vu-* design tokens. */

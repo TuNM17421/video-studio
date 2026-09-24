@@ -13,6 +13,7 @@ export const QA_CODE_LABELS: Record<string, string> = {
   repetitive: "Lặp máy móc",
   "off-script": "Ngoài kịch bản",
   module: "Tiêu chí năng lực",
+  style: "Tiêu chí style",
   other: "Khác",
 };
 

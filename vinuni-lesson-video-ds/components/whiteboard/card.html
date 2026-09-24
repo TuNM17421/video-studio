@@ -1,0 +1,37 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Whiteboard · marker, erase, camera" subtitle="Lab: một tấm bảng cho cả video — bút viết chữ tay, vẽ nét, khoanh, lau bảng, camera lùi ra (~7 s)" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Whiteboard</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 360px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  var MARKS = [
+    { id: 'q', kind: 'text', at: 10, x: 960, y: 330, text: 'Bắt đầu từ đâu?', size: 110, color: C.red, anchor: 'middle' },
+    { id: 'p', kind: 'person', at: 44, x: 420, y: 520, s: 40 },
+    { id: 'b', kind: 'box', at: 60, x: 1080, y: 520, w: 520, h: 150, fill: C.bgAlt },
+    { id: 'bt', kind: 'text', at: 80, x: 1340, y: 612, text: 'Hiểu khó khăn', size: 58, anchor: 'middle' },
+    { id: 'a', kind: 'arrow', at: 104, points: [{ x: 520, y: 640 }, { x: 800, y: 610 }, { x: 1060, y: 600 }], color: C.accent },
+    { id: 'l', kind: 'loop', at: 124, cx: 1340, cy: 595, rx: 320, ry: 115, color: C.red },
+    { id: 'e', kind: 'erase', at: 160, x: 200, y: 180, w: 1520, h: 700 },
+    { id: 'd', kind: 'text', at: 200, x: 960, y: 520, lines: ['Cần cải thiện gì?', 'Làm thế nào?'], size: 80, anchor: 'middle' },
+    { id: 'u', kind: 'underline', at: 234, x1: 700, x2: 1220, y: 640, color: C.red },
+  ];
+  var CAMERA = [{ at: 0, x: 960, y: 560, w: 1920 }, { at: 240, dur: 36, x: 960, y: 560, w: 2600 }];
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: 300,
+    render: function (f) { return h(VK.Whiteboard, { frame: f, marks: MARKS, camera: CAMERA }); }
+  });
+</script>
+</body>
+</html>

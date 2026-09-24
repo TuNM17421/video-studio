@@ -9,6 +9,7 @@ import { DEFAULT_BUILD_NO, isBuildNo, itemIdFor } from "../qa-manifest";
 import { BASE_TEMPLATE_PATH } from "../modules";
 import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
+import { styleGuideLine } from "./style-guides";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { isRunning } from "./jobs";
 import { chaptersPath, exists, HttpError, mp4Path, projectDir, qaManifestPath, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
@@ -215,6 +216,14 @@ export function styleName(id: string) {
   return exists(file) ? (JSON.parse(fs.readFileSync(file, "utf8")).name as string) : id;
 }
 
+/** Capabilities the style cannot build yet (styles/<id>.json `unsupportedModules`). */
+export function styleUnsupportedModules(id: string): string[] {
+  const file = path.join(REPO, "styles", `${id}.json`);
+  if (!exists(file)) return [];
+  const list = (JSON.parse(fs.readFileSync(file, "utf8")) as { unsupportedModules?: unknown }).unsupportedModules;
+  return Array.isArray(list) ? list.filter((m): m is string => typeof m === "string") : [];
+}
+
 /** REQUEST.md: what the agent (and anyone running the video by hand) reads first. */
 /** What each chosen capability demands of the script — written into REQUEST.md, which is what the agent reads. */
 function moduleSections(modules: string[]) {
@@ -309,6 +318,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Tên video: ${r.title || id}`,
     `- Mã item gửi QA: ${itemIdFor(r.itemId, id)}`,
     `- Style: ${styleName(r.style)} (\`styles/${r.style}.json\`)`,
+    ...(styleGuideLine(r.style) ? [`- ${styleGuideLine(r.style)}`] : []),
     `- Ngày: ${r.day}`,
     `- Kịch bản: \`projects/${id}/kich-ban-goc.md\`${r.scriptName ? ` (tệp gốc: ${r.scriptName})` : ""}`,
     `- Feedback bản cũ: ${r.feedbackDir ? `\`${r.feedbackDir}\`` : "không có"}`,

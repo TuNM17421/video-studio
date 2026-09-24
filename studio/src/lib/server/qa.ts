@@ -8,6 +8,7 @@ import { agentBin, installedAgents } from "./agent-config";
 import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
 import { moduleQaCriteria } from "./modules";
+import { styleQaCriteria } from "./style-guides";
 import { projectDir, REPO, rel, stateDir, videoDir, voiceOut } from "./paths";
 import { cuesInfo, readState, setStage } from "./videos";
 import {
@@ -246,13 +247,18 @@ function qaPacket(id: string, verifyOutput: string, qaDir: string) {
   return { packet, stills: stills.map((name) => `stills/${name}`) };
 }
 
-function qaPrompt(id: string, modules: string[]) {
+function qaPrompt(id: string, modules: string[], style: string) {
+  const styleExtra = styleQaCriteria(style);
   const extra = moduleQaCriteria(modules);
   return [
     `Bạn là QA lane độc lập cho video ${id}. Chỉ đọc nội dung trong thư mục hiện tại.`,
     "Mở REQUEST.md, kich-ban-goc.md, cues.js, IMPROVEMENT-PLAN.md nếu có, verify.txt và toàn bộ ảnh trong stills/. Ảnh cue-NN.png là câu `n: NN` trong cues.js.",
     "Chữ/số trên màn hình hợp lệ khi có trong lời đọc (`text`) HOẶC trong phần mô tả màn hình của đúng câu đó (`title`, `visual` trong cues.js; dòng **Trên màn hình** trong kich-ban-goc.md) — màn hình được phép khác lời đọc. Chỉ báo `off-script` khi không có ở cả hai nơi.",
     "Tiêu chí chung cho từng ảnh: chữ đọc được; chữ/khối không tràn, không bị xén, không chồng nhau; bố cục không trống hay dồn một góc; chữ/số trên màn hình không nằm ngoài kịch bản; cả chuỗi ảnh có nhịp và không lặp máy móc.",
+    ...(styleExtra.length ? [
+      "Tiêu chí riêng của style video này — soi thêm (vi phạm ghi code `style`):",
+      ...styleExtra.map((m) => `### ${m.name}\n${m.criteria}`),
+    ] : []),
     ...(extra.length ? [
       "Video bật thêm các năng lực dưới đây — soi thêm đúng những tiêu chí này, không tự đặt tiêu chí khác (vi phạm ghi code `module`):",
       ...extra.map((m) => `### ${m.name}\n${m.criteria}`),
@@ -275,7 +281,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   const label = agentProviderLabel(provider);
   const model = process.env.STUDIO_QA_MODEL?.trim() || undefined;
   const qaRun = startRun(REPO, id, { stage: "scenes.qa", actor: provider, mode: "agent", label: `visual QA · ${label}`, machine: machineLabel() });
-  const prompt = qaPrompt(id, state.request.modules);
+  const prompt = qaPrompt(id, state.request.modules, state.request.style);
   const outDir = path.join(stateDir(id), "qa");
   fs.mkdirSync(outDir, { recursive: true });
 
