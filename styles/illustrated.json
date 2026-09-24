@@ -3,7 +3,7 @@
   "name": "Illustrated Style (lab)",
   "order": 4,
   "extends": "lesson-lab",
-  "summary": "Mổ xẻ cơ chế bằng hình: một câu thành hàng token, token thành dải vector, vector vào ma trận — một vật liệu chảy qua các trạm suốt cả video, camera bám theo nó thay vì cắt sang slide mới.",
+  "summary": "Mổ xẻ cơ chế bằng hình: MỘT mặt phẳng cho cả video, camera lia trên đó, và các vật trên mặt phẳng BIẾN HÌNH liên tục thay vì bị cắt cảnh — câu thành hàng token, token thành dãy số, dãy số thành mũi tên trong không gian. Nhịp chậm, ba mức đậm nhạt.",
   "palette": [
     {
       "hex": "#1d6199",
@@ -19,6 +19,11 @@
       "hex": "#134d8b",
       "name": "Xanh đậm",
       "role": "ngoặc vuông của vector và ma trận"
+    },
+    {
+      "hex": "#0b2a4d",
+      "name": "Navy",
+      "role": "chữ và trục toạ độ — trục luôn ở mức khung 15 %"
     }
   ],
   "showcase": [
@@ -48,6 +53,26 @@
       "image": "illustrated__MatrixGrid.png"
     },
     {
+      "component": "MorphSequence",
+      "group": "morph",
+      "image": "morph__MorphSequence.png"
+    },
+    {
+      "component": "Morph",
+      "group": "morph",
+      "image": "morph__Morph.png"
+    },
+    {
+      "component": "shapes",
+      "group": "morph",
+      "image": "morph__shapes.png"
+    },
+    {
+      "component": "Layer",
+      "group": "morph",
+      "image": "morph__Layer.png"
+    },
+    {
       "component": "VectorColumn",
       "group": "data",
       "image": "data__VectorColumn.png"
@@ -66,10 +91,14 @@
   "rules": [
     "Chỉ chọn style này khi nội dung CÓ hình dạng dữ liệu để mổ xẻ (token hoá, embedding, chú ý, cửa sổ ngữ cảnh, RAG, fine-tune). Nội dung về quy trình, lựa chọn công cụ, rủi ro hay câu chuyện người dùng thì dùng Lesson hoặc Lesson Lab — ép vào đây sẽ thành trang trí.",
     "Cơ chế bắt buộc: MỘT mặt phẳng + camera (components/illustrated/Canvas.jsx), không Series, không cảnh, không tiêu đề cảnh. Khai meta.canvas = { zones, camera } để verify soát chrome đè lên nội dung khi lia/zoom.",
+    "Vật trên mặt phẳng BIẾN HÌNH chứ không bị thay: khai bằng MorphSequence (components/morph/), mỗi vật một danh sách trạng thái theo khung hình. Mọi hình phải là path khép kín từ components/morph/shapes.js — vẽ bằng <rect> / <circle> thì không biến hình được.",
+    "Độ đặc chỉ ba mức (components/morph/Layer.jsx): main 100 % cho thứ đang nói tới, context 40 % cho thứ vừa nói xong hoặc sắp nói, frame 15 % cho trục và lưới. Không đặt opacity tự do.",
+    "Nhịp chậm là một phần của style và phải nằm trong KỊCH BẢN: mỗi phép biến hình ít nhất khoảng hai giây rồi đứng yên cho người xem ngấm. Kịch bản cho năm phút ở đây có chừng mười lăm tới hai mươi câu, không phải bốn mươi — nói với người viết kịch bản TRƯỚC khi viết.",
     "Một vật liệu chảy suốt cả video: hàng token mở đầu phải sống tới cuối, mỗi cảnh biến đổi nó chứ không thay bằng hình mới. Giữ nguyên toạ độ gốc của hàng token giữa các cảnh để người xem không mất dấu.",
     "Mọi con số — token, trọng số chú ý, giá trị vector / ma trận — lấy từ kịch bản. Không bịa bảng attention hay dãy số; cách cắt token chính là nội dung bài học.",
     "AttentionLines luôn đặt `focus` một token: cả lưới n×n một lúc là mớ chỉ rối. Cần toàn cảnh thì dùng Heatmap.",
     "Màu là SẮC ĐỘ của hai màu có sẵn (xanh dương, đỏ âm), không thêm hue mới; màu vai trò của Lesson Lab chỉ dùng cho nhãn vùng như bình thường.",
-    "Chi tiết dựng cảnh: styles/illustrated.md."
+    "Chi tiết dựng cảnh: styles/illustrated.md.",
+    "Nền trắng và bảng 9 màu như mọi style khác. Nền tối kiểu 3Blue1Brown là câu hỏi CHƯA chốt: nó cần một bộ chrome thứ hai và một bảng màu đối ứng, phải duyệt riêng — đừng tự thêm trong lúc dựng một video."
   ]
 }

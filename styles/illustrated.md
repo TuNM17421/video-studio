@@ -12,9 +12,14 @@ style này có cơ chế riêng, giống bảng trắng ở chỗ cả video là
 Video mẫu: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n1-03-llm-sinh-tung-token/` — đọc
 `canvas.jsx` (bố cục mặt phẳng, mốc camera, vùng soát) và `video.jsx`.
 
-Component riêng: `components/illustrated/` — đọc `Canvas.prompt.md` trước, rồi `TokenRow.prompt.md`,
-`VectorStrip.prompt.md`, `MatrixGrid.prompt.md`, `AttentionLines.prompt.md`. Dùng thêm `VectorColumn`,
-`Heatmap`, `ProbabilityBars`, `TokenChip` của nhóm `data`.
+Component riêng, **hai nhóm**:
+- `components/illustrated/` — sân khấu và từ vựng nội dung: đọc `Canvas.prompt.md` trước, rồi
+  `TokenRow.prompt.md`, `VectorStrip.prompt.md`, `MatrixGrid.prompt.md`, `AttentionLines.prompt.md`.
+- `components/morph/` — phép biến đổi: đọc `MorphSequence.prompt.md` trước, rồi `shapes.prompt.md`,
+  `Morph.prompt.md`, `Layer.prompt.md`, `Axes.prompt.md`.
+
+Dùng thêm `VectorColumn`, `Heatmap`, `ProbabilityBars`, `TokenChip` của nhóm `data`. Clip thử của phần
+biến hình: `ui_kits/lesson-video/videos/thu-morph/` (hai mươi giây, không lời đọc).
 
 ## Cơ chế: một mặt phẳng + camera, KHÔNG phải chuỗi cảnh
 
@@ -32,6 +37,33 @@ trên mặt phẳng ấy ở một toạ độ **cố định**; muốn xem gầ
   vì nó chỉ xảy ra trong lúc camera đang di chuyển — khai `zones` cho đủ, kể cả nhãn nằm trên nóc hộp.
 - Chú thích của một câu (nhãn, mũi tên phụ) được phép mờ đi khi camera rời vùng đó. **Vật liệu chính thì
   không**: hàng token phải còn nguyên tới cuối.
+
+## Vật trên mặt phẳng thì BIẾN HÌNH, không bị thay
+
+Mặt phẳng là sân khấu; thứ diễn trên đó phải biến đổi liên tục, nếu không style này chỉ là slide có
+camera. Mỗi vật khai **một** `MorphSequence` (`components/morph/`), là một danh sách trạng thái theo
+khung hình — cùng ý tưởng với `marks` của bảng trắng và `camera` ở trên:
+
+```jsx
+<MorphSequence frame={frame} states={[
+  { at: 0, shape: shapes.strip({ x, y, n: 8 }), fill: C.accent, fillOpacity: 0.1, stroke: C.accentStrong, strokeWidth: 3 },
+  { at: spokenAt(9, 'một dãy số'), dur: 110, shape: shapes.arrow({ from: O, to: TIP }), fillOpacity: 0.92, strokeWidth: 0 },
+]} />
+```
+
+- Trạng thái sau **thừa kế** thuộc tính không khai; `at` lấy bằng `spokenAt(n, 'cụm từ')`.
+- **Một vật = một `MorphSequence`.** Đừng cho vật biến mất rồi dựng lại bằng component khác.
+- **Mọi hình là path khép kín** từ `components/morph/shapes.js` (`rect · circle · arrow · triangle ·
+  wedge · polygon · cell · strip`). Vẽ bằng `<rect>` / `<circle>` trông y hệt nhưng **không biến hình
+  được** — flubber cần hai path cùng loại, cùng chiều. Đây là kỷ luật của style, không phải gợi ý.
+- Độ đặc chỉ ba mức, qua `Layer`: `main` 100 % · `context` 40 % · `frame` 15 %. `Axes` luôn ở `frame`.
+
+## Nhịp — và vì sao nó nằm ở kịch bản
+
+Mỗi phép biến hình ít nhất khoảng hai giây, rồi **đứng yên** cho người xem ngấm. Nghĩa là kịch bản cho
+năm phút ở style này có chừng **mười lăm đến hai mươi câu**, không phải bốn mươi. Thời lượng mỗi cảnh đo
+từ giọng đọc, nên viết kịch bản dày rồi mới thấy hình chạy hụt hơi thì sửa là **phải thu lại giọng**.
+Nói với người viết kịch bản **trước**.
 
 ## Nguyên tắc: một vật liệu sống suốt cả video
 
@@ -95,3 +127,6 @@ sai, và người xem không có cách nào biết. Nếu kịch bản không đ
 - Vector và ma trận có ngoặc vuông thật, không phải hình chữ nhật trơn.
 - Con số trên màn hình (nếu có) khớp đúng với con số trong `kich-ban-goc.md`.
 - Chữ nhỏ nhất (nhãn hàng / cột, chỉ số token) vẫn ≥ 18 px ở 1920 và không bị đường nối đè lên.
+- Chụp cả **khung giữa** của mỗi phép biến hình, không chỉ đầu và cuối: hình ở giữa phải ra một hình
+  trung gian hợp lý, không xoắn và không nhảy. Đây là lỗi ảnh đầu/cuối không bao giờ lộ.
+- Độ đặc chỉ rơi vào ba mức 100 / 40 / 15; trục toạ độ ở mức khung, không tranh chú ý với vật.
