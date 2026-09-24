@@ -25,6 +25,40 @@
   b.look(0, { x: 960, y: 540, w: 1920 });
 
   var SAMPLES = {
+    WbFigure: function () {
+      var poses = ['stand', 'point', 'think', 'present', 'type', 'shrug', 'raise', 'celebrate'];
+      var faces = ['neutral', 'happy', 'worried', 'surprised', 'neutral', 'happy', 'worried', 'neutral'];
+      poses.forEach(function (pose, i) {
+        var x = 230 + (i % 4) * 490, y = 150 + Math.floor(i / 4) * 470;
+        VK.WbFigure(b, 'fg' + i, i ? null : 6, { x: x, y: y, h: 320, pose: pose, face: faces[i], label: pose, labelSize: 40 });
+      });
+    },
+    WbAgentLoop: function () {
+      VK.WbAgentLoop(b, 'al', 6, {
+        cx: 760, cy: 540, r: 330, center: 'Mô hình', size: 52, centerSize: 64,
+        steps: [{ text: 'Suy nghĩ' }, { text: 'Hành động' }, { text: 'Quan sát' }],
+        tools: [{ text: 'Tìm kiếm', doodle: 'search' }, { text: 'Chạy mã', doodle: 'laptop' }]
+      });
+    },
+    WbPromptBox: function () {
+      VK.WbPromptBox(b, 'pb', 6, {
+        x: 140, y: 260, w: 1640, size: 52, boxW: 440, boxH: 260, model: 'Mô hình', output: 'Câu trả lời',
+        inputs: [{ text: 'Chỉ dẫn hệ thống' }, { text: 'Vài ví dụ' }, { text: 'Câu hỏi' }, { text: 'Tài liệu cũ', cut: true }]
+      });
+    },
+    WbRagFlow: function () {
+      VK.WbRagFlow(b, 'rg', 6, { x: 110, y: 420, w: 1700, size: 44, boxH: 200, question: 'Câu hỏi của học viên', answer: 'Trả lời kèm nguồn' });
+    },
+    WbTerminal: function () {
+      VK.WbTerminal(b, 'tm', 6, {
+        x: 260, y: 240, w: 1400, size: 52, title: 'bash',
+        lines: [
+          { text: 'npm run verify', prompt: true },
+          { text: 'design system: vinuni-lesson-video-ds' },
+          { text: 'all checks passed', color: VK.C.accent }
+        ]
+      });
+    },
     WbTitleCloud: function () { VK.WbTitleCloud(b, 'tc', 6, { x: 460, y: 250, w: 1000, h: 520, lines: ['Khởi', 'nghiệp'], size: 150 }); },
     WbStickyNote: function () { VK.WbStickyNote(b, 'sn', 6, { x: 560, y: 250, w: 800, h: 560, title: 'Cần nhớ', lines: ['Hỏi người dùng trước', 'Đo trước khi làm', 'Ghi lại lý do'], size: 64 }); },
     WbSpeech: function () {

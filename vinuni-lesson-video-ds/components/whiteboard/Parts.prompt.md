@@ -24,6 +24,7 @@ vị bảng. Chữ và số lấy từ kịch bản — part không tự thêm g
 
 | Part | Khi nào dùng | Tuỳ chọn chính |
 |---|---|---|
+| `WbFigure` | **Người dẫn** — 8 tư thế, 4 biểu cảm, cầm được một doodle | `x, y (tâm đầu), h, pose, face, side, hold, label` |
 | `WbTitleCloud` | Tiêu đề phần / từ khoá lớn trong đám mây, chữ viền rỗng | `x, y, w, h, text \| lines, size, fill` |
 | `WbStickyNote` | Tờ ghi chú gập góc: điều cần nhớ, định nghĩa ngắn | `x, y, w, h, title, lines[], size` |
 | `WbSpeech` | Người que nói / nghĩ một câu (câu hỏi của người dùng, suy nghĩ) | `x, y (đầu), s, text \| lines, side, thought` |
@@ -40,11 +41,19 @@ vị bảng. Chữ và số lấy từ kịch bản — part không tự thêm g
 | `WbPhotoFrame` | Ảnh tư liệu trong khung polaroid (để trống = tô gạch chéo, chờ thay ảnh thật) | `x, y, w, h, caption, doodle` |
 | `WbFlight` | Máy bay giấy bay theo nét đứt: chuyển tiếp, gửi đi | `from, to, bend, size` |
 | `WbSteps` | Bậc thang tiến bộ, cờ ở đỉnh | `x, y, items[{ text, at? }], stepW, stepH` |
+| `WbAgentLoop` | Vòng lặp tác tử: suy nghĩ → hành động → quan sát, công cụ rẽ ra | `cx, cy, r, center, steps[], tools[{ text, doodle? }]` |
+| `WbRagFlow` | Luồng RAG năm chặng (nhúng → kho → đoạn → prompt → trả lời) | `x, y, w, stages[], question, answer` |
+| `WbPromptBox` | Hộp mô hình: ngữ cảnh vào, trả lời ra; `cut` gạch phần tràn | `x, y, w, inputs[{ text, cut? }], model, output` |
+| `WbTerminal` | Cửa sổ dòng lệnh: `$` là lệnh người gõ, còn lại là đầu ra | `x, y, w, lines[{ text, prompt? }], title` |
 | `WbDoodles` | Danh mục hình vẽ tay dùng cho `kind: 'doodle'` (81 hình, `DOODLES`) | xem `?part=WbDoodles` |
 
 - Mỗi câu lời đọc vẫn chỉ 3–5 nét chính: một part lớn (mind map, bảng) nên trải qua 2–3 câu, mỗi nhánh / hàng
   một nhịp `at`.
 - Part dùng mực của style: chữ navy, luồng xanh, điểm nhấn đỏ; đổi bằng `color` của từng mục khi kịch bản
   nhấn mạnh.
+- **Hai loại người, đừng lẫn trên một bảng.** `WbFigure` (`kind: 'figure'`) là *người dẫn*: cao 7 đầu, sống
+  lưng cong, có bàn tay bàn chân và mặt — đổi `pose` / `face` chứ không animate, cỡ đầu và độ dày nét giữ
+  nguyên nên vẫn là một nhân vật suốt video. `kind: 'person'` là người que nhỏ cũ (~3 đầu), để vẽ nhanh một
+  đám đông hoặc người bên lề; `WbSpeech` đang dùng nó. Một bảng chọn một loại.
 - Thêm part mới: viết hàm trong `parts.js` (cùng quy ước), thêm mẫu vào `demos/whiteboard-parts.html`, chụp ảnh
   `styles/previews/whiteboard__<Tên>.png` (367 × 206) và thêm tên vào `.design-sync/config.json` → `docsMap`.

@@ -13,6 +13,7 @@
  * Numbers and labels come from the script — the parts never invent a value.
  */
 import { C } from '../../lib/tokens.js';
+import { figureHand } from './sketch.js';
 
 const lineHeight = (size) => Math.round(size * 1.25);
 
@@ -68,6 +69,145 @@ export function WbSpeech(b, id, at, { x, y, s = 36, text, lines, side = 'right',
     b.draw(null, { id: `${id}-tail`, kind: 'line', points: [{ x: tailX, y: by + bh }, { x: x + dir * s * 0.9, y: y - s * 1.1 }, { x: tailX + dir * 40, y: by + bh }], dur: 8 });
   }
   return centredText(b, `${id}-t`, null, { cx: bx + bw / 2, cy: by + bh / 2, lines: words, size, color });
+}
+
+/**
+ * Người dẫn: hình người cao `h` (7 đầu), đổi tư thế và biểu cảm chứ không animate — cùng cỡ đầu, cùng độ
+ * dày nét nên vẫn là một nhân vật qua cả video. `hold` đặt một doodle vào tay, `label` viết tên dưới chân.
+ * Tư thế: stand · point · think · present · type · shrug · raise · celebrate. Mặt: neutral · happy ·
+ * worried · surprised.
+ */
+export function WbFigure(b, id, at, { x, y, h = 320, pose = 'stand', face = 'neutral', side = 'right', color, hold, holdSize, label, labelSize = 38 }) {
+  let last = b.draw(at, { id: `${id}-f`, kind: 'figure', x, y, h, pose, face, side, color });
+  if (hold) {
+    const hand = figureHand({ x, y, h, pose, side });
+    const size = holdSize ?? h * 0.26;
+    last = b.draw(null, { id: `${id}-hold`, kind: 'doodle', name: hold, x: hand.x + (side === 'left' ? -1 : 1) * size * 0.35, y: hand.y + size * 0.3, size, color });
+  }
+  if (label) last = b.draw(null, { id: `${id}-t`, kind: 'text', x, y: y + h + labelSize * 1.1, text: label, size: labelSize, anchor: 'middle', color });
+  return last;
+}
+
+/**
+ * Vòng lặp tác tử: mô hình ở giữa, các nhịp quanh vòng (mặc định Suy nghĩ → Hành động → Quan sát), mũi
+ * tên cong nối tiếp, và các công cụ rẽ ra ngoài từ nhịp "hành động". Steps / tools: { text, doodle?, at? }.
+ */
+export function WbAgentLoop(b, id, at, { cx, cy, r = 280, center = 'Mô hình', steps, tools = [], size = 42, centerSize = 52, color = C.accent, actionStep = 1 }) {
+  const items = steps || [{ text: 'Suy nghĩ' }, { text: 'Hành động' }, { text: 'Quan sát' }];
+  const n = items.length;
+  const angle = (i) => -Math.PI / 2 + (i / n) * Math.PI * 2;
+  const rx = r;
+  const ry = r * 0.72;
+  const cw = b.textWidth(center, centerSize) + 90;
+  const ch = centerSize * 2.2;
+  b.draw(at, { id: `${id}-c`, kind: 'loop', cx, cy, rx: cw / 2, ry: ch / 2 });
+  b.draw(null, { id: `${id}-ct`, kind: 'text', x: cx, y: cy + centerSize * 0.35, text: center, size: centerSize, anchor: 'middle' });
+  let last = null;
+  items.forEach((item, i) => {
+    const a = angle(i);
+    const p = { x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry };
+    if (item.doodle) b.draw(item.at ?? null, { id: `${id}-d${i}`, kind: 'doodle', name: item.doodle, x: p.x, y: p.y - size * 1.5, size: size * 1.9, color: item.color });
+    last = b.draw(item.doodle ? null : item.at ?? null, { id: `${id}-t${i}`, kind: 'text', x: p.x, y: p.y + size * 0.35, text: item.text, size, anchor: 'middle', color: item.color });
+    const span = (Math.PI * 2) / n;
+    const arc = [];
+    for (let k = 0; k <= 6; k++) {
+      const aa = a + span * (0.3 + (0.42 * k) / 6);
+      arc.push({ x: cx + Math.cos(aa) * rx * 1.1, y: cy + Math.sin(aa) * ry * 1.1 });
+    }
+    last = b.draw(null, { id: `${id}-a${i}`, kind: 'arrow', points: arc, color, dur: 12, head: 18 });
+  });
+  // công cụ treo ngoài nhịp hành động
+  if (tools.length) {
+    const a = angle(actionStep % n);
+    const label = b.textWidth(items[actionStep % n].text, size) / 2 + 40;
+    const base = { x: cx + Math.cos(a) * (rx + label), y: cy + Math.sin(a) * (ry + label) };
+    tools.forEach((tool, i) => {
+      const ty = base.y + (i - (tools.length - 1) / 2) * (size * 2.6);
+      const tx = base.x + Math.cos(a) * 150;
+      b.draw(tool.at ?? null, { id: `${id}-tl${i}`, kind: 'line', points: [base, { x: tx, y: ty }], color, width: 4, dur: 8 });
+      if (tool.doodle) b.draw(null, { id: `${id}-td${i}`, kind: 'doodle', name: tool.doodle, x: tx + size * 0.9, y: ty, size: size * 1.5, color });
+      last = b.draw(null, { id: `${id}-tt${i}`, kind: 'text', x: tx + size * (tool.doodle ? 1.9 : 0.4), y: ty + size * 0.3, text: tool.text, size: size * 0.86, color });
+    });
+  }
+  return last;
+}
+
+/**
+ * Hộp mô hình: những mảnh ngữ cảnh xếp chồng ở đầu vào (chỉ dẫn, ví dụ, câu hỏi), mũi tên vào hộp, câu
+ * trả lời đi ra. `cut` gạch chéo những mảnh tràn khỏi cửa sổ ngữ cảnh. Inputs: { text, at?, cut? }.
+ */
+export function WbPromptBox(b, id, at, { x, y, w = 1500, inputs, model = 'Mô hình', output, size = 40, boxW = 380, boxH = 210, color = C.accent }) {
+  const rowH = size * 2.0;
+  const inH = Math.max(boxH, inputs.length * rowH);
+  const cy = y + inH / 2;
+  const inW = Math.max(260, w * 0.28);
+  let last = null;
+  inputs.forEach((item, i) => {
+    const iy = cy - (inputs.length * rowH) / 2 + i * rowH;
+    last = b.draw(i === 0 ? item.at ?? at : item.at ?? null, { id: `${id}-i${i}`, kind: 'box', x, y: iy, w: inW, h: rowH - 14, color: item.cut ? C.textMuted : undefined, dur: 10 });
+    last = b.draw(null, { id: `${id}-it${i}`, kind: 'text', x: x + 24, y: iy + rowH / 2 + size * 0.2, text: item.text, size: size * 0.88, color: item.cut ? C.textMuted : undefined });
+    if (item.cut) last = b.draw(null, { id: `${id}-ix${i}`, kind: 'cross', x: x + inW / 2, y: iy + rowH / 2, s: rowH * 0.7, color: C.red });
+  });
+  const mx = x + inW + (w - inW - boxW) / 2;
+  b.draw(null, { id: `${id}-a1`, kind: 'arrow', points: [{ x: x + inW + 16, y: cy }, { x: mx - 16, y: cy }], color, dur: 10 });
+  b.boxText(`${id}-m`, null, { x: mx, y: cy - boxH / 2, w: boxW, h: boxH }, model, { size: size * 1.15 });
+  if (!output) return b.marks[b.marks.length - 1];
+  const outW = b.textWidth(output, size);
+  b.draw(null, { id: `${id}-a2`, kind: 'arrow', points: [{ x: mx + boxW + 16, y: cy }, { x: x + w - outW - 34, y: cy }], color, dur: 10 });
+  return b.draw(null, { id: `${id}-o`, kind: 'text', x: x + w, y: cy + size * 0.35, text: output, size, anchor: 'end' });
+}
+
+/**
+ * Luồng RAG: câu hỏi → nhúng → kho tài liệu → đoạn lấy về → ghép vào prompt → trả lời. Năm chặng chuẩn,
+ * mỗi chặng một nhịp `at` để trải qua vài câu lời đọc. Stages: { text, doodle?, at? } (bỏ trống = mặc định).
+ */
+export function WbRagFlow(b, id, at, { x, y, w = 1620, stages, question, answer, size = 38, boxH = 150, color = C.accent }) {
+  const items = stages || [
+    { text: 'Nhúng', doodle: 'workflow' },
+    { text: 'Kho tài liệu', doodle: 'database' },
+    { text: 'Đoạn liên quan', doodle: 'document' },
+    { text: 'Ghép vào prompt', doodle: 'note' },
+    { text: 'Trả lời', doodle: 'bot' },
+  ];
+  const gap = 64;
+  const boxW = (w - gap * (items.length - 1)) / items.length;
+  let last = null;
+  if (question) last = b.draw(at, { id: `${id}-q`, kind: 'text', x, y: y - size * 0.9, text: question, size, color: C.text });
+  items.forEach((item, i) => {
+    const bx = x + i * (boxW + gap);
+    const start = item.at ?? (i === 0 && !question ? at : null);
+    if (i > 0) b.draw(start, { id: `${id}-a${i}`, kind: 'arrow', points: [{ x: bx - gap + 10, y: y + boxH / 2 }, { x: bx - 10, y: y + boxH / 2 }], color, dur: 9 });
+    b.draw(i > 0 ? null : start, { id: `${id}-b${i}`, kind: 'box', x: bx, y, w: boxW, h: boxH, dur: 12 });
+    if (item.doodle) b.draw(null, { id: `${id}-d${i}`, kind: 'doodle', name: item.doodle, x: bx + boxW / 2, y: y + boxH * 0.38, size: boxH * 0.44, color });
+    const ls = size * 0.9;
+    const lw = b.textWidth(item.text, ls);
+    const fit = lw > boxW - 28 ? Math.max(20, Math.floor((ls * (boxW - 28)) / lw)) : ls;
+    last = b.draw(null, { id: `${id}-t${i}`, kind: 'text', x: bx + boxW / 2, y: y + boxH - 22, text: item.text, size: fit, anchor: 'middle' });
+  });
+  if (answer) last = b.draw(null, { id: `${id}-ans`, kind: 'text', x: x + w, y: y + boxH + size * 1.6, text: answer, size, anchor: 'end', color: C.red });
+  return last;
+}
+
+/**
+ * Cửa sổ dòng lệnh vẽ tay: khung, thanh tiêu đề ba chấm, rồi từng dòng hiện dần. Dòng khai `prompt: true`
+ * có dấu `$` ở đầu (lệnh người gõ), còn lại là đầu ra. Lines: { text, prompt?, at?, color? } hoặc chuỗi.
+ */
+export function WbTerminal(b, id, at, { x, y, w = 1100, lines, title, size = 34, color, rowH }) {
+  const bar = size * 1.5;
+  const lh = rowH ?? size * 1.5;
+  const h = bar + lh * lines.length + size * 0.9;
+  b.draw(at, { id: `${id}-w`, kind: 'box', x, y, w, h, color, dur: 16 });
+  b.draw(null, { id: `${id}-bar`, kind: 'line', points: [{ x, y: y + bar }, { x: x + w, y: y + bar }], color, width: 4, dur: 8 });
+  [0, 1, 2].forEach((i) => b.draw(null, { id: `${id}-dot${i}`, kind: 'loop', cx: x + 30 + i * 30, cy: y + bar / 2, rx: 9, ry: 9, color, dur: 3 }));
+  if (title) b.draw(null, { id: `${id}-ti`, kind: 'text', x: x + w / 2, y: y + bar * 0.72, text: title, size: size * 0.8, anchor: 'middle', color: C.textMuted });
+  let last = null;
+  lines.forEach((row, i) => {
+    const line = typeof row === 'string' ? { text: row } : row;
+    const ly = y + bar + size * 0.75 + i * lh + size * 0.35;
+    if (line.prompt) b.draw(line.at ?? null, { id: `${id}-p${i}`, kind: 'text', x: x + 28, y: ly, text: '$', size, color: C.red, font: 'pangolin' });
+    last = b.draw(line.prompt ? null : line.at ?? null, { id: `${id}-l${i}`, kind: 'text', x: x + (line.prompt ? 72 : 28), y: ly, text: line.text, size, color: line.color ?? (line.prompt ? undefined : C.textMuted), font: 'pangolin' });
+  });
+  return last;
 }
 
 /** Steps in boxes joined by arrows, in a row or a column. Items: { text, at?, color? }. */
@@ -294,6 +434,7 @@ export function WbSteps(b, id, at, { x, y, items, stepW = 300, stepH = 110, size
 
 /** Catalog for docs, previews and the Studio library: name → one-line purpose. */
 export const WB_PARTS = Object.freeze({
+  WbFigure: 'Người dẫn: 8 tư thế, 4 biểu cảm, cầm được đồ',
   WbTitleCloud: 'Tiêu đề lớn trong đám mây (chữ viền rỗng)',
   WbStickyNote: 'Tờ ghi chú gập góc: tiêu đề + vài dòng',
   WbSpeech: 'Người que nói hoặc nghĩ một câu',
@@ -306,6 +447,10 @@ export const WB_PARTS = Object.freeze({
   WbBarChart: 'Biểu đồ cột tô gạch chéo (chỉ số liệu kịch bản có)',
   WbIconLabel: 'Một hình vẽ tay + chú thích',
   WbIdea: 'Bóng đèn tỏa sáng — một ý tưởng',
+  WbAgentLoop: 'Vòng lặp tác tử: suy nghĩ → hành động → quan sát, nhánh công cụ',
+  WbPromptBox: 'Hộp mô hình: ngữ cảnh vào, câu trả lời ra, phần tràn bị gạch',
+  WbRagFlow: 'Luồng RAG năm chặng: nhúng → kho → đoạn → prompt → trả lời',
+  WbTerminal: 'Cửa sổ dòng lệnh vẽ tay, lệnh và đầu ra hiện dần',
   WbTable: 'Bảng kẻ tay, hàng tiêu đề',
   WbPhotoFrame: 'Ảnh tư liệu trong khung polaroid vẽ tay',
   WbFlight: 'Máy bay giấy bay theo đường nét đứt',

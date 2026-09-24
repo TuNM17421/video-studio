@@ -1,4 +1,5 @@
 import type { Board } from './board';
+import type { FigureFace, FigurePose } from './Whiteboard';
 import type { WhiteboardMark } from './Whiteboard';
 
 type P = { x: number; y: number };
@@ -6,6 +7,11 @@ type Beat = { at?: number | null; color?: string };
 /** Every part: (board, id prefix, first frame or null, options) → its last mark. */
 type Part<O> = (board: Board, id: string, at: number | null, options: O) => WhiteboardMark;
 
+export declare const WbFigure: Part<{ x: number; y: number; h?: number; pose?: FigurePose; face?: FigureFace; side?: 'left' | 'right'; color?: string; hold?: string; holdSize?: number; label?: string; labelSize?: number }>;
+export declare const WbAgentLoop: Part<{ cx: number; cy: number; r?: number; center?: string; steps?: ({ text: string; doodle?: string } & Beat)[]; tools?: ({ text: string; doodle?: string } & Beat)[]; size?: number; centerSize?: number; color?: string; actionStep?: number }>;
+export declare const WbPromptBox: Part<{ x: number; y: number; w?: number; inputs: ({ text: string; cut?: boolean } & Beat)[]; model?: string; output?: string; size?: number; boxW?: number; boxH?: number; color?: string }>;
+export declare const WbRagFlow: Part<{ x: number; y: number; w?: number; stages?: ({ text: string; doodle?: string } & Beat)[]; question?: string; answer?: string; size?: number; boxH?: number; color?: string }>;
+export declare const WbTerminal: Part<{ x: number; y: number; w?: number; lines: (string | ({ text: string; prompt?: boolean } & Beat))[]; title?: string; size?: number; color?: string; rowH?: number }>;
 export declare const WbTitleCloud: Part<{ x: number; y: number; w: number; h: number; text?: string; lines?: string[]; size?: number; color?: string; fill?: string; outline?: boolean }>;
 export declare const WbStickyNote: Part<{ x: number; y: number; w?: number; h?: number; title?: string; lines?: (string | ({ text: string } & Beat))[]; size?: number; color?: string; fill?: string }>;
 export declare const WbSpeech: Part<{ x: number; y: number; s?: number; text?: string; lines?: string[]; side?: 'left' | 'right'; thought?: boolean; size?: number; color?: string }>;

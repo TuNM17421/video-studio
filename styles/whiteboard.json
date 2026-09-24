@@ -37,6 +37,11 @@
       "image": "whiteboard__Whiteboard.png"
     },
     {
+      "component": "WbFigure",
+      "group": "whiteboard",
+      "image": "whiteboard__WbFigure.png"
+    },
+    {
       "component": "WbMindMap",
       "group": "whiteboard",
       "image": "whiteboard__WbMindMap.png"
@@ -85,6 +90,26 @@
       "component": "WbPhotoFrame",
       "group": "whiteboard",
       "image": "whiteboard__WbPhotoFrame.png"
+    },
+    {
+      "component": "WbAgentLoop",
+      "group": "whiteboard",
+      "image": "whiteboard__WbAgentLoop.png"
+    },
+    {
+      "component": "WbRagFlow",
+      "group": "whiteboard",
+      "image": "whiteboard__WbRagFlow.png"
+    },
+    {
+      "component": "WbPromptBox",
+      "group": "whiteboard",
+      "image": "whiteboard__WbPromptBox.png"
+    },
+    {
+      "component": "WbTerminal",
+      "group": "whiteboard",
+      "image": "whiteboard__WbTerminal.png"
     },
     {
       "component": "WbDoodles",

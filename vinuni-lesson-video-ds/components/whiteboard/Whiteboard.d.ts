@@ -18,6 +18,9 @@ interface MarkBase {
 }
 /** Names in DOODLES (components/whiteboard/doodles.js) — Lucide line icons redrawn by hand. */
 export type DoodleName = string;
+/** Poses of the presenter figure (components/whiteboard/sketch.js FIGURE_POSES). */
+export type FigurePose = 'stand' | 'point' | 'think' | 'present' | 'type' | 'shrug' | 'raise' | 'celebrate';
+export type FigureFace = 'neutral' | 'happy' | 'worried' | 'surprised';
 
 export type WhiteboardMark =
   | (MarkBase & { kind: 'text'; x: number; y: number; text?: string; lines?: string[]; size?: number; lineHeight?: number; anchor?: 'start' | 'middle' | 'end'; outline?: boolean })
@@ -27,6 +30,7 @@ export type WhiteboardMark =
   | (MarkBase & { kind: 'loop'; cx: number; cy: number; rx: number; ry: number; width?: number })
   | (MarkBase & { kind: 'underline'; x1: number; x2: number; y: number; width?: number })
   | (MarkBase & { kind: 'person'; x: number; y: number; s?: number; width?: number })
+  | (MarkBase & { kind: 'figure'; x: number; y: number; h?: number; pose?: FigurePose; face?: FigureFace; side?: 'left' | 'right'; width?: number })
   | (MarkBase & { kind: 'check' | 'cross'; x: number; y: number; s?: number; width?: number })
   | (MarkBase & { kind: 'doodle'; name: DoodleName; x: number; y: number; size?: number; rotate?: number; width?: number })
   | (MarkBase & { kind: 'cloud'; x: number; y: number; w: number; h: number; fill?: string; width?: number })
