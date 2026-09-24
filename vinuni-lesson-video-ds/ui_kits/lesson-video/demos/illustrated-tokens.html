@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Illustrated — thử phần token của N1-03</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Thử style Illustrated trên nội dung thật: kịch bản N1-03 "Mô hình tạo văn bản từng mảnh".
+  // Token và mã số là KẾT QUẢ THẬT của bộ tách GPT-5, không phải số minh hoạ.
+  // Câu 07 của kịch bản nói "token được chia ở đâu là do bộ tách quyết định" — cảnh thật phải ghi
+  // tên bộ tách lên màn hình, nếu không người xem tưởng mô hình nào cũng cắt y hệt.
+  //   ?scene=5 câu 05 · 6 câu 06 · 8 câu 08 · 9 câu 09 · 16 câu 16 · 20 câu 20 · 27 câu 27
+  //   (?frame=N để chụp một khung)
+  var h = VK.h, C = VK.C;
+  var q = new URLSearchParams(location.search);
+  var scene = q.get('scene') || '5';
+
+  // "Tôi mang ô vì trời" — 5 tiếng, 6 token. '␣' là khoảng trắng nằm TRONG token.
+  var TOK = [
+    { text: 'T', id: 51 },
+    { text: 'ôi', id: 23865 },
+    { text: '␣mang', id: 18033 },
+    { text: '␣ô', id: 27598 },
+    { text: '␣vì', id: 60010 },
+    { text: '␣trời', id: 177808 }
+  ];
+  var TEXTS = TOK.map(function (t) { return t.text; });
+  // cách đếm sai: mỗi tiếng một ô
+  var TIENG = ['Tôi', 'mang', 'ô', 'vì', 'trời'];
+
+  // phần nối tiếp: " đang mưa" → ␣đang · ␣m · ưa  (chữ "mưa" tốn HAI mảnh)
+  var MUA = [{ text: '␣m', id: 284 }, { text: 'ưa', id: 43653 }];
+  var DANG = { text: '␣đang', id: 49804 };
+
+  var LAY = { x: 260, y: 470, tokens: TEXTS, size: 58, padX: 32, gap: 22, maxW: 1420 };
+
+  function ids(cells, upto, enter) {
+    return cells.map(function (c, i) {
+      var on = i < upto ? 1 : i === upto ? enter : 0;
+      if (on <= 0.01) return null;
+      return h('g', { key: i, opacity: on },
+        h(VK.SvgText, { x: c.cx, y: c.y + c.h + 52, size: 32, weight: 700, color: C.accentStrong }, String(TOK[i].id)));
+    });
+  }
+
+  var SCENES = {
+    // câu 05 — câu văn chia thành mảnh, hiện từng viên
+    '5': function (f) {
+      var n = Math.min(6, Math.floor(VK.linearProgress(f, 15, 100) * 6) + 1);
+      return h(VK.Fragment, null,
+        h(VK.SvgText, { x: 960, y: 300, size: 46, weight: 600, color: C.textMuted }, 'Tôi mang ô vì trời…'),
+        h(VK.TokenRow, Object.assign({}, LAY, { shown: n, enter: 1 })),
+        h(VK.SvgText, { x: 960, y: 700, size: 40, weight: 700, color: C.text }, 'Token: mảnh văn bản để xử lý')
+      );
+    },
+    // câu 06 — một mảnh có thể là một phần của từ: "Tôi" = T + ôi
+    '6': function (f) {
+      var hi = f > 60 ? (f < 110 ? 0 : 1) : -1;
+      return h(VK.Fragment, null,
+        h(VK.TokenRow, Object.assign({}, LAY, { highlight: hi })),
+        hi >= 0 ? h(VK.SvgText, { x: 400, y: 380, size: 38, weight: 700, color: C.red }, 'một từ, hai mảnh') : null,
+        h(VK.SvgText, { x: 960, y: 700, size: 40, weight: 700, color: C.text }, 'Token không cố định bằng một từ')
+      );
+    },
+    // câu 08 — đếm khoảng trắng ra 5, thật ra là 6
+    '8': function (f) {
+      var show = VK.linearProgress(f, 30, 70);
+      return h(VK.Fragment, null,
+        h(VK.TokenRow, { x: 260, y: 300, tokens: TIENG, size: 52, padX: 30, gap: 22, color: C.textMuted }),
+        h(VK.SvgText, { x: 1560, y: 360, size: 40, weight: 700, color: C.textMuted }, 'đếm tiếng: 5'),
+        h(VK.TokenRow, Object.assign({}, LAY, { y: 560 })),
+        show > 0.2 ? h(VK.SvgText, { x: 1560, y: 620, size: 40, weight: 700, color: C.red, opacity: show }, 'token thật: 6') : null,
+        h(VK.SvgText, { x: 960, y: 800, size: 40, weight: 700, color: C.text }, 'Đừng đếm khoảng trắng')
+      );
+    },
+    // câu 09 — mỗi mảnh thành một mã số, rồi thành một dãy số
+    '9': function (f) {
+      var cells = VK.tokenLayout(LAY);
+      var n = VK.linearProgress(f, 10, 70) * 6;
+      var vec = VK.linearProgress(f, 80, 140);
+      return h(VK.Fragment, null,
+        h(VK.TokenRow, Object.assign({}, LAY, { highlight: 5 })),
+        h('g', null, ids(cells, Math.floor(n), n % 1)),
+        vec > 0.01 ? h(VK.VectorStrip, {
+          x: 560, y: 760, values: [0.8, -0.35, 0.15, 0.62, -0.9, 0.4, 0.25, -0.55], cell: 96, h: 104, gap: 6,
+          label: 'Dãy số của một token (minh hoạ)', reveal: vec
+        }) : null
+      );
+    }
+    ,
+    // câu 16 — một từ trên thẻ có thể cần tách thành nhiều mảnh
+    '16': function (f) {
+      var show = VK.linearProgress(f, 30, 90);
+      return h(VK.Fragment, null,
+        h(VK.SvgText, { x: 560, y: 300, size: 36, weight: 700, color: C.textMuted }, 'Trên thẻ ứng viên'),
+        h(VK.TokenRow, { x: 430, y: 350, tokens: ['mưa'], size: 64, padX: 40, color: C.textMuted }),
+        h(VK.SvgText, { x: 1360, y: 300, size: 36, weight: 700, color: C.red, opacity: show }, 'Với mô hình'),
+        show > 0.1 ? h(VK.Fragment, null,
+          h(VK.TokenRow, { x: 1160, y: 350, tokens: MUA.map(function (t) { return t.text; }), size: 64, padX: 40, highlight: 1 }),
+          MUA.map(function (t, i) {
+            return h(VK.SvgText, { key: i, x: 1255 + i * 215, y: 540, size: 32, weight: 700, color: C.accentStrong, opacity: show }, String(t.id));
+          })
+        ) : null,
+        h(VK.SvgText, { x: 960, y: 700, size: 40, weight: 700, color: C.text }, 'Một chữ trên thẻ = hai mảnh với mô hình')
+      );
+    },
+    // câu 20–22 — chọn một mảnh, nối vào cuối câu, bảng phải tính lại
+    '20': function (f) {
+      var pick = VK.linearProgress(f, 60, 100);
+      var all = TEXTS.concat([MUA[0].text]);
+      return h(VK.Fragment, null,
+        h(VK.TokenRow, { x: 260, y: 200, tokens: all, size: 52, padX: 28, gap: 18, maxW: 1420,
+                         shown: 6, enter: pick, highlight: pick > 0.5 ? 6 : -1 }),
+        h(VK.ProbabilityBars, {
+          x: 320, y: 480, items: [
+            { label: 'mưa', value: 60, highlight: true }, { label: 'nắng', value: 20 },
+            { label: 'lạnh', value: 10 }, { label: 'khác', value: 10 }
+          ],
+          max: 100, barW: 520, barH: 46, rowGap: 84, labelW: 180, size: 34, showValues: true,
+          title: 'Khả năng của mảnh nối tiếp',
+          // design system cố ý KHÔNG vẽ thẻ "MINH HỌA" nữa (quyết định lab 11/09/2026),
+          // nên lời cảnh báo của kịch bản đi vào footnote — xem ghi chú ở cuối file.
+          footnote: 'Số minh hoạ — không phải phép đo từ mô hình',
+          reveal: VK.linearProgress(f, 10, 60)
+        })
+      );
+    },
+    // câu 27 — hai nhánh: "trời mưa" và "trời đang mưa"
+    '27': function (f) {
+      var r = VK.linearProgress(f, 20, 90);
+      var A = TEXTS.concat([MUA[0].text, MUA[1].text]);
+      var B = TEXTS.concat([DANG.text, MUA[0].text, MUA[1].text]);
+      return h(VK.Fragment, null,
+        h(VK.SvgText, { x: 200, y: 300, size: 34, weight: 700, color: C.textMuted, anchor: 'start' }, 'Nhánh 1'),
+        h(VK.TokenRow, { x: 200, y: 340, tokens: A, size: 46, padX: 24, gap: 16, maxW: 1560,
+                         shown: 6, enter: r, highlight: r > 0.5 ? 6 : -1 }),
+        h(VK.SvgText, { x: 200, y: 620, size: 34, weight: 700, color: C.textMuted, anchor: 'start' }, 'Nhánh 2'),
+        h(VK.TokenRow, { x: 200, y: 660, tokens: B, size: 46, padX: 24, gap: 16, maxW: 1560,
+                         shown: 6, enter: r, highlight: r > 0.5 ? 6 : -1 }),
+        h(VK.SvgText, { x: 960, y: 900, size: 40, weight: 700, color: C.text }, 'Một bước chọn khác, phần câu làm căn cứ cũng khác')
+      );
+    }
+  };
+  var draw = SCENES[scene] || SCENES['5'];
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: 160,
+    render: function (f) { return draw(f); }
+  });
+  // GHI CHÚ cho người dựng video:
+  // Kịch bản N1-03 (07/09/2026) yêu cầu "mọi khung xác suất/token gắn MINH HỌA".
+  // IllustrativeStamp KHÔNG vẽ nhãn chứa "MINH HỌA" nữa — quyết định lab 11/09/2026, sau ngày viết
+  // kịch bản. Nhãn còn vẽ được: CHƯA CHẠY THẬT, PHƯƠNG ÁN THIẾT KẾ… Ở đây tạm dùng footnote của
+  // ProbabilityBars; chốt cách làm với người viết kịch bản trước khi dựng thật.
+</script>
+</body>
+</html>
