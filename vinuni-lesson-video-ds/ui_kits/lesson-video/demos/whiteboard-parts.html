@@ -41,6 +41,18 @@
     WbRagFlow: function () {
       VK.WbRagFlow(b, 'rg', 6, { x: 110, y: 420, w: 1700, size: 44, boxH: 200, question: 'Câu hỏi của học viên', answer: 'Trả lời kèm nguồn' });
     },
+    WbChatWindow: function () {
+      VK.WbChatWindow(b, 'cw', 6, {
+        x: 300, y: 120, w: 1320, size: 46, title: 'Trợ lý học vụ', placeholder: 'Nhập câu hỏi…',
+        messages: [
+          { role: 'system', text: 'Hôm nay 24/09' },
+          { role: 'user', text: 'Tóm tắt giúp mình buổi học hôm qua' },
+          { role: 'assistant', text: 'Buổi hôm qua nói về cách chọn đúng vấn đề trước khi chọn công cụ.' },
+          { role: 'user', text: 'Ghi ra ba ý chính được không?' }
+        ],
+        typing: true
+      });
+    },
     WbTerminal: function () {
       VK.WbTerminal(b, 'tm', 6, {
         x: 260, y: 240, w: 1400, size: 52, title: 'bash',

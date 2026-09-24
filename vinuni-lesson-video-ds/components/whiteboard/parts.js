@@ -192,6 +192,83 @@ export function WbTerminal(b, id, at, { x, y, w = 1100, lines, title, size = 34,
   return last;
 }
 
+/** Ngắt dòng tham lam theo bề rộng chữ viết tay của bảng (b.textWidth), '\n' ép xuống dòng. */
+function wrapHand(b, text, maxW, size) {
+  const out = [];
+  for (const para of String(text ?? '').split('\n')) {
+    let line = '';
+    for (const word of para.split(/ +/)) {
+      if (!word) continue;
+      const next = line ? `${line} ${word}` : word;
+      if (b.textWidth(next, size) <= maxW) { line = next; continue; }
+      if (line) out.push(line);
+      line = word;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+/**
+ * Cửa sổ trò chuyện vẽ tay: khung có thanh tiêu đề, các bóng thoại xếp từ trên xuống, ô nhập ở đáy.
+ * `role: 'user'` là bóng bên phải (mực xanh), `'assistant'` bên trái, `'system'` là một dòng mờ ở giữa.
+ * Mỗi câu một nhịp `at` để hiện đúng lúc lời đọc nhắc tới. `typing` thêm ba chấm "đang trả lời".
+ * Là màn hình minh hoạ, không phải ảnh chụp thật — chữ lấy từ kịch bản, đừng bịa số liệu.
+ */
+export function WbChatWindow(b, id, at, { x, y, w = 1100, messages, title = 'Trợ lý', size = 34, gap = 22, typing = false, placeholder, draft, color }) {
+  const bar = size * 1.6;
+  const pad = size * 0.6;
+  const maxBubble = w * 0.62;
+  const textW = maxBubble - pad * 2;
+  const rows = messages.map((m) => {
+    const lines = m.lines || wrapHand(b, m.text, textW, size);
+    const width = m.role === 'system' ? w - pad * 4 : Math.min(maxBubble, Math.max(...lines.map((l) => b.textWidth(l, size))) + pad * 2);
+    const height = m.role === 'system' ? lineHeight(size) : lines.length * lineHeight(size) + pad * 1.4;
+    return { ...m, lines, width, height };
+  });
+  const input = placeholder != null || draft != null;
+  const inputH = input ? size * 2.2 : 0;
+  const typeH = size * 1.7;
+  const h = bar + pad + rows.reduce((t, r) => t + r.height + gap, 0) + (typing ? typeH + gap : 0) + inputH + pad;
+
+  b.draw(at, { id: `${id}-w`, kind: 'box', x, y, w, h, color, dur: 18 });
+  b.draw(null, { id: `${id}-bar`, kind: 'line', points: [{ x, y: y + bar }, { x: x + w, y: y + bar }], color, width: 4, dur: 8 });
+  [0, 1, 2].forEach((i) => b.draw(null, { id: `${id}-dot${i}`, kind: 'loop', cx: x + 30 + i * 30, cy: y + bar / 2, rx: 9, ry: 9, color, dur: 3 }));
+  b.draw(null, { id: `${id}-ti`, kind: 'text', x: x + 130, y: y + bar * 0.68, text: title, size: size * 0.82 });
+
+  let cy = y + bar + pad;
+  let last = b.marks[b.marks.length - 1];
+  rows.forEach((m, i) => {
+    if (m.role === 'system') {
+      last = b.draw(m.at ?? null, { id: `${id}-s${i}`, kind: 'text', x: x + w / 2, y: cy + size * 0.8, text: m.lines.join(' '), size: size * 0.82, anchor: 'middle', color: C.textMuted });
+      cy += m.height + gap;
+      return;
+    }
+    const user = m.role === 'user';
+    const bx = user ? x + w - pad - m.width : x + pad;
+    const ink = m.color ?? (user ? C.accent : undefined);
+    b.draw(m.at ?? null, { id: `${id}-b${i}`, kind: 'box', x: bx, y: cy, w: m.width, h: m.height, color: ink, fill: user ? undefined : C.bgAlt, dur: 12 });
+    // đuôi bóng thoại chỉ về phía người nói
+    const tx = user ? bx + m.width - 34 : bx + 34;
+    b.draw(null, { id: `${id}-t${i}`, kind: 'line', points: [{ x: tx, y: cy + m.height }, { x: tx + (user ? 26 : -26), y: cy + m.height + 22 }, { x: tx + (user ? 40 : -40), y: cy + m.height }], color: ink, dur: 6 });
+    last = b.draw(null, { id: `${id}-x${i}`, kind: 'text', x: bx + pad, y: cy + pad + size * 0.75, lines: m.lines, size, color: ink });
+    cy += m.height + gap;
+  });
+  if (typing) {
+    b.draw(null, { id: `${id}-tw`, kind: 'box', x: x + pad, y: cy, w: size * 4.4, h: typeH, fill: C.bgAlt, dur: 8 });
+    [0, 1, 2].forEach((i) => {
+      last = b.draw(null, { id: `${id}-td${i}`, kind: 'loop', cx: x + pad + size * (1.1 + i * 1.1), cy: cy + typeH / 2, rx: size * 0.17, ry: size * 0.17, color: C.textMuted, dur: 4 });
+    });
+    cy += typeH + gap;
+  }
+  if (input) {
+    const iy = y + h - pad - inputH + size * 0.3;
+    b.draw(null, { id: `${id}-in`, kind: 'line', points: [{ x: x + pad, y: iy }, { x: x + w - pad, y: iy }], color: C.textMuted, width: 3, dash: '10 10', dur: 8 });
+    last = b.draw(null, { id: `${id}-ip`, kind: 'text', x: x + pad + 10, y: iy + size * 1.15, text: draft ?? placeholder, size: size * 0.9, color: draft ? undefined : C.textMuted });
+  }
+  return last;
+}
+
 /** Steps in boxes joined by arrows, in a row or a column. Items: { text, at?, color? }. */
 export function WbFlow(b, id, at, { x, y, items, w = 280, h = 110, gap = 100, direction = 'row', size = 42, color = C.accent }) {
   let last = null;
@@ -431,6 +508,7 @@ export const WB_PARTS = Object.freeze({
   WbAgentLoop: 'Vòng lặp tác tử: suy nghĩ → hành động → quan sát, nhánh công cụ',
   WbPromptBox: 'Hộp mô hình: ngữ cảnh vào, câu trả lời ra, phần tràn bị gạch',
   WbRagFlow: 'Luồng RAG năm chặng: nhúng → kho → đoạn → prompt → trả lời',
+  WbChatWindow: 'Cửa sổ trò chuyện vẽ tay: bóng thoại hai bên, ô nhập',
   WbTerminal: 'Cửa sổ dòng lệnh vẽ tay, lệnh và đầu ra hiện dần',
   WbTable: 'Bảng kẻ tay, hàng tiêu đề',
   WbPhotoFrame: 'Ảnh tư liệu trong khung polaroid vẽ tay',

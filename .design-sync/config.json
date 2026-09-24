@@ -129,6 +129,7 @@
     "Whiteboard": "components/whiteboard/Whiteboard.prompt.md",
     "WbBarChart": "components/whiteboard/Parts.prompt.md",
     "WbChecklist": "components/whiteboard/Parts.prompt.md",
+    "WbChatWindow": "components/whiteboard/Parts.prompt.md",
     "WbCompare": "components/whiteboard/Parts.prompt.md",
     "WbCycle": "components/whiteboard/Parts.prompt.md",
     "WbDoodles": "components/whiteboard/Parts.prompt.md",

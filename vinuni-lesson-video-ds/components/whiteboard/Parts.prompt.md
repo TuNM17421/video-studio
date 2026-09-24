@@ -43,6 +43,7 @@ vị bảng. Chữ và số lấy từ kịch bản — part không tự thêm g
 | `WbAgentLoop` | Vòng lặp tác tử: suy nghĩ → hành động → quan sát, công cụ rẽ ra | `cx, cy, r, center, steps[], tools[{ text, doodle? }]` |
 | `WbRagFlow` | Luồng RAG năm chặng (nhúng → kho → đoạn → prompt → trả lời) | `x, y, w, stages[], question, answer` |
 | `WbPromptBox` | Hộp mô hình: ngữ cảnh vào, trả lời ra; `cut` gạch phần tràn | `x, y, w, inputs[{ text, cut? }], model, output` |
+| `WbChatWindow` | Màn hình trò chuyện: bóng thoại hai bên, ba chấm "đang trả lời", ô nhập | `x, y, w, messages[{ role: 'user' \| 'assistant' \| 'system', text, at? }], title, typing, placeholder \| draft` |
 | `WbTerminal` | Cửa sổ dòng lệnh: `$` là lệnh người gõ, còn lại là đầu ra | `x, y, w, lines[{ text, prompt? }], title` |
 | `WbStickman` | Người que: 25 tư thế, dùng như doodle (`name: 'nguoi-…'`) | xem `?part=WbStickman` |
 | `WbDoodles` | Danh mục hình vẽ tay dùng cho `kind: 'doodle'` (81 hình, `DOODLES`) | xem `?part=WbDoodles` |

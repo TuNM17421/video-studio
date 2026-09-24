@@ -102,6 +102,11 @@
       "image": "whiteboard__WbPromptBox.png"
     },
     {
+      "component": "WbChatWindow",
+      "group": "whiteboard",
+      "image": "whiteboard__WbChatWindow.png"
+    },
+    {
       "component": "WbTerminal",
       "group": "whiteboard",
       "image": "whiteboard__WbTerminal.png"
