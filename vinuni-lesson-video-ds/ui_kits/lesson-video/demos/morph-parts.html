@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Morph — component (thử nghiệm)</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Xem thử component của nhóm morph, mỗi cái một mẫu:
+  //   ?part=Morph | MorphSequence | Layer | Axes | shapes   (?frame=N để chụp một khung)
+  var h = VK.h, C = VK.C, S = VK.shapes;
+  var q = new URLSearchParams(location.search);
+  var part = q.get('part') || 'MorphSequence';
+  var O = { x: 960, y: 760 };
+  var STRIP = { x: 470, y: 250, n: 7, size: 100, gap: 8, h: 120 };
+  var TIP_A = { x: O.x + 380, y: O.y - 330 };
+  var TIP_B = { x: O.x + 460, y: O.y - 130 };
+  var VALUES = [0.85, -0.4, 0.2, 0.65, -0.9, 0.45, -0.3];
+
+  var SAMPLES = {
+    Morph: function (f) {
+      var t = VK.interpolate(f, [20, 130], [0, 1], VK.CLAMP);
+      return h(VK.Morph, {
+        from: S.strip(STRIP), to: S.arrow({ from: O, to: TIP_A, width: 22, head: 60 }), t: t,
+        fill: C.accent, fillOpacity: [0.12, 0.92], stroke: [C.accentStrong, C.accent], strokeWidth: [4, 0]
+      });
+    },
+    MorphSequence: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.Layer, { level: 'frame' }, h(VK.Axes, { o: O, x: 520, yUp: 520, yDown: 150, ticks: 4 })),
+        h(VK.MorphSequence, {
+          frame: f,
+          states: [
+            { at: 0, shape: S.strip(STRIP), fill: C.accent, fillOpacity: 0.12, stroke: C.accentStrong, strokeWidth: 4 },
+            { at: 40, dur: 90, shape: S.arrow({ from: O, to: TIP_A, width: 22, head: 60 }), fillOpacity: 0.92, stroke: C.accent, strokeWidth: 0 },
+            { at: 180, dur: 80, shape: S.arrow({ from: O, to: TIP_B, width: 22, head: 60 }), fill: C.red, stroke: C.red }
+          ]
+        })
+      );
+    },
+    Layer: function () {
+      var rows = [['main', 'thứ đang nói tới'], ['context', 'vừa nói xong / sắp nói'], ['frame', 'trục, lưới, nhãn vùng']];
+      return h(VK.Fragment, null, rows.map(function (r, i) {
+        var y = 300 + i * 230;
+        return h(VK.Layer, { key: i, level: r[0] },
+          h('path', { d: S.rect({ x: 420, y: y, w: 420, h: 150, r: 12 }), fill: C.accent }),
+          h(VK.SvgText, { x: 900, y: y + 70, size: 52, weight: 700, anchor: 'start', color: C.text }, r[0]),
+          h(VK.SvgText, { x: 900, y: y + 126, size: 34, weight: 600, anchor: 'start', color: C.textMuted }, r[1]));
+      }));
+    },
+    Axes: function () {
+      return h(VK.Fragment, null,
+        h(VK.Axes, { o: O, x: 560, yUp: 520, yDown: 150, ticks: 4, grid: true }),
+        h('path', { d: S.arrow({ from: O, to: TIP_A, width: 20, head: 56 }), fill: C.accent, fillOpacity: 0.9 }));
+    },
+    shapes: function () {
+      var row = [
+        S.rect({ x: 180, y: 380, w: 220, h: 160, r: 18 }),
+        S.circle({ cx: 600, cy: 460, r: 92 }),
+        S.triangle({ cx: 860, cy: 460, r: 100 }),
+        S.wedge({ cx: 1120, cy: 460, r: 100, from: -30, to: 150 }),
+        S.arrow({ from: { x: 1300, y: 540 }, to: { x: 1560, y: 380 }, width: 16, head: 44 }),
+        S.strip({ x: 1640, y: 400, n: 3, size: 58, gap: 6, h: 120 })
+      ];
+      var names = ['rect', 'circle', 'triangle', 'wedge', 'arrow', 'strip'];
+      var at = [290, 600, 860, 1120, 1430, 1740];
+      return h(VK.Fragment, null,
+        row.map(function (d, i) { return h('path', { key: i, d: d, fill: C.accent, fillOpacity: 0.85 }); }),
+        names.map(function (n, i) {
+          return h(VK.SvgText, { key: 'n' + i, x: at[i], y: 640, size: 30, weight: 700, color: C.textMuted }, n);
+        }),
+        h(VK.SvgText, { x: 960, y: 780, size: 32, weight: 600, color: C.text }, 'mọi hình là path khép kín — biến hình được'));
+    }
+  };
+  var draw = SAMPLES[part] || SAMPLES.MorphSequence;
+  VK.mountCard('#root', { width: 1920, height: 1080, duration: 300, render: function (f) { return draw(f); } });
+</script>
+</body>
+</html>
