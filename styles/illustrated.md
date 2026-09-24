@@ -5,13 +5,33 @@ extends: lesson-lab
 
 # Illustrated Style (lab) — phần thêm
 
-Đọc `styles/lesson.md` rồi `styles/lesson-lab.md` trước; file này chỉ ghi phần thêm. Vẫn là video Lesson
-bình thường: `cues.js`, `sNN.jsx`, `Series`, `SceneFrame`, phụ đề, beat theo `spokenAt` — không có cơ chế
-mới như bảng trắng. Cái mới là **cách kể**.
+Đọc `styles/lesson.md` rồi `styles/lesson-lab.md` trước; file này chỉ ghi phần thêm. Vẫn dùng `cues.js`,
+`timeline.js`, phụ đề, beat theo `spokenAt` như mọi video. Nhưng **không** dùng `Series` và `sNN.jsx`:
+style này có cơ chế riêng, giống bảng trắng ở chỗ cả video là một mặt duy nhất.
 
-Component riêng: `components/illustrated/` — đọc `TokenRow.prompt.md`, `VectorStrip.prompt.md`,
-`MatrixGrid.prompt.md`, `AttentionLines.prompt.md`. Dùng thêm `VectorColumn`, `Heatmap`,
-`ProbabilityBars`, `TokenChip` của nhóm `data`.
+Video mẫu: `vinuni-lesson-video-ds/ui_kits/lesson-video/videos/n1-03-llm-sinh-tung-token/` — đọc
+`canvas.jsx` (bố cục mặt phẳng, mốc camera, vùng soát) và `video.jsx`.
+
+Component riêng: `components/illustrated/` — đọc `Canvas.prompt.md` trước, rồi `TokenRow.prompt.md`,
+`VectorStrip.prompt.md`, `MatrixGrid.prompt.md`, `AttentionLines.prompt.md`. Dùng thêm `VectorColumn`,
+`Heatmap`, `ProbabilityBars`, `TokenChip` của nhóm `data`.
+
+## Cơ chế: một mặt phẳng + camera, KHÔNG phải chuỗi cảnh
+
+Đây là điều kiện cần. Dùng `Series` với mỗi câu một `SceneFrame` có tiêu đề thì dù vẽ gì bên trong, video
+vẫn đọc ra là Lesson Lab — cái vỏ quyết định thị giác mạnh hơn nội dung. Đã thử và đã phải làm lại.
+
+`video.jsx` vẽ **một** `SceneFrame` `header={false}`, eyebrow qua `overlay`, phụ đề `cueCaptions` của cả
+video, bọc lấy `<Canvas frame camera>` (xem `components/illustrated/Canvas.prompt.md`). Mọi phần tử nằm
+trên mặt phẳng ấy ở một toạ độ **cố định**; muốn xem gần thì lia camera tới nó.
+
+- **Không tiêu đề cảnh.** Chữ cần thấy viết thẳng lên mặt phẳng, cạnh đúng thứ nó chú thích.
+- **Không phần tử nào đổi toạ độ.** Đổi toạ độ là teleport, và teleport chính là cái làm nó thành slide.
+- Khai `meta.canvas = { zones, camera }` để `npm run verify` soát: lia hay zoom mà đẩy một cụm lên dưới
+  eyebrow hoặc xuống dưới thanh phụ đề thì báo problem. Đây là lỗi **không** nhìn ảnh tĩnh mà thấy được,
+  vì nó chỉ xảy ra trong lúc camera đang di chuyển — khai `zones` cho đủ, kể cả nhãn nằm trên nóc hộp.
+- Chú thích của một câu (nhãn, mũi tên phụ) được phép mờ đi khi camera rời vùng đó. **Vật liệu chính thì
+  không**: hàng token phải còn nguyên tới cuối.
 
 ## Nguyên tắc: một vật liệu sống suốt cả video
 
@@ -24,12 +44,12 @@ ma trận. Không cảnh nào xoá hàng token đi rồi vẽ hình khác.
 
 Cách làm cụ thể:
 
-- Khai **một** hằng số `TOKENS` và **một** toạ độ gốc cho hàng token ở `shared.jsx`, mọi cảnh dùng chung.
-  Lấy vị trí từng viên bằng `tokenLayout(...)` với đúng tham số đó — đừng cảnh nào tự đặt lại `x`, `y`.
-- Cảnh sau chỉ **thêm** hoặc **biến đổi**: hàng token trượt lên nhường chỗ, dải vector mọc ra dưới một
-  viên, ma trận dựng lên bên phải. Chuyển cảnh là chuyển vị trí, không phải cắt.
-- Khi buộc phải bỏ hàng token (ví dụ sang phần RAG), cho nó **thu nhỏ về một góc** làm mốc chứ đừng cho
-  biến mất — người xem cần biết mình vẫn đang ở trong cùng một câu chuyện.
+- Khai **một** hằng `TOKENS` và **một** `ROW` (toạ độ gốc) ở đầu `canvas.jsx`; lấy vị trí từng viên bằng
+  `tokenLayout(ROW)`. Không chỗ nào được đặt lại `x`, `y` của hàng token.
+- Câu **mọc dần sang phải**: nối thêm viên thì hàng dài ra, camera đi theo. Đó là cách giữ "cùng một câu"
+  mà vẫn kể được vòng lặp.
+- Thứ mới (bảng khả năng, ma trận) đặt ở một vùng **bên cạnh** trên cùng mặt phẳng, không đè lên vùng cũ.
+  Chừa khoảng giữa các vùng đủ rộng để lúc lùi ra không có thẻ nào bị xén nửa ở mép khung.
 
 ## Vẽ gì, khi nào
 
@@ -65,6 +85,9 @@ sai, và người xem không có cách nào biết. Nếu kịch bản không đ
 
 ## Tiêu chí QA
 
+- Không ảnh nào có tiêu đề cảnh ở giữa màn hình; chữ nằm cạnh hình nó chú thích.
+- Không cụm nào bị eyebrow hay thanh phụ đề cắt ngang, kể cả ở khung giữa lúc camera đang lia.
+- Không có thẻ hay bảng nào của vùng bên cạnh lọt vào mép khung ở dạng bị xén nửa.
 - Cùng một hàng token nhận ra được qua các ảnh: cùng chữ, cùng thứ tự, cùng cỡ; vị trí có dịch thì dịch
   liền mạch, không nhảy.
 - Không ảnh nào có cả lưới đường chú ý n×n; mỗi ảnh chỉ một `focus`, đường đọc ra được từng sợi.

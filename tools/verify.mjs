@@ -14,6 +14,8 @@
  *    warning, not a problem.
  *  · whiteboard videos (meta.board): no mark drawn off screen (problem); late beats, board text too small
  *    on screen, strokes past the end (warnings) — components/whiteboard/board.js checkBoard.
+ *  · illustrated videos (meta.canvas): no zone pushed under the eyebrow or the caption bar while the
+ *    camera pans / zooms (problem); violent zoom jumps (warning) — components/illustrated/Canvas.jsx.
  *  · pictures in videos (PhotoCard): `src` is a design-system file given from its root (never http), every
  *    PhotoCard has a `credit`, and the slots it uses exist in the video's images.js as kind `use`.
  *    The smoke render needs esbuild + react-dom (same lookup as build.mjs); skipped if absent.
@@ -200,7 +202,8 @@ for (const dir of videoDirs) {
     import { cueCaptions } from ${JSON.stringify(path.join(DS, 'lib/captions.js'))};
     import { ConfigContext, FrameContext } from ${JSON.stringify(path.join(DS, 'lib/player.jsx'))};
     import { checkBoard } from ${JSON.stringify(path.join(DS, 'components/whiteboard/board.js'))};
-    export { meta, CUES, AUTHORED, cueCaptions, checkBoard };
+    import { checkCanvas } from ${JSON.stringify(path.join(DS, 'components/illustrated/Canvas.jsx'))};
+    export { meta, CUES, AUTHORED, cueCaptions, checkBoard, checkCanvas };
     export const renderAt = (frame) =>
       renderToStaticMarkup(
         React.createElement(ConfigContext.Provider, { value: { fps: 30, width: 1920, height: 1080, durationInFrames: meta.duration } },
@@ -227,7 +230,7 @@ for (const dir of videoDirs) {
     problems.push(`${where} does not build or load: ${String(e.message || e).split('\n')[0]}`);
     continue;
   }
-  const { meta, CUES, AUTHORED, cueCaptions, checkBoard, renderAt } = mod;
+  const { meta, CUES, AUTHORED, cueCaptions, checkBoard, checkCanvas, renderAt } = mod;
   const last = CUES[CUES.length - 1];
   if (meta.duration !== last.end) problems.push(`${where}: meta.duration ${meta.duration} ≠ last cue end ${last.end}`);
   // whiteboard style: the board is one timeline of marks, so check it as a whole (components/whiteboard/board.js)
@@ -235,6 +238,12 @@ for (const dir of videoDirs) {
     const board = checkBoard(meta.board, { duration: meta.duration });
     for (const p of board.problems) problems.push(`${where}: board — ${p}`);
     for (const w of board.warnings) warnings.push(`${where}: board — ${w}`);
+  }
+  // illustrated style: one plane + a camera, so check what the camera frames (components/illustrated/Canvas.jsx)
+  if (meta.canvas) {
+    const canvas = checkCanvas(meta.canvas, { duration: meta.duration });
+    for (const p of canvas.problems) problems.push(`${where}: canvas — ${p}`);
+    for (const w of canvas.warnings) warnings.push(`${where}: canvas — ${w}`);
   }
   // captions
   const caps = cueCaptions(CUES.map((c) => ({ start: c.start, end: c.end, text: c.text, pause: c.pause })));

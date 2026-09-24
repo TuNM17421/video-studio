@@ -49,9 +49,24 @@ export const CAMERA = [
   { at: S(1), w: 1820, x: 900, y: 380, dur: 46 },
   { at: S(2) + 40, w: 620, x: 400, y: 470, dur: 50 },
   { at: S(3), w: 1820, x: 900, y: 420, dur: 50 },
-  { at: S(4), w: 1980, x: 900, y: 350, dur: 50 },
+  { at: S(4), w: 2120, x: 940, y: 350, dur: 50 },
   { at: S(5), w: 1620, x: 860, y: 570, dur: 50 },
   { at: S(6) + 20, w: 2280, x: 900, y: 520, dur: 56 },
+];
+
+/*
+ * ZONES — cụm nào phải đọc được trong khoảng nào. tools/verify.mjs soát bằng checkCanvas: lia hay zoom
+ * mà đẩy một cụm lên dưới eyebrow hoặc xuống dưới thanh phụ đề thì báo problem.
+ */
+const ROW_BOX = { x0: ROW.x, y0: ROW.y, x1: SLOT.x + SLOT.w, y1: ROW.y + LAST.h };
+export const ZONES = [
+  { id: 'câu văn gốc', x0: 620, y0: 100, x1: 1180, y1: 162, from: 0, to: S(2) },
+  { id: 'hàng token', ...{ x0: ROW.x, y0: ROW.y, x1: LAST.x + LAST.w, y1: ROW.y + LAST.h }, from: S(1) + 30, to: S(2) + 20 },
+  { id: 'hai ô T + ôi', x0: CELLS[0].x, y0: 340, x1: CELLS[1].x + CELLS[1].w, y1: ROW.y + LAST.h, from: S(2) + 90, to: E(2) },
+  { id: 'hàng token + nhãn bộ tách', x0: ROW.x, y0: 376, x1: LAST.x + LAST.w, y1: ROW.y + LAST.h, from: S(3) + 60, to: E(3) },
+  { id: 'hai hàng so nhau', x0: ROW.x, y0: 210, x1: 1900, y1: ROW.y + LAST.h, from: S(4) + 60, to: E(4) },
+  { id: 'mã số + dãy số', x0: ROW.x, y0: ROW.y, x1: LAST.x + LAST.w, y1: 880, from: S(5) + 140, to: E(5) },
+  { id: 'ô trống + cung chú ý', ...ROW_BOX, y1: 900, from: S(6) + 70, to: E(6) },
 ];
 
 export default function CanvasLayer({ frame }) {

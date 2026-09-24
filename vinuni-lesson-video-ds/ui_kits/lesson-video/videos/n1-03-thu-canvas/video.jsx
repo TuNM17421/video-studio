@@ -2,7 +2,7 @@ import React from 'react';
 import { Eyebrow, SceneFrame } from '../../../../components/index.js';
 import { cueCaptions, useFrame } from '../../../../lib/index.js';
 import { PLAY_DURATION, TIMELINE, VOICED } from './timeline.js';
-import CanvasLayer from './canvas.jsx';
+import CanvasLayer, { CAMERA, ZONES } from './canvas.jsx';
 
 /*
  * THỬ NGHIỆM — N1-03 câu 05–10 trên MỘT mặt phẳng + camera.
@@ -19,6 +19,8 @@ export const meta = {
   pattern: VOICED ? 'Illustrated canvas · 6 câu · có giọng đọc' : 'Illustrated canvas · 6 câu · chưa có giọng',
   duration: PLAY_DURATION,
   markers: TIMELINE.map((t) => ({ frame: t.start, label: `Câu ${String(t.n).padStart(2, '0')} · ${t.screen}` })),
+  // Illustrated: mặt phẳng + camera giao cho tools/verify.mjs soát (checkCanvas: cụm bị chrome đè khi lia/zoom).
+  canvas: { zones: ZONES, camera: CAMERA },
 };
 
 export default function N103CanvasThu() {
