@@ -37,11 +37,6 @@
       "image": "whiteboard__Whiteboard.png"
     },
     {
-      "component": "WbFigure",
-      "group": "whiteboard",
-      "image": "whiteboard__WbFigure.png"
-    },
-    {
       "component": "WbMindMap",
       "group": "whiteboard",
       "image": "whiteboard__WbMindMap.png"

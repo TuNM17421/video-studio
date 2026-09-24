@@ -17,14 +17,6 @@ video frame, not a `Series`.
   region disappears; later marks draw on top. Use it when a section is done and the space is reused.
 - Seeds come from `id`, so wobble is deterministic — never reuse an id.
 
-## Người trên bảng
-
-- `{ kind: 'figure', x, y, h?, pose?, face?, side? }` — người dẫn, cao `h` (bảy đầu), (x, y) là **tâm đầu**.
-  `pose`: stand · point · think · present · type · shrug · raise · celebrate. `face`: neutral · happy ·
-  worried · surprised. Đổi tư thế / biểu cảm giữa các cảnh, đừng animate; cỡ đầu và độ dày nét đã khoá theo
-  `h` nên vẫn là một nhân vật. Dùng qua `WbFigure` để cầm thêm một doodle hoặc có tên dưới chân.
-- `{ kind: 'person', x, y, s? }` — người que nhỏ cũ (~3 đầu): đám đông, người bên lề. Một bảng chọn một loại.
-
 ## Doodles, clouds, trails, lettering
 
 - `{ kind: 'doodle', name, x, y, size, rotate? }` — a Lucide line icon redrawn by hand (seeded wobble), centred

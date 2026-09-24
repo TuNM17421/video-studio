@@ -137,7 +137,6 @@
     "WbIconLabel": "components/whiteboard/Parts.prompt.md",
     "WbIdea": "components/whiteboard/Parts.prompt.md",
     "WbAgentLoop": "components/whiteboard/Parts.prompt.md",
-    "WbFigure": "components/whiteboard/Parts.prompt.md",
     "WbPromptBox": "components/whiteboard/Parts.prompt.md",
     "WbRagFlow": "components/whiteboard/Parts.prompt.md",
     "WbTerminal": "components/whiteboard/Parts.prompt.md",

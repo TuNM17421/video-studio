@@ -13,7 +13,6 @@
  * Numbers and labels come from the script — the parts never invent a value.
  */
 import { C } from '../../lib/tokens.js';
-import { figureHand } from './sketch.js';
 
 const lineHeight = (size) => Math.round(size * 1.25);
 
@@ -69,23 +68,6 @@ export function WbSpeech(b, id, at, { x, y, s = 36, text, lines, side = 'right',
     b.draw(null, { id: `${id}-tail`, kind: 'line', points: [{ x: tailX, y: by + bh }, { x: x + dir * s * 0.9, y: y - s * 1.1 }, { x: tailX + dir * 40, y: by + bh }], dur: 8 });
   }
   return centredText(b, `${id}-t`, null, { cx: bx + bw / 2, cy: by + bh / 2, lines: words, size, color });
-}
-
-/**
- * Người dẫn: hình người cao `h` (7 đầu), đổi tư thế và biểu cảm chứ không animate — cùng cỡ đầu, cùng độ
- * dày nét nên vẫn là một nhân vật qua cả video. `hold` đặt một doodle vào tay, `label` viết tên dưới chân.
- * Tư thế: stand · point · think · present · type · shrug · raise · celebrate. Mặt: neutral · happy ·
- * worried · surprised.
- */
-export function WbFigure(b, id, at, { x, y, h = 320, pose = 'stand', face = 'neutral', side = 'right', color, hold, holdSize, label, labelSize = 38 }) {
-  let last = b.draw(at, { id: `${id}-f`, kind: 'figure', x, y, h, pose, face, side, color });
-  if (hold) {
-    const hand = figureHand({ x, y, h, pose, side });
-    const size = holdSize ?? h * 0.26;
-    last = b.draw(null, { id: `${id}-hold`, kind: 'doodle', name: hold, x: hand.x + (side === 'left' ? -1 : 1) * size * 0.35, y: hand.y + size * 0.3, size, color });
-  }
-  if (label) last = b.draw(null, { id: `${id}-t`, kind: 'text', x, y: y + h + labelSize * 1.1, text: label, size: labelSize, anchor: 'middle', color });
-  return last;
 }
 
 /**
@@ -434,7 +416,6 @@ export function WbSteps(b, id, at, { x, y, items, stepW = 300, stepH = 110, size
 
 /** Catalog for docs, previews and the Studio library: name → one-line purpose. */
 export const WB_PARTS = Object.freeze({
-  WbFigure: 'Người dẫn: 8 tư thế, 4 biểu cảm, cầm được đồ',
   WbTitleCloud: 'Tiêu đề lớn trong đám mây (chữ viền rỗng)',
   WbStickyNote: 'Tờ ghi chú gập góc: tiêu đề + vài dòng',
   WbSpeech: 'Người que nói hoặc nghĩ một câu',

@@ -24,7 +24,6 @@ vị bảng. Chữ và số lấy từ kịch bản — part không tự thêm g
 
 | Part | Khi nào dùng | Tuỳ chọn chính |
 |---|---|---|
-| `WbFigure` | **Người dẫn** — 8 tư thế, 4 biểu cảm, cầm được một doodle | `x, y (tâm đầu), h, pose, face, side, hold, label` |
 | `WbTitleCloud` | Tiêu đề phần / từ khoá lớn trong đám mây, chữ viền rỗng | `x, y, w, h, text \| lines, size, fill` |
 | `WbStickyNote` | Tờ ghi chú gập góc: điều cần nhớ, định nghĩa ngắn | `x, y, w, h, title, lines[], size` |
 | `WbSpeech` | Người que nói / nghĩ một câu (câu hỏi của người dùng, suy nghĩ) | `x, y (đầu), s, text \| lines, side, thought` |
@@ -51,9 +50,5 @@ vị bảng. Chữ và số lấy từ kịch bản — part không tự thêm g
   một nhịp `at`.
 - Part dùng mực của style: chữ navy, luồng xanh, điểm nhấn đỏ; đổi bằng `color` của từng mục khi kịch bản
   nhấn mạnh.
-- **Hai loại người, đừng lẫn trên một bảng.** `WbFigure` (`kind: 'figure'`) là *người dẫn*: cao 7 đầu, sống
-  lưng cong, có bàn tay bàn chân và mặt — đổi `pose` / `face` chứ không animate, cỡ đầu và độ dày nét giữ
-  nguyên nên vẫn là một nhân vật suốt video. `kind: 'person'` là người que nhỏ cũ (~3 đầu), để vẽ nhanh một
-  đám đông hoặc người bên lề; `WbSpeech` đang dùng nó. Một bảng chọn một loại.
 - Thêm part mới: viết hàm trong `parts.js` (cùng quy ước), thêm mẫu vào `demos/whiteboard-parts.html`, chụp ảnh
   `styles/previews/whiteboard__<Tên>.png` (367 × 206) và thêm tên vào `.design-sync/config.json` → `docsMap`.

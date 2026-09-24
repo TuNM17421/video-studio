@@ -25,14 +25,6 @@
   b.look(0, { x: 960, y: 540, w: 1920 });
 
   var SAMPLES = {
-    WbFigure: function () {
-      var poses = ['stand', 'point', 'think', 'present', 'type', 'shrug', 'raise', 'celebrate'];
-      var faces = ['neutral', 'happy', 'worried', 'surprised', 'neutral', 'happy', 'worried', 'neutral'];
-      poses.forEach(function (pose, i) {
-        var x = 230 + (i % 4) * 490, y = 150 + Math.floor(i / 4) * 470;
-        VK.WbFigure(b, 'fg' + i, i ? null : 6, { x: x, y: y, h: 320, pose: pose, face: faces[i], label: pose, labelSize: 40 });
-      });
-    },
     WbAgentLoop: function () {
       VK.WbAgentLoop(b, 'al', 6, {
         cx: 760, cy: 540, r: 330, center: 'Mô hình', size: 52, centerSize: 64,

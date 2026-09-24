@@ -12,7 +12,6 @@ import {
   sketchCloud,
   sketchCross,
   sketchEllipse,
-  sketchFigure,
   sketchHachure,
   sketchTrail,
   sketchLine,
@@ -37,7 +36,6 @@ import { HAND_DEFAULT } from './handFonts.js';
  *   { id, kind: 'loop', at, dur?, cx, cy, rx, ry, color? }       circle something that matters
  *   { id, kind: 'underline', at, dur?, x1, x2, y, color? }
  *   { id, kind: 'person', at, dur?, x, y, s?, color? }            stick figure, (x, y) = head
- *   { id, kind: 'figure', at, dur?, x, y, h?, pose?, face?, side? } the presenter (7 heads, posed)
  *   { id, kind: 'check' | 'cross', at, dur?, x, y, s?, color? }
  *   { id, kind: 'highlight', at, dur?, x, y, w, h, color? }       marker swipe under text (drawn below)
  *   { id, kind: 'erase', at, dur?, x, y, w, h }                   wipes everything drawn before it
@@ -60,8 +58,6 @@ export function defaultDur(m) {
     }
     case 'person':
       return 22;
-    case 'figure':
-      return 34;
     case 'doodle':
       return Math.round(Math.min(40, Math.max(16, (m.size ?? 120) / 5)));
     case 'cloud':
@@ -109,9 +105,6 @@ export function markPath(m) {
       break;
     case 'person':
       d = sketchPerson(m, seed);
-      break;
-    case 'figure':
-      d = sketchFigure(m, seed);
       break;
     case 'check':
       d = sketchCheck(m.x, m.y, m.s ?? 40, seed);
@@ -176,10 +169,6 @@ export function markBounds(m, font) {
     case 'person': {
       const s = m.s ?? 30;
       return { x0: m.x - s * 1.6, x1: m.x + s * 1.6, y0: m.y - s * 1.1, y1: m.y + s * 5.2 };
-    }
-    case 'figure': {
-      const H = (m.h ?? 320) / 7;
-      return { x0: m.x - H * 2.7, x1: m.x + H * 2.7, y0: m.y - H * 0.6, y1: m.y + H * 6.9 };
     }
     case 'check':
     case 'cross': {
