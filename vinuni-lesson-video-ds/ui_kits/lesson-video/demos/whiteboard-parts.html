@@ -45,15 +45,19 @@
     },
     WbIdea: function () { VK.WbIdea(b, 'id', 6, { x: 960, y: 480, size: 380, label: 'Ý tưởng mới', labelSize: 72 }); },
     WbTable: function () { VK.WbTable(b, 'tb', 6, { x: 260, y: 260, colW: [520, 440, 440], rowH: 130, size: 52, rows: [['Việc', 'AI làm', 'Người làm'], ['Tóm tắt', 'Có', ''], ['Quyết định', '', 'Có'], ['Kiểm tra', 'Hỗ trợ', 'Có']] }); },
+    WbPhotoFrame: function () {
+      VK.WbPhotoFrame(b, 'pf', 6, { x: 300, y: 180, w: 620, h: 720, caption: 'Ảnh tư liệu', size: 60 });
+      VK.WbPhotoFrame(b, 'pd', null, { x: 1020, y: 180, w: 620, h: 720, caption: 'Có hình thay ảnh', doodle: 'camera', size: 56 });
+    },
     WbFlight: function () { VK.WbFlight(b, 'fh', 6, { from: { x: 300, y: 800 }, to: { x: 1560, y: 360 }, bend: 280, size: 170 }); },
     WbSteps: function () { VK.WbSteps(b, 'st', 6, { x: 200, y: 900, stepW: 460, stepH: 170, size: 56, items: [{ text: 'Hiểu vấn đề' }, { text: 'Làm thử' }, { text: 'Mở rộng' }] }); },
     WbDoodles: function () {
       var names = Object.keys(VK.DOODLES);
-      var cols = 11;
+      var cols = 12;
       names.forEach(function (n, i) {
-        var x = 100 + (i % cols) * 172, y = 70 + Math.floor(i / cols) * 168;
-        b.draw(null, { id: 'dd-' + n, kind: 'doodle', name: n, x: x, y: y, size: 82, dur: 4 });
-        b.draw(null, { id: 'dn-' + n, kind: 'text', x: x, y: y + 72, text: n, size: 22, anchor: 'middle', color: C.textMuted, dur: 2 });
+        var x = 85 + (i % cols) * 152, y = 65 + Math.floor(i / cols) * 148;
+        b.draw(null, { id: 'dd-' + n, kind: 'doodle', name: n, x: x, y: y, size: 74, dur: 4 });
+        b.draw(null, { id: 'dn-' + n, kind: 'text', x: x, y: y + 64, text: n, size: 20, anchor: 'middle', color: C.textMuted, dur: 2 });
       });
     },
   };

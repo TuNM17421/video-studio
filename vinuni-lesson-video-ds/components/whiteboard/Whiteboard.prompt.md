@@ -20,15 +20,21 @@ video frame, not a `Series`.
 ## Doodles, clouds, trails, lettering
 
 - `{ kind: 'doodle', name, x, y, size, rotate? }` — a Lucide line icon redrawn by hand (seeded wobble), centred
-  on (x, y). Names in `doodles.js` `DOODLES` (rocket, lightbulb, paper-plane, gear, chart-bar / -line / -pie,
-  trend-up, network, users, coins, banknote, target, trophy, speech-round, question, alert, sparkles, star…);
-  add one by importing it there. Line width follows `size` (a small doodle draws finer).
+  on (x, y). Names in `doodles.js` `DOODLES` — 84 hình: việc chung (rocket, lightbulb, paper-plane, gear,
+  chart-bar / -line / -pie, trend-up, network, users, coins, banknote, target, trophy, speech-round, question,
+  alert, sparkles, star…), đồ vật văn phòng (briefcase, phone-old, map-pin, avatar) và tư liệu lịch sử
+  (radio-tower, antenna, satellite-dish, tv, wifi, newspaper, landmark, gavel, medal, percent, photo, camera);
+  add one by importing it there. Bảng đủ tên: `demos/whiteboard-parts.html?part=WbDoodles`. Line width follows `size` (a small doodle draws finer).
 - `{ kind: 'cloud', x, y, w, h, fill? }` — puffy cloud around a box: thought bubble, title badge.
 - `{ kind: 'trail', points, dash: '14 14' }` — wandering dashed path (a paper plane's flight, a loose link);
   dashed strokes draw on too (masked).
 - `fill: 'hachure'` on box / loop / cloud — marker shading clipped to the shape.
 - `outline: true` on text — hollow bubble lettering for a big title word.
-- Demo: `ui_kits/lesson-video/demos/whiteboard-doodles.html` (`?frame=N`, `?font=` to preview another font).
+- Demo: `ui_kits/lesson-video/demos/whiteboard-doodles.html` (`?frame=N`, `?font=` to preview another font);
+  `whiteboard-office.html` (bảng doodle đồ vật văn phòng) và `whiteboard-history.html` (bảng tư liệu lịch sử:
+  cụm icon có chú thích, khung ảnh, trục thời gian). Hình độc bản — bản đồ, công trình, chân dung, logo,
+  lettering khối — **không** sinh bằng doodle: nhập ảnh ngoài qua `images.js` / `PhotoCard`, hoặc để
+  `WbPhotoFrame` làm chỗ chờ.
 
 ## Authoring a board — `createBoard` (components/whiteboard/board.js)
 

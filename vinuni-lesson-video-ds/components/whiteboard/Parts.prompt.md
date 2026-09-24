@@ -37,9 +37,10 @@ vị bảng. Chữ và số lấy từ kịch bản — part không tự thêm g
 | `WbIconLabel` | Một hình minh hoạ + chú thích | `x, y, doodle, size, label` |
 | `WbIdea` | "Một ý tưởng" — bóng đèn toả sáng | `x, y, size, label` |
 | `WbTable` | Bảng nhỏ kẻ tay, hàng tiêu đề | `x, y, colW[], rowH, rows[][]` |
+| `WbPhotoFrame` | Ảnh tư liệu trong khung polaroid (để trống = tô gạch chéo, chờ thay ảnh thật) | `x, y, w, h, caption, doodle` |
 | `WbFlight` | Máy bay giấy bay theo nét đứt: chuyển tiếp, gửi đi | `from, to, bend, size` |
 | `WbSteps` | Bậc thang tiến bộ, cờ ở đỉnh | `x, y, items[{ text, at? }], stepW, stepH` |
-| `WbDoodles` | Danh mục hình vẽ tay dùng cho `kind: 'doodle'` (65 hình, `DOODLES`) | xem `?part=WbDoodles` |
+| `WbDoodles` | Danh mục hình vẽ tay dùng cho `kind: 'doodle'` (81 hình, `DOODLES`) | xem `?part=WbDoodles` |
 
 - Mỗi câu lời đọc vẫn chỉ 3–5 nét chính: một part lớn (mind map, bảng) nên trải qua 2–3 câu, mỗi nhánh / hàng
   một nhịp `at`.

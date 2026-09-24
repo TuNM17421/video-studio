@@ -226,6 +226,22 @@ export function WbIdea(b, id, at, { x, y, size = 180, label, labelSize = 44, col
   return b.draw(null, { id: `${id}-t`, kind: 'text', x, y: y + size / 2 + labelSize * 1.2, text: label, size: labelSize, anchor: 'middle', color });
 }
 
+/**
+ * Ảnh tư liệu trong khung polaroid vẽ tay: khung ngoài, ô ảnh, chú thích ở dải trắng dưới.
+ * Ô ảnh để trống thì tô gạch chéo; `doodle` vẽ một hình vào giữa ô thay cho ảnh thật.
+ */
+export function WbPhotoFrame(b, id, at, { x, y, w = 360, h = 420, caption, doodle, size = 34, color, fill = 'hachure' }) {
+  const pad = Math.round(w * 0.07);
+  const strip = Math.round(h * 0.2); // dải trắng dưới ảnh, chỗ viết chú thích
+  const ih = h - pad * 2 - strip;
+  b.draw(at, { id: `${id}-frame`, kind: 'box', x, y, w, h, color });
+  b.draw(null, { id: `${id}-photo`, kind: 'box', x: x + pad, y: y + pad, w: w - pad * 2, h: ih, fill: doodle ? undefined : fill, color });
+  let last = b.marks[b.marks.length - 1];
+  if (doodle) last = b.draw(null, { id: `${id}-d`, kind: 'doodle', name: doodle, x: x + w / 2, y: y + pad + ih / 2, size: Math.min(w - pad * 4, ih - pad * 2), color });
+  if (!caption) return last;
+  return centredText(b, `${id}-cap`, null, { cx: x + w / 2, cy: y + h - pad - strip / 2, lines: [caption], size, color });
+}
+
 /** Hand-drawn table: frame, rules, then the cells row by row. rows[0] is the header when `header`. */
 export function WbTable(b, id, at, { x, y, colW, rowH = 84, rows: cells, header = true, size = 36 }) {
   const w = colW.reduce((s, c) => s + c, 0);
@@ -291,6 +307,7 @@ export const WB_PARTS = Object.freeze({
   WbIconLabel: 'Một hình vẽ tay + chú thích',
   WbIdea: 'Bóng đèn tỏa sáng — một ý tưởng',
   WbTable: 'Bảng kẻ tay, hàng tiêu đề',
+  WbPhotoFrame: 'Ảnh tư liệu trong khung polaroid vẽ tay',
   WbFlight: 'Máy bay giấy bay theo đường nét đứt',
   WbSteps: 'Bậc thang đi lên, cờ ở đỉnh',
 });

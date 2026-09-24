@@ -18,6 +18,7 @@ export declare const WbTimeline: Part<{ x: number; y: number; w?: number; items:
 export declare const WbBarChart: Part<{ x: number; y: number; w?: number; h?: number; bars: ({ label: string; value: number; shown?: string | number; highlight?: boolean } & Beat)[]; max?: number; size?: number }>;
 export declare const WbIconLabel: Part<{ x: number; y: number; doodle: string; size?: number; label?: string; labelSize?: number; color?: string; labelColor?: string }>;
 export declare const WbIdea: Part<{ x: number; y: number; size?: number; label?: string; labelSize?: number; color?: string }>;
+export declare const WbPhotoFrame: Part<{ x: number; y: number; w?: number; h?: number; caption?: string; doodle?: string; size?: number; color?: string; fill?: string }>;
 export declare const WbTable: Part<{ x: number; y: number; colW: number[]; rowH?: number; rows: (string | ({ text: string } & Beat))[][]; header?: boolean; size?: number }>;
 export declare const WbFlight: Part<{ from: P; to: P; bend?: number; size?: number; color?: string }>;
 export declare const WbSteps: Part<{ x: number; y: number; items: ({ text: string } & Beat)[]; stepW?: number; stepH?: number; size?: number; color?: string }>;

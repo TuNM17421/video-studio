@@ -7,12 +7,13 @@
  * Vendored subset, like LineIcon: add a name here (import + DOODLES entry) when a lesson needs a new picture.
  */
 import {
-  AtSign, Banknote, BookOpen, Bot, Brain, Bug, Building2, Calendar, ChartColumn, ChartLine, ChartPie, CircleAlert,
-  CircleQuestionMark, ClipboardCheck, Clock, Cloud, Cog, Coins, Cpu, Database, Eye, FileText, Flag, GitFork, Globe,
-  GraduationCap, Hand, Handshake, Heart, Hourglass, House, Key, Laptop, Lightbulb, ListChecks, Lock, Mail,
-  Map as MapGlyph, Megaphone, MessageCircle, MessageSquare, Network, Pencil, Puzzle, RefreshCw, Rocket, Scale,
-  Search, Send, Server, ShieldCheck, Smartphone, Sparkles, Star, StickyNote, Target, ThumbsDown, ThumbsUp, TrendingUp,
-  Trophy, User, Users, Workflow, Wrench, Zap,
+  Antenna, AtSign, Banknote, BookOpen, Bot, Brain, Briefcase, Bug, Building2, Calendar, Camera, ChartColumn,
+  ChartLine, ChartPie, CircleAlert, CircleQuestionMark, CircleUserRound, ClipboardCheck, Clock, Cloud, Cog, Coins,
+  Cpu, Database, Eye, FileText, Flag, Gavel, GitFork, Globe, GraduationCap, Hand, Handshake, Heart, Hourglass, House,
+  Image as ImageGlyph, Key, Landmark, Laptop, Lightbulb, ListChecks, Lock, Mail, Map as MapGlyph, MapPin, Medal,
+  Megaphone, MessageCircle, MessageSquare, Network, Newspaper, Pencil, Percent, PhoneCall, Puzzle, RadioTower,
+  RefreshCw, Rocket, SatelliteDish, Scale, Search, Send, Server, ShieldCheck, Smartphone, Sparkles, Star, StickyNote,
+  Target, ThumbsDown, ThumbsUp, TrendingUp, Trophy, Tv, User, Users, Wifi, Workflow, Wrench, Zap,
 } from 'lucide';
 import { curvePath, getLength, getPointAtLength } from '../../lib/paths.js';
 import { rng } from '../../lib/text.js';
@@ -29,6 +30,10 @@ export const DOODLES = Object.freeze({
   'paper-plane': Send, server: Server, shield: ShieldCheck, phone: Smartphone, sparkles: Sparkles, star: Star,
   note: StickyNote, target: Target, 'thumbs-down': ThumbsDown, 'thumbs-up': ThumbsUp, 'trend-up': TrendingUp,
   trophy: Trophy, user: User, users: Users, workflow: Workflow, wrench: Wrench, zap: Zap,
+  // đồ vật văn phòng và tư liệu lịch sử (bảng doodle dày: xem demos/whiteboard-office.html, -history.html)
+  avatar: CircleUserRound, briefcase: Briefcase, 'map-pin': MapPin, 'phone-old': PhoneCall,
+  antenna: Antenna, camera: Camera, gavel: Gavel, landmark: Landmark, medal: Medal, newspaper: Newspaper,
+  percent: Percent, photo: ImageGlyph, 'radio-tower': RadioTower, 'satellite-dish': SatelliteDish, tv: Tv, wifi: Wifi,
 });
 
 const n = (v) => Number(v) || 0;

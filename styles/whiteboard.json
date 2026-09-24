@@ -82,6 +82,11 @@
       "image": "whiteboard__WbTimeline.png"
     },
     {
+      "component": "WbPhotoFrame",
+      "group": "whiteboard",
+      "image": "whiteboard__WbPhotoFrame.png"
+    },
+    {
       "component": "WbDoodles",
       "group": "whiteboard",
       "image": "whiteboard__WbDoodles.png"

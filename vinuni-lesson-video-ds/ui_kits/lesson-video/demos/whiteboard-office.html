@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Whiteboard — bảng doodle văn phòng (thử nghiệm)</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Bảng doodle "đồ vật văn phòng": dựng lại bố cục ảnh tham khảo 240_F_75248279 bằng bộ doodle của
+  // style bảng trắng — icon rải, một chuỗi ô RỦI RO → GIẢM → TRÁNH, một cụm NHÓM có nhánh đánh số.
+  // Bút vẽ lần lượt (createBoard, không lời đọc); ?frame=N để chụp một khung.
+  var C = VK.C;
+  var b = VK.createBoard({ timeline: [{ n: 1, start: 0 }], spokenAt: function () { return 0; } });
+  var d = function (id, m) { return b.draw(null, Object.assign({ id: id }, m)); };
+  b.look(0, { x: 960, y: 550, w: 1920 });
+
+  // hàng trên bên trái: thư, biểu đồ tròn, biểu đồ cột có số, mũi tên đi lên
+  d('mail', { kind: 'doodle', name: 'mail', x: 150, y: 230, size: 110 });
+  d('pie', { kind: 'doodle', name: 'chart-pie', x: 350, y: 225, size: 130 });
+  d('bars', { kind: 'doodle', name: 'chart-bar', x: 620, y: 240, size: 150, color: C.accent });
+  d('bars-1', { kind: 'text', x: 570, y: 160, text: '1', size: 44, anchor: 'middle' });
+  d('bars-2', { kind: 'text', x: 625, y: 150, text: '2', size: 44, anchor: 'middle' });
+  d('bars-3', { kind: 'text', x: 680, y: 140, text: '3', size: 44, anchor: 'middle' });
+  d('trend', { kind: 'doodle', name: 'trend-up', x: 850, y: 215, size: 120, color: C.accent });
+
+  // hàng trên bên phải: hai bong bóng thoại
+  d('bub1', { kind: 'doodle', name: 'speech-round', x: 1090, y: 195, size: 130 });
+  d('bub2', { kind: 'doodle', name: 'speech-square', x: 1160, y: 345, size: 115 });
+
+  // cột trái: đồng hồ, hai khuôn mặt, tài liệu, điện thoại bàn
+  b.clock('clock', null, 150, 430, 58, 10);
+  d('face1', { kind: 'doodle', name: 'avatar', x: 340, y: 440, size: 125 });
+  d('face2', { kind: 'doodle', name: 'avatar', x: 500, y: 440, size: 125, color: C.accent });
+  d('doc', { kind: 'doodle', name: 'document', x: 150, y: 650, size: 115 });
+  d('phone', { kind: 'doodle', name: 'phone-old', x: 340, y: 660, size: 130 });
+
+  // giữa: tên lửa và bóng đèn — hai hình lớn giữ bố cục
+  d('rocket', { kind: 'doodle', name: 'rocket', x: 730, y: 620, size: 210 });
+  VK.WbIdea(b, 'idea', null, { x: 980, y: 460, size: 165 });
+
+  // chuỗi ô: rủi ro → giảm → tránh
+  VK.WbFlow(b, 'risk', null, {
+    x: 1210, y: 500, direction: 'column', w: 270, h: 105, gap: 60, size: 44, color: C.accent,
+    items: [{ text: 'RỦI RO' }, { text: 'GIẢM' }, { text: 'TRÁNH' }]
+  });
+
+  // cụm nhóm: chữ trong vòng khoanh, ba nút đánh số nối vào — như cụm TEAM của ảnh tham khảo
+  d('team-o', { kind: 'loop', cx: 1690, cy: 430, rx: 150, ry: 95 });
+  d('team-t', { kind: 'text', x: 1690, y: 448, text: 'NHÓM', size: 54, anchor: 'middle' });
+  [
+    { id: '1', x: 1820, y: 255 },
+    { id: '2', x: 1590, y: 700 },
+    { id: '3', x: 1860, y: 620 }
+  ].forEach(function (nd) {
+    var a = Math.atan2(nd.y - 430, nd.x - 1690);
+    d('team-l' + nd.id, { kind: 'line', points: [
+      { x: 1690 + Math.cos(a) * 150, y: 430 + Math.sin(a) * 95 },
+      { x: nd.x - Math.cos(a) * 42, y: nd.y - Math.sin(a) * 42 }
+    ], color: C.accent, width: 4 });
+    d('team-o' + nd.id, { kind: 'loop', cx: nd.x, cy: nd.y, rx: 40, ry: 40, color: C.accent });
+    d('team-n' + nd.id, { kind: 'text', x: nd.x, y: nd.y + 16, text: nd.id, size: 46, anchor: 'middle', color: C.accent });
+  });
+
+  // hàng dưới: kính lúp, cặp táp, bút chì, ghim bản đồ, vòng lặp
+  d('search', { kind: 'doodle', name: 'search', x: 150, y: 860, size: 115 });
+  d('bag', { kind: 'doodle', name: 'briefcase', x: 345, y: 865, size: 125 });
+  d('pencil', { kind: 'doodle', name: 'pencil', x: 530, y: 880, size: 110 });
+  d('pin', { kind: 'doodle', name: 'map-pin', x: 900, y: 880, size: 105, color: C.red });
+  d('cycle', { kind: 'doodle', name: 'cycle', x: 1700, y: 850, size: 135, color: C.accent });
+
+  var end = b.marks.reduce(function (e, m) { return Math.max(e, b.endOf(m)); }, 0) + 45;
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: end,
+    render: function (f) { return VK.h(VK.Whiteboard, { frame: f, marks: b.marks, camera: b.camera }); }
+  });
+</script>
+</body>
+</html>
