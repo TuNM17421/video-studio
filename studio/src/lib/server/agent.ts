@@ -1,16 +1,17 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
 import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
 import { createStreamParser, short, type AgentEvent } from "./agent-stream";
-import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { activeGateway, beginGatewayRun, endGatewayRun, withGatewayArgs, withGatewayEnv } from "./gateway";
+import { finishJob, log, recordJobMetrics, recordStudioAiLog, run, setProgress, startJob, wasStopped } from "./jobs";
 import { REPO } from "./paths";
 import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
 import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
 import { styleGuideLine } from "./style-guides";
 import { scenesImagesLine } from "./images";
 import { readState, setStage, styleName, updateState } from "./videos";
-import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
+import { readFeedback, readRuns, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
 
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
 
@@ -78,7 +79,7 @@ function feedbackPrompt(id: string, stage: AgentStage, message: string) {
   ].join("\n");
 }
 
-type FocusItem = { id: string; severity: string; scope?: string; code?: string; message: string; evidence?: string; acceptance?: string };
+type FocusItem = { id: string; severity: string; source?: string; scope?: string; code?: string; message: string; evidence?: string; acceptance?: string };
 
 /**
  * A fix round the user picked from the review's findings: only those, each with the still it is about
@@ -107,6 +108,15 @@ interface AgentMetrics {
   cachedInputTokens?: number;
   outputTokens?: number;
   costUsd?: number;
+  /** Claude CLI prints `total_cost_usd` itself; Codex has a cost only through the 9router gateway. */
+  costSource?: "provider_reported" | "gateway_reported";
+  gatewayStatus?: string;
+  gatewayRequests?: number;
+  /** The CLI session, so a QA finding can be traced back to (and resumed in) the exact conversation. */
+  sessionId?: string;
+  promptSha256?: string;
+  /** Codex's raw counters: on `exec resume` they are cumulative for the whole thread, not this run. */
+  cliCumulative?: { input?: number; cached?: number; output?: number };
   turns?: number;
   toolCalls: number;
   model?: string;
@@ -139,26 +149,52 @@ function resultLine(provider: AgentProvider, e: Extract<AgentEvent, { type: "res
   return `${e.ok ? "Claude Code đã dừng" : "Claude Code báo lỗi"}${turns}${e.text ? `\n${e.text}` : ""}`;
 }
 
+/**
+ * `codex exec resume` reports the thread's running total, so a feedback round would count every earlier round
+ * again. Keep the raw total and turn it into this run's share: minus the total the previous run of the same
+ * session ended at. (Measured 26/09: round 2 = round 1 + its own 9router usage, token for token.)
+ */
+function perRunCodexUsage(id: string, metrics: AgentMetrics) {
+  const raw = { input: metrics.inputTokens, cached: metrics.cachedInputTokens, output: metrics.outputTokens };
+  metrics.cliCumulative = raw;
+  const previous = (readRuns(REPO, id) as { sessionId?: string; cliCumulative?: AgentMetrics["cliCumulative"] }[])
+    .filter((run) => run.sessionId === metrics.sessionId && run.cliCumulative)
+    .at(-1)?.cliCumulative;
+  if (!previous) return;
+  const minus = (now?: number, before?: number) => (now === undefined ? undefined : Math.max(0, now - (before ?? 0)));
+  metrics.inputTokens = minus(raw.input, previous.input);
+  metrics.cachedInputTokens = minus(raw.cached, previous.cached);
+  metrics.outputTokens = minus(raw.output, previous.output);
+}
+
 /** One agent process for a video: streams its events into the video's log, keeps its session for resume. */
 async function runProvider(id: string, provider: AgentProvider, prompt: string, sessionId: string | null) {
   const label = agentProviderLabel(provider);
   const parse = createStreamParser(provider);
   const model = configuredModel(provider);
   const { bin, args, input } = invocation(provider, prompt, sessionId, model);
+  // Only a video stage the Studio UI starts goes through 9router; research, images and CLI tools stay direct.
+  const { cfg: gateway, note } = provider === "codex" ? await activeGateway() : { cfg: null };
+  if (note) log(id, "error", note);
+  const gatewayToken = randomUUID();
+  if (gateway) beginGatewayRun(gatewayToken);
   // Claude names the model it ran in its init line; Codex and agy never say, so record what was asked for.
   const metrics: AgentMetrics = { toolCalls: 0, ...(provider === "claude" ? {} : { model: model || "(mặc định CLI, chưa rõ)" }) };
   let ok = false;
   let terminal = false;
   let tools = 0;
-  const code = await run(id, bin, args, {
-    env: sanitizedAgentEnv(),
+  const rawAiLog: string[] = [];
+  const code = await run(id, bin, gateway ? withGatewayArgs(args, gateway) : args, {
+    env: gateway ? withGatewayEnv(sanitizedAgentEnv(), gateway) : sanitizedAgentEnv(),
     input,
     onLine(line, stream) {
+      if (process.env.STUDIO_TELEMETRY_AI_LOGS === "1") rawAiLog.push(`${stream}:${line}`);
       // Claude's stderr is a failure; the other two use stderr for ordinary diagnostics.
       if (stream === "stderr") return log(id, provider === "claude" ? "error" : "system", short(line, 400));
       for (const e of parse(line)) {
         if (e.type === "session") {
           saveSession(id, provider, e.id);
+          metrics.sessionId = e.id;
           if (e.model) metrics.model = e.model;
         } else if (e.type === "say") log(id, "agent", e.text);
         else if (e.type === "tool") {
@@ -176,16 +212,27 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
             metrics.cachedInputTokens = e.usage.cacheRead;
             metrics.outputTokens = e.usage.output;
           }
-          if (e.costUsd !== undefined) metrics.costUsd = e.costUsd;
+          if (e.costUsd !== undefined) {
+            metrics.costUsd = e.costUsd;
+            if (provider === "claude") metrics.costSource = "provider_reported";
+          }
           if (e.turns !== undefined) metrics.turns = e.turns;
         }
       }
     },
   });
+  if (rawAiLog.length) recordStudioAiLog(id, "agent_stream", rawAiLog.join("\n"));
   if (!ok && !terminal && provider !== "claude" && !wasStopped(id)) {
     log(id, "error", `${label} kết thúc với mã ${code} nhưng không có sự kiện ${provider === "codex" ? "turn.completed" : "result"}.`);
   }
   metrics.toolCalls = tools;
+  if (provider === "codex" && metrics.sessionId) perRunCodexUsage(id, metrics);
+  if (gateway) {
+    const settled = await endGatewayRun(gatewayToken, gateway, metrics);
+    log(id, settled.gatewayStatus === "ok" ? "system" : "error", settled.message);
+    const { message: _message, ...fields } = settled;
+    Object.assign(metrics, fields);
+  }
   return { ok, code, metrics };
 }
 
@@ -207,7 +254,10 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
   }) : null;
   const prompt = focus.length ? focusPrompt(stage, focus, message) : message ? feedbackPrompt(id, stage, message) : stagePrompt(id, stage, base);
   const fixing = focus.length ? `sửa ${focus.length} lỗi review` : message ? "sửa theo góp ý" : null;
-  startJob(id, stage, { actor: provider, mode: "agent", label: fixing ? `${stage} feedback` : stage });
+  // Why this run exists: the first pass, a user's feedback, or a fix for QA findings — and which items it answers.
+  const trigger = focus.length ? (focus.every((item) => item.source === "qa") ? "qa_fix" : "feedback") : message ? "feedback" : undefined;
+  const feedbackIds = focus.length ? focus.map((item) => item.id) : feedback ? [feedback.id] : [];
+  startJob(id, stage, { actor: provider, mode: "agent", label: fixing ? `${stage} feedback` : stage, trigger, feedbackIds });
   setStage(id, stage, "running");
   beginHarness(id, stage, "agent", HARNESS_STEPS[stage]);
   stepStart(id, "agent", fixing ? `${providerLabel} · ${fixing}` : providerLabel);
@@ -217,7 +267,7 @@ export async function runAgent(id: string, stage: AgentStage, base: string, mess
     : message ? `Góp ý gửi agent (${stage}) · ${providerLabel}: ${short(message, 300)}` : `Bắt đầu agent · ${stage} · ${providerLabel}`);
 
   const result = await runProvider(id, provider, prompt, state.agent.sessionId);
-  recordJobMetrics(id, result.metrics);
+  recordJobMetrics(id, { ...result.metrics, promptSha256: createHash("sha256").update(prompt).digest("hex").slice(0, 16) });
 
   if (wasStopped(id)) {
     setStage(id, stage, "error", "Đã dừng agent.");

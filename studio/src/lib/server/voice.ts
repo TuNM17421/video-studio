@@ -2,7 +2,8 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, VoiceBound, VoiceScript, VoiceSettings } from "../types";
-import { finishJob, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, log, recordJobMetrics, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import { elevenCreditsUsed, elevenLabsCost, freeVoiceCost } from "./voice-cost";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -71,6 +72,15 @@ function ttsArgs(id: string, v: VoiceSettings) {
   ];
 }
 
+/** Characters the next generate will send (uncached, non-silent cues): the free dry-run, without opening a job. */
+function billableChars(id: string, v: VoiceSettings): Promise<number | null> {
+  return new Promise((resolve) => {
+    execFile(process.execPath, [...ttsArgs(id, v), "--dry-run", "--json"], { cwd: REPO, env: ttsEnv(v, ""), maxBuffer: 16 << 20 }, (error, stdout) => {
+      try { resolve(error ? null : Number(JSON.parse(stdout).billable)); } catch { resolve(null); }
+    });
+  });
+}
+
 export function validateVoice(v: VoiceSettings) {
   if (!(v.pause >= 0 && v.pause <= 5)) throw new HttpError(400, "Khoảng nghỉ phải trong 0–5 giây.");
   // Giọng tự thu và model local không gọi API ElevenLabs: model/ngôn ngữ của ElevenLabs không liên quan,
@@ -116,6 +126,15 @@ export async function generateVoice(id: string) {
   setStage(id, "voice", "running");
   log(id, "system", `Tạo giọng · ${v.model} · nghỉ ${v.pause} s`);
   const total = lastDryRun(id)?.toGenerate || 0;
+  // Cost telemetry: what will be sent, and the account's credit counter on both sides of the run.
+  const mock = process.env.STUDIO_TTS_MOCK === "1";
+  const characters = await billableChars(id, v);
+  const creditsBefore = mock ? null : await elevenCreditsUsed(key);
+  const recordCost = async () => {
+    // A mock run synthesizes nothing: it has no cost to report, measured or zero.
+    const cost = mock ? { provider: "elevenlabs-mock" } : elevenLabsCost(characters, creditsBefore, await elevenCreditsUsed(key));
+    recordJobMetrics(id, { ...cost, ...(characters !== null ? { characters } : {}), model: v.model });
+  };
   let done = 0;
   const code = await run(id, process.execPath, ttsArgs(id, v), {
     env: ttsEnv(v, key),
@@ -129,6 +148,7 @@ export async function generateVoice(id: string) {
       }
     },
   });
+  await recordCost();
   if (code !== 0 || wasStopped(id)) {
     setStage(id, "voice", "error", wasStopped(id) ? "Đã dừng." : "Tạo giọng thất bại, xem nhật ký.");
     finishJob(id, "error");
@@ -349,6 +369,7 @@ export async function generateLocal(id: string, v: VoiceSettings) {
     updateState(id, (s) => { s.voice = { ...s.voice, importDir: out }; });
     fs.rmSync(importReportFile(id), { force: true });
     log(id, "system", `Model local đã sinh ${result.files}/${result.cues} câu · giọng ${result.voice} → ${result.dir}`);
+    recordJobMetrics(id, freeVoiceCost("omnivoice-local"));
     finishJob(id, "done");
     // Thư mục vừa sinh là của chính Studio, không phải thư mục người dùng dán vào — nên tự kiểm luôn.
     // Không có bước này thì sinh xong phải sang tab khác, dán lại đúng đường dẫn ấy rồi mới bấm kiểm tra.
@@ -455,6 +476,8 @@ export async function generateKaggle(id: string, v: VoiceSettings) {
     }
 
     const started = Date.now();
+    // Kaggle's GPU quota is free but weekly-limited, so its time is the cost worth watching.
+    const recordGpu = () => recordJobMetrics(id, freeVoiceCost("kaggle", (Date.now() - started) / 1000));
     let state: string | null = null;
     while (!wasStopped(id) && Date.now() - started < (KAGGLE_RUN_SECONDS + 15 * 60) * 1000) {
       await pause(id, KAGGLE_POLL_MS);
@@ -466,6 +489,7 @@ export async function generateKaggle(id: string, v: VoiceSettings) {
       if (res.code !== 0) log(id, "error", res.out.split("\n").slice(-3).join("\n"));
       if (state && TERMINAL_STATES.has(state)) break;
     }
+    recordGpu();
     if (wasStopped(id)) {
       log(id, "system", `Đã dừng theo dõi. Kernel vẫn chạy trên Kaggle tới khi xong (tối đa ${KAGGLE_RUN_SECONDS / 3600} giờ) — huỷ tại https://www.kaggle.com/code/${ref} nếu không cần nữa.`);
       throw new HttpError(500, "Đã dừng.");
@@ -653,6 +677,8 @@ export async function importVoice(id: string, force: boolean) {
   setProgress(id, null, "Gắn giọng vào video…");
   const bind = await bindVoice(id);
   // The folder a local model writes to is the only thing telling its import apart from a recorded one.
+  // Assembling audio that already exists costs nothing; the generate step before it carried any cost.
+  recordJobMetrics(id, freeVoiceCost("import"));
   if (bind) recordBound(id, isKaggleDir(target) ? "kaggle" : target.replace(/\\/g, "/").endsWith("/voice-script/omnivoice") ? "local" : "import", v);
   setStage(id, "voice", bind ? "done" : "error", bind ? null : "Không gắn được giọng vào video.");
   finishJob(id, bind ? "done" : "error");

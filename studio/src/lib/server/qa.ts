@@ -4,6 +4,7 @@ import path from "node:path";
 import { agentProviderLabel } from "../agent-providers";
 import { resolveReviewer } from "../review";
 import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
+import { activeGateway, beginGatewayRun, endGatewayRun, withGatewayArgs, withGatewayEnv } from "./gateway";
 import { agentBin, installedAgents } from "./agent-config";
 import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
@@ -14,6 +15,7 @@ import { cuesInfo, readState, setStage } from "./videos";
 import {
   addRunMetrics,
   finishRun,
+  recordAiLog,
   QA_CODES,
   reconcileQaFeedback,
   startRun,
@@ -304,9 +306,13 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
   setProgress(id, null, `${label} đang QA ảnh…`);
   log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
-  const code = await run(id, agentBin(provider), args, {
+  // QA of a video the Studio UI is making: Codex goes through 9router like the stage agents do.
+  const { cfg: gateway, note } = provider === "codex" ? await activeGateway() : { cfg: null };
+  if (note) log(id, "error", note);
+  if (gateway) beginGatewayRun(qaRun.runId);
+  const code = await run(id, agentBin(provider), gateway ? withGatewayArgs(args, gateway) : args, {
     cwd: packet.packet,
-    env: sanitizedAgentEnv(),
+    env: gateway ? withGatewayEnv(sanitizedAgentEnv(), gateway) : sanitizedAgentEnv(),
     input: prompt,
     onLine(line, stream) {
       if (stream === "stderr") log(id, provider === "codex" ? "system" : "error", line.slice(0, 500));
@@ -315,8 +321,17 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
     },
   });
   const raw = lines.join("\n").trim();
+  if (raw && process.env.STUDIO_TELEMETRY_AI_LOGS === "1") recordAiLog(REPO, id, { source: "studio", runId: qaRun.runId, kind: "qa_stream", text: raw });
   const usage = usageFrom(raw);
-  addRunMetrics(REPO, id, qaRun.runId, { ...usage, toolCalls, model: usage.model || model });
+  // Claude's `total_cost_usd` comes from its own CLI; Codex has a cost only through 9router; the rest stays unavailable.
+  const costSource = provider === "claude" && usage.costUsd !== undefined ? "provider_reported" : undefined;
+  let gatewayFields = {};
+  if (gateway) {
+    const { message, ...fields } = await endGatewayRun(qaRun.runId, gateway, usage);
+    log(id, fields.gatewayStatus === "ok" ? "system" : "error", message);
+    gatewayFields = fields;
+  }
+  addRunMetrics(REPO, id, qaRun.runId, { ...usage, costSource, toolCalls, model: usage.model || model, ...gatewayFields });
   try {
     if (code !== 0 || wasStopped(id)) {
       finishRun(REPO, id, qaRun.runId, { status: wasStopped(id) ? "stopped" : "error", error: `${label} exit ${code}` });

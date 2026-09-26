@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { currentJob, finishJob, registry, setProgress, startJob } from "./jobs";
 
+// startJob opens a workflow run, which writes projects/<id>/.studio and the telemetry outbox of the real repo.
+// With the fake clock that leaked 1970-dated "videos" into the cost dashboard; the countdown needs none of it.
+vi.mock("../../../../tools/workflow-ledger.mjs", () => ({
+  startRun: () => ({ runId: "test-run" }),
+  finishRun: () => {},
+  addRunMetrics: () => {},
+  recordAiLog: () => ({ recorded: false, reason: "test" }),
+}));
+
 const ID = "test-eta";
 
 afterEach(() => {
@@ -8,7 +17,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Only the countdown is exercised here — starting a real job never touches the filesystem. */
+/** Only the countdown is exercised here — the workflow ledger is mocked so no job touches the filesystem. */
 describe("job countdown", () => {
   it("has no estimate before the job reports a percent", () => {
     startJob(ID, "render");

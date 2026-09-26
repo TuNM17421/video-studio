@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import type { JobInfo, JobKind, LogEntry } from "../types";
 import { REPO, stateDir } from "./paths";
-import { addRunMetrics, finishRun as finishWorkflowRun, startRun as startWorkflowRun } from "../../../../tools/workflow-ledger.mjs";
+import { addRunMetrics, finishRun as finishWorkflowRun, recordAiLog, startRun as startWorkflowRun } from "../../../../tools/workflow-ledger.mjs";
 
 export const machineLabel = () => (process.env.STUDIO_MACHINE_LABEL || os.hostname() || "unknown").trim();
 
@@ -27,9 +27,10 @@ interface Registry {
   elevenKey: string | null;
   /** Kaggle username + API key (from kaggle.json or typed in): memory only, same rule as elevenKey. */
   kaggle: { username: string; key: string } | null;
+  telemetrySyncing?: boolean;
 }
 const g = globalThis as typeof globalThis & { __videoStudio?: Registry };
-export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null });
+export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null, telemetrySyncing: false });
 
 const MAX_LOGS = 1500;
 
@@ -86,7 +87,7 @@ export function isRunning(id: string) {
 export function startJob(
   id: string,
   kind: JobKind,
-  meta: { actor?: string; mode?: "agent" | "deterministic"; label?: string } = {},
+  meta: { actor?: string; mode?: "agent" | "deterministic"; label?: string; trigger?: string; feedbackIds?: string[] } = {},
 ) {
   if (isRunning(id)) throw new Error("Video này đang có một tác vụ chạy. Chờ xong hoặc bấm Dừng.");
   // The workflow ledger lives in projects/<video id>/.studio. A research run is not a video: its job key
@@ -99,6 +100,8 @@ export function startJob(
     mode: meta.mode || "deterministic",
     label: meta.label || kind,
     machine: machineLabel(),
+    trigger: meta.trigger,
+    feedbackIds: meta.feedbackIds,
   });
   const job = {
     kind,
@@ -118,6 +121,15 @@ export function recordJobMetrics(id: string, metrics: {
   cachedInputTokens?: number;
   outputTokens?: number;
   costUsd?: number;
+  costSource?: string;
+  gatewayStatus?: string;
+  gatewayRequests?: number;
+  provider?: string;
+  sessionId?: string;
+  promptSha256?: string;
+  characters?: number;
+  credits?: number;
+  gpuSeconds?: number;
   toolCalls?: number;
   turns?: number;
   model?: string;
@@ -125,6 +137,33 @@ export function recordJobMetrics(id: string, metrics: {
   const job = registry.jobs.get(id);
   if (!job?.workflowRunId) return;
   addRunMetrics(REPO, id, job.workflowRunId, metrics);
+}
+
+/** Raw transcript is only captured by a Studio server job and only when the local owner opted in. */
+export function recordStudioAiLog(id: string, kind: string, text: string) {
+  const runId = registry.jobs.get(id)?.workflowRunId;
+  if (!runId) return { recorded: false, reason: "no_studio_run" };
+  return recordAiLog(REPO, id, { source: "studio", runId, kind, text });
+}
+
+/** Optional, non-blocking uploader. No endpoint/token means Studio never opens a network connection. */
+function scheduleTelemetrySync(id: string) {
+  if (process.env.STUDIO_TELEMETRY_AUTO_SYNC !== "1") return;
+  if (!process.env.STUDIO_TELEMETRY_URL || !process.env.STUDIO_TELEMETRY_TOKEN || registry.telemetrySyncing) return;
+  registry.telemetrySyncing = true;
+  const child = spawn(process.execPath, [path.join(REPO, "tools", "telemetry-sync.mjs")], {
+    cwd: REPO,
+    env: { ...process.env },
+    stdio: "ignore",
+  });
+  child.on("error", (error) => {
+    registry.telemetrySyncing = false;
+    log(id, "error", `Telemetry sync không chạy được: ${error.message}`);
+  });
+  child.on("close", (code) => {
+    registry.telemetrySyncing = false;
+    if (code !== 0) log(id, "error", `Telemetry sync thất bại (mã ${code}). Outbox vẫn giữ để thử lại.`);
+  });
 }
 
 /**
@@ -157,6 +196,7 @@ export function finishJob(id: string, status: JobInfo["status"]) {
   }
   emit(id, { type: "job", job: currentJob(id) });
   emit(id, { type: "state" });
+  scheduleTelemetrySync(id);
 }
 
 /**
