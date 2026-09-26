@@ -489,7 +489,17 @@ chữ (`speechIssues` trong `tools/lib/voice-align.mjs`): chữ nghi được g�
 nghi vấn, kèm một việc nên làm tiếp. Dấu này chỉ là lời nhắc, không chặn nhập, vì Whisper cũng tự nghe nhầm — nên câu
 ổn không hiện chữ Whisper nghe được (bật **Hiện chi tiết kỹ thuật** để xem).
 
-![Bảng Nghe từng câu: ba câu nên nghe lại (mất đuôi, thiếu chữ, lặp chữ) và một câu thiếu tệp](.github/readme/voice-check.webp)
+Trong Studio, bảng nằm ở bước **3 · Giọng đọc**, dưới mục cuối của từng nguồn giọng:
+
+| Nguồn giọng (tab) | Mục có bảng Nghe từng câu |
+| --- | --- |
+| Audio có sẵn | **2 · Kiểm tra thư mục audio** — hiện sau khi bấm Kiểm tra thư mục |
+| Model local | **4 · Nhập vào video** — thư mục vừa sinh tự được kiểm |
+| Kaggle | **5 · Nhập vào video** — sau khi tải kết quả về |
+
+![Bước 3 · Giọng đọc, tab Model local: mục 4 · Nhập vào video với dòng kết luận và bảng Nghe từng câu](.github/readme/voice-step.webp)
+
+![Tab Audio có sẵn, mục 2 · Kiểm tra thư mục audio: ba câu nên nghe lại (mất đuôi, thiếu chữ, lặp chữ) và một câu thiếu tệp](.github/readme/voice-check.webp)
 
 `node tools/align-health.mjs` (hoặc skill `/voice-align-check`) cho biết chất lượng căn mốc từng từ còn đủ dùng hay
 không.
@@ -511,7 +521,7 @@ mới của đúng câu đó trên máy, nghe từng bản bằng cùng phép so
 mà có bản mới đạt; còn lại thì giữ nguyên để bạn nghe rồi chọn. Bản gốc luôn quay lại được (**Dùng bản này** ở dòng
 Bản gốc).
 
-![Câu 23 sau khi sinh lại: bản gốc đang dùng, hai bản mới đều ổn, nút Dùng bản này và Sinh thêm 3 bản](.github/readme/voice-retake.webp)
+![Tab Model local, mục 4 · Nhập vào video — câu 23 sau khi sinh lại: bản gốc đang dùng, hai bản mới đều ổn](.github/readme/voice-retake.webp)
 
 Chạy tay:
 
