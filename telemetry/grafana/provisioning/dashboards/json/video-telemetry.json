@@ -1,0 +1,2113 @@
+{
+  "title": "Video Telemetry",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 4,
+  "refresh": "30s",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "scope",
+        "label": "Phạm vi",
+        "type": "custom",
+        "query": "Video hoàn tất : completed,Tất cả video : all",
+        "current": {
+          "text": "Video hoàn tất",
+          "value": "completed"
+        },
+        "options": [
+          {
+            "text": "Video hoàn tất",
+            "value": "completed",
+            "selected": true
+          },
+          {
+            "text": "Tất cả video",
+            "value": "all",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "video",
+        "label": "Video",
+        "type": "query",
+        "datasource": "Video Telemetry Postgres",
+        "query": "SELECT video_ref FROM telemetry_video_metrics ORDER BY last_run_at DESC",
+        "definition": "SELECT video_ref FROM telemetry_video_metrics ORDER BY last_run_at DESC",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Video đo đủ chi phí",
+      "description": "Video có mọi run tính phí được đều có chi phí (không run nào 'không đo'). Chi phí TB chỉ tính các video này.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT count(*) FILTER (WHERE cost_complete) || ' / ' || count(*) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "string",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "id": 1
+    },
+    {
+      "type": "stat",
+      "title": "Chi phí TB / video",
+      "description": "Trung bình trên các video đo đủ. Video còn run không đo bị loại khỏi trung bình, không tính thành 0.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT avg(cost_usd) FILTER (WHERE cost_complete) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "id": 2
+    },
+    {
+      "type": "stat",
+      "title": "Thời gian máy TB / video",
+      "description": "Tổng thời lượng run của một video; video chưa có run nào kết thúc không tính.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT avg(active_s) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "id": 3
+    },
+    {
+      "type": "stat",
+      "title": "Lead time TB / video",
+      "description": "Run đầu tiên → run cuối cùng đã kết thúc, gồm cả thời gian chờ duyệt.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT avg(lead_time_s) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "Token TB / video",
+      "description": "Input mới + cached + output (Codex/Claude đã quy đổi). Video không dùng LLM không tính.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT avg(total_tokens) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "id": 5
+    },
+    {
+      "type": "stat",
+      "title": "Chi phí do làm lại",
+      "description": "Phần chi phí của các lượt chạy lại sau feedback/QA/retry, trên các video đo đủ.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT sum(rework_cost_usd) FILTER (WHERE cost_complete) / nullif(sum(cost_usd) FILTER (WHERE cost_complete), 0) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 6
+    },
+    {
+      "type": "barchart",
+      "title": "Token TB / video theo phase",
+      "description": "Trung bình trên các video có đo token ở phase đó; phase không dùng LLM để trống.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT p.phase, min(p.phase_order) AS ord, avg(p.fresh_input_tokens) AS \"Input mới\", avg(p.cached_input_tokens) AS \"Cached input\", avg(p.output_tokens) AS \"Output\" FROM telemetry_video_phase_metrics p JOIN v USING (video_ref) WHERE p.phase <> 'setup' GROUP BY p.phase ORDER BY ord",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 10,
+        "x": 0,
+        "y": 4
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ord": true,
+              "last": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "xField": "phase",
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "showValue": "never",
+        "barWidth": 0.65,
+        "barRadius": 0.1,
+        "xTickLabelMaxLength": 28,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Input mới"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cached input"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9a9a9a"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Output"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 7
+    },
+    {
+      "type": "barchart",
+      "title": "Thời gian máy TB / video theo phase",
+      "description": "Trung bình trên các video có run đã kết thúc ở phase đó.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT p.phase, min(p.phase_order) AS ord, avg(p.active_s) AS \"Thời gian máy\" FROM telemetry_video_phase_metrics p JOIN v USING (video_ref) WHERE p.phase <> 'setup' GROUP BY p.phase ORDER BY ord",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 10,
+        "y": 4
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ord": true,
+              "last": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "xField": "phase",
+        "orientation": "horizontal",
+        "stacking": "none",
+        "showValue": "auto",
+        "barWidth": 0.65,
+        "barRadius": 0.1,
+        "xTickLabelMaxLength": 28,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90
+          }
+        },
+        "overrides": []
+      },
+      "id": 8
+    },
+    {
+      "type": "barchart",
+      "title": "Chi phí TB / video theo phase",
+      "description": "Trung bình trên các video đo đủ chi phí phase đó. Phase miễn phí hoặc không đo để trống.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT p.phase, min(p.phase_order) AS ord, avg(p.cost_usd) AS \"Chi phí\" FROM telemetry_video_phase_metrics p JOIN v USING (video_ref) WHERE p.phase <> 'setup' GROUP BY p.phase ORDER BY ord",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 17,
+        "y": 4
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ord": true,
+              "last": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "xField": "phase",
+        "orientation": "horizontal",
+        "stacking": "none",
+        "showValue": "auto",
+        "barWidth": 0.65,
+        "barRadius": 0.1,
+        "xTickLabelMaxLength": 28,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "id": 9
+    },
+    {
+      "type": "barchart",
+      "title": "Chi phí TB / video theo nhà cung cấp",
+      "description": "LLM (codex, claude…) và giọng nói (elevenlabs…) trên cùng thước đo; trung bình trên các video có chi phí từ nhà cung cấp đó. Kaggle/local miễn phí nên trống.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT provider AS \"Nhà cung cấp\", avg(cost) AS \"Chi phí\" FROM (SELECT r.video_ref, r.provider, sum(r.cost_usd) AS cost FROM telemetry_runs r JOIN v USING (video_ref) WHERE r.has_billable GROUP BY 1, 2) t GROUP BY 1 ORDER BY 2 DESC NULLS LAST",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ord": true,
+              "last": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "xField": "Nhà cung cấp",
+        "orientation": "horizontal",
+        "stacking": "none",
+        "showValue": "auto",
+        "barWidth": 0.65,
+        "barRadius": 0.1,
+        "xTickLabelMaxLength": 28,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "id": 10
+    },
+    {
+      "type": "stat",
+      "title": "Chi phí giọng nói TB / video",
+      "description": "ElevenLabs theo giá gói (STUDIO_ELEVENLABS_USD_PER_1K_CREDITS). Kaggle/local miễn phí: không tính vào trung bình.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT avg(voice_cost_usd) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 12,
+        "y": 13
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "id": 11
+    },
+    {
+      "type": "stat",
+      "title": "Credit ElevenLabs TB / video",
+      "description": "Credit tài khoản ElevenLabs bị trừ thật (bộ đếm trước/sau lượt tạo giọng).",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT avg(credits) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 16,
+        "y": 13
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "id": 12
+    },
+    {
+      "type": "stat",
+      "title": "GPU Kaggle TB / video",
+      "description": "Thời gian kernel T4 trên Kaggle (quota miễn phí theo tuần).",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT avg(gpu_seconds) AS v FROM v",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 13
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "không đo",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "id": 13
+    },
+    {
+      "type": "table",
+      "title": "Chi tiết theo phase",
+      "description": "Mọi trung bình bỏ qua video không đo phase đó; cột 'Video đo được' cho biết trung bình dựa trên bao nhiêu video.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT p.phase AS \"Phase\",\n  count(p.cost_usd) || ' / ' || count(*) AS \"Video đo được chi phí\",\n  round(avg(p.runs), 2) AS \"Run / video\",\n  round(avg(p.rework_runs), 2) AS \"Làm lại / video\",\n  sum(p.failed_runs)::numeric / nullif(sum(p.runs), 0) AS \"Tỉ lệ lỗi\",\n  avg(p.active_s) AS \"Thời gian TB\",\n  avg(p.total_tokens) AS \"Token TB\",\n  avg(p.cost_usd) AS \"Chi phí TB\"\nFROM telemetry_video_phase_metrics p JOIN v USING (video_ref)\nWHERE p.phase <> 'setup' GROUP BY p.phase, p.phase_order ORDER BY p.phase_order",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không đo"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tỉ lệ lỗi"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Thời gian TB"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token TB"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí TB"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "id": 14
+    },
+    {
+      "type": "barchart",
+      "title": "Chi phí từng video · theo phase",
+      "description": "Mỗi thanh một mã video (mới nhất ở trên). Phase không đo để trống, không vẽ 0.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.cost_usd) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.cost_usd) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.cost_usd) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.cost_usd) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.cost_usd) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.cost_usd) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.cost_usd) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 29
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ord": true,
+              "last": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "xField": "video",
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "showValue": "never",
+        "barWidth": 0.65,
+        "barRadius": 0.1,
+        "xTickLabelMaxLength": 28,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90
+          },
+          "decimals": 3
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "script"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cues"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "voice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "scenes"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "render"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deliver"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 15
+    },
+    {
+      "type": "barchart",
+      "title": "Token từng video · theo phase",
+      "description": "Tổng token từng mã video, chia theo phase.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.total_tokens) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.total_tokens) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.total_tokens) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.total_tokens) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.total_tokens) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.total_tokens) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.total_tokens) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 29
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ord": true,
+              "last": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "xField": "video",
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "showValue": "never",
+        "barWidth": 0.65,
+        "barRadius": 0.1,
+        "xTickLabelMaxLength": 28,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "script"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cues"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "voice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "scenes"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "render"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deliver"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 16
+    },
+    {
+      "type": "barchart",
+      "title": "Thời gian máy từng video · theo phase",
+      "description": "Tổng thời lượng run từng mã video, chia theo phase.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.active_s) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.active_s) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.active_s) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.active_s) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.active_s) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.active_s) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.active_s) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 29
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ord": true,
+              "last": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "xField": "video",
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "showValue": "never",
+        "barWidth": 0.65,
+        "barRadius": 0.1,
+        "xTickLabelMaxLength": 28,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "script"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cues"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "voice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "scenes"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "render"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deliver"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 17
+    },
+    {
+      "type": "timeseries",
+      "title": "Chi phí theo ngày · theo phase",
+      "datasource": "Video Telemetry Postgres",
+      "description": "Chi phí đo được, gom theo ngày kết thúc run.",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT date_trunc('day', coalesce(p.finished_at, p.started_at)) AS time, sum(p.cost_usd) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.cost_usd) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.cost_usd) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.cost_usd) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.cost_usd) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.cost_usd) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.cost_usd) FILTER (WHERE p.phase = 'other') AS \"other\" FROM telemetry_runs p JOIN v USING (video_ref) WHERE p.phase <> 'setup' GROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "script"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cues"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "voice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "scenes"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "render"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "deliver"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 18
+    },
+    {
+      "type": "table",
+      "title": "Theo video · mã video",
+      "description": "Mỗi dòng một mã video. 'không đo' = không có số liệu, khác với 0. Thanh trong ô so độ lớn giữa các video.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT video_ref AS \"Video\", cost_usd AS \"Chi phí\", total_tokens AS \"Token\", active_s AS \"Thời gian máy\",\n  CASE WHEN cost_complete THEN 'đủ' WHEN billable_runs = 0 THEN 'không có run tính phí' ELSE 'thiếu ' || unmeasured_runs || ' run' END AS \"Đo chi phí\",\n  versions AS \"Phiên bản\", rework_runs AS \"Lượt làm lại\", rework_cost_usd AS \"Chi phí làm lại\",\n  characters AS \"Ký tự TTS\", credits AS \"Credit TTS\", gpu_seconds AS \"GPU Kaggle\",\n  lead_time_s AS \"Lead time\", runs AS \"Run\", failed_runs AS \"Lỗi\", completed AS \"Hoàn tất\", last_run_at AS \"Chạy cuối\"\nFROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at) ORDER BY last_run_at DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không đo"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Video"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Thời gian máy"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí làm lại"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GPU Kaggle"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lead time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Hoàn tất"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "✓"
+                      },
+                      "false": {
+                        "text": "—"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chạy cuối"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              }
+            ]
+          }
+        ]
+      },
+      "id": 19
+    },
+    {
+      "type": "table",
+      "title": "Phiên bản & làm lại",
+      "description": "v1 là mọi thứ tới lần render thành công đầu tiên; mỗi lần render thành công sau đó mở phiên bản mới. Lượt làm lại = chạy lại stage do feedback, QA hoặc retry.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT m.video_ref AS \"Video\", 'v' || m.version AS \"Phiên bản\", m.delivered AS \"Đã render\",\n  m.runs AS \"Run\", m.rework_runs AS \"Lượt làm lại\", m.feedback_rounds AS \"Vòng feedback/QA\",\n  m.cost_usd AS \"Chi phí\", m.total_tokens AS \"Token\", m.active_s AS \"Thời gian máy\", m.started_at AS \"Bắt đầu\", m.finished_at AS \"Kết thúc\"\nFROM telemetry_version_metrics m JOIN v USING (video_ref) ORDER BY m.video_ref, m.version DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không đo"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Thời gian máy"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Đã render"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "✓"
+                      },
+                      "false": {
+                        "text": "—"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bắt đầu"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Kết thúc"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              }
+            ]
+          }
+        ]
+      },
+      "id": 20
+    },
+    {
+      "type": "table",
+      "title": "Truy vết feedback / QA → lượt AI",
+      "description": "Mỗi feedback (người duyệt hoặc QA) nối về lượt agent cuối cùng của đúng phase trước khi có feedback: agent/model, session để resume, hash prompt, có log AI (opt-in) hay không; và các lượt đã nhận sửa. Nội dung góp ý xem ở Studio theo mã feedback.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT t.video_ref AS \"Video\", t.feedback_id AS \"Feedback\", t.stage AS \"Stage\", t.scope AS \"Cảnh\",\n  t.code AS \"Mã lỗi\", t.severity AS \"Mức\", t.source || coalesce(' · ' || t.qa_provider, '') AS \"Nguồn\", t.status AS \"Trạng thái\",\n  t.recurrence AS \"Lặp\", t.culprit_stage || ' #' || t.culprit_attempt || ' · v' || t.culprit_version AS \"Lượt tạo ra\",\n  t.culprit_provider || coalesce(' · ' || t.culprit_model, '') AS \"Agent\", t.culprit_session AS \"Session\", t.culprit_prompt AS \"Prompt\",\n  t.culprit_ai_log AS \"Log AI\", t.fix_attempts AS \"Đã sửa bởi\", t.fix_cost_usd AS \"Chi phí sửa\", t.created_at AS \"Ghi nhận\"\nFROM telemetry_feedback_trace t JOIN v USING (video_ref) ORDER BY t.created_at DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 65
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không đo"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí sửa"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ghi nhận"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Log AI"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "✓"
+                      },
+                      "false": {
+                        "text": "—"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "id": 21
+    },
+    {
+      "type": "table",
+      "title": "Chi phí theo nguồn (provenance)",
+      "description": "paid = có số tiền · free = miễn phí (no_charge) · unmeasured = tính phí được nhưng không đo.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT r.video_ref AS \"Video\", r.cost_state AS \"Trạng thái\", coalesce(r.cost_source, '—') AS \"Nguồn\",\n  count(*) AS \"Run\", sum(r.cost_usd) AS \"Chi phí\"\nFROM telemetry_runs r JOIN v USING (video_ref) WHERE r.has_billable GROUP BY 1, 2, 3 ORDER BY 1, 2",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 76
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không đo"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "id": 22
+    }
+  ]
+}
