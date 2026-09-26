@@ -3,7 +3,7 @@ import { handle } from "@/lib/server/http";
 import { currentJob, isRunning, logs } from "@/lib/server/jobs";
 import { assertId, HttpError, rel, REPO } from "@/lib/server/paths";
 import { trashVideo } from "@/lib/server/trash-video";
-import { lastDryRun, lastImportReport } from "@/lib/server/voice";
+import { lastDryRun, lastImportReport, retakesFor } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
 import { blockersFor, qaFindings, workflowReport } from "@/lib/server/workflow";
 import { harnessRuns } from "@/lib/server/harness";
@@ -24,6 +24,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     logs: logs(id).slice(-300),
     dryRun: lastDryRun(id),
     importReport: lastImportReport(id),
+    retakes: retakesFor(id, state.voice.importDir),
     workflow: workflowReport(REPO, id) as VideoDetail["workflow"],
     installedAgents: installedAgents(),
     harness: harnessRuns(id),

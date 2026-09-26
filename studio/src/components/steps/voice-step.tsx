@@ -30,7 +30,7 @@ const SOURCES: { value: VoiceSource; label: string }[] = [
 ];
 const sourceLabel = (source: VoiceSource) => SOURCES.find((s) => s.value === source)?.label ?? source;
 
-const VOICE_JOBS = ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup", "kaggle-setup", "kaggle-generate"];
+const VOICE_JOBS = ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup", "kaggle-setup", "kaggle-generate", "voice-retake", "voice-retake-pick"];
 
 /**
  * Who actually reads this video. The cast is not a setting — it comes from the script: every câu names its

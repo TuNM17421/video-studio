@@ -83,6 +83,18 @@ export function isRunning(id: string) {
   return registry.jobs.get(id)?.status === "running";
 }
 
+/** Jobs that load the local voice model onto the GPU. */
+const GPU_JOBS = new Set<JobKind>(["omnivoice-generate", "voice-retake"]);
+
+/**
+ * Another video that has the local voice model on the GPU right now, or null. Jobs are per video, so one
+ * video's check cannot see another's — and two copies of the model on a small card run it out of memory.
+ */
+export function gpuJobElsewhere(id: string): string | null {
+  for (const [key, job] of registry.jobs) if (key !== id && job.status === "running" && GPU_JOBS.has(job.kind)) return key;
+  return null;
+}
+
 export function startJob(
   id: string,
   kind: JobKind,

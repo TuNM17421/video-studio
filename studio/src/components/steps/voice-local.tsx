@@ -11,7 +11,7 @@ import { isRefFile, LocalCastPicker, RefFileField } from "../local-cast";
 import { ProductionState } from "../production-state";
 import { VoicePicker } from "../voice-picker";
 import { post, type StepProps } from "./shared";
-import { ImportMap } from "./voice-import";
+import { CueCheck, ImportVerdict, RETAKE_TAKES, type RetakeControls } from "./voice-import";
 
 /**
  * Model chạy dưới máy. OmniVoice không phải nguồn giọng thứ ba theo nghĩa kỹ thuật — nó sinh ra một thư
@@ -174,7 +174,7 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
             Thư mục wav chưa phải là giọng của video: mỗi câu còn phải soát đúng câu rồi ghép lại thành
             một bản thu liền. Làm ngay tại đây — thư mục vừa sinh đã tự kiểm sau khi sinh xong.
           </small>
-          <GeneratedImport detail={detail} settings={settings} result={result} aligned={!status || aligned} aligning={aligning} busy={busy} act={act} />
+          <GeneratedImport detail={detail} settings={settings} result={result} aligned={!status || aligned} aligning={aligning} canGenerate={status ? installed : null} busy={busy} act={act} />
         </div>
       </li>
     </ol>
@@ -310,17 +310,19 @@ export function generatedResult(detail: VideoDetail, ours: (dir: string) => bool
 }
 
 /** Bước cuối của hai đường OmniVoice: thư mục wav vừa sinh → soát từng câu → nhập vào video. */
-export function GeneratedImport({ detail, settings, result, aligned, aligning, busy, act }: {
+export function GeneratedImport({ detail, settings, result, aligned, aligning, canGenerate, busy, act }: {
   detail: VideoDetail;
   settings: VoiceSettings;
   result: GeneratedResult;
   aligned: boolean;
   aligning: boolean;
+  /** This machine has the local model, so "Sinh lại câu này" can run here; `null` while that is being checked. */
+  canGenerate: boolean | null;
   busy: boolean;
   act: StepProps["act"];
 }) {
   const id = detail.state.id;
-  const { outDir, generated, fresh, imported, problems, warnings } = result;
+  const { outDir, generated, fresh, imported, problems } = result;
   const [force, setForce] = useState(false);
   const job = detail.job;
   const scanning = job?.kind === "import-scan" && job.status === "running";
@@ -328,10 +330,27 @@ export function GeneratedImport({ detail, settings, result, aligned, aligning, b
   const reveal = () => act(() => post("/api/reveal", { dir: outDir }));
   const rescan = () => act(() => post(`/api/videos/${id}/voice`, { action: "scan-import", settings }));
 
+  // "Sinh lại câu này": chỉ cho thư mục do model sinh. Server chỉ trả các bản sinh lại của thư mục đang nhập,
+  // và câu nào đang chạy (retakes[n].running) — không phải đoán từ nút vừa bấm. Máy không có model local thì
+  // vẫn nghe và chọn được các bản đã sinh, chỉ không sinh thêm.
+  // Lỗi của yêu cầu (409 đang có tác vụ, 400 bản không còn…) trả về cho hàng vừa bấm, không lên băng lỗi đầu trang.
+  const request = (body: object) => new Promise<string | null>((resolve) => {
+    void act(async () => {
+      try { await post(`/api/videos/${id}/voice`, body); resolve(null); } catch (e) { resolve(e instanceof Error ? e.message : String(e)); }
+    });
+  });
+  const retake: RetakeControls | undefined = generated && aligned ? {
+    results: detail.retakes ?? {},
+    disabled: busy,
+    run: canGenerate ? (n) => request({ action: "retake", n, takes: RETAKE_TAKES }) : undefined,
+    noModel: canGenerate === false,
+    pick: (n, take) => request({ action: "retake-pick", n, take }),
+  } : undefined;
+
   return <>
     {generated && <div className="vs-local-out">
       <code title={outDir}>{outDir}</code>
-      {/* Nghe thử là việc của tai, không phải của giao diện này — mở thẳng thư mục cho nhanh. */}
+      {/* Nghe từng câu có ngay trong bảng đối chiếu bên dưới; mở thư mục khi cần cả bộ tệp. */}
       <Button size="small" icon={<FolderOpenOutlined />} disabled={busy} onClick={reveal}>Mở thư mục</Button>
       <Button size="small" icon={<SearchOutlined />} loading={scanning} disabled={busy || !aligned} onClick={rescan}>Kiểm tra lại</Button>
     </div>}
@@ -346,21 +365,12 @@ export function GeneratedImport({ detail, settings, result, aligned, aligning, b
       action={<Button size="small" type="primary" loading={aligning} disabled={busy || aligning} onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "align-setup" }))}>Cài Whisper</Button>}
     />}
 
-    {fresh && <p className={`vs-import-summary ${problems ? "is-error" : warnings ? "is-warn" : "is-ok"}`}>
-      <strong>{fresh.matched}/{fresh.needFile} câu có file</strong>
-      {problems > 0 && <span> · {problems} lỗi</span>}
-      {warnings > 0 && <span> · {warnings} cảnh báo</span>}
-      {problems === 0 && warnings === 0 && <span> · không có vấn đề</span>}
-      {fresh.align.used && <small>Đối chiếu nội dung bằng Whisper {fresh.align.model}</small>}
-    </p>}
+    <ImportVerdict report={fresh} />
 
-    {fresh && <details className="vs-flow-more" open={problems > 0}>
-      <summary>Xem từng câu ({fresh.rows.length})</summary>
-      <ImportMap report={fresh} />
-    </details>}
+    {fresh && <CueCheck report={fresh} id={id} retake={retake} source="generated" />}
 
     {fresh && problems > 0 && <Checkbox className="vs-force" checked={force} onChange={(e) => setForce(e.target.checked)}>
-      Vẫn nhập dù {problems} câu có vấn đề — tôi đã nghe lại và chấp nhận
+      Vẫn nhập dù còn {problems} câu cần sửa — tôi đã nghe và chấp nhận
     </Checkbox>}
 
     {generated && <Button
