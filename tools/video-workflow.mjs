@@ -34,6 +34,7 @@ function usage(message) {
   node tools/video-workflow.mjs feedback add --video <id> --stage <stage> --message <text> [--severity blocker|major|minor] [--source user]
   node tools/video-workflow.mjs feedback set --video <id> --id <feedback-id> --status open|planned|applied|verified|wontfix [--reason <text>] [--evidence <text>]
   node tools/video-workflow.mjs run start --video <id> --stage <stage> [--actor claude|codex|cli] [--model <name>]
+  node tools/video-workflow.mjs run metrics --video <id> --run-id <id> [--model <name>] [--provider <name>] [--input-tokens <n>] [--cached-input-tokens <n>] [--output-tokens <n>] [--tool-calls <n>] [--cost-usd <n> --cost-source provider_reported|gateway_reported|server_price_estimate]
   node tools/video-workflow.mjs run finish --video <id> --run-id <id> --status done|error [--error <text>]
 
   For a plain shell command (build/verify/render/shoot), prefer run-logged.mjs — it wraps start+finish
@@ -129,5 +130,32 @@ if (command === "report") {
     if (model) addRunMetrics(repo, videoId, runId, { model });
     finishRun(repo, videoId, runId, { status, error: value("error") || null });
     console.log(runId);
-  } else usage("run action không hợp lệ (start hoặc finish).");
+  } else if (action === "metrics") {
+    const runId = value("run-id");
+    if (!runId) usage("run metrics cần --run-id.");
+    const number = (name) => {
+      const raw = value(name);
+      if (raw === "") return undefined;
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || parsed < 0) usage(`--${name} phải là số không âm.`);
+      return parsed;
+    };
+    const costUsd = number("cost-usd");
+    const costSource = value("cost-source");
+    const allowedSources = ["provider_reported", "gateway_reported", "server_price_estimate"];
+    if (costUsd !== undefined && !allowedSources.includes(costSource)) {
+      usage("--cost-usd cần --cost-source provider_reported|gateway_reported|server_price_estimate.");
+    }
+    addRunMetrics(repo, videoId, runId, {
+      model: value("model") || undefined,
+      provider: value("provider") || undefined,
+      inputTokens: number("input-tokens"),
+      cachedInputTokens: number("cached-input-tokens"),
+      outputTokens: number("output-tokens"),
+      toolCalls: number("tool-calls"),
+      costUsd,
+      costSource: costSource || undefined,
+    });
+    console.log(runId);
+  } else usage("run action không hợp lệ (start, metrics hoặc finish).");
 } else usage("Command không hợp lệ.");

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
+import { createCipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 
 const SEVERITY_ORDER = { blocker: 0, major: 1, minor: 2 };
 const OPEN_STATUSES = new Set(["open", "planned", "applied"]);
@@ -13,7 +13,13 @@ const QA_SOURCES = new Set(["qa"]);
 const iso = (now = Date.now()) => new Date(now).toISOString();
 const stateDir = (repo, videoId) => path.join(repo, "projects", videoId, ".studio");
 const stateFile = (repo, videoId, name) => path.join(stateDir(repo, videoId), name);
+const telemetryDir = (repo) => path.join(repo, ".studio", "telemetry");
+const telemetryFile = (repo) => path.join(telemetryDir(repo), "outbox.jsonl");
+const aiLogOutboxFile = (repo) => path.join(telemetryDir(repo), "ai-logs-outbox.jsonl");
+const telemetryInstallationFile = (repo) => path.join(telemetryDir(repo), "installation.json");
 const cleanText = (value) => String(value || "").replace(/\s+/g, " ").trim();
+// `no_charge`: a step that costs nothing by construction (Kaggle free GPU quota, a local model, recorded audio).
+const COST_SOURCES = new Set(["provider_reported", "gateway_reported", "server_price_estimate", "no_charge", "unavailable"]);
 
 function append(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -25,6 +31,141 @@ function readJsonl(filePath) {
   return fs.readFileSync(filePath, "utf8").split(/\r?\n/).filter(Boolean).flatMap((line) => {
     try { return [JSON.parse(line)]; } catch { return []; }
   });
+}
+
+function installationId(repo) {
+  const file = telemetryInstallationFile(repo);
+  try {
+    const saved = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (typeof saved.installationId === "string" && saved.installationId) return saved.installationId;
+  } catch {}
+  const value = randomUUID();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify({ installationId: value })}\n`);
+  return value;
+}
+
+function finiteNonNegative(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function emitTelemetry(repo, videoId, eventType, runId, payload = {}) {
+  const source = COST_SOURCES.has(payload.costSource) ? payload.costSource : "unavailable";
+  const cost = source === "no_charge" ? 0 : finiteNonNegative(payload.costUsd);
+  // `costUsd` from a legacy parser has no provenance. It stays in the local ledger for compatibility,
+  // but is intentionally omitted from the canonical outbox until an adapter labels its source.
+  append(telemetryFile(repo), {
+    event_id: randomUUID(),
+    schema_version: 1,
+    occurred_at: iso(),
+    event_type: eventType,
+    installation_id: installationId(repo),
+    project_ref: videoId,
+    video_ref: videoId,
+    run_id: runId,
+    stage: payload.stage || null,
+    actor_kind: payload.actor || null,
+    provider: payload.provider || null,
+    model: payload.model || null,
+    outcome: payload.outcome || null,
+    measurement: {
+      duration_ms: finiteNonNegative(payload.durationMs),
+      input_tokens: finiteNonNegative(payload.inputTokens),
+      cached_input_tokens: finiteNonNegative(payload.cachedInputTokens),
+      output_tokens: finiteNonNegative(payload.outputTokens),
+      tool_calls: finiteNonNegative(payload.toolCalls),
+      // Voice: characters sent to ElevenLabs, credits it actually charged, GPU time used on Kaggle.
+      characters: finiteNonNegative(payload.characters),
+      credits: finiteNonNegative(payload.credits),
+      gpu_seconds: finiteNonNegative(payload.gpuSeconds),
+      cost: { amount: source === "unavailable" ? null : cost, currency: "USD", source },
+    },
+    privacy: { payload_class: "metadata_only" },
+    // Which attempt/version a run is and what triggered it; for a feedback event, its metadata (never its text).
+    ...(payload.runContext ? { run_context: payload.runContext } : {}),
+    ...(payload.feedback ? { feedback: payload.feedback } : {}),
+  });
+}
+
+// A feedback item not tied to a run still needs a run_id for the collector's schema.
+const NO_RUN = "00000000-0000-0000-0000-000000000000";
+
+// Latest state of one feedback item as metadata: enough for QA to trace a finding to the run that produced it
+// and the run that fixed it. The message itself stays in the local ledger.
+function emitFeedbackState(repo, videoId, id) {
+  const item = readFeedback(repo, videoId).find((fb) => fb.id === id);
+  if (!item) return;
+  emitTelemetry(repo, videoId, "feedback_state", item.runId || NO_RUN, {
+    stage: item.stage,
+    actor: item.source,
+    feedback: {
+      feedback_id: item.id,
+      stage: item.stage,
+      scope: item.scope || null,
+      code: item.code || null,
+      severity: item.severity,
+      source: item.source,
+      qa_provider: item.qaProvider || null,
+      status: item.status,
+      recurrence: item.recurrence || 1,
+      found_by_run: item.runId || null,
+      resolved_by_run: item.resolvedBy || null,
+      created_at: item.createdAt,
+    },
+  });
+}
+
+export function readTelemetryOutbox(repo) {
+  return readJsonl(telemetryFile(repo));
+}
+
+function aiLogKey() {
+  const key = Buffer.from(process.env.STUDIO_TELEMETRY_AI_LOG_KEY || "", "base64");
+  if (key.length !== 32) throw new Error("STUDIO_TELEMETRY_AI_LOG_KEY phải là base64 của đúng 32 bytes khi bật AI log.");
+  return key;
+}
+
+function redactAiLog(text) {
+  return String(text)
+    .replace(/(authorization\s*:\s*bearer\s+)[^\s]+/gi, "$1[REDACTED]")
+    .replace(/\bsk-[A-Za-z0-9_-]{16,}\b/g, "[REDACTED_API_KEY]");
+}
+
+// Raw AI log is explicitly opt-in. The local outbox stores only AES-256-GCM ciphertext; it never
+// enters runs.jsonl, normal telemetry outbox, reports, or Grafana's cost dashboard.
+export function recordAiLog(repo, videoId, input) {
+  if (process.env.STUDIO_TELEMETRY_AI_LOGS !== "1") return { recorded: false, reason: "disabled" };
+  if (input.source !== "studio") throw new Error("AI log chỉ được Video Studio server ghi.");
+  if (!input.runId || !input.kind || typeof input.text !== "string") throw new Error("AI log cần runId, kind và text.");
+  const plain = Buffer.from(redactAiLog(input.text), "utf8");
+  if (plain.length > 256 * 1024) throw new Error("AI log local vượt 256 KiB; hãy tách log thành nhiều phần.");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", aiLogKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+  const log = {
+    log_id: randomUUID(),
+    schema_version: 1,
+    occurred_at: iso(),
+    installation_id: installationId(repo),
+    project_ref: videoId,
+    video_ref: videoId,
+    run_id: input.runId,
+    kind: cleanText(input.kind),
+    consent: { scope: "ai_log", explicit: true },
+    encrypted: {
+      algorithm: "aes-256-gcm",
+      iv: iv.toString("base64"),
+      tag: cipher.getAuthTag().toString("base64"),
+      ciphertext: ciphertext.toString("base64"),
+    },
+  };
+  append(aiLogOutboxFile(repo), log);
+  return { recorded: true, logId: log.log_id };
+}
+
+export function readAiLogOutbox(repo) {
+  return readJsonl(aiLogOutboxFile(repo));
 }
 
 // Mã lỗi cố định của một QA finding. Câu `message` do model tự viết và không bao giờ lặp y hệt giữa
@@ -65,6 +206,14 @@ function fingerprint(stage, message, scope = "", code = "") {
 }
 
 export function startRun(repo, videoId, input) {
+  // Regeneration bookkeeping: the Nth run of this stage, and which delivered version it builds (v1 until the
+  // first successful render, then v2…). `trigger` says why it ran; feedbackIds which items it answers.
+  const prior = readRuns(repo, videoId);
+  const attempt = prior.filter((item) => item.stage === input.stage).length + 1;
+  // Delivery steps (deliver, deliver.gate) ship the version just rendered; everything else builds the next one.
+  const rendered = prior.filter((item) => item.stage === "render" && item.status === "done").length;
+  const version = /^deliver(\.|$)/.test(input.stage) ? Math.max(1, rendered) : rendered + 1;
+  const feedbackIds = Array.isArray(input.feedbackIds) ? input.feedbackIds.filter(Boolean).map(String) : [];
   const run = {
     runId: randomUUID(),
     videoId,
@@ -77,26 +226,59 @@ export function startRun(repo, videoId, input) {
     machine: input.machine || null,
     startedAt: iso(),
     status: "running",
+    attempt,
+    version,
+    trigger: input.trigger || (attempt === 1 ? "initial" : "retry"),
+    feedbackIds,
   };
   append(stateFile(repo, videoId, "runs.jsonl"), { event: "started", at: run.startedAt, run });
+  emitTelemetry(repo, videoId, "run_started", run.runId, {
+    ...run,
+    runContext: { attempt, version, trigger: run.trigger, feedback_ids: feedbackIds },
+  });
   writeImprovementPlan(repo, videoId);
   return run;
 }
 
 export function addRunMetrics(repo, videoId, runId, metrics = {}) {
   append(stateFile(repo, videoId, "runs.jsonl"), { event: "metrics", at: iso(), runId, metrics });
+  // Metrics arrive without the run's stage/actor; without them every token lands in stage "(unknown)"
+  // and tokens/cost per phase cannot be computed. The run the ledger already knows supplies them.
+  const run = readRuns(repo, videoId).find((item) => item.runId === runId);
+  emitTelemetry(repo, videoId, "usage_recorded", runId, {
+    ...metrics,
+    stage: metrics.stage || run?.stage,
+    actor: metrics.actor || run?.actor,
+    provider: metrics.provider || run?.provider,
+    model: metrics.model || run?.model,
+    runContext: {
+      session_id: metrics.sessionId || null,
+      prompt_sha256: metrics.promptSha256 || null,
+      gateway_status: metrics.gatewayStatus || null,
+    },
+  });
   writeImprovementPlan(repo, videoId);
 }
 
 export function finishRun(repo, videoId, runId, result = {}) {
+  const finishedAt = iso();
   append(stateFile(repo, videoId, "runs.jsonl"), {
     event: "finished",
-    at: iso(),
+    at: finishedAt,
     runId,
     status: result.status || "done",
     error: result.error || null,
     checks: result.checks || [],
     artifacts: result.artifacts || [],
+  });
+  const run = readRuns(repo, videoId).find((item) => item.runId === runId);
+  emitTelemetry(repo, videoId, "run_finished", runId, {
+    stage: run?.stage,
+    actor: run?.actor,
+    provider: run?.provider,
+    model: run?.model,
+    durationMs: run?.durationMs,
+    outcome: { status: result.status || "done", error_code: result.error ? "run_error" : null },
   });
   writeImprovementPlan(repo, videoId);
 }
@@ -168,6 +350,7 @@ export function recordFeedback(repo, videoId, input) {
       },
     });
     writeImprovementPlan(repo, videoId);
+    emitFeedbackState(repo, videoId, existing.id);
     return readFeedback(repo, videoId).find((item) => item.id === existing.id);
   }
 
@@ -194,6 +377,7 @@ export function recordFeedback(repo, videoId, input) {
   };
   append(stateFile(repo, videoId, "feedback.jsonl"), { event: "opened", at: now, feedback });
   writeImprovementPlan(repo, videoId);
+  emitFeedbackState(repo, videoId, feedback.id);
   return feedback;
 }
 
@@ -202,6 +386,7 @@ export function updateFeedback(repo, videoId, id, patch) {
   if (!existing) throw new Error(`Không tìm thấy feedback ${id}`);
   append(stateFile(repo, videoId, "feedback.jsonl"), { event: "updated", at: iso(), id, patch });
   writeImprovementPlan(repo, videoId);
+  emitFeedbackState(repo, videoId, id);
 }
 
 export function updateFeedbackWhere(repo, videoId, predicate, patch) {
@@ -215,6 +400,7 @@ export function updateFeedbackWhere(repo, videoId, predicate, patch) {
     });
   }
   if (matches.length) writeImprovementPlan(repo, videoId);
+  for (const item of matches) emitFeedbackState(repo, videoId, item.id);
   return matches.length;
 }
 
