@@ -2,8 +2,20 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { describe, expect, it } from "vitest";
-import { activeGateway, beginGatewayRun, endGatewayRun, gatewayConfig, withGatewayArgs, withGatewayEnv } from "./gateway";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  activeGateway,
+  beginGatewayRun,
+  clearGatewaySettings,
+  diagnoseGateway,
+  endGatewayRun,
+  gatewayConfig,
+  gatewayRuntimeEnv,
+  readGatewaySettings,
+  withGatewayArgs,
+  withGatewayEnv,
+  writeGatewaySettings,
+} from "./gateway";
 
 const T0 = Date.parse("2026-09-26T03:00:00.000Z");
 
@@ -89,5 +101,51 @@ describe("9router gateway", () => {
     const settled = await endGatewayRun("run-e", gatewayConfig(env(file))!, {}, { now: t + 1_000, settleMs: 0 });
     expect(settled.gatewayStatus).toBe("error");
     expect(settled.message).toMatch(/thiếu cột timestamp/);
+  });
+});
+
+describe("9router settings panel (Studio UI)", () => {
+  afterEach(() => clearGatewaySettings());
+
+  it("defaults to the env vars — off in a bare test environment", () => {
+    expect(readGatewaySettings()).toEqual({ enabled: false, keyName: "video-studio", profile: "9router" });
+  });
+
+  it("an override from the panel takes effect immediately, and a partial save keeps the rest", () => {
+    writeGatewaySettings({ enabled: true });
+    expect(readGatewaySettings()).toEqual({ enabled: true, keyName: "video-studio", profile: "9router" });
+    writeGatewaySettings({ keyName: "  prod-key  " });
+    expect(readGatewaySettings()).toEqual({ enabled: true, keyName: "prod-key", profile: "9router" });
+  });
+
+  it("refuses an empty key name or profile, and clearing drops back to env defaults", () => {
+    expect(() => writeGatewaySettings({ keyName: "   " })).toThrow(/API key/);
+    expect(() => writeGatewaySettings({ profile: "" })).toThrow(/profile/);
+    writeGatewaySettings({ enabled: true, keyName: "x" });
+    clearGatewaySettings();
+    expect(readGatewaySettings()).toEqual({ enabled: false, keyName: "video-studio", profile: "9router" });
+  });
+
+  it("layers onto a base env for the two runtime call sites (agent.ts, qa.ts)", () => {
+    expect(gatewayRuntimeEnv(asEnv({ PATH: "/bin" }))).toEqual({ PATH: "/bin", STUDIO_GATEWAY: "", STUDIO_GATEWAY_KEY_NAME: "video-studio", STUDIO_CODEX_PROFILE: "9router" });
+    writeGatewaySettings({ enabled: true, profile: "prod" });
+    expect(gatewayRuntimeEnv(asEnv({ PATH: "/bin" }))).toMatchObject({ PATH: "/bin", STUDIO_GATEWAY: "9router", STUDIO_CODEX_PROFILE: "prod" });
+  });
+
+  it("diagnoses the four states the settings panel must tell apart", async () => {
+    expect((await diagnoseGateway()).status).toBe("disabled");
+
+    writeGatewaySettings({ enabled: true });
+    expect((await diagnoseGateway(asEnv({}), async () => false)).status).toBe("unreachable");
+
+    const db = fakeRouter();
+    writeGatewaySettings({ keyName: "not-there" });
+    expect((await diagnoseGateway(env(db), async () => true)).status).toBe("key_missing");
+
+    writeGatewaySettings({ keyName: "video-studio" });
+    expect(await diagnoseGateway(env(db), async () => true)).toMatchObject({
+      status: "ok",
+      settings: { enabled: true, keyName: "video-studio" },
+    });
   });
 });

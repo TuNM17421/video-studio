@@ -4,7 +4,7 @@ import path from "node:path";
 import { agentProviderLabel } from "../agent-providers";
 import { resolveReviewer } from "../review";
 import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
-import { activeGateway, beginGatewayRun, endGatewayRun, withGatewayArgs, withGatewayEnv } from "./gateway";
+import { activeGateway, beginGatewayRun, endGatewayRun, gatewayRuntimeEnv, withGatewayArgs, withGatewayEnv } from "./gateway";
 import { agentBin, installedAgents } from "./agent-config";
 import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
@@ -307,7 +307,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   setProgress(id, null, `${label} đang QA ảnh…`);
   log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
   // QA of a video the Studio UI is making: Codex goes through 9router like the stage agents do.
-  const { cfg: gateway, note } = provider === "codex" ? await activeGateway() : { cfg: null };
+  const { cfg: gateway, note } = provider === "codex" ? await activeGateway(gatewayRuntimeEnv()) : { cfg: null };
   if (note) log(id, "error", note);
   if (gateway) beginGatewayRun(qaRun.runId);
   const code = await run(id, agentBin(provider), gateway ? withGatewayArgs(args, gateway) : args, {

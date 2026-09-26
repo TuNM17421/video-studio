@@ -3,7 +3,7 @@ import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
 import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
 import { createStreamParser, short, type AgentEvent } from "./agent-stream";
-import { activeGateway, beginGatewayRun, endGatewayRun, withGatewayArgs, withGatewayEnv } from "./gateway";
+import { activeGateway, beginGatewayRun, endGatewayRun, gatewayRuntimeEnv, withGatewayArgs, withGatewayEnv } from "./gateway";
 import { finishJob, log, recordJobMetrics, recordStudioAiLog, run, setProgress, startJob, wasStopped } from "./jobs";
 import { REPO } from "./paths";
 import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
@@ -174,7 +174,7 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
   const model = configuredModel(provider);
   const { bin, args, input } = invocation(provider, prompt, sessionId, model);
   // Only a video stage the Studio UI starts goes through 9router; research, images and CLI tools stay direct.
-  const { cfg: gateway, note } = provider === "codex" ? await activeGateway() : { cfg: null };
+  const { cfg: gateway, note } = provider === "codex" ? await activeGateway(gatewayRuntimeEnv()) : { cfg: null };
   if (note) log(id, "error", note);
   const gatewayToken = randomUUID();
   if (gateway) beginGatewayRun(gatewayToken);

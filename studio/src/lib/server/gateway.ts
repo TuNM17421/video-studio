@@ -1,6 +1,8 @@
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { registry } from "./jobs";
+import { HttpError } from "./paths";
 
 /**
  * Codex cost through the local 9router gateway, for video jobs the Studio UI starts — nothing else.
@@ -42,21 +44,92 @@ export function gatewayConfig(env: NodeJS.ProcessEnv = process.env): GatewayConf
   }
 }
 
+export const defaultGatewayProbe = async (url: string): Promise<boolean> => {
+  try { return (await fetch(url, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; }
+};
+
 /**
  * The gateway is opt-in per machine and never a hard dependency: enabled but not answering → the run goes direct
  * (cost unavailable, as before) instead of failing the video job.
  */
 export async function activeGateway(
   env: NodeJS.ProcessEnv = process.env,
-  probe: (url: string) => Promise<boolean> = async (url) => {
-    try { return (await fetch(url, { signal: AbortSignal.timeout(1500) })).ok; } catch { return false; }
-  },
+  probe: (url: string) => Promise<boolean> = defaultGatewayProbe,
 ): Promise<{ cfg: GatewayConfig | null; note?: string }> {
   const cfg = gatewayConfig(env);
   if (!cfg) return { cfg: null };
   const base = (env.NINEROUTER_URL || "http://127.0.0.1:20128").replace(/\/$/, "");
   if (await probe(`${base}/v1/models`)) return { cfg };
   return { cfg: null, note: "9router không phản hồi — Codex chạy thẳng, lượt này không đo chi phí." };
+}
+
+// ── Settings panel: an in-memory override of the same three env vars, so a toggle in the Studio UI takes
+// effect on the very next run — no restart, exactly like the ElevenLabs/Kaggle credential panels. ──────────
+
+export interface GatewayUiSettings {
+  enabled: boolean;
+  keyName: string;
+  profile: string;
+}
+
+const DEFAULT_KEY_NAME = "video-studio";
+const DEFAULT_PROFILE = "9router";
+
+function gatewaySettingsFromEnv(env: NodeJS.ProcessEnv = process.env): GatewayUiSettings {
+  return {
+    enabled: env.STUDIO_GATEWAY === "9router",
+    keyName: (env.STUDIO_GATEWAY_KEY_NAME || DEFAULT_KEY_NAME).trim(),
+    profile: (env.STUDIO_CODEX_PROFILE || DEFAULT_PROFILE).trim(),
+  };
+}
+
+/** The settings panel's override if one was saved this session, else whatever `.env` says. */
+export const readGatewaySettings = (): GatewayUiSettings => registry.gateway ?? gatewaySettingsFromEnv();
+
+export function writeGatewaySettings(patch: Partial<GatewayUiSettings>): GatewayUiSettings {
+  const current = readGatewaySettings();
+  const keyName = (patch.keyName ?? current.keyName).trim();
+  const profile = (patch.profile ?? current.profile).trim();
+  if (!keyName) throw new HttpError(400, "Tên API key không được để trống.");
+  if (!profile) throw new HttpError(400, "Tên profile Codex không được để trống.");
+  registry.gateway = { enabled: patch.enabled ?? current.enabled, keyName, profile };
+  return registry.gateway;
+}
+
+export const clearGatewaySettings = () => { registry.gateway = null; };
+
+/** The env-like object `activeGateway()` reads at the two runtime call sites (agent.ts, qa.ts): the settings
+ *  panel's override layered onto `process.env`, so `gatewayConfig`/`activeGateway` need no changes at all. */
+export function gatewayRuntimeEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const s = readGatewaySettings();
+  return { ...base, STUDIO_GATEWAY: s.enabled ? "9router" : "", STUDIO_GATEWAY_KEY_NAME: s.keyName, STUDIO_CODEX_PROFILE: s.profile };
+}
+
+export interface GatewayDiagnosis {
+  status: "disabled" | "unreachable" | "key_missing" | "ok";
+  message: string;
+  settings: GatewayUiSettings;
+}
+
+/**
+ * Full diagnosis for the settings panel. `activeGateway`'s `cfg: null` alone cannot tell "turned off" from
+ * "9router isn't running" from "no API key of that name" — the panel needs to say which one it is.
+ */
+export async function diagnoseGateway(
+  env: NodeJS.ProcessEnv = process.env,
+  probe: (url: string) => Promise<boolean> = defaultGatewayProbe,
+): Promise<GatewayDiagnosis> {
+  const settings = readGatewaySettings();
+  if (!settings.enabled) return { status: "disabled", message: "Đang tắt — Codex chạy thẳng, chi phí không đo.", settings };
+  const base = (env.NINEROUTER_URL || "http://127.0.0.1:20128").replace(/\/$/, "");
+  if (!(await probe(`${base}/v1/models`))) {
+    return { status: "unreachable", message: `9router không phản hồi tại ${base}. Kiểm tra 9router đã mở chưa.`, settings };
+  }
+  const cfg = gatewayConfig({ ...env, STUDIO_GATEWAY: "9router", STUDIO_GATEWAY_KEY_NAME: settings.keyName, STUDIO_CODEX_PROFILE: settings.profile });
+  if (!cfg) {
+    return { status: "key_missing", message: `9router đang chạy nhưng chưa có API key tên "${settings.keyName}" — tạo trong dashboard 9router → API Keys.`, settings };
+  }
+  return { status: "ok", message: `Đã kết nối · dùng key "${settings.keyName}".`, settings };
 }
 
 /** `codex exec …` → `codex --profile 9router exec …`; a configured model gets 9router's provider prefix (`cx/`). */

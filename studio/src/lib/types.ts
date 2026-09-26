@@ -15,6 +15,22 @@ export interface AgentConfig {
   review: { defaults: ReviewSettings; installed: AgentProvider[] };
 }
 
+/** `/api/gateway-settings` — the 9router cost-tracking toggle for Codex, plus a live diagnosis. */
+export interface GatewayStatus {
+  status: "disabled" | "unreachable" | "key_missing" | "ok";
+  message: string;
+  settings: { enabled: boolean; keyName: string; profile: string };
+}
+
+/** `/api/telemetry-settings` — where video metrics are sent; `hasToken` only, the token itself never round-trips. */
+export interface TelemetryStatus {
+  url: string;
+  hasToken: boolean;
+  autoSync: boolean;
+  ok: boolean;
+  message: string;
+}
+
 /** Cross-review of scene stills by a separate read-only session (lib/review.ts). Changeable any time. */
 export interface ReviewSettings {
   enabled: boolean;

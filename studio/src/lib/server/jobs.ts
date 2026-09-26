@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { JobInfo, JobKind, LogEntry } from "../types";
-import { REPO, stateDir } from "./paths";
+import type { GatewayUiSettings } from "./gateway";
+import { HttpError, REPO, stateDir } from "./paths";
 import { addRunMetrics, finishRun as finishWorkflowRun, recordAiLog, startRun as startWorkflowRun } from "../../../../tools/workflow-ledger.mjs";
 
 export const machineLabel = () => (process.env.STUDIO_MACHINE_LABEL || os.hostname() || "unknown").trim();
@@ -28,9 +29,14 @@ interface Registry {
   /** Kaggle username + API key (from kaggle.json or typed in): memory only, same rule as elevenKey. */
   kaggle: { username: string; key: string } | null;
   telemetrySyncing?: boolean;
+  /** UI override for STUDIO_TELEMETRY_*, set from the settings panel: RAM only, takes effect immediately, lost on
+   *  restart — env vars are the boot default, same rule as elevenKey/kaggle. */
+  telemetry: TelemetrySettings | null;
+  /** UI override for the 9router toggle, same rule as `telemetry` above. Read by gateway.ts. */
+  gateway: GatewayUiSettings | null;
 }
 const g = globalThis as typeof globalThis & { __videoStudio?: Registry };
-export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null, telemetrySyncing: false });
+export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null, telemetrySyncing: false, telemetry: null, gateway: null });
 
 const MAX_LOGS = 1500;
 
@@ -146,14 +152,42 @@ export function recordStudioAiLog(id: string, kind: string, text: string) {
   return recordAiLog(REPO, id, { source: "studio", runId, kind, text });
 }
 
+export interface TelemetrySettings { url: string; token: string; autoSync: boolean }
+
+function telemetryFromEnv(): TelemetrySettings {
+  return {
+    url: (process.env.STUDIO_TELEMETRY_URL || "").trim(),
+    token: (process.env.STUDIO_TELEMETRY_TOKEN || "").trim(),
+    autoSync: process.env.STUDIO_TELEMETRY_AUTO_SYNC === "1",
+  };
+}
+
+/** The settings panel's override if one was saved this session, else the `.env` a person configured by hand. */
+export const readTelemetrySettings = (): TelemetrySettings => registry.telemetry ?? telemetryFromEnv();
+
+export function writeTelemetrySettings(patch: Partial<TelemetrySettings>): TelemetrySettings {
+  const current = readTelemetrySettings();
+  const url = (patch.url ?? current.url).trim();
+  if (url) {
+    try { new URL(url); } catch { throw new HttpError(400, "URL hệ thống log không hợp lệ."); }
+  }
+  const token = (patch.token ?? current.token).trim();
+  registry.telemetry = { url, token, autoSync: patch.autoSync ?? current.autoSync };
+  return registry.telemetry;
+}
+
+export const clearTelemetrySettings = () => { registry.telemetry = null; };
+
 /** Optional, non-blocking uploader. No endpoint/token means Studio never opens a network connection. */
 function scheduleTelemetrySync(id: string) {
-  if (process.env.STUDIO_TELEMETRY_AUTO_SYNC !== "1") return;
-  if (!process.env.STUDIO_TELEMETRY_URL || !process.env.STUDIO_TELEMETRY_TOKEN || registry.telemetrySyncing) return;
+  const settings = readTelemetrySettings();
+  if (!settings.autoSync || !settings.url || !settings.token || registry.telemetrySyncing) return;
   registry.telemetrySyncing = true;
   const child = spawn(process.execPath, [path.join(REPO, "tools", "telemetry-sync.mjs")], {
     cwd: REPO,
-    env: { ...process.env },
+    // The child reads STUDIO_TELEMETRY_URL/TOKEN itself; the settings-panel override must reach it too, since
+    // it may differ from what `.env` says.
+    env: { ...process.env, STUDIO_TELEMETRY_URL: settings.url, STUDIO_TELEMETRY_TOKEN: settings.token },
     stdio: "ignore",
   });
   child.on("error", (error) => {
