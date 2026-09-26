@@ -1273,8 +1273,9 @@ details.vs-flow-more > summary:focus-visible {
 .vs-cue-check {
   container-type: inline-size;
 }
-/* A region wrapper only: the verdict line keeps its place in the row it sits in. */
-.vs-verdict {
+/* A region wrapper only: the verdict line keeps its place in the row it sits in. (Not .vs-verdict — that is the
+   scene review's green verdict card.) */
+.vs-import-verdict {
   display: contents;
 }
 /* Inside the model-local panel every button gets a top margin meant for stacked forms; not in this table. */

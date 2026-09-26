@@ -488,7 +488,7 @@ const VERDICT_ICON = {
  */
 export function ImportVerdict({ report, stale = false }: { report: ImportReport | null; stale?: boolean }) {
   const v = report && importVerdict(importCounts(report));
-  return <div className="vs-verdict" role="status">
+  return <div className="vs-import-verdict" role="status">
     {v && <p className={`vs-import-summary is-${stale ? "stale" : v.tone}`}>
       {stale ? <InfoCircleOutlined aria-hidden /> : VERDICT_ICON[v.tone]}
       <strong>{v.headline}</strong>

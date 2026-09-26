@@ -484,9 +484,13 @@ node tools/voice-import.mjs --cues $VIDEO/cues.js --from <thư mục audio>
 ```
 
 Whisper đối chiếu bản nghe được với lời đã khoá; câu nào khớp quá thấp bị chặn vì gần như chắc chắn là nhầm tệp.
-Với tệp đúng câu, bảng kiểm tra còn gắn cờ **"cần nghe lại"** cho câu có thể mất đuôi, nuốt chữ hoặc lặp chữ
-(`speechIssues` trong `tools/lib/voice-align.mjs`), hiện dòng "Nghe ra" và có nút nghe từng câu, nghe đúng đoạn nghi
-vấn ngay trong Studio. Cờ chỉ là lời nhắc nghe lại, không chặn nhập, vì Whisper cũng tự nghe nhầm.
+Với tệp đúng câu, bảng **Nghe từng câu** còn đánh dấu **"nên nghe lại"** cho câu có thể mất đuôi, nuốt chữ hoặc lặp
+chữ (`speechIssues` trong `tools/lib/voice-align.mjs`): chữ nghi được gạch chân, có nút nghe cả câu và nghe đúng đoạn
+nghi vấn, kèm một việc nên làm tiếp. Dấu này chỉ là lời nhắc, không chặn nhập, vì Whisper cũng tự nghe nhầm — nên câu
+ổn không hiện chữ Whisper nghe được (bật **Hiện chi tiết kỹ thuật** để xem).
+
+![Bảng Nghe từng câu: ba câu nên nghe lại (mất đuôi, thiếu chữ, lặp chữ) và một câu thiếu tệp](.github/readme/voice-check.webp)
+
 `node tools/align-health.mjs` (hoặc skill `/voice-align-check`) cho biết chất lượng căn mốc từng từ còn đủ dùng hay
 không.
 
@@ -501,18 +505,23 @@ Tệp được đặt tên đúng số câu, bỏ qua câu `silent`; thiếu dù
 Silicon (MPS), Linux (CUDA/CPU); Mac Intel chỉ chạy CPU. `node tools/setup-omnivoice.mjs --check` in ra môi trường
 đang dùng (`venv`); gỡ bằng cách xoá thư mục đó.
 
-**Sinh lại một câu.** Câu bị gắn cờ, hoặc nghe thấy đọc sai, thì bấm **↻ Sinh lại câu này** ngay trong bảng kiểm tra
-(giọng do model local hoặc Kaggle sinh). Studio sinh 3 bản mới của đúng câu đó trên máy, nghe từng bản bằng cùng phép
-soát của bảng, và chỉ thay khi có bản đạt; không bản nào đạt thì giữ nguyên và để bạn nghe rồi chọn. Bản gốc luôn quay
-lại được (**Dùng bản này** ở dòng Bản gốc). Chạy tay:
+**Sinh lại một câu.** Câu bị đánh dấu có sẵn nút **Sinh lại câu này**; câu không bị đánh dấu mà nghe thấy đọc sai thì
+bấm **Nghe** rồi chọn **Nghe chưa ổn? Sinh lại câu này** (giọng do model local hoặc Kaggle sinh). Studio sinh 3 bản
+mới của đúng câu đó trên máy, nghe từng bản bằng cùng phép soát của bảng, và chỉ tự thay khi bản đang dùng không đạt
+mà có bản mới đạt; còn lại thì giữ nguyên để bạn nghe rồi chọn. Bản gốc luôn quay lại được (**Dùng bản này** ở dòng
+Bản gốc).
+
+![Câu 23 sau khi sinh lại: bản gốc đang dùng, hai bản mới đều ổn, nút Dùng bản này và Sinh thêm 3 bản](.github/readme/voice-retake.webp)
+
+Chạy tay:
 
 ```bash
 node tools/voice-retake.mjs --cues $VIDEO/cues.js --dir projects/<id>/voice-script/omnivoice --n 23 --voice "Nhật Phong"
 node tools/voice-retake.mjs --cues $VIDEO/cues.js --dir projects/<id>/voice-script/omnivoice --n 23 --pick orig
 ```
 
-Các bản nằm ở `projects/<id>/voice-script/retake/<câu>/`. Máy card nhỏ (dưới 8 GB) thì đóng trang nghe thử trước khi
-sinh lại.
+Các bản nằm ở `projects/<id>/voice-script/retake/<omnivoice|kaggle>/<câu>/`. Máy card nhỏ (dưới 8 GB) thì đóng trang
+nghe thử trước khi sinh lại; máy không có GPU vẫn chạy được nhưng mỗi lần có thể mất rất lâu.
 
 **Video hội thoại.** Kịch bản khai `speaker` ở từng câu thì mỗi câu tự mang giọng của người nói câu đó — không phải
 sinh từng nhân vật rồi ghép tay, vì mỗi dòng trong file JSONL gửi cho model mang `ref_audio` riêng. Mặc định mỗi
