@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, RetakeEntry, RetakeResult, VoiceBound, VoiceScript, VoiceSettings } from "../types";
-import { finishJob, gpuJobElsewhere, isRunning, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, gpuJobElsewhere, isRunning, log, ownJob, registry, run, setProgress, startJob, wasStopped } from "./jobs";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -106,7 +106,11 @@ export async function dryRun(id: string, v: VoiceSettings) {
 }
 
 /** Paid: synthesize (cached câu are free), assemble the master, bind it to the video with --write-cues. */
-export async function generateVoice(id: string) {
+export function generateVoice(id: string) {
+  return ownJob(id, () => generateEleven(id), (error) => setStage(id, "voice", "error", error));
+}
+
+async function generateEleven(id: string) {
   const key = registry.elevenKey;
   if (!key) throw new HttpError(400, "Nhập API key ElevenLabs trước.");
   const { state } = readState(id);
@@ -788,7 +792,11 @@ function recordBound(id: string, source: VoiceBound["source"], v: VoiceSettings)
 }
 
 /** Assemble the master from the folder and bind it to the video, exactly as the ElevenLabs path does. */
-export async function importVoice(id: string, force: boolean) {
+export function importVoice(id: string, force: boolean) {
+  return ownJob(id, () => importFolder(id, force), (error) => setStage(id, "voice", "error", error));
+}
+
+async function importFolder(id: string, force: boolean) {
   const { state } = readState(id);
   const v = state.voice;
   const target = assertImportDir(v.importDir);

@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
 import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
+import { resolveAgentBin } from "./agent-step";
 import { createStreamParser, short, type AgentEvent } from "./agent-stream";
-import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
 import { REPO } from "./paths";
 import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
 import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
@@ -118,12 +119,11 @@ function configuredModel(provider: AgentProvider) {
   return process.env[name]?.trim() || undefined;
 }
 
-/** How each CLI is started for a video stage: binary, arguments, and what goes on stdin. */
+/** How each CLI is started for a video stage: arguments, and what goes on stdin. */
 function invocation(provider: AgentProvider, prompt: string, sessionId: string | null, model: string | undefined) {
-  if (provider === "codex") return { bin: process.env.CODEX_BIN || "codex", args: codexExecArgs(sessionId, model), input: prompt };
-  if (provider === "antigravity") return { bin: process.env.ANTIGRAVITY_BIN || "agy", args: antigravityExecArgs(sessionId, model), input: antigravityStdin(prompt) };
+  if (provider === "codex") return { args: codexExecArgs(sessionId, model), input: prompt };
+  if (provider === "antigravity") return { args: antigravityExecArgs(sessionId, model), input: antigravityStdin(prompt) };
   return {
-    bin: process.env.CLAUDE_BIN || "claude",
     args: claudeExecArgs(sessionId ?? randomUUID(), Boolean(sessionId), ALLOWED, DENIED, model),
     input: prompt,
   };
@@ -144,7 +144,14 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
   const label = agentProviderLabel(provider);
   const parse = createStreamParser(provider);
   const model = configuredModel(provider);
-  const { bin, args, input } = invocation(provider, prompt, sessionId, model);
+  // The binary as the research steps find it: a CLI installed through npm is only `codex.cmd` on Windows,
+  // and spawning the bare name failed with ENOENT while the picker still offered that agent.
+  const bin = await resolveAgentBin(provider);
+  if (!bin) {
+    log(id, "error", `Không tìm thấy ${label} trên máy này (PATH).`);
+    return { ok: false, code: 127, metrics: { toolCalls: 0 } as AgentMetrics };
+  }
+  const { args, input } = invocation(provider, prompt, sessionId, model);
   // Claude names the model it ran in its init line; Codex and agy never say, so record what was asked for.
   const metrics: AgentMetrics = { toolCalls: 0, ...(provider === "claude" ? {} : { model: model || "(mặc định CLI, chưa rõ)" }) };
   let ok = false;
@@ -190,7 +197,14 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
 }
 
 /** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
-export async function runAgent(id: string, stage: AgentStage, base: string, message?: string, opts: { focus?: string[] } = {}) {
+export function runAgent(id: string, stage: AgentStage, base: string, message?: string, opts: { focus?: string[] } = {}) {
+  return ownJob(id, () => agentStage(id, stage, base, message, opts), (error) => {
+    try { setStage(id, stage, "error", error); } catch {}
+    endHarness(id, "error", error);
+  });
+}
+
+async function agentStage(id: string, stage: AgentStage, base: string, message: string | undefined, opts: { focus?: string[] }) {
   const { state } = readState(id);
   const provider = state.agent.provider;
   const providerLabel = agentProviderLabel(provider);

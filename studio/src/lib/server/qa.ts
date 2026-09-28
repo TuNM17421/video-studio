@@ -5,6 +5,7 @@ import { agentProviderLabel } from "../agent-providers";
 import { resolveReviewer } from "../review";
 import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
 import { agentBin, installedAgents } from "./agent-config";
+import { resolveAgentBin } from "./agent-step";
 import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
 import { moduleQaCriteria } from "./modules";
@@ -318,7 +319,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
   setProgress(id, null, `${label} đang QA ảnh…`);
   log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
-  const code = await run(id, agentBin(provider), args, {
+  const code = await run(id, (await resolveAgentBin(provider)) ?? agentBin(provider), args, {
     cwd: packet.packet,
     env: sanitizedAgentEnv(),
     input: prompt,

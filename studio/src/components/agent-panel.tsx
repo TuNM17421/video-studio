@@ -151,12 +151,13 @@ export function AgentSummary({ logs }: { logs: LogEntry[] }) {
   }]} />;
 }
 
-export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boolean; onSend: (message: string) => Promise<void>; placeholder: string }) {
+export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boolean; onSend: (message: string) => Promise<boolean>; placeholder: string }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   async function send() {
     setSending(true);
-    try { await onSend(text); setText(""); } finally { setSending(false); }
+    // A failed send (409 while another job runs) keeps the text: it is the only copy of what the user wrote.
+    try { if (await onSend(text)) setText(""); } finally { setSending(false); }
   }
   return <div className="vs-feedback">
     <label className="field vs-counted-textarea">Góp ý cho agent

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { JobInfo, JobKind, LogEntry } from "../types";
-import { REPO, stateDir } from "./paths";
+import { HttpError, REPO, stateDir } from "./paths";
 import { addRunMetrics, finishRun as finishWorkflowRun, startRun as startWorkflowRun } from "../../../../tools/workflow-ledger.mjs";
 
 export const machineLabel = () => (process.env.STUDIO_MACHINE_LABEL || os.hostname() || "unknown").trim();
@@ -100,7 +100,7 @@ export function startJob(
   kind: JobKind,
   meta: { actor?: string; mode?: "agent" | "deterministic"; label?: string } = {},
 ) {
-  if (isRunning(id)) throw new Error("Video này đang có một tác vụ chạy. Chờ xong hoặc bấm Dừng.");
+  if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy. Chờ xong hoặc bấm Dừng.");
   // The workflow ledger lives in projects/<video id>/.studio. A research run is not a video: its job key
   // (`research:<rid>`) is no folder under projects/ — on Windows the colon makes mkdir throw, elsewhere it
   // would leave a stray "video" in the list. Research keeps its own run log in research/<rid>/.
@@ -169,6 +169,29 @@ export function finishJob(id: string, status: JobInfo["status"]) {
   }
   emit(id, { type: "job", job: currentJob(id) });
   emit(id, { type: "state" });
+}
+
+/**
+ * Runs a runner that starts its own job, and ends that job if the runner throws after starting it. A throw
+ * between `startJob` and `finishJob` (state.json locked by the antivirus, a ledger write failing) used to
+ * leave the job "running": every action on the video answered 409 and Dừng changed nothing, until Studio
+ * restarted. Only a job the runner started is ended — a runner refused because another job holds the
+ * video (`startJob` throws) must leave that job alone.
+ */
+export async function ownJob<T>(id: string, body: () => Promise<T>, onError?: (message: string) => void): Promise<T> {
+  const before = registry.jobs.get(id);
+  try {
+    return await body();
+  } catch (error) {
+    const job = registry.jobs.get(id);
+    if (job && job !== before && job.status === "running") {
+      const message = error instanceof Error ? error.message : String(error);
+      log(id, "error", message);
+      try { onError?.(message); } catch {}
+      finishJob(id, "error");
+    }
+    throw error;
+  }
 }
 
 /**

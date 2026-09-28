@@ -154,7 +154,11 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
 export function writeState(state: VideoState) {
   state.updatedAt = new Date().toISOString();
   fs.mkdirSync(stateDir(state.id), { recursive: true });
-  fs.writeFileSync(stateFile(state.id), `${JSON.stringify(state, null, 2)}\n`);
+  // Through a temp file: a write cut short (Studio stopped, disk full) left half a JSON document, and one
+  // unreadable state.json failed the whole video list, not just that video.
+  const tmp = `${stateFile(state.id)}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify(state, null, 2)}\n`);
+  fs.renameSync(tmp, stateFile(state.id));
 }
 
 export function updateState(id: string, patch: (state: VideoState) => void) {
@@ -193,10 +197,17 @@ export function listVideos(): VideoSummary[] {
   const ids = new Set<string>();
   const projects = path.join(REPO, "projects");
   if (exists(projects)) for (const d of fs.readdirSync(projects, { withFileTypes: true })) if (d.isDirectory()) ids.add(d.name);
-  return [...ids].sort().map((id) => {
-    const { state, managed } = readState(id);
+  return [...ids].sort().flatMap((id) => {
+    let read: ReturnType<typeof readState>;
+    // One video whose state.json cannot be read must not take the list of every other video down with it;
+    // opening that video still shows the error.
+    try { read = readState(id); } catch (error) {
+      console.error(`Bỏ qua ${id} trong danh sách: ${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
+    const { state, managed } = read;
     const a = artifacts(id, state.request.day);
-    return {
+    return [{
       id,
       day: state.request.day,
       style: state.request.style,
@@ -207,7 +218,7 @@ export function listVideos(): VideoSummary[] {
       artifacts: a,
       running: isRunning(id),
       updatedAt: managed ? state.updatedAt : null,
-    };
+    }];
   });
 }
 

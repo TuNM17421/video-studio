@@ -1,10 +1,10 @@
 import { baseUrl, handle } from "@/lib/server/http";
-import { finishJob, isRunning, log } from "@/lib/server/jobs";
+import { isRunning } from "@/lib/server/jobs";
 import { isTrackId } from "@/lib/server/music";
 import { isBuildNo } from "@/lib/qa-manifest";
 import { assertId, HttpError } from "@/lib/server/paths";
-import { renderVideo } from "@/lib/server/render";
-import { readState, setStage, updateState } from "@/lib/server/videos";
+import { renderPreflight, renderVideo } from "@/lib/server/render";
+import { readState, updateState } from "@/lib/server/videos";
 
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
@@ -13,6 +13,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   const { state, managed } = readState(id);
   if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
   if (state.stages.scenes !== "done") throw new HttpError(400, "Duyệt phần dựng cảnh trước khi render.");
+  renderPreflight(id);
   // Both tracks are finishing decisions and are only chosen here. What had to be settled early is *which
   // câu* the question covers — the plan's "Video có quiz" tick — and cues.js already carries that.
   const body = await req.json().catch(() => ({}) as { music?: unknown; quizMusic?: unknown; captions?: unknown; buildNo?: unknown });
@@ -23,11 +24,12 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     // Which round of QA this MP4 is: the manifest beside it carries the number to the platform.
     if (isBuildNo(body.buildNo)) s.buildNo = body.buildNo;
   });
+  // Checked again after the body was read: a second click passed the first check while this request
+  // awaited, and would otherwise reach the render. From here to renderVideo's startJob nothing awaits.
+  if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy.");
   const base = baseUrl(req);
-  void renderVideo(id, base).catch((error) => {
-    log(id, "error", error instanceof Error ? error.message : String(error));
-    setStage(id, "render", "error", "Render thất bại.");
-    finishJob(id, "error");
-  });
+  // A failure ends the job and marks the stage inside renderVideo; ending it here instead ended the
+  // *running* render when a second click was refused, and left no way to stop it.
+  void renderVideo(id, base).catch(() => {});
   return Response.json({ started: true }, { status: 202 });
 });

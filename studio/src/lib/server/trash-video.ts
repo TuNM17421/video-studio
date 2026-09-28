@@ -46,10 +46,32 @@ export function collectVideoTrashTargets(id: string, roots: TrashRoots = DEFAULT
   ];
 }
 
-async function moveToSystemTrash(paths: string[]) {
+/**
+ * Windows: the Recycle Bin through .NET's VisualBasic FileSystem, which ships with every Windows PowerShell.
+ * The paths travel as JSON in an environment variable, so no quoting can split a folder like `C:\Users\Tài\…`.
+ * Before this the delete button answered 501 on every Windows machine — the whole team.
+ */
+const RECYCLE = [
+  "$ErrorActionPreference = 'Stop'",
+  "Add-Type -AssemblyName Microsoft.VisualBasic",
+  "foreach ($p in (ConvertFrom-Json $env:VS_TRASH_PATHS)) {",
+  "  if (Test-Path -LiteralPath $p -PathType Container) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }",
+  "  elseif (Test-Path -LiteralPath $p) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }",
+  "}",
+].join("\n");
+
+function trashCommand(paths: string[]): { cmd: string; args: string[]; env?: NodeJS.ProcessEnv } {
+  if (process.platform === "win32") {
+    return { cmd: "powershell.exe", args: ["-NoProfile", "-NonInteractive", "-Command", RECYCLE], env: { ...process.env, VS_TRASH_PATHS: JSON.stringify(paths) } };
+  }
   if (!fs.existsSync(GIO)) throw new HttpError(501, "Máy chưa có GIO nên không thể đưa video vào Thùng rác.");
+  return { cmd: GIO, args: ["trash", "--force", ...paths] };
+}
+
+export async function moveToSystemTrash(paths: string[]) {
+  const { cmd, args, env } = trashCommand(paths);
   try {
-    await execFileP(GIO, ["trash", "--force", ...paths], { encoding: "utf8", maxBuffer: 1024 * 1024 });
+    await execFileP(cmd, args, { encoding: "utf8", maxBuffer: 1024 * 1024, ...(env ? { env } : {}) });
   } catch (error) {
     const detail = error instanceof Error && error.message ? ` ${error.message}` : "";
     throw new HttpError(500, `Không thể đưa toàn bộ dữ liệu vào Thùng rác.${detail}`);

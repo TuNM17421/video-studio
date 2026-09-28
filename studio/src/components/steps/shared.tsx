@@ -18,7 +18,8 @@ export interface StepProps {
   logs: LogEntry[];
   job: JobInfo | null;
   busy: boolean;
-  act: (fn: () => Promise<unknown>) => Promise<void>;
+  /** Resolves false when `fn` failed — the error is already on screen, but a caller may need to keep its input. */
+  act: (fn: () => Promise<unknown>) => Promise<boolean>;
   stop: () => void;
   nav: StepNav;
   /** Reload the video without the busy state `act` sets — for panels that poll a job of their own. */

@@ -294,8 +294,10 @@ export default function Studio() {
     try {
       await fn();
       await refresh();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -304,10 +306,12 @@ export default function Studio() {
     if (!setupReady) return;
     await act(async () => {
       await api(`/api/videos`, { method: "POST", json: { id: draft.id, agentProvider: draft.agentProvider, review: draft.review, request: draft.request, script: draft.script } });
-      await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
+      // The video exists from here on, so open it before starting the agent: when that start failed, the
+      // page stayed on the form and a second "Tạo video" answered 409, with the new video out of reach.
       window.history.pushState(null, "", `/?id=${draft.id}`);
       setAutoStep(false);
       setStep("cues");
+      await api(`/api/videos/${draft.id}/agent`, { method: "POST", json: { stage: "cues" } });
     });
   }
   const stop = () => { if (id) void act(() => api(`/api/videos/${id}/stop`, { method: "POST", json: {} })); };

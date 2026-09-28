@@ -49,7 +49,9 @@ const otherVideo = (f) => {
   return onlyVideos.length > 0 && r.length > 1 && r[0] !== '..' && !onlyVideos.includes(r[0]);
 };
 const files = walk(DS).filter((f) => !otherVideo(f));
-const rel = (f) => path.relative(DS, f);
+// Always with '/': on Windows path.relative gives '\', and every startsWith('components/') below then
+// matched nothing — three checks skipped in silence while the summary still said all passed.
+const rel = (f) => path.relative(DS, f).split(path.sep).join('/');
 const problems = [];
 
 // 0 · the built bundle
