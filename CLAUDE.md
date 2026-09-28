@@ -48,7 +48,9 @@ style is `styles/<style>.json` (palette, showcase components, rules — they ove
    starts). Content zone y 250–960, captions ≤ 78 chars via lib/captions.js, colors from the style + lib/tokens.js,
    Montserrat, connectors: particle on the drawn path, hidden on card faces, one pulse per arrival; no
    numbers/results the script does not give. Parallel forks per scene group work well.
-   `npm run build && npm run verify`; QA stills to `projects/<id>/qa/` with `node tools/shoot.mjs --batch`.
+   `npm run build && npm run verify -- --video <id>` (chỉ video đó + phép soát chung của design system — Studio cũng
+   gọi đúng như vậy, nên lỗi của một video khác trên máy không chặn video này); QA stills to `projects/<id>/qa/` with
+   `node tools/shoot.mjs --batch`.
 4. **render** — `node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4`
    (+ `--base` of the preview server; `--no-captions` bỏ thanh phụ đề — Studio hỏi "Phụ đề: Có/Không" ở bước
    Render, mặc định Có), QA the MP4; `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`.

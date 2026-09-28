@@ -10,8 +10,12 @@
  *
  *   node tools/run-logged.mjs <stage> --video <id> [--actor cli] -- <command> [args...]
  *   node tools/run-logged.mjs build   --video n5-03 -- npm run build
- *   node tools/run-logged.mjs verify  --video n5-03 -- npm run verify
+ *   node tools/run-logged.mjs verify  --video n5-03 -- npm run verify -- --video n5-03
  *   node tools/run-logged.mjs render  --video n5-03 -- node tools/render.mjs --scene n5-03 --audio voice/out/n5-03/voice.wav --out projects/n5-03/render/n5-03.mp4
+ *
+ * Hai cờ `--video` trong dòng verify là hai thứ khác nhau: cái trước `--` cho ledger biết lượt chạy thuộc
+ * video nào, cái sau là của chính `verify` (chỉ soát video đó). Thiếu cái sau thì verify soát mọi video trên
+ * máy, và lỗi của một video khác làm hỏng lượt này.
  *
  * Exit code is exactly the wrapped command's — safe to chain with `&&` as a drop-in replacement.
  */
