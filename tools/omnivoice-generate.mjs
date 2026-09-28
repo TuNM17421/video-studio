@@ -149,6 +149,12 @@ fs.mkdirSync(outDir, { recursive: true });
 
 // JSONL đúng đặc tả của omnivoice-infer-batch: id thành tên file, ref_audio + ref_text để clone giọng.
 // ref_audio nằm ở TỪNG DÒNG, nên mỗi câu đi theo giọng của người nói câu đó dù cả video chạy một lượt.
+// Một lượt trộn câu CÓ speed với câu KHÔNG có speed thì omnivoice-infer-batch gửi cả danh sách
+// (`speed=speeds if any(s is not None ...)`), và `_preprocess_all` không chặn None ở chỗ ước lượng
+// (`item_speed = user_speed[i] ...` → `None > 0` → TypeError) — mất trắng cả batch. Nên khi lượt này có
+// dù một câu đổi nhịp thì mọi câu đều khai speed; 1.0 là đúng giá trị upstream tự điền, nên kết quả
+// không đổi. Lượt toàn 1.0 vẫn bỏ trống y như trước.
+const mixedSpeed = jobs.some(({ row }) => row.speed !== 1);
 const listFile = path.join(outDir, 'test_list.jsonl');
 fs.writeFileSync(listFile, `${jobs.map(({ row, id }) => {
   const role = cast.roles[row.role];
@@ -162,7 +168,7 @@ fs.writeFileSync(listFile, `${jobs.map(({ row, id }) => {
     // OmniVoice hiểu speed là ngân sách độ dài (số token đích), không phải kéo giãn tín hiệu: đo thử
     // cùng một câu có và không có speed 0,86 ra cùng một cao độ, nên kiểu đọc không làm méo giọng. Đổi
     // lại, câu quá ngắn gần như không nhanh chậm được — ngưỡng sàn 2 giây của bộ ước lượng nuốt mất.
-    ...(row.speed !== 1 ? { speed: row.speed } : {}),
+    ...(mixedSpeed ? { speed: row.speed } : {}),
   });
 }).join('\n')}\n`);
 note(only === null
