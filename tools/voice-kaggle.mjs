@@ -109,6 +109,12 @@ for (const role of cast.roles) {
 
 // Tên file do cueKey đặt — giống hệt model local, để bước nhập ghép đúng câu.
 const key = cueKey(CUES);
+// Một lượt trộn câu CÓ speed với câu KHÔNG có speed thì omnivoice-infer-batch gửi cả danh sách
+// (`speed=speeds if any(s is not None ...)`), và `_preprocess_all` không chặn None ở chỗ ước lượng
+// (`item_speed = user_speed[i] ...` → `None > 0` → TypeError) — mất trắng cả batch. Nên khi lượt này có
+// dù một câu đổi nhịp thì mọi câu đều khai speed; 1.0 là đúng giá trị upstream tự điền, nên kết quả
+// không đổi. Lượt toàn 1.0 vẫn bỏ trống y như trước.
+const mixedSpeed = cast.rows.some((row) => row.speed !== 1);
 const rows = cast.rows.map((row) => {
   const role = cast.roles[row.role];
   return {
@@ -117,7 +123,7 @@ const rows = cast.rows.map((row) => {
     ref: refKeyOf.get(role.source === 'file' ? `f:${role.file}` : `v:${role.voiceId}`),
     ref_text: role.ref.text,
     language_id: 'vi',
-    ...(row.speed !== 1 ? { speed: row.speed } : {}),
+    ...(mixedSpeed ? { speed: row.speed } : {}),
   };
 });
 
