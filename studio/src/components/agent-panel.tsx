@@ -61,11 +61,14 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
     "align-setup": "Cài môi trường nhận diện giọng",
     "kaggle-setup": "Cài Kaggle CLI",
     "kaggle-generate": "Sinh giọng trên Kaggle",
+    "voice-retake": "Sinh lại một câu",
+    "voice-retake-pick": "Đặt bản đã chọn",
   };
   return <>
-    <div className="job-progress" role="status">
+    {/* Only the message is a live region: the timer beside it ticks every second and would be read out each time. */}
+    <div className="job-progress">
       <LoadingOutlined spin />
-      <span>{job.progress?.message || "Đang xử lý…"}</span>
+      <span role="status">{job.progress?.message || "Đang xử lý…"}</span>
       <small className="job-timing">
         đã chạy {clock(elapsed)}
         {remaining !== null && <> · còn khoảng <strong>{clock(remaining)}</strong></>}

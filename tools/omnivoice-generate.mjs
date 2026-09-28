@@ -13,6 +13,10 @@
  *   --batch-size  số câu mỗi lượt (mặc định: tự chọn theo VRAM)
  *   --ref <file>  chỉ kiểm một file mẫu giọng rồi dừng: Whisper có nghe ra lời không, mẫu có quá dài không
  *             — Studio gọi ngay lúc người dùng chọn file, để lỗi lộ ra ở đó chứ không phải giữa lượt sinh
+ *   --only <n>    chỉ sinh câu n (tools/voice-retake.mjs dùng): thư mục --out KHÔNG bị dọn, chỉ các bản cũ
+ *                 của đúng câu đó; tên tệp là <số câu>_t1.wav, _t2.wav…
+ *   --takes <k>   cùng với --only: sinh k bản của câu đó trong một lượt (mặc định 1). Model lấy mẫu ngẫu
+ *                 nhiên, nên mỗi bản một khác — thứ vòng sửa cần để có cái mà chọn.
  *
  * Vì sao không bảo người dùng tự gõ từng câu vào giao diện web: một video là 40+ câu, và tên file phải
  * khớp đúng số câu thì bước nhập mới ghép được. `omnivoice-infer-batch` nhận một file JSONL rồi tự đặt
@@ -117,18 +121,39 @@ for (const r of cast.roles) {
 // lặng vẫn ra cùng độ rộng số với lúc nhập. Tự tính theo câu có lời là lệch — bước nhập sẽ không thấy file.
 const key = cueKey(CUES);
 const outDir = path.resolve(value('out', path.join(ROOT, 'projects', path.basename(path.dirname(cuesPath)), 'voice-script/omnivoice')));
-// Dọn wav cũ trước: đổi giọng rồi sinh lại mà giữ file cũ là trộn hai giọng trong một video, và cue
-// bị xoá khỏi kịch bản vẫn để lại file trùng tên cho bước nhập ăn vào.
-fs.rmSync(outDir, { recursive: true, force: true });
+
+// Một câu, vài bản: sinh lại đúng câu hỏng mà không đụng tới các câu đang tốt.
+const only = value('only', null);
+const takes = Number(value('takes', 1));
+// A bare --only would fall through to the whole-video path, which wipes --out.
+if (flag('only') && only === null) fail('--only cần số câu, ví dụ --only 7.');
+if (only !== null && !value('out', null)) fail('--only cần --out: các bản của một câu không được đổ vào thư mục giọng đang dùng.');
+if (only !== null && !Number.isInteger(Number(only))) fail(`--only phải là số câu (nhận được "${only}").`);
+if (!Number.isInteger(takes) || takes < 1 || takes > 8) fail(`--takes phải là số nguyên từ 1 tới 8 (nhận được "${value('takes', '')}").`);
+const rows = only === null ? cast.rows : cast.rows.filter((row) => row.n === Number(only));
+if (only !== null && !rows.length) fail(`Câu ${only} không có trong cues.js, hoặc là khoảng lặng không cần đọc.`);
+/** Tên tệp (không đuôi) của bản `t` của câu `n`: 07 khi sinh cả video, 07_t1, 07_t2… khi sinh lại một câu. */
+const takeId = (n, t) => (only === null ? key(n) : `${key(n)}_t${t}`);
+const jobs = rows.flatMap((row) => Array.from({ length: only === null ? 1 : takes }, (_, i) => ({ row, id: takeId(row.n, i + 1) })));
+
+if (only === null) {
+  // Dọn wav cũ trước: đổi giọng rồi sinh lại mà giữ file cũ là trộn hai giọng trong một video, và cue
+  // bị xoá khỏi kịch bản vẫn để lại file trùng tên cho bước nhập ăn vào.
+  fs.rmSync(outDir, { recursive: true, force: true });
+} else if (fs.existsSync(outDir)) {
+  // Chỉ dọn các bản cũ của đúng câu này — thư mục còn giữ bản gốc mà vòng sửa phải trả lại được.
+  const stale = new RegExp(`^${key(Number(only))}_t\\d+\\.wav$`);
+  for (const f of fs.readdirSync(outDir)) if (stale.test(f)) fs.rmSync(path.join(outDir, f), { force: true });
+}
 fs.mkdirSync(outDir, { recursive: true });
 
 // JSONL đúng đặc tả của omnivoice-infer-batch: id thành tên file, ref_audio + ref_text để clone giọng.
 // ref_audio nằm ở TỪNG DÒNG, nên mỗi câu đi theo giọng của người nói câu đó dù cả video chạy một lượt.
 const listFile = path.join(outDir, 'test_list.jsonl');
-fs.writeFileSync(listFile, `${cast.rows.map((row) => {
+fs.writeFileSync(listFile, `${jobs.map(({ row, id }) => {
   const role = cast.roles[row.role];
   return JSON.stringify({
-    id: key(row.n),
+    id,
     text: row.text,
     ref_audio: role.ref.file,
     ref_text: role.ref.text,
@@ -140,7 +165,9 @@ fs.writeFileSync(listFile, `${cast.rows.map((row) => {
     ...(row.speed !== 1 ? { speed: row.speed } : {}),
   });
 }).join('\n')}\n`);
-note(`${spoken.length} câu · ${cast.roles.length} giọng → ${path.relative(ROOT, listFile)}`);
+note(only === null
+  ? `${spoken.length} câu · ${cast.roles.length} giọng → ${path.relative(ROOT, listFile)}`
+  : `Câu ${only} · ${takes} bản → ${path.relative(ROOT, listFile)}`);
 note('Lần chạy đầu phải tải trọng số model (~3,3 GB) từ Hugging Face.');
 
 // pydub (OmniVoice dùng để đọc/ghi audio) tìm ffmpeg trên PATH và kêu khi không thấy. Repo đã có sẵn
@@ -165,7 +192,9 @@ const env = {
 // Không để nó tự gom batch: mặc định `--batch_duration` 1000 giây nuốt gọn cả video vào một lượt, và
 // trên card chật thì đó là treo máy chứ không phải chậm (đo thật: 6 GB, VRAM 97 %, 30 phút không ra file).
 const device = detectDevice();
-const batchSize = Number(value('batch-size', batchSizeFor(device)));
+// Sinh lại một câu thì mỗi lượt một bản: upstream bắt lỗi theo batch, nên một lần tràn VRAM là mất trắng
+// mọi bản trong batch đó — đúng thứ vừa gặp khi card 6 GB chạy batch 2 (7/21 câu).
+const batchSize = Number(value('batch-size', only === null ? batchSizeFor(device) : 1));
 if (!Number.isInteger(batchSize) || batchSize < 1) fail(`--batch-size phải là số nguyên ≥ 1 (nhận được "${value('batch-size', '')}").`);
 note(`${device.label} → mỗi lượt ${batchSize} câu`);
 
@@ -205,6 +234,16 @@ if (code !== 0) fail(`omnivoice-infer-batch kết thúc với mã ${code}.`);
 // omnivoice-infer-batch bắt lỗi của từng câu, ghi log rồi chạy tiếp — thiếu file vẫn thoát mã 0. Nên
 // không đếm mã thoát mà đối chiếu từng câu: thiếu một câu là thiếu, báo ngay thay vì để bước nhập mới
 // phát hiện sau hàng chục phút GPU.
+if (only !== null) {
+  // Một câu: bản nào ra thì dùng bản đó, chỉ thất bại khi không ra bản nào.
+  const files = jobs.map((j) => `${j.id}.wav`).filter((f) => fs.existsSync(path.join(outDir, f)));
+  if (!files.length) fail(`Không sinh được bản nào của câu ${only}. Xem nhật ký phía trên: hay gặp nhất là tràn VRAM — đóng trang nghe thử và các ứng dụng ăn GPU rồi thử lại.`);
+  const payload = { dir: path.relative(ROOT, outDir), n: Number(only), takes: files, asked: takes };
+  if (flag('json')) console.log(JSON.stringify(payload));
+  else console.log(`✓ Câu ${only}: ${files.length}/${takes} bản → ${payload.dir}`);
+  process.exit(0);
+}
+
 const missing = spoken.filter((c) => !fs.existsSync(path.join(outDir, `${key(c.n)}.wav`)));
 const made = spoken.length - missing.length;
 if (missing.length) {
