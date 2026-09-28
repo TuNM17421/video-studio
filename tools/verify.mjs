@@ -247,7 +247,9 @@ for (const dir of videoDirs) {
   if (prev !== meta.duration) problems.push(`${where}: captions end at ${prev}, video at ${meta.duration}`);
   for (const cue of CUES) {
     const said = caps.filter((c) => c.start >= cue.start && c.end <= cue.end).map((c) => c.text).join(' ');
-    if (said !== cue.text.trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
+    // A silent cue authored as `{ silent: N }` has no `text` key at all — same shape tts.mjs's loadCues()
+    // used to crash on ("Cannot read properties of undefined (reading 'trim')").
+    if (said !== (cue.text ?? '').trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
   }
   // quiz flag — read from cues.js, not the timeline: `quiz` / `silent` are authored fields that retiming
   // drops. The quiz bed replaces the background music over every flagged cue, so a flag on a spoken câu

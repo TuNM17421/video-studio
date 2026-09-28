@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled, MinusCircleOutlined, SettingOutlined } from "@ant-design/icons";
 import { Button, Collapse, Input, Modal, Switch, Tag, Typography } from "antd";
 import { api } from "@/lib/client";
@@ -34,18 +34,19 @@ export function SystemStatusPanel({ provider }: { provider: AgentProvider }) {
   const [telemetry, setTelemetry] = useState<TelemetryStatus | null>(null);
   const [open, setOpen] = useState(false);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    const [g, t] = await Promise.allSettled([
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.allSettled([
       api<GatewayStatus>("/api/gateway-settings"),
       api<TelemetryStatus>("/api/telemetry-settings"),
-    ]);
-    setGateway(g.status === "fulfilled" ? g.value : null);
-    setTelemetry(t.status === "fulfilled" ? t.value : null);
-    setLoading(false);
+    ]).then(([g, t]) => {
+      if (cancelled) return;
+      setGateway(g.status === "fulfilled" ? g.value : null);
+      setTelemetry(t.status === "fulfilled" ? t.value : null);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { void refresh(); }, [refresh]);
 
   const telemetryBadge = loading
     ? <Badge tone="default">Hệ thống log: đang kiểm tra…</Badge>

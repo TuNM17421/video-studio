@@ -3,8 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { agentProviderLabel } from "../agent-providers";
 import { resolveReviewer } from "../review";
-import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
-import { activeGateway, beginGatewayRun, endGatewayRun, gatewayRuntimeEnv, withGatewayArgs, withGatewayEnv } from "./gateway";
+import { antigravityQaArgs, claudeQaArgs, codexQaArgs, IGNORE_PERSONA_LINE, sanitizedAgentEnv } from "./agent-cli";
+import { abandonGatewayRun, activeGateway, beginGatewayRun, endGatewayRun, gatewayRuntimeEnv, keepGatewayRunAlive, withGatewayArgs, withGatewayEnv } from "./gateway";
+import { safelyRecordAiLog } from "./ai-log";
 import { agentBin, installedAgents } from "./agent-config";
 import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
@@ -253,6 +254,7 @@ function qaPrompt(id: string, modules: string[], style: string) {
   const styleExtra = styleQaCriteria(style);
   const extra = moduleQaCriteria(modules);
   return [
+    IGNORE_PERSONA_LINE,
     `Bạn là QA lane độc lập cho video ${id}. Chỉ đọc nội dung trong thư mục hiện tại.`,
     "Mở REQUEST.md, kich-ban-goc.md, cues.js, IMPROVEMENT-PLAN.md nếu có, verify.txt và toàn bộ ảnh trong stills/. Ảnh cue-NN.png là câu `n: NN` trong cues.js.",
     "Chữ/số trên màn hình hợp lệ khi có trong lời đọc (`text`) HOẶC trong phần mô tả màn hình của đúng câu đó (`title`, `visual` trong cues.js; dòng **Trên màn hình** trong kich-ban-goc.md) — màn hình được phép khác lời đọc. Chỉ báo `off-script` khi không có ở cả hai nơi.",
@@ -283,80 +285,87 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   const label = agentProviderLabel(provider);
   const model = process.env.STUDIO_QA_MODEL?.trim() || undefined;
   const qaRun = startRun(REPO, id, { stage: "scenes.qa", actor: provider, mode: "agent", label: `visual QA · ${label}`, machine: machineLabel() });
-  const prompt = qaPrompt(id, state.request.modules, state.request.style);
-  const outDir = path.join(stateDir(id), "qa");
-  fs.mkdirSync(outDir, { recursive: true });
-
-  let args: string[];
-  let lastMessage: string | null = null;
-  if (provider === "claude") {
-    args = claudeQaArgs(QA_SCHEMA, model);
-  } else if (provider === "codex") {
-    const schemaFile = path.join(packet.packet, "qa-schema.json");
-    fs.writeFileSync(schemaFile, QA_SCHEMA);
-    lastMessage = path.join(outDir, "codex-last-message.json");
-    fs.rmSync(lastMessage, { force: true });
-    args = codexQaArgs(schemaFile, lastMessage, packet.stills, model);
-  } else {
-    args = antigravityQaArgs(QA_SCHEMA, model);
-  }
-
-  const lines: string[] = [];
-  let toolCalls = 0;
-  stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
-  setProgress(id, null, `${label} đang QA ảnh…`);
-  log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
-  // QA of a video the Studio UI is making: Codex goes through 9router like the stage agents do.
-  const { cfg: gateway, note } = provider === "codex" ? await activeGateway(gatewayRuntimeEnv()) : { cfg: null };
-  if (note) log(id, "error", note);
-  if (gateway) beginGatewayRun(qaRun.runId);
-  const code = await run(id, agentBin(provider), gateway ? withGatewayArgs(args, gateway) : args, {
-    cwd: packet.packet,
-    env: gateway ? withGatewayEnv(sanitizedAgentEnv(), gateway) : sanitizedAgentEnv(),
-    input: prompt,
-    onLine(line, stream) {
-      if (stream === "stderr") log(id, provider === "codex" ? "system" : "error", line.slice(0, 500));
-      else lines.push(line);
-      if (/tool/i.test(line)) toolCalls++;
-    },
-  });
-  const raw = lines.join("\n").trim();
-  if (raw && process.env.STUDIO_TELEMETRY_AI_LOGS === "1") recordAiLog(REPO, id, { source: "studio", runId: qaRun.runId, kind: "qa_stream", text: raw });
-  const usage = usageFrom(raw);
-  // Claude's `total_cost_usd` comes from its own CLI; Codex has a cost only through 9router; the rest stays unavailable.
-  const costSource = provider === "claude" && usage.costUsd !== undefined ? "provider_reported" : undefined;
-  let gatewayFields = {};
-  if (gateway) {
-    const { message, ...fields } = await endGatewayRun(qaRun.runId, gateway, usage);
-    log(id, fields.gatewayStatus === "ok" ? "system" : "error", message);
-    gatewayFields = fields;
-  }
-  addRunMetrics(REPO, id, qaRun.runId, { ...usage, costSource, toolCalls, model: usage.model || model, ...gatewayFields });
+  let releaseLease = () => {};
   try {
+    const prompt = qaPrompt(id, state.request.modules, state.request.style);
+    const outDir = path.join(stateDir(id), "qa");
+    fs.mkdirSync(outDir, { recursive: true });
+
+    let args: string[];
+    let lastMessage: string | null = null;
+    if (provider === "claude") {
+      args = claudeQaArgs(QA_SCHEMA, model);
+    } else if (provider === "codex") {
+      const schemaFile = path.join(packet.packet, "qa-schema.json");
+      fs.writeFileSync(schemaFile, QA_SCHEMA);
+      lastMessage = path.join(outDir, "codex-last-message.json");
+      fs.rmSync(lastMessage, { force: true });
+      args = codexQaArgs(schemaFile, lastMessage, packet.stills, model);
+    } else {
+      args = antigravityQaArgs(QA_SCHEMA, model);
+    }
+
+    const lines: string[] = [];
+    let toolCalls = 0;
+    stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
+    setProgress(id, null, `${label} đang QA ảnh…`);
+    log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
+    // QA of a video the Studio UI is making: Codex goes through 9router like the stage agents do.
+    const { cfg: gateway, note } = provider === "codex" ? await activeGateway(gatewayRuntimeEnv()) : { cfg: null };
+    if (note) log(id, "error", note);
+    if (gateway) beginGatewayRun(qaRun.runId);
+    if (gateway) releaseLease = keepGatewayRunAlive(qaRun.runId);
+    let code = 1;
+    try {
+      code = await run(id, agentBin(provider), gateway ? withGatewayArgs(args, gateway) : args, {
+        cwd: packet.packet,
+        env: gateway ? withGatewayEnv(sanitizedAgentEnv(), gateway) : sanitizedAgentEnv(),
+        input: prompt,
+        onLine(line, stream) {
+          if (stream === "stderr") log(id, provider === "codex" ? "system" : "error", line.slice(0, 500));
+          else lines.push(line);
+          if (/tool/i.test(line)) toolCalls++;
+        },
+      });
+    } finally {
+      const raw = lines.join("\n").trim();
+      if (raw && process.env.STUDIO_TELEMETRY_AI_LOGS === "1") safelyRecordAiLog(raw,
+        (text) => recordAiLog(REPO, id, { source: "studio", runId: qaRun.runId, kind: "qa_stream", text }),
+        (message) => log(id, "error", message));
+      const usage = usageFrom(raw);
+      // Claude's `total_cost_usd` comes from its own CLI; Codex has a cost only through 9router; the rest stays unavailable.
+      const costSource = provider === "claude" && usage.costUsd !== undefined ? "provider_reported" : undefined;
+      let gatewayFields = {};
+      if (gateway) {
+        const { message, ...fields } = await endGatewayRun(qaRun.runId, gateway, usage);
+        log(id, fields.gatewayStatus === "ok" ? "system" : "error", message);
+        gatewayFields = fields;
+      }
+      addRunMetrics(REPO, id, qaRun.runId, { ...usage, costSource, toolCalls, model: usage.model || model, ...gatewayFields });
+    }
+    const raw = lines.join("\n").trim();
     if (code !== 0 || wasStopped(id)) {
-      finishRun(REPO, id, qaRun.runId, { status: wasStopped(id) ? "stopped" : "error", error: `${label} exit ${code}` });
-      stepError(id, "review", wasStopped(id) ? "Đã dừng" : `${label} thoát với mã ${code}`);
       throw new Error(`QA ảnh (${label}) thất bại (mã ${code}).`);
     }
-    try {
-      const report = parseQaReport(lastMessage && fs.existsSync(lastMessage) ? fs.readFileSync(lastMessage, "utf8") : raw);
-      fs.writeFileSync(path.join(outDir, "latest.json"), `${JSON.stringify({ ...report, provider, runId: qaRun.runId, createdAt: new Date().toISOString() }, null, 2)}\n`);
-      reconcileQaFeedback(REPO, id, "scenes", report.findings, qaRun.runId, provider);
-      finishRun(REPO, id, qaRun.runId, { status: "done", artifacts: [rel(path.join(outDir, "latest.json"))] });
-      log(id, report.findings.length ? "error" : "result", `QA ảnh (${label}): ${report.summary}`);
-      setHarnessReview(id, { provider, runId: qaRun.runId, verdict: report.verdict, summary: report.summary });
-      const count = (s: string) => report.findings.filter((f) => f.severity === s).length;
-      stepDone(id, "review", report.findings.length
-        ? `${label} · ${report.findings.length} lỗi (${["blocker", "major", "minor"].map((s) => `${count(s)} ${s}`).filter((t) => !t.startsWith("0 ")).join(", ")})`
-        : `${label} · đạt`);
-      return report;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      finishRun(REPO, id, qaRun.runId, { status: "error", error: message });
-      stepError(id, "review", message);
-      throw error;
-    }
+    const report = parseQaReport(lastMessage && fs.existsSync(lastMessage) ? fs.readFileSync(lastMessage, "utf8") : raw);
+    fs.writeFileSync(path.join(outDir, "latest.json"), `${JSON.stringify({ ...report, provider, runId: qaRun.runId, createdAt: new Date().toISOString() }, null, 2)}\n`);
+    reconcileQaFeedback(REPO, id, "scenes", report.findings, qaRun.runId, provider);
+    finishRun(REPO, id, qaRun.runId, { status: "done", artifacts: [rel(path.join(outDir, "latest.json"))] });
+    log(id, report.findings.length ? "error" : "result", `QA ảnh (${label}): ${report.summary}`);
+    setHarnessReview(id, { provider, runId: qaRun.runId, verdict: report.verdict, summary: report.summary });
+    const count = (s: string) => report.findings.filter((f) => f.severity === s).length;
+    stepDone(id, "review", report.findings.length
+      ? `${label} · ${report.findings.length} lỗi (${["blocker", "major", "minor"].map((s) => `${count(s)} ${s}`).filter((t) => !t.startsWith("0 ")).join(", ")})`
+      : `${label} · đạt`);
+    return report;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    finishRun(REPO, id, qaRun.runId, { status: wasStopped(id) ? "stopped" : "error", error: message });
+    stepError(id, "review", message);
+    throw error;
   } finally {
+    releaseLease();
+    abandonGatewayRun(qaRun.runId);
     fs.rmSync(packet.packet, { recursive: true, force: true });
   }
 }

@@ -1,5 +1,6 @@
 import type { Claim, ClaimCheck, EditReview, Finding, OutlineSlide, ResearchState, ScriptCheck, ScriptIssue, SourceInfo } from "../../research";
 import { claimCap, DIFFICULTY_LABEL, SCRIPT_BUDGET, scriptBudget } from "../../research";
+import { IGNORE_PERSONA_LINE } from "../agent-cli";
 
 /**
  * Lời gọi agent cho từng chặng — cố tình ngắn. Cách làm nằm trong `.claude/skills/research-script/<chặng>.md`
@@ -9,7 +10,7 @@ import { claimCap, DIFFICULTY_LABEL, SCRIPT_BUDGET, scriptBudget } from "../../r
 
 const SKILL = ".claude/skills/research-script";
 const head = (rid: string, what: string) =>
-  `Video Studio · pipeline research · lượt \`research/${rid}\` · ${what}. Trả lời bằng tiếng Việt, ngắn gọn.`;
+  `${IGNORE_PERSONA_LINE}\nVideo Studio · pipeline research · lượt \`research/${rid}\` · ${what}. Trả lời bằng tiếng Việt, ngắn gọn.`;
 const tail = "Studio tự soát sau khi bạn xong — không cần tự chạy lệnh soát. Xong thì dừng, tóm tắt một hai câu.";
 
 function deckLines(state: ResearchState) {
