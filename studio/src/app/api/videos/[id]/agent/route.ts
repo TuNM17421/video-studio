@@ -1,6 +1,6 @@
 import { runAgent, type AgentStage } from "@/lib/server/agent";
 import { baseUrl, handle } from "@/lib/server/http";
-import { isRunning, log } from "@/lib/server/jobs";
+import { isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { readState, setStage } from "@/lib/server/videos";
 
@@ -24,7 +24,9 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   if (message !== undefined && !message.trim()) throw new HttpError(400, "Góp ý đang trống.");
   if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy.");
   const base = baseUrl(req);
+  // A failure after the agent's job started is already logged and on the stage, with its real cause.
   void runAgent(id, stage, base, message).catch((error) => {
+    if (jobHandled(error)) return;
     const messageText = error instanceof Error ? error.message : String(error);
     log(id, "error", messageText);
     if (isRunning(id)) return;

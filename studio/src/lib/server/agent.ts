@@ -96,10 +96,16 @@ function focusPrompt(stage: AgentStage, items: FocusItem[], note?: string) {
 }
 
 function saveSession(id: string, provider: AgentProvider, sessionId: string) {
-  updateState(id, (state) => {
-    // Provider is immutable after creation; an event can only update its own provider's session.
-    if (state.agent.provider === provider) state.agent.sessionId = sessionId;
-  });
+  // Called from the agent's output stream, where a throw is caught by nobody: it would drop the rest of
+  // that chunk's log lines. Not saving only costs the next feedback round its --resume.
+  try {
+    updateState(id, (state) => {
+      // Provider is immutable after creation; an event can only update its own provider's session.
+      if (state.agent.provider === provider) state.agent.sessionId = sessionId;
+    });
+  } catch (error) {
+    log(id, "error", `Không lưu được phiên agent: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** What the workflow ledger keeps about one agent run (`recordJobMetrics`). */

@@ -105,13 +105,13 @@ export function startJob(
   // (`research:<rid>`) is no folder under projects/ — on Windows the colon makes mkdir throw, elsewhere it
   // would leave a stray "video" in the list. Research keeps its own run log in research/<rid>/.
   // Image suggestions run beside the video's own job under `images:<id>` — the same folder problem.
-  const workflow = kind === "research" || kind === "images" ? null : startWorkflowRun(REPO, id, {
+  const workflow = kind === "research" || kind === "images" ? null : ledger(id, () => startWorkflowRun(REPO, id, {
     stage: kind,
     actor: meta.actor || "system",
     mode: meta.mode || "deterministic",
     label: meta.label || kind,
     machine: machineLabel(),
-  });
+  }));
   const job = {
     kind,
     status: "running" as const,
@@ -136,7 +136,21 @@ export function recordJobMetrics(id: string, metrics: {
 }) {
   const job = registry.jobs.get(id);
   if (!job?.workflowRunId) return;
-  addRunMetrics(REPO, id, job.workflowRunId, metrics);
+  ledger(id, () => addRunMetrics(REPO, id, job.workflowRunId, metrics));
+}
+
+/**
+ * The workflow ledger (runs.jsonl) is bookkeeping: a write it cannot make (file locked by the antivirus or a
+ * sync client) is logged, and the job goes on. Thrown, it refused to start a job, or skipped the events that
+ * tell the page a job ended — so the page showed "đang chạy" after the work was done.
+ */
+function ledger<T>(id: string, write: () => T): T | null {
+  try {
+    return write();
+  } catch (error) {
+    log(id, "error", `Không ghi được nhật ký luồng (runs.jsonl): ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
 }
 
 /**
@@ -164,19 +178,23 @@ export function finishJob(id: string, status: JobInfo["status"]) {
   job.status = job.stopped ? "stopped" : status;
   job.child = undefined;
   if (job.workflowRunId && !job.workflowFinished) {
-    finishWorkflowRun(REPO, id, job.workflowRunId, { status: job.status });
+    ledger(id, () => finishWorkflowRun(REPO, id, job.workflowRunId, { status: job.status }));
     job.workflowFinished = true;
   }
   emit(id, { type: "job", job: currentJob(id) });
   emit(id, { type: "state" });
 }
 
+/** Errors `ownJob` has already logged and shown on the stage: a caller's catch must not add a second copy. */
+const handled = new WeakSet<object>();
+export const jobHandled = (error: unknown) => typeof error === "object" && error !== null && handled.has(error);
+
 /**
  * Runs a runner that starts its own job, and ends that job if the runner throws after starting it. A throw
- * between `startJob` and `finishJob` (state.json locked by the antivirus, a ledger write failing) used to
- * leave the job "running": every action on the video answered 409 and Dừng changed nothing, until Studio
- * restarted. Only a job the runner started is ended — a runner refused because another job holds the
- * video (`startJob` throws) must leave that job alone.
+ * between `startJob` and `finishJob` (state.json locked by the antivirus) used to leave the job "running":
+ * every action on the video answered 409 and Dừng changed nothing, until Studio restarted. Only a job the
+ * runner started is ended — a runner refused because another job holds the video (`startJob` throws) must
+ * leave that job alone. An error thrown before the job started is the caller's to report (`jobHandled`).
  */
 export async function ownJob<T>(id: string, body: () => Promise<T>, onError?: (message: string) => void): Promise<T> {
   const before = registry.jobs.get(id);
@@ -189,6 +207,7 @@ export async function ownJob<T>(id: string, body: () => Promise<T>, onError?: (m
       log(id, "error", message);
       try { onError?.(message); } catch {}
       finishJob(id, "error");
+      if (typeof error === "object" && error !== null) handled.add(error);
     }
     throw error;
   }

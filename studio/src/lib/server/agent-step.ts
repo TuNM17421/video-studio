@@ -5,6 +5,7 @@ import type { AgentProvider, LogEntry } from "../types";
 import { antigravityStepArgs, antigravityStdin, claudeStepArgs, codexStepArgs, sanitizedAgentEnv, type StepCall } from "./agent-cli";
 import { createStreamParser, short, type AgentUsage } from "./agent-stream";
 import { killChild, run, setProgress, wasStopped } from "./jobs";
+import { REPO } from "./paths";
 
 /**
  * Một lượt agent không tương tác cho một chặng nhỏ (research, đề xuất ảnh…): gọi CLI của người dùng với đúng
@@ -63,24 +64,36 @@ const BIN_NAME: Record<AgentProvider, () => string> = {
  */
 export async function resolveAgentBin(provider: AgentProvider): Promise<string | null> {
   const bin = BIN_NAME[provider]();
-  if (path.isAbsolute(bin)) return fs.existsSync(bin) ? bin : null;
+  // Tên đã có đuôi (CODEX_BIN=codex.cmd) thì tìm đúng tên đó; không có đuôi thì thử các đuôi Windows chạy được.
+  const exts = process.platform === "win32" && !/\.(exe|cmd|bat|com)$/i.test(bin) ? [".exe", ".cmd", ".bat"] : [""];
+  // Một đường dẫn (tuyệt đối, hoặc tương đối tính từ repo — thư mục mọi job chạy trong đó) thì chỉ xét đúng
+  // chỗ đó, kể cả khi thiếu `.exe` như spawn tên trần trước đây vẫn tự thêm.
+  if (bin.includes("/") || bin.includes("\\")) {
+    const full = path.resolve(REPO, bin);
+    return exts.map((ext) => `${full}${ext}`).find(runnable) ?? null;
+  }
   // Đọc thẳng PATH thay vì hỏi `where`: `where` in theo code page của console, và một thư mục có dấu
   // ("C:\Users\Tài\…") đọc thành UTF-8 là hỏng — agent có trên máy mà không chạy được.
   const dirs = (process.env.PATH ?? process.env.Path ?? "").split(path.delimiter).filter(Boolean);
-  const exts = process.platform === "win32" ? [".exe", ".cmd", ".bat"] : [""];
   for (const ext of exts) {
     for (const dir of dirs) {
       const file = path.join(dir, `${bin}${ext}`);
-      try {
-        if (!fs.statSync(file).isFile()) continue;
-        // macOS/Linux: một file cùng tên mà không có quyền chạy thì không phải cái ta cần — bỏ qua để còn
-        // tìm tiếp trong các thư mục sau, thay vì trả về nó rồi hỏng lúc chạy với EACCES.
-        if (process.platform !== "win32") fs.accessSync(file, fs.constants.X_OK);
-        return file;
-      } catch {}
+      if (runnable(file)) return file;
     }
   }
   return null;
+}
+
+function runnable(file: string) {
+  try {
+    if (!fs.statSync(file).isFile()) return false;
+    // macOS/Linux: một file cùng tên mà không có quyền chạy thì không phải cái ta cần — bỏ qua để còn
+    // tìm tiếp trong các thư mục sau, thay vì trả về nó rồi hỏng lúc chạy với EACCES.
+    if (process.platform !== "win32") fs.accessSync(file, fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function invocation(provider: AgentProvider, bin: string, call: StepCall, prompt: string) {

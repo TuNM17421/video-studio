@@ -156,9 +156,35 @@ export function writeState(state: VideoState) {
   fs.mkdirSync(stateDir(state.id), { recursive: true });
   // Through a temp file: a write cut short (Studio stopped, disk full) left half a JSON document, and one
   // unreadable state.json failed the whole video list, not just that video.
-  const tmp = `${stateFile(state.id)}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(state, null, 2)}\n`);
-  fs.renameSync(tmp, stateFile(state.id));
+  const file = stateFile(state.id);
+  const tmp = `${file}.${process.pid}.tmp`;
+  const text = `${JSON.stringify(state, null, 2)}\n`;
+  fs.writeFileSync(tmp, text);
+  try {
+    replaceFile(tmp, file);
+  } catch {
+    // Windows refuses to replace a file another program holds open (antivirus, indexer, a sync client) for a
+    // moment. After a few tries write it in place, as before — never fail a job over it.
+    fs.writeFileSync(file, text);
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
+const BUSY = new Set(["EPERM", "EACCES", "EBUSY"]);
+const pause = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/** rename over an existing file, retried while Windows says the target is in use. */
+function replaceFile(from: string, to: string) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (error) {
+      if (attempt >= 4 || !BUSY.has((error as NodeJS.ErrnoException).code ?? "")) throw error;
+      pause(15 * (attempt + 1));
+    }
+  }
 }
 
 export function updateState(id: string, patch: (state: VideoState) => void) {

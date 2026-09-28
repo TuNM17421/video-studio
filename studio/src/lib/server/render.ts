@@ -3,7 +3,7 @@ import path from "node:path";
 import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
-import { finishJob, log, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, isRunning, jobHandled, log, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
 import { HttpError, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
@@ -92,7 +92,12 @@ async function renderSteps(id: string, base: string) {
   try {
     return await runAgent(id, "deliver", base);
   } catch (error) {
-    log(id, "error", error instanceof Error ? error.message : String(error));
+    // After its job started, runAgent has already logged it and marked the deliver stage.
+    if (!jobHandled(error)) {
+      const message = error instanceof Error ? error.message : String(error);
+      log(id, "error", message);
+      if (!isRunning(id)) setStage(id, "deliver", "error", message);
+    }
     return false;
   }
 }

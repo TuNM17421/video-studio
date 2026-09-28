@@ -47,22 +47,52 @@ export function collectVideoTrashTargets(id: string, roots: TrashRoots = DEFAULT
 }
 
 /**
- * Windows: the Recycle Bin through .NET's VisualBasic FileSystem, which ships with every Windows PowerShell.
- * The paths travel as JSON in an environment variable, so no quoting can split a folder like `C:\Users\Tài\…`.
- * Before this the delete button answered 501 on every Windows machine — the whole team.
+ * Windows: the Recycle Bin through SHFileOperation, the call Explorer's Delete uses. Before this the delete
+ * button answered 501 on every Windows machine — the whole team. The flags matter: FOF_ALLOWUNDO recycles, and
+ * FOF_WANTNUKEWARNING makes Windows ask before it would delete for good instead (a folder over the bin's size
+ * limit, a drive with no bin) — .NET's VisualBasic DeleteDirectory, tried first, deletes those silently.
+ * FOF_NOERRORUI keeps error dialogs off the desktop; the code comes back instead. The paths travel as JSON in
+ * an environment variable and the script as -EncodedCommand, so no quoting can split `C:\Users\Tài\…`. The
+ * path list is memory the script allocates itself: .NET's string marshalling stops at the first NUL, and
+ * SHFileOperation takes NUL-separated paths.
  */
 const RECYCLE = [
   "$ErrorActionPreference = 'Stop'",
-  "Add-Type -AssemblyName Microsoft.VisualBasic",
-  "foreach ($p in (ConvertFrom-Json $env:VS_TRASH_PATHS)) {",
-  "  if (Test-Path -LiteralPath $p -PathType Container) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }",
-  "  elseif (Test-Path -LiteralPath $p) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p, 'OnlyErrorDialogs', 'SendToRecycleBin') }",
+  'Add-Type -TypeDefinition @"',
+  "using System;",
+  "using System.Runtime.InteropServices;",
+  "public static class VsRecycle {",
+  "  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]",
+  "  struct Op { public IntPtr hwnd; public uint wFunc; public IntPtr pFrom; public IntPtr pTo; public ushort fFlags; public bool aborted; public IntPtr maps; public IntPtr title; }",
+  '  [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SHFileOperation(ref Op op);',
+  "  public static int Run(string[] paths, out bool aborted) {",
+  '    IntPtr from = Marshal.StringToHGlobalUni(string.Join("\\0", paths) + "\\0\\0");',
+  "    try {",
+  "      // FO_DELETE; FOF_SILENT | FOF_NOCONFIRMATION | FOF_ALLOWUNDO | FOF_NOERRORUI | FOF_WANTNUKEWARNING",
+  "      var op = new Op { wFunc = 3, pFrom = from, fFlags = 0x4 | 0x10 | 0x40 | 0x400 | 0x4000 };",
+  "      int code = SHFileOperation(ref op);",
+  "      aborted = op.aborted;",
+  "      return code;",
+  "    } finally { Marshal.FreeHGlobal(from); }",
+  "  }",
   "}",
+  '"@',
+  // No @(…) around it: in Windows PowerShell that wraps the whole array as one element, and the cast then
+  // joins every path into a single string (measured).
+  "$paths = [string[]](ConvertFrom-Json $env:VS_TRASH_PATHS)",
+  "$aborted = $false",
+  "$code = [VsRecycle]::Run($paths, [ref]$aborted)",
+  "if ($code -ne 0) { throw ('SHFileOperation 0x{0:X}' -f $code) }",
+  "if ($aborted) { throw 'Đã huỷ, chưa xoá thêm gì.' }",
 ].join("\n");
+
+/** A pending "delete permanently?" question must not hold the request open forever. */
+const TRASH_TIMEOUT_MS = 5 * 60_000;
 
 function trashCommand(paths: string[]): { cmd: string; args: string[]; env?: NodeJS.ProcessEnv } {
   if (process.platform === "win32") {
-    return { cmd: "powershell.exe", args: ["-NoProfile", "-NonInteractive", "-Command", RECYCLE], env: { ...process.env, VS_TRASH_PATHS: JSON.stringify(paths) } };
+    const script = Buffer.from(RECYCLE, "utf16le").toString("base64");
+    return { cmd: "powershell.exe", args: ["-NoProfile", "-NonInteractive", "-EncodedCommand", script], env: { ...process.env, VS_TRASH_PATHS: JSON.stringify(paths) } };
   }
   if (!fs.existsSync(GIO)) throw new HttpError(501, "Máy chưa có GIO nên không thể đưa video vào Thùng rác.");
   return { cmd: GIO, args: ["trash", "--force", ...paths] };
@@ -71,10 +101,14 @@ function trashCommand(paths: string[]): { cmd: string; args: string[]; env?: Nod
 export async function moveToSystemTrash(paths: string[]) {
   const { cmd, args, env } = trashCommand(paths);
   try {
-    await execFileP(cmd, args, { encoding: "utf8", maxBuffer: 1024 * 1024, ...(env ? { env } : {}) });
+    await execFileP(cmd, args, { encoding: "utf8", maxBuffer: 1024 * 1024, timeout: TRASH_TIMEOUT_MS, ...(env ? { env } : {}) });
   } catch (error) {
-    const detail = error instanceof Error && error.message ? ` ${error.message}` : "";
-    throw new HttpError(500, `Không thể đưa toàn bộ dữ liệu vào Thùng rác.${detail}`);
+    // The message of a failed execFile repeats the whole command line — here a page of base64. The first
+    // line the program wrote to stderr is the reason.
+    const stderr = String((error as { stderr?: unknown }).stderr ?? "").split(/\r?\n/).find((line) => line.trim());
+    const killed = (error as { killed?: boolean }).killed ? "Hết thời gian chờ." : "";
+    const reason = killed || stderr || (error instanceof Error ? error.message : "");
+    throw new HttpError(500, `Không thể đưa toàn bộ dữ liệu vào Thùng rác.${reason ? ` ${reason}` : ""}`);
   }
 }
 
