@@ -95,6 +95,14 @@ test("telemetry preserves a cost only when its provenance is explicit", () => {
   assert.deepEqual(usage.measurement.cost, { amount: 0.03, currency: "USD", source: "gateway_reported" });
 });
 
+test("video duration rides on the render run, so cost/minute can be computed downstream", () => {
+  const { repo, id } = fixture();
+  const render = startRun(repo, id, { stage: "render", actor: "system", mode: "deterministic" });
+  addRunMetrics(repo, id, render.runId, { videoDurationSec: 372.4 });
+  const usage = readTelemetryOutbox(repo).find((event) => event.event_type === "usage_recorded");
+  assert.equal(usage.measurement.video_duration_s, 372.4);
+});
+
 test("usage event carries the run's stage and actor so tokens can be grouped per phase", () => {
   const { repo, id } = fixture();
   const run = startRun(repo, id, { stage: "scenes.qa", actor: "claude", mode: "agent" });

@@ -2,9 +2,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   activeGateway,
+  abandonGatewayRun,
   beginGatewayRun,
   clearGatewaySettings,
   diagnoseGateway,
@@ -15,9 +16,13 @@ import {
   withGatewayArgs,
   withGatewayEnv,
   writeGatewaySettings,
+  resetGatewayRunsForTests,
+  OPEN_WINDOW_MAX_AGE_MS,
+  keepGatewayRunAlive,
 } from "./gateway";
 
 const T0 = Date.parse("2026-09-26T03:00:00.000Z");
+afterEach(() => { resetGatewayRunsForTests(); vi.useRealTimers(); });
 
 /** A 9router-shaped DB: the two tables Studio reads, nothing else. */
 function fakeRouter(rows: { at: number; key: string; input: number; output: number; cost: number }[] = []) {
@@ -38,6 +43,43 @@ const asEnv = (value: Record<string, string>) => value as unknown as NodeJS.Proc
 const env = (db: string, extra: Record<string, string> = {}) => asEnv({ STUDIO_GATEWAY: "9router", NINEROUTER_DB: db, ...extra });
 
 describe("9router gateway", () => {
+  it("expires an orphan without poisoning later runs, including a day later", async () => {
+    const later = T0 + OPEN_WINDOW_MAX_AGE_MS + 10_000;
+    const cfg = gatewayConfig(env(fakeRouter([
+      { at: later + 1000, key: "sk-video", input: 10, output: 2, cost: 0.01 },
+    ])))!;
+    beginGatewayRun("orphan", T0);
+    beginGatewayRun("later", later);
+    expect(await endGatewayRun("later", cfg, {}, { now: later + 2000, settleMs: 0 }))
+      .toMatchObject({ gatewayStatus: "ok", costUsd: 0.01 });
+    beginGatewayRun("tomorrow", T0 + 26 * 3600_000);
+    expect((await endGatewayRun("tomorrow", cfg, {}, { now: T0 + 26 * 3600_000 + 2000, settleMs: 0 })).gatewayStatus)
+      .toBe("no_requests");
+  });
+
+  it("abandon retains overlap evidence, but does not block a later sequential run", async () => {
+    const cfg = gatewayConfig(env(fakeRouter()))!;
+    beginGatewayRun("failed", T0);
+    beginGatewayRun("concurrent", T0 + 100);
+    abandonGatewayRun("failed", T0 + 200);
+    expect((await endGatewayRun("concurrent", cfg, {}, { now: T0 + 300, settleMs: 0 })).gatewayStatus).toBe("overlap");
+    beginGatewayRun("next", T0 + 1000);
+    expect((await endGatewayRun("next", cfg, {}, { now: T0 + 2000, settleMs: 0 })).gatewayStatus).toBe("no_requests");
+  });
+
+  it("does not expire a live but silent long-running owner", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    const cfg = gatewayConfig(env(fakeRouter()))!;
+    beginGatewayRun("live");
+    const release = keepGatewayRunAlive("live");
+    try {
+      await vi.advanceTimersByTimeAsync(OPEN_WINDOW_MAX_AGE_MS + 60_000);
+      beginGatewayRun("other");
+      expect((await endGatewayRun("other", cfg, {}, { now: Date.now() + 1000, settleMs: 0 })).gatewayStatus).toBe("overlap");
+    } finally { release(); }
+  });
+
   it("is off unless enabled and a key of that name exists", () => {
     const db = fakeRouter();
     expect(gatewayConfig(asEnv({ NINEROUTER_DB: db }))).toBeNull();

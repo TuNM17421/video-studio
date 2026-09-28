@@ -3,8 +3,8 @@ import path from "node:path";
 import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
-import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
+import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { HttpError, mp4Path, qaManifestPath, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
 /** Build → render MP4 (frames from this server's /ds) → transcript; then the agent writes chapters. */
@@ -73,6 +73,14 @@ export async function renderVideo(id: string, base: string) {
     "--mp4", rel(mp4Path(id)),
   ]);
   if (!manifestOk) return fail("Không tạo được manifest.json cho platform QA, xem nhật ký.");
+  // manifest.json's duration is ffprobe'd off the MP4 itself and cross-checked against the voice — the
+  // one length in this whole pipeline that is actually verified, not estimated. USD/phút rides on it.
+  try {
+    const manifest = JSON.parse(fs.readFileSync(qaManifestPath(id), "utf8")) as { duration_sec?: number };
+    if (typeof manifest.duration_sec === "number") recordJobMetrics(id, { videoDurationSec: manifest.duration_sec });
+  } catch (error) {
+    log(id, "error", `Không đọc được thời lượng từ manifest.json cho telemetry: ${error instanceof Error ? error.message : String(error)}`);
+  }
   setStage(id, "render", "done");
   finishJob(id, "done");
   // chapters + PROMPTS.md need judgement (chapter titles), so the agent finishes the delivery

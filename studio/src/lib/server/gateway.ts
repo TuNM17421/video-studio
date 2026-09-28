@@ -1,6 +1,6 @@
 import os from "node:os";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 import { registry } from "./jobs";
 import { HttpError } from "./paths";
 
@@ -22,6 +22,9 @@ export interface GatewayConfig {
 export const defaultGatewayDb = () => path.join(os.homedir(), ".9router", "db", "data.sqlite");
 
 function openReadOnly(file: string) {
+  // Optional builtin: do not load it while importing agent/QA routes on Node 20.
+  // Keep this synchronous API; every caller already catches an unavailable runtime/DB.
+  const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
   return new DatabaseSync(file, { readOnly: true });
 }
 
@@ -57,7 +60,7 @@ export async function activeGateway(
   probe: (url: string) => Promise<boolean> = defaultGatewayProbe,
 ): Promise<{ cfg: GatewayConfig | null; note?: string }> {
   const cfg = gatewayConfig(env);
-  if (!cfg) return { cfg: null };
+  if (!cfg) return { cfg: null, ...(env.STUDIO_GATEWAY === "9router" ? { note: "9router tắt: runtime SQLite hoặc API key không khả dụng — lượt này không đo chi phí." } : {}) };
   const base = (env.NINEROUTER_URL || "http://127.0.0.1:20128").replace(/\/$/, "");
   if (await probe(`${base}/v1/models`)) return { cfg };
   return { cfg: null, note: "9router không phản hồi — Codex chạy thẳng, lượt này không đo chi phí." };
@@ -143,14 +146,38 @@ export function withGatewayArgs(args: string[], cfg: GatewayConfig) {
 export const withGatewayEnv = (env: NodeJS.ProcessEnv, cfg: GatewayConfig) => ({ ...env, NINEROUTER_API_KEY: cfg.key });
 
 // Runs going through the gateway right now and recently, to tell whether two windows shared the key.
-type Window = { start: number; end: number | null };
+type Window = { start: number; end: number | null; touched?: number };
 const g = globalThis as typeof globalThis & { __studioGatewayRuns?: Map<string, Window> };
 const windows = (g.__studioGatewayRuns ??= new Map());
 
+// A live owner renews its lease even when the CLI is silent. Only orphaned leases expire.
+export const OPEN_WINDOW_MAX_AGE_MS = 2 * 3600_000;
 export function beginGatewayRun(token: string, now = Date.now()) {
-  for (const [key, w] of windows) if (w.end !== null && now - w.end > 24 * 3600_000) windows.delete(key);
-  windows.set(token, { start: now, end: null });
+  for (const [key, w] of windows) {
+    if (w.end === null && now - (w.touched ?? w.start) > OPEN_WINDOW_MAX_AGE_MS) {
+      w.end = (w.touched ?? w.start) + OPEN_WINDOW_MAX_AGE_MS;
+    }
+    if (w.end !== null && now - w.end > 24 * 3600_000) windows.delete(key);
+  }
+  windows.set(token, { start: now, end: null, touched: now });
 }
+
+/** Close without pricing, but retain the interval so concurrent runs cannot claim its requests. */
+export function abandonGatewayRun(token: string, now = Date.now()) {
+  const window = windows.get(token);
+  if (window && window.end === null) window.end = now;
+}
+
+export function keepGatewayRunAlive(token: string) {
+  const timer = setInterval(() => {
+    const window = windows.get(token);
+    if (window && window.end === null) window.touched = Date.now();
+  }, 30_000);
+  timer.unref();
+  return () => clearInterval(timer);
+}
+
+export function resetGatewayRunsForTests() { windows.clear(); }
 
 // 9router writes a request's row as the response ends, which can be a moment after the CLI exits.
 export const SETTLE_MS = 3000;

@@ -79,6 +79,9 @@ function emitTelemetry(repo, videoId, eventType, runId, payload = {}) {
       characters: finiteNonNegative(payload.characters),
       credits: finiteNonNegative(payload.credits),
       gpu_seconds: finiteNonNegative(payload.gpuSeconds),
+      // ffprobe'd off the finished MP4 (render.ts) — the one length in the pipeline that is verified,
+      // not estimated. Lets the dashboard compare cost per minute, not just per video.
+      video_duration_s: finiteNonNegative(payload.videoDurationSec),
       cost: { amount: source === "unavailable" ? null : cost, currency: "USD", source },
     },
     privacy: { payload_class: "metadata_only" },

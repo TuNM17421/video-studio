@@ -41,8 +41,10 @@ docker compose exec -T postgres psql -U telemetry -d telemetry < postgres/metric
   job cài đặt (`*-setup`) không tính vào video.
 - **Gen lại**: `attempt` = lượt thứ mấy của stage; `version` = v1 tới lần render thành công đầu, rồi v2…;
   `trigger` = `initial · feedback · qa_fix · retry`.
-- **Giọng nói**: ElevenLabs ghi ký tự gửi đi + credit bị trừ thật (bộ đếm tài khoản trước/sau); ra $ khi Studio
-  có `STUDIO_ELEVENLABS_USD_PER_1K_CREDITS`. Kaggle ghi thời gian GPU. Local/nhập audio: miễn phí.
+- **Giọng nói**: ElevenLabs tính tiền tự động từ ký tự gửi đi × giá công khai của đúng model đang dùng
+  (`studio/src/lib/server/pricing-catalog.ts`), không phải một số cố định cho mọi model; credit tài khoản
+  (bộ đếm trước/sau) vẫn ghi lại để đối chiếu, không dùng để tính giá. Model chưa có trong bảng → để trống,
+  không đoán. Kaggle ghi thời gian GPU. Local/nhập audio: miễn phí.
 - **Truy vết QA**: feedback gửi lên chỉ là metadata (mã, cảnh, mã lỗi, mức, trạng thái, run liên quan); nội dung góp
   ý ở ledger local của Studio. Session + hash prompt của lượt gây lỗi giúp mở lại đúng phiên agent.
 - Dashboard sinh từ `grafana/gen-dashboard.py`: sửa script rồi chạy

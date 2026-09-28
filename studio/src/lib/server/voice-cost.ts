@@ -1,12 +1,14 @@
 /**
- * What a voice step costs, for the telemetry dashboard. ElevenLabs is the only paid path: it charges credits, and the
- * credits a character costs depend on the model, so the truth is the account's own counter read before and after the
- * run. Kaggle (free GPU quota), the local model and recorded audio cost nothing by construction — a known zero, which
+ * What a voice step costs, for the telemetry dashboard. ElevenLabs is the only paid path, priced from the
+ * public rate of the model actually used (pricing-catalog.ts) — never a flat rate applied to every model alike.
+ * Kaggle (free GPU quota), the local model and recorded audio cost nothing by construction — a known zero, which
  * the dashboard must not confuse with "unknown".
  */
+import { ELEVENLABS_PRICING } from "./pricing-catalog";
 
 export interface VoiceCost {
   provider: string;
+  model?: string;
   characters?: number;
   credits?: number;
   gpuSeconds?: number;
@@ -30,25 +32,23 @@ export async function elevenCreditsUsed(key: string, fetcher: typeof fetch = fet
 }
 
 /**
- * Credits charged = counter after − before (null if either read failed, or the counter went backwards at a monthly
- * reset). Dollars only with a plan price (`STUDIO_ELEVENLABS_USD_PER_1K_CREDITS`); without one the dashboard still
- * shows characters/credits and the cost stays unavailable rather than invented.
+ * Priced from characters × the model's own published rate — not from account credits: ElevenLabs' internal
+ * credit cost per character isn't published and can differ by model, so pricing off it would need a second,
+ * unverifiable conversion (a flat $/1k-credits rate applied to every model alike used to do exactly that, and
+ * silently mis-priced whichever model the rate wasn't tuned for — see COST-COMPARISON-2026-09-26.md).
+ * Credits are still recorded (`credits`), as the account's own truth for cross-checking, just not what prices it.
+ * A model missing from `pricing-catalog.ts`, or no character count, leaves cost unavailable — never a guessed rate.
  */
-export function elevenLabsCost(
-  characters: number | null,
-  before: number | null,
-  after: number | null,
-  env: NodeJS.ProcessEnv = process.env,
-): VoiceCost {
+export function elevenLabsCost(model: string | undefined, characters: number | null, before: number | null, after: number | null): VoiceCost {
   const credits = before !== null && after !== null && after >= before ? after - before : null;
-  const rate = Number(env.STUDIO_ELEVENLABS_USD_PER_1K_CREDITS);
-  const basis = credits ?? characters;
+  const entry = model ? ELEVENLABS_PRICING[model] : undefined;
   return {
     provider: "elevenlabs",
+    ...(model ? { model } : {}),
     ...(characters !== null ? { characters } : {}),
     ...(credits !== null ? { credits } : {}),
-    ...(Number.isFinite(rate) && rate >= 0 && basis !== null
-      ? { costUsd: Math.round(((basis * rate) / 1000) * 1e6) / 1e6, costSource: "server_price_estimate" as const }
+    ...(entry && characters !== null
+      ? { costUsd: Math.round(((characters * entry.usdPer1kChars) / 1000) * 1e6) / 1e6, costSource: "server_price_estimate" as const }
       : {}),
   };
 }

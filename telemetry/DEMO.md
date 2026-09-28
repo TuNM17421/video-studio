@@ -87,8 +87,9 @@ máy, không tốn tiền, nhưng thời gian vẫn đo đủ."
 khoản**, vì hệ thống đọc bộ đếm trước và sau mỗi lượt tạo giọng. Kaggle thì tính bằng **thời gian GPU**, vì quota GPU có
 giới hạn theo tuần."
 
-**[Nói]** (bắt buộc nói) "Lưu ý: giá ElevenLabs trong demo là giả định **$0.30 cho 1.000 credit**. Chi phí Codex là giá
-**quy đổi** theo bảng giá API, không phải hoá đơn, vì ta dùng gói ChatGPT."
+**[Nói]** "ElevenLabs tính theo **giá công khai của đúng model đang dùng** — không phải một số cố định cho mọi
+model, vì mỗi model giá khác nhau tới 2 lần. Chi phí Codex là giá **quy đổi** theo bảng giá API, không phải hoá
+đơn, vì ta dùng gói ChatGPT."
 
 ## 6. Từng mã video (7:00–8:00)
 

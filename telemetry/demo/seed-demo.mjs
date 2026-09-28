@@ -9,7 +9,7 @@
  * Xoá sau demo (trên máy chạy Postgres):
  *   DELETE FROM telemetry_events WHERE video_ref LIKE 'demo-%';
  *
- * Giá ElevenLabs trong demo là GIẢ ĐỊNH $0.30 / 1.000 credit — không phải giá gói thật.
+ * ElevenLabs trong demo dùng đúng bảng giá công khai (pricing-catalog.ts), không phải số giả định.
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -33,7 +33,8 @@ let clock = realNow() - 10 * 86_400_000;
 Date.now = () => clock;
 const minutes = (m) => { clock += Math.round(m * 60_000); };
 
-const PRICE_PER_1K_CREDITS = 0.3;
+// Phải khớp studio/src/lib/server/pricing-catalog.ts — đổi giá thì sửa cả hai nơi.
+const ELEVENLABS_USD_PER_1K_CHARS = { eleven_turbo_v2_5: 0.05, eleven_v3: 0.10 };
 const claude = (input, cached, output, cost) => ({ provider: "claude", model: "claude-sonnet-5", inputTokens: input, cachedInputTokens: cached, outputTokens: output, costUsd: cost, costSource: "provider_reported" });
 const codex = (input, cached, output, cost, extra = {}) => ({ provider: "codex", model: "gpt-5.6-luna", inputTokens: input, cachedInputTokens: cached, outputTokens: output, ...(cost === null ? {} : { costUsd: cost, costSource: "gateway_reported", gatewayStatus: "ok" }), ...extra });
 
@@ -49,14 +50,15 @@ function run(video, stage, actor, mode, mins, metrics, { status = "done", trigge
 
 function voice(video, kind) {
   if (kind === "elevenlabs") {
-    const characters = 5200, credits = 2600;
-    return run(video, "voice", "system", "deterministic", 6, { provider: "elevenlabs", model: "eleven_turbo_v2_5", characters, credits, costUsd: (credits * PRICE_PER_1K_CREDITS) / 1000, costSource: "server_price_estimate" });
+    const model = "eleven_turbo_v2_5", characters = 5200, credits = 2600;
+    const costUsd = Math.round((characters * ELEVENLABS_USD_PER_1K_CHARS[model] / 1000) * 1e6) / 1e6;
+    return run(video, "voice", "system", "deterministic", 6, { provider: "elevenlabs", model, characters, credits, costUsd, costSource: "server_price_estimate" });
   }
   if (kind === "kaggle") return run(video, "kaggle-generate", "system", "deterministic", 14, { provider: "kaggle", gpuSeconds: 780, costUsd: 0, costSource: "no_charge" });
   return run(video, "omnivoice-generate", "system", "deterministic", 22, { provider: "omnivoice-local", costUsd: 0, costSource: "no_charge" });
 }
 
-function video(id, { voiceKind, qaRounds, userFeedbackAfterRender, unmeasuredScenes = false, stopAfterCues = false }) {
+function video(id, { voiceKind, qaRounds, userFeedbackAfterRender, unmeasuredScenes = false, stopAfterCues = false, durationSec }) {
   run(id, "script.write", "claude", "agent", 5, claude(9000, 42000, 6500, 0.31));
   run(id, "cues", "codex", "agent", 8, codex(460000, 400000, 3000, 0.13));
   run(id, "cues.gate", "system", "deterministic", 1);
@@ -78,22 +80,23 @@ function video(id, { voiceKind, qaRounds, userFeedbackAfterRender, unmeasuredSce
     run(id, "scenes.gate", "system", "deterministic", 4, null, { trigger: "retry" });
   }
   void scenes;
-  run(id, "render", "system", "deterministic", 16);
+  // ffprobe'd off the finished MP4 in production (render.ts); the demo just states it, like the rest of the data.
+  run(id, "render", "system", "deterministic", 16, durationSec ? { videoDurationSec: durationSec } : null);
   run(id, "deliver.gate", "system", "deterministic", 2);
   if (userFeedbackAfterRender) {
     minutes(24 * 60); // team QA gửi góp ý hôm sau
     const fb = recordFeedback(repo, id, { stage: "scenes", scope: "cue-05", source: "user", severity: "major", message: "demo" });
     const fix = run(id, "scenes", "codex", "agent", 11, codex(520000, 470000, 6100, 0.16), { trigger: "feedback", feedbackIds: [fb.id] });
     updateFeedback(repo, id, fb.id, { status: "applied" });
-    run(id, "render", "system", "deterministic", 16);
+    run(id, "render", "system", "deterministic", 16, durationSec ? { videoDurationSec: durationSec } : null);
     void fix;
   }
   minutes(24 * 60);
 }
 
-video("demo-d06-v01-ai-ethics", { voiceKind: "elevenlabs", qaRounds: 1, userFeedbackAfterRender: false });
-video("demo-d06-v02-rag-basics", { voiceKind: "kaggle", qaRounds: 2, userFeedbackAfterRender: true });
-video("demo-d06-v03-agents", { voiceKind: "local", qaRounds: 1, userFeedbackAfterRender: false, unmeasuredScenes: true });
+video("demo-d06-v01-ai-ethics", { voiceKind: "elevenlabs", qaRounds: 1, userFeedbackAfterRender: false, durationSec: 372 });
+video("demo-d06-v02-rag-basics", { voiceKind: "kaggle", qaRounds: 2, userFeedbackAfterRender: true, durationSec: 318 });
+video("demo-d06-v03-agents", { voiceKind: "local", qaRounds: 1, userFeedbackAfterRender: false, unmeasuredScenes: true, durationSec: 405 });
 video("demo-d06-v04-eval-draft", { voiceKind: "local", qaRounds: 0, userFeedbackAfterRender: false, stopAfterCues: true });
 Date.now = realNow;
 

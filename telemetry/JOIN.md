@@ -17,11 +17,13 @@ Việc gửi không bao giờ làm chậm hay làm hỏng job: collector tắt t
    STUDIO_MACHINE_LABEL=<tên-bạn>          # để so sánh giữa các máy, ví dụ "an-macbook"
    ```
 
-   Tuỳ chọn, để có thêm chi phí:
+   Tuỳ chọn, để có thêm chi phí Codex:
    - `STUDIO_GATEWAY=9router`: Codex đi qua 9router để có chi phí. Cách setup ở `GATEWAY-9ROUTER.md`. Không bật thì
      chi phí Codex hiện "không đo".
-   - `STUDIO_ELEVENLABS_USD_PER_1K_CREDITS=<giá gói>`: để chi phí ElevenLabs ra đơn vị $.
+
+   Chi phí ElevenLabs tự tính theo giá công khai của đúng model đang dùng — không cần cấu hình gì thêm.
 3. **Khởi động lại Studio**: `npm run studio`.
+
 
 ## Gửi dữ liệu cũ (tuỳ chọn)
 

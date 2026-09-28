@@ -504,3 +504,54 @@ export interface Library {
   groups: LibraryGroup[];
   videos: { id: string; player: string }[];
 }
+
+/**
+ * `/api/telemetry-local` — this machine's outbox as the "Số liệu" tab shows it. Built from a field whitelist:
+ * values never outside it reach the browser, and a key outside it is reported by name only.
+ * `acked` is only what sync-state.json receipts establish; there is no per-event "failed" state, because the
+ * uploader only records the last attempt's error for the whole run.
+ */
+export type TelemetryEventStatus = "acked" | "pending" | "blocked";
+
+export interface TelemetryPreviewEvent {
+  status: TelemetryEventStatus;
+  /** Why the uploader would refuse it (field path, never its value). */
+  blockedReason: string | null;
+  /** Keys outside the preview whitelist that the raw event carries. */
+  extraKeys: string[];
+  event: Record<string, unknown>;
+}
+
+export interface TelemetryVideoMetrics {
+  video: string;
+  runs: number;
+  finished: number;
+  errors: number;
+  durationMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  /** Sum of measured costs only; null when no event carried a cost with a source. */
+  costUsd: number | null;
+  costMeasured: number;
+  costUnknown: number;
+  feedbackOpen: number;
+  lastAt: string | null;
+}
+
+export interface LocalTelemetry {
+  outbox: { total: number; unreadableLines: number; byType: Record<string, number> };
+  counts: { acked: number; pending: number; blocked: number };
+  receipts: {
+    found: boolean;
+    lastAttemptAt: string | null;
+    lastSuccessAt: string | null;
+    lastFailureAt: string | null;
+    lastError: string | null;
+  };
+  sending: { url: string; hasToken: boolean; autoSync: boolean; enabled: boolean; syncing: boolean };
+  /** Encrypted, opt-in AI logs: counted only — their content is never previewed. */
+  aiLogs: { count: number; enabled: boolean };
+  videos: TelemetryVideoMetrics[];
+  preview: TelemetryPreviewEvent[];
+  previewLimit: number;
+}

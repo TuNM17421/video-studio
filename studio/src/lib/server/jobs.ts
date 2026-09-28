@@ -136,6 +136,8 @@ export function recordJobMetrics(id: string, metrics: {
   characters?: number;
   credits?: number;
   gpuSeconds?: number;
+  /** ffprobe'd off the finished MP4 (render.ts), so $/phút compares videos of different length fairly. */
+  videoDurationSec?: number;
   toolCalls?: number;
   turns?: number;
   model?: string;

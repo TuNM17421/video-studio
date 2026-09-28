@@ -8,14 +8,20 @@
 --     Trạng thái chi phí từng run: paid · free (no_charge) · unmeasured (tính phí được mà thiếu số) · none.
 --   * "Video đo đủ" = có run tính phí được và không run nào `unmeasured`. KPI chi phí TB chỉ tính các video này.
 --   * "Video hoàn tất" = có run render kết thúc `done`.
---   * Thời gian máy = tổng thời lượng run; lead time = run đầu → run cuối đã kết thúc, gồm lúc chờ duyệt.
+--   * Thời gian máy = HỢP các khoảng [started_at, finished_at], không phải tổng cột duration_ms. `scenes` (agent)
+--     mở job rồi gọi `scenes.gate` và `scenes.qa` ngay bên trong trước khi tự đóng — cộng thẳng ba dòng đó đếm
+--     cùng một khoảng thời gian 2–3 lần (đối chiếu 26/09/2026 với bảng chi phí đo tay: cùng lỗi, bảng đó tránh
+--     bằng cách hợp khoảng thủ công). `telemetry_active_islands` hợp khoảng một lần, video và phase dùng chung.
+--     Lead time = run đầu → run cuối đã kết thúc, gồm lúc chờ duyệt (không hợp khoảng, vì đây vốn đã là một mốc).
+--   * USD/phút dùng `video_duration_s` — độ dài MP4 do ffprobe đo và đối chiếu với giọng đọc lúc render (không
+--     phải ước tính) — nên so được chi phí giữa các video dài ngắn khác nhau, không chỉ so theo cả video.
 --   * Token: Codex báo `input_tokens` ĐÃ gồm cached; Claude thì không. `fresh_input_tokens` quy về cùng nghĩa.
 --   * Gen lại: `attempt` = lượt thứ mấy của stage; `version` = phiên bản đang dựng (v1 tới lần render thành
 --     công đầu tiên, rồi v2…); `trigger` = initial · feedback · qa_fix · retry. Làm lại = trigger khác initial.
 
 -- View đổi cột thì Postgres không REPLACE được; bỏ view (không phải dữ liệu) rồi tạo lại.
 DROP VIEW IF EXISTS telemetry_feedback_trace, telemetry_feedback, telemetry_version_metrics,
-  telemetry_video_phase_metrics, telemetry_video_metrics, telemetry_runs;
+  telemetry_video_phase_metrics, telemetry_video_metrics, telemetry_active_islands, telemetry_runs;
 
 CREATE OR REPLACE FUNCTION telemetry_phase(stage TEXT) RETURNS TEXT
 LANGUAGE sql IMMUTABLE AS $$
@@ -57,6 +63,7 @@ WITH per_run AS (
     sum((measurement ->> 'characters')::numeric) FILTER (WHERE event_type = 'usage_recorded') AS characters,
     sum((measurement ->> 'credits')::numeric) FILTER (WHERE event_type = 'usage_recorded') AS credits,
     sum((measurement ->> 'gpu_seconds')::numeric) FILTER (WHERE event_type = 'usage_recorded') AS gpu_seconds,
+    max((measurement ->> 'video_duration_s')::numeric) FILTER (WHERE event_type = 'usage_recorded') AS video_duration_s,
     sum((measurement -> 'cost' ->> 'amount')::numeric) FILTER (WHERE event_type = 'usage_recorded'
       AND measurement -> 'cost' ->> 'source' IN ('provider_reported', 'gateway_reported', 'server_price_estimate')) AS paid_cost,
     bool_or(measurement -> 'cost' ->> 'source' = 'no_charge') FILTER (WHERE event_type = 'usage_recorded') AS free,
@@ -116,61 +123,120 @@ SELECT
   characters,
   credits,
   gpu_seconds,
+  video_duration_s,
   paid_cost AS cost_usd,
   cost_source
 FROM shaped;
 
+-- Hợp các khoảng [started_at, finished_at] chồng/lồng nhau thành các khoảng rời nhau ("islands"), rồi tổng độ
+-- dài từng island mới ra đúng thời gian máy thật sự bận. `scope`: 'video' hợp mọi run của video; 'phase' hợp
+-- theo từng (video, phase) — cần riêng vì scenes/scenes.gate/scenes.qa cùng vào phase 'scenes' và lồng nhau;
+-- 'agent' hợp chỉ các run có usage (agent) — scenes (agent) lồng scenes.qa (agent) nên cũng cần hợp riêng.
+CREATE VIEW telemetry_active_islands AS
+WITH base AS (
+  SELECT video_ref, phase, has_usage, started_at, finished_at
+  FROM telemetry_runs
+  WHERE finished_at IS NOT NULL AND phase <> 'setup'
+), video_bounds AS (
+  SELECT video_ref, started_at, finished_at,
+    max(finished_at) OVER (PARTITION BY video_ref ORDER BY started_at
+      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_end
+  FROM base
+), video_islands AS (
+  SELECT video_ref, started_at, finished_at,
+    sum(CASE WHEN prev_end IS NULL OR started_at > prev_end THEN 1 ELSE 0 END)
+      OVER (PARTITION BY video_ref ORDER BY started_at) AS island
+  FROM video_bounds
+), phase_bounds AS (
+  SELECT video_ref, phase, started_at, finished_at,
+    max(finished_at) OVER (PARTITION BY video_ref, phase ORDER BY started_at
+      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_end
+  FROM base
+), phase_islands AS (
+  SELECT video_ref, phase, started_at, finished_at,
+    sum(CASE WHEN prev_end IS NULL OR started_at > prev_end THEN 1 ELSE 0 END)
+      OVER (PARTITION BY video_ref, phase ORDER BY started_at) AS island
+  FROM phase_bounds
+), agent_bounds AS (
+  SELECT video_ref, started_at, finished_at,
+    max(finished_at) OVER (PARTITION BY video_ref ORDER BY started_at
+      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_end
+  FROM base WHERE has_usage
+), agent_islands AS (
+  SELECT video_ref, started_at, finished_at,
+    sum(CASE WHEN prev_end IS NULL OR started_at > prev_end THEN 1 ELSE 0 END)
+      OVER (PARTITION BY video_ref ORDER BY started_at) AS island
+  FROM agent_bounds
+)
+SELECT 'video' AS scope, video_ref, NULL::text AS phase,
+  extract(epoch FROM max(finished_at) - min(started_at)) AS window_s
+FROM video_islands GROUP BY video_ref, island
+UNION ALL
+SELECT 'phase' AS scope, video_ref, phase,
+  extract(epoch FROM max(finished_at) - min(started_at)) AS window_s
+FROM phase_islands GROUP BY video_ref, phase, island
+UNION ALL
+SELECT 'agent' AS scope, video_ref, NULL::text AS phase,
+  extract(epoch FROM max(finished_at) - min(started_at)) AS window_s
+FROM agent_islands GROUP BY video_ref, island;
+
 -- Một dòng = một video.
 CREATE VIEW telemetry_video_metrics AS
 SELECT
-  video_ref,
-  min(started_at) AS first_run_at,
-  max(coalesce(finished_at, started_at)) AS last_run_at,
-  extract(epoch FROM max(finished_at) - min(started_at) FILTER (WHERE finished_at IS NOT NULL)) AS lead_time_s,
-  sum(duration_ms) / 1000 AS active_s,
-  sum(duration_ms) FILTER (WHERE has_usage) / 1000 AS agent_s,
+  r.video_ref,
+  min(r.started_at) AS first_run_at,
+  max(coalesce(r.finished_at, r.started_at)) AS last_run_at,
+  extract(epoch FROM max(r.finished_at) - min(r.started_at) FILTER (WHERE r.finished_at IS NOT NULL)) AS lead_time_s,
+  coalesce((SELECT sum(window_s) FROM telemetry_active_islands i WHERE i.scope = 'video' AND i.video_ref = r.video_ref), 0) AS active_s,
+  (SELECT sum(window_s) FROM telemetry_active_islands i WHERE i.scope = 'agent' AND i.video_ref = r.video_ref) AS agent_s,
+  max(r.video_duration_s) FILTER (WHERE r.phase = 'render') AS video_duration_s,
+  -- Cần cả chi phí đo đủ lẫn độ dài đã biết; thiếu một trong hai thì để trống, không đoán.
+  CASE WHEN (count(*) FILTER (WHERE r.has_billable) > 0 AND count(*) FILTER (WHERE r.cost_state = 'unmeasured') = 0)
+        AND max(r.video_duration_s) FILTER (WHERE r.phase = 'render') > 0
+       THEN sum(r.cost_usd) / (max(r.video_duration_s) FILTER (WHERE r.phase = 'render') / 60.0) END AS usd_per_minute,
   count(*) AS runs,
-  count(*) FILTER (WHERE status IS NOT NULL AND status <> 'done') AS failed_runs,
-  count(*) FILTER (WHERE trigger <> 'initial') AS rework_runs,
-  max(version) AS versions,
-  sum(fresh_input_tokens) AS fresh_input_tokens,
-  sum(cached_input_tokens) AS cached_input_tokens,
-  sum(output_tokens) AS output_tokens,
-  sum(total_tokens) AS total_tokens,
-  sum(cost_usd) AS cost_usd,
-  sum(cost_usd) FILTER (WHERE trigger <> 'initial') AS rework_cost_usd,
-  sum(cost_usd) FILTER (WHERE phase = 'voice') AS voice_cost_usd,
-  sum(characters) AS characters,
-  sum(credits) AS credits,
-  sum(gpu_seconds) AS gpu_seconds,
-  count(*) FILTER (WHERE has_billable) AS billable_runs,
-  count(*) FILTER (WHERE cost_state = 'unmeasured') AS unmeasured_runs,
-  (count(*) FILTER (WHERE has_billable) > 0 AND count(*) FILTER (WHERE cost_state = 'unmeasured') = 0) AS cost_complete,
-  coalesce(bool_or(phase = 'render' AND status = 'done'), false) AS completed
-FROM telemetry_runs
-WHERE phase <> 'setup'
-GROUP BY video_ref;
+  count(*) FILTER (WHERE r.status IS NOT NULL AND r.status <> 'done') AS failed_runs,
+  count(*) FILTER (WHERE r.trigger <> 'initial') AS rework_runs,
+  max(r.version) AS versions,
+  sum(r.fresh_input_tokens) AS fresh_input_tokens,
+  sum(r.cached_input_tokens) AS cached_input_tokens,
+  sum(r.output_tokens) AS output_tokens,
+  sum(r.total_tokens) AS total_tokens,
+  sum(r.cost_usd) AS cost_usd,
+  sum(r.cost_usd) FILTER (WHERE r.trigger <> 'initial') AS rework_cost_usd,
+  sum(r.cost_usd) FILTER (WHERE r.phase = 'voice') AS voice_cost_usd,
+  sum(r.characters) AS characters,
+  sum(r.credits) AS credits,
+  sum(r.gpu_seconds) AS gpu_seconds,
+  count(*) FILTER (WHERE r.has_billable) AS billable_runs,
+  count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS unmeasured_runs,
+  (count(*) FILTER (WHERE r.has_billable) > 0 AND count(*) FILTER (WHERE r.cost_state = 'unmeasured') = 0) AS cost_complete,
+  coalesce(bool_or(r.phase = 'render' AND r.status = 'done'), false) AS completed
+FROM telemetry_runs r
+WHERE r.phase <> 'setup'
+GROUP BY r.video_ref;
 
 -- Một dòng = một (video, phase). NULL = phase đó không đo được / không phát sinh; trung bình bỏ qua NULL.
 CREATE VIEW telemetry_video_phase_metrics AS
 SELECT
-  video_ref,
-  phase,
-  min(phase_order) AS phase_order,
+  r.video_ref,
+  r.phase,
+  min(r.phase_order) AS phase_order,
   count(*) AS runs,
-  count(*) FILTER (WHERE status IS NOT NULL AND status <> 'done') AS failed_runs,
-  count(*) FILTER (WHERE trigger <> 'initial') AS rework_runs,
-  sum(duration_ms) / 1000 AS active_s,
-  sum(fresh_input_tokens) AS fresh_input_tokens,
-  sum(cached_input_tokens) AS cached_input_tokens,
-  sum(output_tokens) AS output_tokens,
-  sum(total_tokens) AS total_tokens,
+  count(*) FILTER (WHERE r.status IS NOT NULL AND r.status <> 'done') AS failed_runs,
+  count(*) FILTER (WHERE r.trigger <> 'initial') AS rework_runs,
+  coalesce((SELECT sum(window_s) FROM telemetry_active_islands i
+            WHERE i.scope = 'phase' AND i.video_ref = r.video_ref AND i.phase = r.phase), 0) AS active_s,
+  sum(r.fresh_input_tokens) AS fresh_input_tokens,
+  sum(r.cached_input_tokens) AS cached_input_tokens,
+  sum(r.output_tokens) AS output_tokens,
+  sum(r.total_tokens) AS total_tokens,
   -- Chi phí phase chỉ có khi mọi run tính phí được của phase đều đã đo; thiếu một run → NULL, không cận dưới.
-  CASE WHEN count(*) FILTER (WHERE cost_state = 'unmeasured') = 0 THEN sum(cost_usd) END AS cost_usd,
-  count(*) FILTER (WHERE has_billable) AS billable_runs,
-  count(*) FILTER (WHERE cost_state = 'unmeasured') AS unmeasured_runs
-FROM telemetry_runs
-GROUP BY video_ref, phase;
+  CASE WHEN count(*) FILTER (WHERE r.cost_state = 'unmeasured') = 0 THEN sum(r.cost_usd) END AS cost_usd,
+  count(*) FILTER (WHERE r.has_billable) AS billable_runs,
+  count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS unmeasured_runs
+FROM telemetry_runs r
+GROUP BY r.video_ref, r.phase;
 
 -- Một dòng = một phiên bản của một video: bao nhiêu lượt, làm lại vì feedback bao nhiêu, tốn bao nhiêu.
 CREATE VIEW telemetry_version_metrics AS
@@ -183,6 +249,8 @@ SELECT
   count(*) FILTER (WHERE trigger <> 'initial') AS rework_runs,
   count(*) FILTER (WHERE trigger IN ('feedback', 'qa_fix')) AS feedback_rounds,
   bool_or(phase = 'render' AND status = 'done') AS delivered,
+  -- Phiên bản gộp trực tiếp từ duration_ms — cùng lồng nhau như active_s ở video/phase, nhưng chia theo phiên
+  -- bản (giới hạn bởi run render) hiếm khi lồng chéo hai phiên; giữ tổng đơn giản, chấp nhận sai số nhỏ.
   sum(duration_ms) / 1000 AS active_s,
   sum(total_tokens) AS total_tokens,
   CASE WHEN count(*) FILTER (WHERE cost_state = 'unmeasured') = 0 THEN sum(cost_usd) END AS cost_usd,

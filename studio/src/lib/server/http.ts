@@ -13,9 +13,14 @@ export function guard(req: Request) {
   if (req.method !== "GET" && (!origin || new URL(origin).host !== host)) throw new HttpError(403, "Yêu cầu không đến từ Video Studio.");
 }
 
-/** Base URL of this server as the browser reached it (render + QA load frames from <base>/ds). */
+/** Base URL of this server as the browser reached it (render + QA load frames from <base>/ds).
+ * Always prefer 127.0.0.1 over localhost: headless Chrome may resolve localhost to ::1, and another
+ * process (e.g. Docker) can be listening on *:3100 while Studio only binds 127.0.0.1 — frames then
+ * never become ready and shoot reports NOT-READY / CDP timeouts. */
 export function baseUrl(req: Request) {
-  return new URL(req.url).origin;
+  const url = new URL(req.url);
+  if (url.hostname === "localhost") url.hostname = "127.0.0.1";
+  return url.origin;
 }
 
 export function handle<T extends unknown[]>(fn: (req: Request, ...rest: T) => Promise<Response> | Response) {

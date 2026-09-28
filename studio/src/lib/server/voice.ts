@@ -132,7 +132,7 @@ export async function generateVoice(id: string) {
   const creditsBefore = mock ? null : await elevenCreditsUsed(key);
   const recordCost = async () => {
     // A mock run synthesizes nothing: it has no cost to report, measured or zero.
-    const cost = mock ? { provider: "elevenlabs-mock" } : elevenLabsCost(characters, creditsBefore, await elevenCreditsUsed(key));
+    const cost = mock ? { provider: "elevenlabs-mock" } : elevenLabsCost(v.model, characters, creditsBefore, await elevenCreditsUsed(key));
     recordJobMetrics(id, { ...cost, ...(characters !== null ? { characters } : {}), model: v.model });
   };
   let done = 0;
