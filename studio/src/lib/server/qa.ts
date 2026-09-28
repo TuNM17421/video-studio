@@ -211,16 +211,23 @@ async function deterministicSceneGate(id: string, base: string) {
  * The problems verify reports, for the step's detail — the whole output is in the log. The "- …" items under
  * "N problem(s):" come first: the count line alone ("2 problem(s):") does not say which video is at fault.
  */
-function problemLines(output: string) {
+export function problemLines(output: string) {
   const items = output.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).slice(0, 3).map((line) => line.slice(2));
   if (items.length) return items.join(" · ");
   const lines = output.split("\n").filter((line) => /✗|problem|error/i.test(line)).slice(0, 3);
   return lines.join(" · ") || "xem nhật ký";
 }
 
-/** "all checks passed", or the warning count when there are some. */
-function verifySummary(output: string) {
-  const warnings = output.split("\n").filter((line) => /warn|⚠/i.test(line)).length;
+/**
+ * "all checks passed", or the warning count when there are some.
+ *
+ * Counted by the shape verify.mjs actually prints — `  ! <cảnh báo>` — not by the word "warning", which
+ * appears nowhere in its output. Matching on the word made every run report "không có lỗi", including a
+ * run with thirteen warnings, so the one line a member reads at the verify step said the opposite of the
+ * log right under it. Same reading as problemLines just above, which takes the `  - <lỗi>` lines.
+ */
+export function verifySummary(output: string) {
+  const warnings = output.split("\n").filter((line) => line.trim().startsWith("! ")).length;
   return warnings ? `${warnings} cảnh báo` : "không có lỗi";
 }
 
