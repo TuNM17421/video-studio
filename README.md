@@ -386,7 +386,7 @@ Kèm `STORYBOARD.md`.
 **4. Build và QA.**
 
 ```bash
-npm run build && npm run verify
+npm run build && npm run verify -- --video <id>   # video này + phép soát chung; lỗi của video khác trên máy không chặn
 node tools/shoot.mjs --batch projects/<id>/qa/jobs.json     # chụp các frame quan trọng, rồi mở ảnh ra xem
 ```
 
@@ -782,6 +782,7 @@ Video mẫu mới chỉ vào git sau khi được duyệt, bằng `git add -f` t
 | `npm run setup:kaggle` | Kaggle CLI để sinh giọng OmniVoice trên GPU của Kaggle |
 | `npm run build` | Build bundle design system (~1,5 giây) |
 | `npm run verify` | Kiểm tra design system và mọi video |
+| `npm run verify -- --video <id>` | Chỉ video đó, cộng các phép soát chung của design system — cổng Dựng cảnh và Bàn giao của Studio gọi đúng như vậy |
 | `npm run serve` | Phục vụ design system ở cổng 8765 |
 | `npm run studio:install` | Cài Video Studio |
 | `npm run studio` | Chạy Video Studio ở cổng 3100 |
