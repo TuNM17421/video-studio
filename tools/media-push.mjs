@@ -11,8 +11,9 @@
  *   --prune     delete objects the manifest knows but `media/files/` no longer has. Refused when this
  *               machine plainly does not hold the library (see pruneGuard in lib/media.mjs) — a fresh
  *               clone has an empty media/files/, and there it would wipe the whole bucket.
- *   --prune     delete objects the manifest knows but `media/files/` no longer has
- *   --only <prefix>  restrict EVERYTHING (report, upload, prune) to keys under <prefix>; repeatable
+ *               Cannot be combined with --only (see below).
+ *   --only <prefix>  restrict EVERYTHING (report, upload, prune) to keys under <prefix>; repeatable.
+ *               Cannot be combined with --prune: pruneGuard only protects when it can see the FULL tree.
  *
  * `--only` tồn tại vì mặc định lệnh này đẩy **cả cây** `media/files/`. Ca thật 21/09/2026: được
  * duyệt đẩy ĐÚNG HAI asset, nhưng một lần chạy trần có thể đẩy cả cây cùng nhiều ảnh evidence chưa
@@ -55,6 +56,7 @@ for (let i = 0; i < argv.length; i++) {
   flags.add(argv[i]);
 }
 for (const f of flags) if (!['--dry-run', '--force', '--prune', '--list'].includes(f)) fail(`Không hiểu tuỳ chọn ${f}. Xem phần chú thích đầu tools/media-push.mjs.`);
+if (flags.has('--prune') && only.length) fail('--prune và --only không dùng được cùng nhau.\n  pruneGuard chỉ bảo vệ được khi nhìn thấy TOÀN BỘ cây media, không phải một phạm vi con.\n  Xoá --prune và chạy riêng, hoặc xoá thẳng object trong bảng điều khiển Cloudflare R2.');
 const listOnly = flags.has('--list');
 const dryRun = listOnly || flags.has('--dry-run');
 /** Không khai `--only` ⇒ phạm vi là cả cây, y như trước. */
