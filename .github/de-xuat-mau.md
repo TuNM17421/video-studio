@@ -18,6 +18,10 @@ Báo lỗi thì dùng `.github/issue-mau.md`. Nhãn xem `.github/nhan-issue.md`.
 - **Mục "Vấn đề" nói chuyện đang xảy ra, không nói giải pháp.** Viết "Studio chưa có nút X" là đã nhảy sang
   giải pháp; viết "làm xong bước Giọng đọc phải tự mở terminal chạy lại verify, hay quên" mới là vấn đề.
 - **Không có số đo thì nói rõ là chưa đo.** Đừng bịa con số để đề xuất nghe cấp bách hơn.
+- **Deadline là một ngày cụ thể, không phải "sớm nhất có thể".** Ghi thứ và ngày (`Thứ Sáu 02/10/2026`), và
+  nói luôn **cắt gì nếu không kịp** — phần nào bắt buộc phải có, phần nào lùi được. Không có câu đó thì đến
+  hạn người làm phải tự đoán, và thường là đoán sai. Việc chưa gấp thì ghi thẳng "chưa có deadline", đừng
+  bịa một ngày cho có.
 - **Output mong đợi phải kiểm được.** Người khác đọc xong phải biết lấy gì ra để bảo "xong rồi" — một lệnh
   chạy qua, một ảnh trước/sau, một file tồn tại, một issue được đóng.
 - **Đừng lẫn "mức độ" với "ưu tiên".** *Mức độ* nói lúc nó xảy ra thì tệ đến đâu; *ưu tiên* nói nên làm cái
@@ -65,6 +69,10 @@ là thứ dùng để sắp bảng việc, nên nó phải do một người ch�
 
 **💪 Sức ước lượng** <!-- 🟢 một buổi · 🟡 1–2 ngày · 🔴 cần bàn trước khi làm -->
 
+**📅 Deadline**
+<!-- Thứ mấy, ngày nào, và cần xong để làm gì (demo, gửi QA, quay bài giảng…).
+     Kèm một câu: không kịp thì cắt phần nào, giữ phần nào. Chưa gấp thì ghi "chưa có deadline". -->
+
 **🚧 Không làm trong issue này** <!-- Cắt phạm vi cho rõ. Bỏ mục này thì issue tự phình ra. -->
 
 **📐 Ràng buộc phải giữ**
@@ -85,6 +93,7 @@ là thứ dùng để sắp bảng việc, nên nó phải do một người ch�
 - [ ] Mục "Vấn đề" không phải là mô tả giải pháp
 - [ ] Output mong đợi kiểm được bằng một thứ cụ thể
 - [ ] Mức ưu tiên đề nghị có kèm lý do, không chỉ là một chữ P
+- [ ] Deadline là một ngày cụ thể, hoặc ghi rõ là chưa có
 - [ ] Đã tìm issue/PR cũ, chưa ai nêu
 - [ ] Không có API key hay thông tin nhạy cảm
 
@@ -122,6 +131,9 @@ biết". Có người rảnh là nên làm.
 **🌡️ Mức độ** Vừa — không chặn ai, nhưng mỗi người mới vào lại tốn tiền credit để tự tìm hiểu.
 
 **💪 Sức ước lượng** 🟡 1–2 ngày (phần lâu là chọn slide và chờ lượt research chạy, không phải code)
+
+**📅 Deadline** Chưa có deadline — không gắn với buổi demo hay lứa học viên nào. Nhưng nếu tuần sau có
+người mới vào nhóm thì nên xong trước đó, để họ không phải đốt credit tự tìm hiểu.
 
 **🚧 Không làm trong issue này** Không sửa giao diện `/research`, không đổi luật soát. Chỉ dựng dữ liệu mẫu
 và thêm một dòng README.
