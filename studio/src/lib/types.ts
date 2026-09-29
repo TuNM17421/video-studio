@@ -445,6 +445,27 @@ export interface VideoDetail {
   blocking: Record<"cues" | "scenes", number>;
   /** Image suggestions (capability `images`); null when the video does not use it. */
   images: ImagesView | null;
+  cost: VideoCost;
+}
+
+/** What a video has cost so far (lib/video-cost.ts): agent USD and ElevenLabs characters, each with what is missing. */
+export interface VideoCost {
+  /** USD reported by the agent runs that report one (Claude Code): API price, also on a subscription. */
+  agentUsd: number;
+  /** Every agent run that ran: authoring, visual QA and image suggestions, any CLI. */
+  agentRuns: number;
+  pricedRuns: number;
+  /** Runs that reported tokens but no price (Codex), their tokens in + out, and which CLIs they were. */
+  tokenRuns: number;
+  tokens: number;
+  tokenProviders: string[];
+  /** Runs that reported nothing (Antigravity, runs from before the ledger). */
+  silentRuns: number;
+  /** Characters ElevenLabs billed, summed over the voice runs that recorded it. */
+  ttsCharacters: number;
+  ttsRuns: number;
+  /** ElevenLabs runs from before the Studio recorded billed characters. */
+  ttsUnrecorded: number;
 }
 
 export interface VideoSummary {
@@ -458,6 +479,7 @@ export interface VideoSummary {
   artifacts: Artifacts;
   running: boolean;
   updatedAt: string | null;
+  cost: VideoCost;
 }
 
 export interface PaletteColor {

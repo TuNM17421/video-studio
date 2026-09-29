@@ -11,6 +11,7 @@ import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
 import { styleGuideLine } from "./style-guides";
 import { defaultVoiceId, listVoices } from "./catalog";
+import { videoCost } from "./cost";
 import { isRunning } from "./jobs";
 import { chaptersPath, exists, HttpError, mp4Path, projectDir, qaManifestPath, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
 
@@ -244,6 +245,7 @@ export function listVideos(): VideoSummary[] {
       artifacts: a,
       running: isRunning(id),
       updatedAt: managed ? state.updatedAt : null,
+      cost: videoCost(id),
     }];
   });
 }
