@@ -256,3 +256,18 @@ test("a finding the agent claimed to fix reopens when review still sees it", () 
   assert.equal(readFeedback(repo, id)[0].status, "open");
   assert.equal(blockingFeedback(repo, id, "scenes").length, 1);
 });
+
+test("telemetry names the fixing run as resolver and the QA run as verifier", () => {
+  const { repo, id } = fixture();
+  const found = startRun(repo, id, { stage: "scenes.qa", provider: "codex" });
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "text-overflow", message: "Chữ tràn khung", scene: "cue-03.png" }], found.runId);
+  const item = readFeedback(repo, id)[0];
+  const fix = startRun(repo, id, { stage: "scenes", provider: "codex", feedbackIds: [item.id] });
+  const qa = startRun(repo, id, { stage: "scenes.qa", provider: "codex" });
+  reconcileQaFeedback(repo, id, "scenes", [], qa.runId);
+  const last = readTelemetryOutbox(repo).filter((e) => e.event_type === "feedback_state").at(-1).feedback;
+  assert.equal(last.resolved_by_run, fix.runId);
+  assert.equal(last.verified_by_run, qa.runId);
+  // Local field the review panel reads is unchanged.
+  assert.equal(readFeedback(repo, id)[0].resolvedBy, qa.runId);
+});

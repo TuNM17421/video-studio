@@ -73,3 +73,10 @@ describe("QA usage", () => {
     expect(usageFrom(raw)).toEqual({ inputTokens: 100, cachedInputTokens: 40, outputTokens: 20, costUsd: undefined });
   });
 });
+
+describe("usageFrom cache creation", () => {
+  it("counts Claude cache_creation as input", () => {
+    const raw = JSON.stringify({ usage: { input_tokens: 400, cache_creation_input_tokens: 48000, cache_read_input_tokens: 52000, output_tokens: 6000 } });
+    expect(usageFrom(raw)).toMatchObject({ inputTokens: 48400, cachedInputTokens: 52000, outputTokens: 6000 });
+  });
+});

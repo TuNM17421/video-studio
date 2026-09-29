@@ -99,6 +99,11 @@ const NO_RUN = "00000000-0000-0000-0000-000000000000";
 function emitFeedbackState(repo, videoId, id) {
   const item = readFeedback(repo, videoId).find((fb) => fb.id === id);
   if (!item) return;
+  // `resolvedBy` locally is the QA run that stopped seeing the finding (Studio's review panel keys on that). For
+  // telemetry that run only *verified* the fix: the run that made it is the latest non-QA run answering this item.
+  const fixRun = item.verifiedBy
+    ? readRuns(repo, videoId).filter((run) => (run.feedbackIds || []).includes(item.id) && !String(run.stage || "").endsWith(".qa")).at(-1)
+    : null;
   emitTelemetry(repo, videoId, "feedback_state", item.runId || NO_RUN, {
     stage: item.stage,
     actor: item.source,
@@ -113,7 +118,8 @@ function emitFeedbackState(repo, videoId, id) {
       status: item.status,
       recurrence: item.recurrence || 1,
       found_by_run: item.runId || null,
-      resolved_by_run: item.resolvedBy || null,
+      resolved_by_run: item.verifiedBy ? fixRun?.runId || null : item.resolvedBy || null,
+      verified_by_run: item.verifiedBy || null,
       created_at: item.createdAt,
     },
   });
@@ -433,6 +439,7 @@ export function reconcileQaFeedback(repo, videoId, stage, findings, runId, qaPro
     updateFeedback(repo, videoId, item.id, {
       status: "verified",
       resolvedBy: runId,
+      verifiedBy: runId,
       evidence: `${item.evidence ? `${item.evidence} · ` : ""}Không tái hiện ở QA ${runId}`,
     });
   }

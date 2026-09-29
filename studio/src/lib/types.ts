@@ -363,6 +363,8 @@ export interface QaFindingItem {
   runId?: string | null;
   /** The review run that no longer saw it (set when QA verifies it). */
   resolvedBy?: string;
+  /** The QA run that stopped seeing the finding; `resolvedBy` keeps the same value for the review panel. */
+  verifiedBy?: string;
   /** Why the user skipped it (status wontfix), and when. */
   skipReason?: string | null;
   decidedAt?: string;

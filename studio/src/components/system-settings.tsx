@@ -60,7 +60,9 @@ export function SystemStatusPanel({ provider }: { provider: AgentProvider }) {
     <div className="vs-system-status" aria-label="Trạng thái log & chi phí">
       {telemetryBadge}
       {provider === "codex" && gateway && <Badge tone={gatewayTone(gateway.status)}>{gateway.status === "ok" ? "9router: đã kết nối" : gateway.status === "disabled" ? "9router: đang tắt" : gateway.status === "unreachable" ? "9router: không phản hồi" : "9router: thiếu API key"}</Badge>}
-      <Button type="link" size="small" icon={<SettingOutlined />} onClick={() => setOpen(true)}>Cài đặt</Button>
+      {/* The modal seeds its fields from what was fetched. Opened before that (or after a failed fetch) it would start
+          empty, and Save would overwrite the real URL with "" and switch the gateway off. */}
+      <Button type="link" size="small" icon={<SettingOutlined />} disabled={loading || !telemetry || !gateway} title={loading ? "Đang kiểm tra trạng thái…" : !telemetry || !gateway ? "Chưa đọc được cài đặt hiện tại — tải lại trang" : undefined} onClick={() => setOpen(true)}>Cài đặt</Button>
     </div>
     {open && <SystemSettingsModal telemetry={telemetry} gateway={gateway} onRefetched={(g, t) => { setGateway(g); setTelemetry(t); }} onClose={() => setOpen(false)} />}
   </>;

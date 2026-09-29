@@ -131,7 +131,10 @@ export function usageFrom(raw: string) {
     if (!value || typeof value !== "object") continue;
     const usage = (value.usage || value.stats) as Record<string, unknown> | undefined;
     if (usage && typeof usage === "object") {
-      out.inputTokens = num(usage.input_tokens ?? usage.inputTokens) ?? out.inputTokens;
+      const input = num(usage.input_tokens ?? usage.inputTokens);
+      // Claude bills cache creation as input; fold it in like agent.ts and research.ts do.
+      const cacheWrite = num(usage.cache_creation_input_tokens);
+      out.inputTokens = input === undefined && cacheWrite === undefined ? out.inputTokens : (input ?? 0) + (cacheWrite ?? 0);
       out.cachedInputTokens = num(usage.cached_input_tokens ?? usage.cache_read_input_tokens ?? usage.cachedInputTokens) ?? out.cachedInputTokens;
       out.outputTokens = num(usage.output_tokens ?? usage.outputTokens) ?? out.outputTokens;
       out.costUsd = num(usage.cost_usd ?? usage.costUsd) ?? out.costUsd;

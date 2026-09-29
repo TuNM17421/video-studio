@@ -46,3 +46,18 @@ describe("voice cost", () => {
     expect(freeVoiceCost("omnivoice-local")).toEqual({ provider: "omnivoice-local", costUsd: 0, costSource: "no_charge" });
   });
 });
+
+describe("credit counter overlap", () => {
+  it("a lone run keeps its credits; two overlapping runs both lose them", async () => {
+    const { beginCreditRun, endCreditRun } = await import("./voice-cost");
+    beginCreditRun("solo");
+    expect(endCreditRun("solo")).toBe(false);
+    beginCreditRun("a");
+    beginCreditRun("b"); // b starts while a is still reading the counter
+    expect(endCreditRun("a")).toBe(true);
+    expect(endCreditRun("b")).toBe(true);
+    // Both closed: the next run is clean again, nothing is left over.
+    beginCreditRun("c");
+    expect(endCreditRun("c")).toBe(false);
+  });
+});

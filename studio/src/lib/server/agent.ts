@@ -107,7 +107,7 @@ function saveSession(id: string, provider: AgentProvider, sessionId: string) {
 }
 
 /** What the workflow ledger keeps about one agent run (`recordJobMetrics`). */
-interface AgentMetrics {
+export interface AgentMetrics {
   inputTokens?: number;
   cachedInputTokens?: number;
   outputTokens?: number;
@@ -158,11 +158,16 @@ function resultLine(provider: AgentProvider, e: Extract<AgentEvent, { type: "res
  * again. Keep the raw total and turn it into this run's share: minus the total the previous run of the same
  * session ended at. (Measured 26/09: round 2 = round 1 + its own 9router usage, token for token.)
  */
-function perRunCodexUsage(id: string, metrics: AgentMetrics) {
+const hasCumulative = (c?: AgentMetrics["cliCumulative"]) => Boolean(c) && (c!.input !== undefined || c!.cached !== undefined || c!.output !== undefined);
+
+export function perRunCodexUsage(id: string, metrics: AgentMetrics, runs: unknown[] = readRuns(REPO, id)) {
   const raw = { input: metrics.inputTokens, cached: metrics.cachedInputTokens, output: metrics.outputTokens };
+  // A run that never reported usage (stopped early, no `turn.completed`) has no total to use as the next run's
+  // baseline: recording `{}` would make the next resume subtract nothing and swallow the whole thread's tokens.
+  if (raw.input === undefined && raw.cached === undefined && raw.output === undefined) return;
   metrics.cliCumulative = raw;
-  const previous = (readRuns(REPO, id) as { sessionId?: string; cliCumulative?: AgentMetrics["cliCumulative"] }[])
-    .filter((run) => run.sessionId === metrics.sessionId && run.cliCumulative)
+  const previous = (runs as { sessionId?: string; cliCumulative?: AgentMetrics["cliCumulative"] }[])
+    .filter((run) => run.sessionId === metrics.sessionId && hasCumulative(run.cliCumulative))
     .at(-1)?.cliCumulative;
   if (!previous) return;
   const minus = (now?: number, before?: number) => (now === undefined ? undefined : Math.max(0, now - (before ?? 0)));
@@ -215,7 +220,8 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
             ok = e.ok;
             log(id, e.ok ? "result" : "error", resultLine(provider, e));
             if (e.usage) {
-              metrics.inputTokens = e.usage.input;
+              // Cache creation is billed input the run really consumed (same rule as research.ts totalUsage).
+              metrics.inputTokens = e.usage.input === undefined && e.usage.cacheWrite === undefined ? undefined : (e.usage.input ?? 0) + (e.usage.cacheWrite ?? 0);
               metrics.cachedInputTokens = e.usage.cacheRead;
               metrics.outputTokens = e.usage.output;
             }

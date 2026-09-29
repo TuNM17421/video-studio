@@ -26,12 +26,19 @@ function hasForbiddenPayload(value) {
   return Object.entries(value).some(([key, child]) => forbiddenKeys.has(key.toLowerCase()) || hasForbiddenPayload(child));
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function validate(event) {
   if (!event || typeof event !== "object") return "event phải là object";
   if (event.schema_version !== 1) return "schema_version phải là 1";
   for (const key of ["event_id", "occurred_at", "event_type", "installation_id", "project_ref", "video_ref", "run_id"]) {
     if (typeof event[key] !== "string" || !event[key]) return `thiếu ${key}`;
   }
+  // These columns are UUID in Postgres: a malformed one is the client's mistake (400), not a 500 after the fact.
+  for (const key of ["event_id", "installation_id", "run_id"]) {
+    if (!UUID.test(event[key])) return `${key} phải là UUID`;
+  }
+  if (Number.isNaN(Date.parse(event.occurred_at))) return "occurred_at không phải thời gian hợp lệ";
   if (!event.privacy || event.privacy.payload_class !== "metadata_only") return "chỉ nhận payload metadata_only";
   if (hasForbiddenPayload(event)) return "payload chứa field nội dung/credential bị cấm";
   const cost = event.measurement?.cost;
@@ -79,6 +86,9 @@ function validateAiLog(log) {
   if (!log || typeof log !== "object") return "AI log phải là object";
   for (const key of ["log_id", "occurred_at", "installation_id", "project_ref", "video_ref", "run_id", "kind"]) {
     if (typeof log[key] !== "string" || !log[key]) return `thiếu ${key}`;
+  }
+  for (const key of ["log_id", "installation_id", "run_id"]) {
+    if (!UUID.test(log[key])) return `${key} phải là UUID`;
   }
   if (log.consent?.scope !== "ai_log" || log.consent?.explicit !== true) return "AI log cần explicit consent";
   if (typeof log.content !== "string" || !log.content || Buffer.byteLength(log.content) > 256 * 1024) return "AI log content phải có 1..256 KiB";
@@ -134,7 +144,7 @@ const server = http.createServer(async (request, response) => {
     return send(response, 202, { accepted: input.events.length, inserted: inserted.filter(Boolean).length, duplicate: inserted.filter((value) => !value).length });
   } catch (error) {
     console.error(error);
-    return send(response, error instanceof SyntaxError ? 400 : 500, { error: "invalid_request_or_server_error" });
+    return send(response, error instanceof SyntaxError || error?.code === "22P02" ? 400 : 500, { error: "invalid_request_or_server_error" });
   }
 });
 

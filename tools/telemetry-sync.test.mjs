@@ -85,3 +85,51 @@ test("unsafeReason names the offending path, never its value", () => {
   assert.equal(unsafeReason(event("a", { feedback: { Messages: ["hi secret"] } })), "có field bị cấm (feedback.Messages)");
   assert.equal(unsafeReason({}), "thiếu event_id");
 });
+
+const badRun = (id) => event(id, { bad: true });
+const rejectBad = async (_url, init) => {
+  const body = JSON.parse(init.body);
+  return body.events.some((item) => item.bad) ? response({ error: "run_id phải là UUID" }, 400) : response({ inserted: body.events.length, duplicate: 0 });
+};
+
+test("one rejected event is parked and the events around it still go out", async () => {
+  const { repo, root } = fixture([event("a"), badRun("bad"), event("c"), event("d")]);
+  const result = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", fetchImpl: rejectBad });
+  assert.equal(result.inserted, 3);
+  assert.equal(result.rejected, 1);
+  const state = JSON.parse(fs.readFileSync(path.join(root, "sync-state.json"), "utf8"));
+  assert.deepEqual(state.sentEventIds.sort(), ["a", "c", "d"]);
+  const parked = fs.readFileSync(path.join(root, "outbox.rejected.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
+  assert.equal(parked.length, 1);
+  assert.equal(parked[0].event.event_id, "bad");
+  assert.match(parked[0].reason, /HTTP 400/);
+  // Second run: nothing pending, the parked event is not retried forever.
+  let requests = 0;
+  const again = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", fetchImpl: async () => { requests++; return response({}); } });
+  assert.equal(again.events, 0);
+  assert.equal(requests, 0);
+});
+
+test("a half-written outbox line is skipped, not fatal", async () => {
+  const { repo, root } = fixture([event("a"), event("b")]);
+  fs.appendFileSync(path.join(root, "outbox.jsonl"), '{"event_id":"tru');
+  const result = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", fetchImpl: async (_u, init) => response({ inserted: JSON.parse(init.body).events.length, duplicate: 0 }) });
+  assert.equal(result.inserted, 2);
+  assert.equal(result.skipped_lines, 1);
+});
+
+test("AI-log refusal does not fail the event upload", async () => {
+  const { repo, root } = fixture([event("a")]);
+  fs.writeFileSync(path.join(root, "ai-logs-outbox.jsonl"), `${JSON.stringify({ log_id: "l1", encrypted: { iv: "", tag: "", ciphertext: "" } })}\n`);
+  const fetchImpl = async (url, init) => url.endsWith("/v1/ai-logs") ? response({ error: "ai_logs_disabled" }, 403) : response({ inserted: JSON.parse(init.body).events.length, duplicate: 0 });
+  const result = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", aiLogsEnabled: true, aiLogKey: Buffer.alloc(32).toString("base64"), fetchImpl });
+  assert.equal(result.inserted, 1);
+  assert.ok(result.ai_logs_error);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "sync-state.json"), "utf8")).sentEventIds, ["a"]);
+});
+
+test("a 5xx is retried later, never parked", async () => {
+  const { repo, root } = fixture([event("a")]);
+  await assert.rejects(() => syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", fetchImpl: async () => response({}, 500) }), /HTTP 500/);
+  assert.equal(fs.existsSync(path.join(root, "outbox.rejected.jsonl")), false);
+});

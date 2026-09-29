@@ -6,9 +6,22 @@ import { pathToFileURL } from "node:url";
 
 const FORBIDDEN_KEYS = new Set(["prompt", "rawprompt", "messages", "content", "apikey", "api_key", "authorization", "cookie"]);
 
+// A half-written line (power cut, full disk) must not stop every good event behind it: skip it and say how many.
 function readJsonl(file) {
-  if (!fs.existsSync(file)) return [];
-  return fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).map(JSON.parse);
+  if (!fs.existsSync(file)) return { rows: [], skipped: 0 };
+  const rows = [];
+  let skipped = 0;
+  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean)) {
+    try { rows.push(JSON.parse(line)); } catch { skipped++; }
+  }
+  return { rows, skipped };
+}
+
+class HttpError extends Error {
+  constructor(url, status) {
+    super(`${url}: HTTP ${status}`);
+    this.status = status;
+  }
 }
 
 export const syncStateFile = (repo) => path.join(repo, ".studio", "telemetry", "sync-state.json");
@@ -93,8 +106,10 @@ export async function syncTelemetry({
   const stateFile = syncStateFile(repo);
   const state = readState(stateFile);
   const sent = new Set(state.sentEventIds);
-  const allEvents = readJsonl(path.join(root, "outbox.jsonl"));
-  const events = allEvents.filter((event) => !sent.has(event.event_id));
+  const outbox = readJsonl(path.join(root, "outbox.jsonl"));
+  const rejectedFile = path.join(root, "outbox.rejected.jsonl");
+  const rejectedBefore = new Set(readJsonl(rejectedFile).rows.map((row) => row.event?.event_id));
+  const events = outbox.rows.filter((event) => !sent.has(event.event_id) && !rejectedBefore.has(event.event_id));
   state.lastAttemptAt = now();
   state.lastError = null;
   writeState(stateFile, state);
@@ -105,8 +120,38 @@ export async function syncTelemetry({
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...extraHeaders },
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+    if (!response.ok) throw new HttpError(url, response.status);
     return response.json();
+  }
+
+  // The collector refuses a whole batch when one event is bad. 4xx = the data is wrong, so retrying can never help:
+  // split the batch to find the culprit, park it in outbox.rejected.jsonl and let the rest through. 5xx/network
+  // errors say nothing about the data, so they propagate and the batch is retried next time.
+  const rejected = [];
+  async function sendEvents(batch) {
+    let result;
+    try {
+      result = await post("/v1/events", { events: batch });
+    } catch (error) {
+      if (!(error instanceof HttpError) || error.status < 400 || error.status >= 500 || error.status === 401 || error.status === 403 || error.status === 429) throw error;
+      if (batch.length === 1) {
+        rejected.push({ at: now(), reason: error.message, event: batch[0] });
+        return;
+      }
+      const mid = Math.ceil(batch.length / 2);
+      await sendEvents(batch.slice(0, mid));
+      await sendEvents(batch.slice(mid));
+      return;
+    }
+    if (Number(result.inserted || 0) + Number(result.duplicate || 0) !== batch.length) {
+      throw new Error("/v1/events: collector không xác nhận đủ event");
+    }
+    inserted += Number(result.inserted || 0);
+    duplicate += Number(result.duplicate || 0);
+    batch.forEach((event) => sent.add(event.event_id));
+    state.sentEventIds = [...sent];
+    state.lastResult = { attempted: events.length, sent: sent.size, inserted, duplicate };
+    writeState(stateFile, state);
   }
 
   let inserted = 0;
@@ -118,32 +163,33 @@ export async function syncTelemetry({
     events.forEach(assertSafeEvent);
     for (let index = 0; index < events.length; index += 500) {
       const batch = events.slice(index, index + 500);
-      const result = await post("/v1/events", { events: batch });
-      if (Number(result.inserted || 0) + Number(result.duplicate || 0) !== batch.length) {
-        throw new Error("/v1/events: collector không xác nhận đủ event");
-      }
-      inserted += Number(result.inserted || 0);
-      duplicate += Number(result.duplicate || 0);
-      batch.forEach((event) => sent.add(event.event_id));
-      state.sentEventIds = [...sent];
-      state.lastResult = { attempted: events.length, sent: sent.size, inserted, duplicate };
-      writeState(stateFile, state);
+      await sendEvents(batch);
+    }
+    if (rejected.length) {
+      fs.appendFileSync(rejectedFile, rejected.map((row) => `${JSON.stringify(row)}\n`).join(""));
     }
 
+    // Separate leg: AI logs are optional, so a refusal here (server has them off, key rotated) must not turn a
+    // successful event upload into a failed sync.
+    let aiLogsSkipped = null;
     if (aiLogsEnabled) {
-      for (const log of readJsonl(path.join(root, "ai-logs-outbox.jsonl"))) {
-        const result = await post("/v1/ai-logs", {
-          log_id: log.log_id,
-          occurred_at: log.occurred_at,
-          installation_id: log.installation_id,
-          project_ref: log.project_ref,
-          video_ref: log.video_ref,
-          run_id: log.run_id,
-          kind: log.kind,
-          consent: log.consent,
-          content: decrypt(log, aiLogKey),
-        }, { "x-telemetry-ai-log-consent": "true" });
-        if (result.inserted) aiLogs++;
+      try {
+        for (const log of readJsonl(path.join(root, "ai-logs-outbox.jsonl")).rows) {
+          const result = await post("/v1/ai-logs", {
+            log_id: log.log_id,
+            occurred_at: log.occurred_at,
+            installation_id: log.installation_id,
+            project_ref: log.project_ref,
+            video_ref: log.video_ref,
+            run_id: log.run_id,
+            kind: log.kind,
+            consent: log.consent,
+            content: decrypt(log, aiLogKey),
+          }, { "x-telemetry-ai-log-consent": "true" });
+          if (result.inserted) aiLogs++;
+        }
+      } catch (error) {
+        aiLogsSkipped = error instanceof Error ? error.message : "AI log sync thất bại.";
       }
     }
 
@@ -151,7 +197,12 @@ export async function syncTelemetry({
     state.lastError = null;
     state.lastResult = { attempted: events.length, sent: sent.size, inserted, duplicate };
     writeState(stateFile, state);
-    return { events: events.length, inserted, duplicate, ai_logs_inserted: aiLogs, ai_logs_enabled: aiLogsEnabled };
+    return {
+      events: events.length, inserted, duplicate, ai_logs_inserted: aiLogs, ai_logs_enabled: aiLogsEnabled,
+      ...(rejected.length ? { rejected: rejected.length } : {}),
+      ...(outbox.skipped ? { skipped_lines: outbox.skipped } : {}),
+      ...(aiLogsSkipped ? { ai_logs_error: aiLogsSkipped } : {}),
+    };
   } catch (error) {
     state.lastFailureAt = now();
     state.lastError = error instanceof Error ? error.message : "Telemetry sync thất bại.";

@@ -16,6 +16,23 @@ export interface VoiceCost {
   costSource?: "server_price_estimate" | "no_charge";
 }
 
+// The credit counter is account-wide, but Studio runs voice jobs per video. When two runs' before/after reads
+// overlap, each one's delta contains the other's spend, so neither may claim it (same rule as gateway.ts).
+const g = globalThis as typeof globalThis & { __studioCreditRuns?: Map<string, { overlapped: boolean }> };
+const creditRuns = (g.__studioCreditRuns ??= new Map());
+
+export function beginCreditRun(token: string) {
+  for (const run of creditRuns.values()) run.overlapped = true;
+  creditRuns.set(token, { overlapped: creditRuns.size > 0 });
+}
+
+/** True when another run shared the counter at any point; always forgets the run. */
+export function endCreditRun(token: string) {
+  const overlapped = creditRuns.get(token)?.overlapped ?? false;
+  creditRuns.delete(token);
+  return overlapped;
+}
+
 /** The account's used-credit counter, or null when the key cannot read it (scoped keys lack user_read). */
 export async function elevenCreditsUsed(key: string, fetcher: typeof fetch = fetch): Promise<number | null> {
   try {

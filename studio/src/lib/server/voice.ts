@@ -1,9 +1,10 @@
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, VoiceBound, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, log, recordJobMetrics, registry, run, setProgress, startJob, wasStopped } from "./jobs";
-import { elevenCreditsUsed, elevenLabsCost, freeVoiceCost } from "./voice-cost";
+import { beginCreditRun, elevenCreditsUsed, elevenLabsCost, endCreditRun, freeVoiceCost } from "./voice-cost";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -129,26 +130,38 @@ export async function generateVoice(id: string) {
   // Cost telemetry: what will be sent, and the account's credit counter on both sides of the run.
   const mock = process.env.STUDIO_TTS_MOCK === "1";
   const characters = await billableChars(id, v);
+  const creditToken = randomUUID();
+  if (!mock) beginCreditRun(creditToken);
   const creditsBefore = mock ? null : await elevenCreditsUsed(key);
   const recordCost = async () => {
     // A mock run synthesizes nothing: it has no cost to report, measured or zero.
-    const cost = mock ? { provider: "elevenlabs-mock" } : elevenLabsCost(v.model, characters, creditsBefore, await elevenCreditsUsed(key));
+    // A run that shared the account counter with another voice job cannot tell its credits from theirs: it keeps
+    // the character-priced cost but reports no credit delta.
+    const creditsAfter = mock ? null : await elevenCreditsUsed(key);
+    const overlapped = mock ? false : endCreditRun(creditToken);
+    const cost = mock ? { provider: "elevenlabs-mock" } : elevenLabsCost(v.model, characters, overlapped ? null : creditsBefore, overlapped ? null : creditsAfter);
     recordJobMetrics(id, { ...cost, ...(characters !== null ? { characters } : {}), model: v.model });
   };
   let done = 0;
-  const code = await run(id, process.execPath, ttsArgs(id, v), {
-    env: ttsEnv(v, key),
-    onLine(line, stream) {
-      // never echo anything that could contain the key (tts.mjs does not print it; this is belt and braces)
-      const safe = line.split(key).join("•••");
-      log(id, stream === "stderr" ? "error" : "output", safe);
-      if (/→ ElevenLabs/.test(line)) {
-        done++;
-        setProgress(id, total ? Math.min(99, (done / total) * 100) : null, `Đang tạo câu ${done}${total ? `/${total}` : ""}…`);
-      }
-    },
-  });
-  await recordCost();
+  let code: number;
+  // Always leave the credit window, even when the process dies: an orphaned one would mark every later run overlapped.
+  try {
+    code = await run(id, process.execPath, ttsArgs(id, v), {
+      env: ttsEnv(v, key),
+      onLine(line, stream) {
+        // never echo anything that could contain the key (tts.mjs does not print it; this is belt and braces)
+        const safe = line.split(key).join("•••");
+        log(id, stream === "stderr" ? "error" : "output", safe);
+        if (/→ ElevenLabs/.test(line)) {
+          done++;
+          setProgress(id, total ? Math.min(99, (done / total) * 100) : null, `Đang tạo câu ${done}${total ? `/${total}` : ""}…`);
+        }
+      },
+    });
+    await recordCost();
+  } finally {
+    endCreditRun(creditToken);
+  }
   if (code !== 0 || wasStopped(id)) {
     setStage(id, "voice", "error", wasStopped(id) ? "Đã dừng." : "Tạo giọng thất bại, xem nhật ký.");
     finishJob(id, "error");

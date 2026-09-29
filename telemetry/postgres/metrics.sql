@@ -275,6 +275,7 @@ SELECT DISTINCT ON (video_ref, feedback ->> 'feedback_id')
   (feedback ->> 'recurrence')::int AS recurrence,
   NULLIF(feedback ->> 'found_by_run', '')::uuid AS found_by_run,
   feedback ->> 'resolved_by_run' AS resolved_by_run,
+  feedback ->> 'verified_by_run' AS verified_by_run,
   (feedback ->> 'created_at')::timestamptz AS created_at,
   occurred_at AS updated_at
 FROM (SELECT video_ref, occurred_at, payload -> 'feedback' AS feedback FROM telemetry_events WHERE event_type = 'feedback_state') f
@@ -311,5 +312,5 @@ LEFT JOIN LATERAL (
   SELECT count(*) AS fix_runs, string_agg(r.stage || ' #' || r.attempt, ', ' ORDER BY r.started_at) AS fix_attempts,
          sum(r.cost_usd) AS fix_cost_usd
   FROM telemetry_runs r
-  WHERE r.video_ref = f.video_ref AND (r.feedback_ids ? f.feedback_id OR r.run_id::text = f.resolved_by_run)
+  WHERE r.video_ref = f.video_ref AND (r.feedback_ids ? f.feedback_id OR (r.run_id::text = f.resolved_by_run AND r.stage NOT LIKE '%.qa'))
 ) fixes ON true;

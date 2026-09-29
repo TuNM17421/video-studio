@@ -13,6 +13,7 @@ import {
   writeImprovementPlan,
 } from "./workflow-ledger.mjs";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const machineLabel = () => (process.env.STUDIO_MACHINE_LABEL || os.hostname() || "unknown").trim();
 
 const argv = process.argv.slice(2);
@@ -125,6 +126,7 @@ if (command === "report") {
   } else if (action === "finish") {
     const runId = value("run-id");
     const status = value("status", "done");
+    if (runId && !UUID.test(runId)) usage("--run-id phải là UUID (giá trị RUN_ID do `run start` in ra).");
     if (!runId || !["done", "error", "stopped"].includes(status)) usage("run finish cần --run-id và --status done|error|stopped hợp lệ.");
     const model = value("model");
     if (model) addRunMetrics(repo, videoId, runId, { model });
@@ -133,6 +135,7 @@ if (command === "report") {
   } else if (action === "metrics") {
     const runId = value("run-id");
     if (!runId) usage("run metrics cần --run-id.");
+    if (!UUID.test(runId)) usage("--run-id phải là UUID (giá trị RUN_ID do `run start` in ra).");
     const number = (name) => {
       const raw = value(name);
       if (raw === "") return undefined;

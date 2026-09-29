@@ -17,7 +17,7 @@ const WHITELIST: Record<string, true | Record<string, true | Record<string, true
   run_context: { attempt: true, version: true, trigger: true, feedback_ids: true, session_id: true, prompt_sha256: true, gateway_status: true },
   feedback: {
     feedback_id: true, stage: true, scope: true, code: true, severity: true, source: true, qa_provider: true,
-    status: true, recurrence: true, found_by_run: true, resolved_by_run: true, created_at: true,
+    status: true, recurrence: true, found_by_run: true, resolved_by_run: true, verified_by_run: true, created_at: true,
   },
 };
 
