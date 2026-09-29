@@ -133,6 +133,9 @@ export function recordJobMetrics(id: string, metrics: {
   toolCalls?: number;
   turns?: number;
   model?: string;
+  /** ElevenLabs: characters billed this run, over how many câu (lib/video-cost.ts). */
+  ttsCharacters?: number;
+  ttsCues?: number;
 }) {
   const job = registry.jobs.get(id);
   if (!job?.workflowRunId) return;

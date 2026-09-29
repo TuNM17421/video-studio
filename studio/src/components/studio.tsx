@@ -9,6 +9,8 @@ import { inferDay } from "@/lib/day";
 import type { AgentConfig, AgentProvider, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { resolveReviewer } from "@/lib/review";
+import { costLabels } from "@/lib/video-cost";
+import { useJobNotice, useVideoTabTitle } from "@/lib/use-job-notice";
 import { STUDIO_STEP_EVENT } from "@/lib/tours";
 import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
@@ -68,13 +70,19 @@ function neighbours(step: Step) {
  */
 function WorkflowHealth({ detail }: { detail: VideoDetail }) {
   const report = detail.workflow;
-  if (!report.runs.total) return null;
+  const cost = costLabels(detail.cost);
+  if (!report.runs.total && !cost.agent && !cost.tts) return null;
   const tokens = report.usage.inputTokens + report.usage.outputTokens;
   return <div className="vs-workflow-tiles">
-    <div><span>Lượt chạy</span><strong>{report.runs.total}</strong><small>{report.runs.deterministic} lượt không cần agent · {Math.round(report.automationRatio * 100)}% tự động</small></div>
-    <div><span>Token agent</span><strong>{tokens.toLocaleString("vi-VN")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt · ${report.usage.costUsd.toFixed(2)}</small></div>
-    <div><span>Lượt lỗi</span><strong>{report.runs.failures}</strong><small>trên {report.runs.total} lượt</small></div>
-    <div><span>Tốn token nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><small>stage dùng nhiều token agent nhất</small></div>
+    {/* Cost first: it is what a member is asked about. Each tile says what its sum leaves out (lib/video-cost.ts). */}
+    {cost.agent && <div title={cost.agent.note}><span>Chi phí agent</span><strong>{cost.agent.value}</strong><small>{cost.agent.missing ?? (detail.cost.pricedRuns ? `${detail.cost.agentRuns} lượt · giá API quy đổi` : `${detail.cost.agentRuns} lượt · CLI không báo giá`)}</small></div>}
+    {cost.tts && <div title={cost.tts.note}><span>ElevenLabs</span><strong>{cost.tts.value}</strong><small>{cost.tts.missing ?? `${detail.cost.ttsRuns} lượt tạo giọng`}</small></div>}
+    {report.runs.total > 0 && <>
+      <div><span>Lượt chạy</span><strong>{report.runs.total}</strong><small>{report.runs.deterministic} lượt không cần agent · {Math.round(report.automationRatio * 100)}% tự động</small></div>
+      <div><span>Token agent</span><strong>{tokens.toLocaleString("vi-VN")}</strong><small>đo được {report.usage.measuredRuns}/{report.runs.agent} lượt</small></div>
+      <div><span>Lượt lỗi</span><strong>{report.runs.failures}</strong><small>trên {report.runs.total} lượt</small></div>
+      <div><span>Tốn token nhất</span><strong>{report.mostExpensiveStage || "—"}</strong><small>stage dùng nhiều token agent nhất</small></div>
+    </>}
   </div>;
 }
 
@@ -201,7 +209,9 @@ export default function Studio() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoStep, setAutoStep] = useState(true);
-  const { detail, logs, job, error: loadError, refresh } = useVideo(id);
+  const jobNotice = useJobNotice(id);
+  const { detail, logs, job, error: loadError, refresh } = useVideo(id, jobNotice.onJobEnd);
+  useVideoTabTitle(jobNotice, detail ? detail.state.request.title || detail.state.id : null, job);
 
   // "Tạo video từ kịch bản này" ở trang Đóng gói kịch bản: điền sẵn kịch bản đã duyệt vào form, như thể
   // người dùng vừa chọn tệp. Mã video, style, ngày vẫn do người dùng chọn.

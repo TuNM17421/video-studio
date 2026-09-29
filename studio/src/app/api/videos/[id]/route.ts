@@ -7,6 +7,7 @@ import { lastDryRun, lastImportReport, retakesFor } from "@/lib/server/voice";
 import { artifacts, cuesInfo, qaImages, readState } from "@/lib/server/videos";
 import { blockersFor, qaFindings, workflowReport } from "@/lib/server/workflow";
 import { harnessRuns } from "@/lib/server/harness";
+import { videoCost } from "@/lib/server/cost";
 import { installedAgents } from "@/lib/server/agent-config";
 import { imagesKey, imagesView } from "@/lib/server/images";
 
@@ -31,6 +32,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     findings: qaFindings(id),
     blocking: { cues: blockersFor(id, "cues", state).length, scenes: blockersFor(id, "scenes", state).length },
     images: imagesView(id, state.request.modules, cues?.cues),
+    cost: videoCost(id),
   };
   return Response.json(detail);
 });

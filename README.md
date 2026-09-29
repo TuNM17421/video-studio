@@ -257,6 +257,26 @@ chạy các bước kỹ thuật, bạn duyệt hoặc gửi góp ý ở mỗi �
   xem [Ảnh tư liệu](#ảnh-tư-liệu).
 - Trạng thái mỗi video lưu ở `projects/<id>/.studio/` (không lên git), nên đóng Studio rồi mở lại vẫn làm tiếp được.
 
+### Sửa một câu, báo khi xong, chi phí
+
+- **Sửa trực tiếp một câu** (bước Lời & cue, nút bút chì ở cuối mỗi câu): sửa lời đọc, chữ trên màn hình hoặc ý đồ
+  hình mà không tốn một lượt agent. Chỉ đúng chuỗi đó trong `cues.js` được thay; file sau khi sửa được nạp lại để
+  kiểm (mọi câu khác, `SECTIONS`, `DURATION` phải y như cũ), không đạt thì không ghi gì. Đổi lời đọc thì dòng
+  `- **Lời:**` của câu đó trong `kich-ban-goc.md` đổi theo, kết quả dry-run và báo cáo quét audio cũ bị xoá để bước
+  Giọng đọc kiểm lại. Sau đó TTS dry-run chạy như với agent. Cue đã duyệt vẫn ở trạng thái đã duyệt (duyệt lại sẽ
+  chạy lại đề xuất ảnh từ đầu). Không sửa được sau khi đã có giọng, và bị từ chối khi một cảnh đã dựng neo nhịp
+  (`spokenAt`) vào cụm từ mà lời mới làm mất. CLI: `node tools/cue-edit.mjs <video dir> --n <câu> --script
+  projects/<id>/kich-ban-goc.md`, thay đổi là JSON trên stdin. Mọi lần sửa ghi ở `projects/<id>/.studio/cue-edits.jsonl`.
+- **Báo khi xong**: tiêu đề tab luôn cho biết việc đang chạy (kèm %) và việc vừa xong/lỗi khi bạn đang ở tab khác.
+  Bấm **Báo khi xong** trên thanh tiến độ để trình duyệt gửi thông báo khi một việc dài (từ 30 giây) kết thúc lúc bạn
+  không nhìn trang. Lựa chọn nhớ theo trình duyệt; chạy với mọi agent (Claude Code, Codex, Antigravity).
+- **Chi phí** (cột ở trang Các video, ô trong mục Thông số của video): mỗi nguồn giữ đúng đơn vị nó báo — Claude Code
+  báo giá USD (giá API quy đổi, kể cả khi dùng gói thuê bao), Codex báo token nhưng không báo giá nên hiện số token,
+  Antigravity và các lượt chạy trước khi Studio ghi sổ hiện là "không báo số". Gồm cả lượt QA ảnh và đề xuất ảnh.
+  ElevenLabs tính theo ký tự bị tính phí mà `tts.mjs` in ở từng câu (header `character-cost` của API, không có thì
+  số ký tự đã gửi); lượt tạo giọng trước khi có số này được ghi là thiếu. Tạo giọng bằng CLI ngoài Studio không được
+  cộng vào.
+
 ### Agent
 
 - Mặc định là Claude Code. Đổi bằng `STUDIO_AGENT_PROVIDER` trong `studio/.env`; đặt

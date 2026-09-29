@@ -78,7 +78,7 @@ export function HarnessPanel({ run, tools, approved = false }: { run?: HarnessRu
             {STEP_ICON[step.status]}<span>{step.label}</span>{step.detail && <small>{step.detail}</small>}
           </li>)}</ol>}
       <span className="vs-harness-meta mono">
-        {run.kind === "review" ? "review lại · " : ""}{new Date(run.startedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} · {duration(end - run.startedAt)}
+        {run.kind === "review" ? "review lại · " : run.kind === "edit" ? "sửa tay · " : ""}{new Date(run.startedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} · {duration(end - run.startedAt)}
       </span>
       {tools && <span className="vs-harness-tools">{tools}</span>}
     </div>
