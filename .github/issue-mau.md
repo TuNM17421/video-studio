@@ -37,8 +37,11 @@ Tạo một issue mới, gắn nhãn `template`, rồi dán phần dưới đây
 **🏷️ Gắn nhãn khi gửi**
 
 Chọn 1 nhãn loại (`bug` / `đề xuất` / `tài liệu` / `câu hỏi`), 1 nhãn khu vực (`studio`,
-`pipeline`, `design-system`, `tts`, `render`) và 1 nhãn mức độ. Không chắc thì để trống,
-người phát triển sẽ gắn khi phân loại.
+`pipeline`, `design-system`, `tts`, `render`), 1 nhãn mức độ và 1 nhãn ưu tiên
+(`ưu tiên: P0` … `ưu tiên: P3`). Không chắc thì để trống, người phát triển sẽ gắn khi phân loại.
+
+**Mức độ ≠ ưu tiên**: mức độ là lúc lỗi xảy ra thì tệ đến đâu, ưu tiên là nên sửa cái nào trước. Lỗi chặn
+hẳn mà một năm gặp một lần và có đường lách thì ưu tiên thấp hơn lỗi nhẹ mà cả nhóm vấp mỗi ngày.
 
 ---
 
@@ -55,6 +58,10 @@ người phát triển sẽ gắn khi phân loại.
 
 **🌡️ Mức độ**
 <!-- Chặn (không làm tiếp được) · Nặng (phải lách) · Vừa (khó chịu, vẫn làm được) · Nhẹ (hiển thị) -->
+
+**🔥 Ưu tiên (đề nghị)**
+<!-- P0 sửa ngay · P1 trong đợt này · P2 có người rảnh thì sửa · P3 để đó.
+     Kèm một câu vì sao: bao nhiêu người vấp, mấy lần một ngày, có đường lách không. -->
 
 **🔁 Các bước làm lại lỗi**
 1.
@@ -101,6 +108,9 @@ và để lộ một mảng trắng, thay vì đứng yên tại chỗ.
 **🏷️ Loại lỗi** Giao diện / trải nghiệm (UI/UX)
 
 **🌡️ Mức độ** Vừa — khó chịu, vẫn làm việc bình thường
+
+**🔥 Ưu tiên (đề nghị)** P2 — không ai bị chặn và cuộn ngược lên là bấm được, nhưng ai làm video dài cũng
+vấp, mỗi lần mở một video là vài lần. Sửa thì nhanh.
 
 **🔁 Các bước làm lại lỗi**
 1. Chạy `npm run studio`, mở `http://127.0.0.1:3100`.

@@ -1,8 +1,17 @@
 # Nhãn (labels) của repo
 
-Mỗi issue nên có **1 nhãn loại + 1 nhãn khu vực + 1 nhãn mức độ**. Nhãn trạng thái do bạn gắn khi phân loại.
+Mỗi issue nên có **1 nhãn loại + 1 nhãn khu vực + 1 nhãn mức độ + 1 nhãn ưu tiên**. Nhãn trạng thái do bạn
+gắn khi phân loại.
 
-## Nên tạo ngay (13 nhãn)
+**Mức độ ≠ ưu tiên.** *Mức độ* là lúc nó xảy ra thì tệ đến đâu; *ưu tiên* là nên làm cái nào trước. Một lỗi
+chặn hẳn mà một năm gặp một lần và có đường lách thì ưu tiên thấp hơn một chỗ khó chịu nhẹ mà cả nhóm vấp
+mỗi ngày. Hai thang màu để khác hệ (mức độ đỏ→xanh, ưu tiên tím đậm→tím nhạt) cho dễ phân biệt khi nhìn
+danh sách issue.
+
+**Ưu tiên do một người chốt** — người mở issue chỉ *đề nghị*. Nếu ai cũng tự gắn được thì mọi việc thành P0
+và bảng việc hết ý nghĩa.
+
+## Nên tạo ngay (17 nhãn)
 
 | Nhóm | Nhãn | Màu | Ý nghĩa |
 |---|---|---|---|
@@ -18,6 +27,10 @@ Mỗi issue nên có **1 nhãn loại + 1 nhãn khu vực + 1 nhãn mức độ*
 | Mức độ | `mức độ: nặng` | `d93f0b` | Phải lách mới làm được |
 | Mức độ | `mức độ: vừa` | `fbca04` | Khó chịu, vẫn làm việc được |
 | Mức độ | `mức độ: nhẹ` | `c2e0c6` | Lỗi nhỏ về hiển thị, chữ nghĩa |
+| Ưu tiên | `ưu tiên: P0` | `4c0f6b` | Làm ngay, gạt việc khác sang một bên |
+| Ưu tiên | `ưu tiên: P1` | `6b21a8` | Làm trong đợt này |
+| Ưu tiên | `ưu tiên: P2` | `a855f7` | Có người rảnh thì làm |
+| Ưu tiên | `ưu tiên: P3` | `e9d5ff` | Để đó, chưa cần làm |
 | Trạng thái | `cần xem` | `ffffff` | Mới gửi, chưa phân loại |
 
 ## Thêm khi thấy cần
@@ -50,6 +63,10 @@ gh label create "mức độ: chặn"           --color b60205 --description "Kh
 gh label create "mức độ: nặng"           --color d93f0b --description "Phải lách mới làm được" --force
 gh label create "mức độ: vừa"            --color fbca04 --description "Khó chịu, vẫn làm việc được" --force
 gh label create "mức độ: nhẹ"            --color c2e0c6 --description "Lỗi nhỏ về hiển thị, chữ nghĩa" --force
+gh label create "ưu tiên: P0"            --color 4c0f6b --description "Làm ngay, gạt việc khác sang một bên" --force
+gh label create "ưu tiên: P1"            --color 6b21a8 --description "Làm trong đợt này" --force
+gh label create "ưu tiên: P2"            --color a855f7 --description "Có người rảnh thì làm" --force
+gh label create "ưu tiên: P3"            --color e9d5ff --description "Để đó, chưa cần làm" --force
 gh label create "cần xem"        --color ffffff --description "Mới gửi, chưa phân loại" --force
 ```
 
