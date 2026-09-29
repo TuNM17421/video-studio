@@ -1,9 +1,11 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CheckCircleOutlined, CommentOutlined, LoadingOutlined, RobotOutlined, SendOutlined, StopOutlined, ToolOutlined, WarningOutlined } from "@ant-design/icons";
+import { BellFilled, BellOutlined, CheckCircleOutlined, CommentOutlined, LoadingOutlined, RobotOutlined, SendOutlined, StopOutlined, ToolOutlined, WarningOutlined } from "@ant-design/icons";
 import { Button, Collapse, Input, Progress, Tag } from "antd";
 import type { JobInfo, LogEntry, StageStatus } from "@/lib/types";
+import { JOB_LABEL } from "@/lib/job-notice";
+import { useNotifyPref } from "@/lib/notify";
 import { ConfirmDialog } from "./confirm-dialog";
 
 const ICONS: Record<LogEntry["kind"], typeof RobotOutlined> = {
@@ -20,6 +22,29 @@ function clock(ms: number) {
   const s = String(total % 60).padStart(2, "0");
   const m = Math.floor(total / 60);
   return m < 60 ? `${m}:${s}` : `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}:${s}`;
+}
+
+/**
+ * Turns "Báo khi xong" on or off for this browser — shown where the member waits for a job. Blocked by the
+ * browser, it says where to lift the block instead of asking again (a denied prompt cannot be re-shown).
+ */
+function NotifyToggle() {
+  const notify = useNotifyPref();
+  if (!notify.supported) return null;
+  const blocked = notify.permission === "denied";
+  return <Button
+    type="text"
+    size="small"
+    className="vs-notify"
+    icon={notify.on ? <BellFilled aria-hidden /> : <BellOutlined aria-hidden />}
+    aria-pressed={notify.on}
+    disabled={blocked}
+    title={blocked
+      ? "Trình duyệt đang chặn thông báo của trang này — bật lại trong cài đặt trang (biểu tượng cạnh địa chỉ)."
+      : notify.on ? "Đang bật: trình duyệt báo khi một việc dài xong, kể cả khi bạn ở tab khác. Bấm để tắt."
+      : "Báo bằng thông báo của trình duyệt khi việc này xong, kể cả khi bạn ở tab khác."}
+    onClick={() => void notify.toggle()}
+  >{blocked ? "Thông báo bị chặn" : notify.on ? "Sẽ báo khi xong" : "Báo khi xong"}</Button>;
 }
 
 export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () => void }) {
@@ -44,26 +69,6 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
   // guess extrapolated here would have counted the design-system build as if it were capture.
   const elapsed = now - startedAt;
   const remaining = job.progress?.etaMs ?? null;
-  const taskLabel: Record<JobInfo["kind"], string> = {
-    cues: "Lời & cue",
-    voice: "Giọng đọc",
-    scenes: "Dựng cảnh",
-    review: "Review lại dựng cảnh",
-    render: "Render MP4",
-    deliver: "Bàn giao",
-    research: "Đóng gói kịch bản",
-    images: "Đề xuất ảnh",
-    "dry-run": "Kiểm tra giọng",
-    "voice-script": "Xuất lời đọc",
-    "import-scan": "Kiểm tra thư mục audio",
-    "omnivoice-setup": "Cài model local",
-    "omnivoice-generate": "Sinh giọng bằng model local",
-    "align-setup": "Cài môi trường nhận diện giọng",
-    "kaggle-setup": "Cài Kaggle CLI",
-    "kaggle-generate": "Sinh giọng trên Kaggle",
-    "voice-retake": "Sinh lại một câu",
-    "voice-retake-pick": "Đặt bản đã chọn",
-  };
   return <>
     {/* Only the message is a live region: the timer beside it ticks every second and would be read out each time. */}
     <div className="job-progress">
@@ -74,11 +79,12 @@ export function JobProgress({ job, onStop }: { job: JobInfo | null; onStop?: () 
         {remaining !== null && <> · còn khoảng <strong>{clock(remaining)}</strong></>}
       </small>
       <strong>{percent === null ? "" : `${Math.round(percent)}%`}</strong>
+      <NotifyToggle />
       {onStop && <Button type="text" danger size="small" className="vs-stop" icon={<StopOutlined />} onClick={() => setConfirmStopFor(job.startedAt)}>Dừng</Button>}
       <Progress className={percent === null ? "is-indeterminate" : ""} percent={percent ?? 36} showInfo={false} status="active" strokeLinecap="butt" />
     </div>
     {confirmStopFor === job.startedAt && <ConfirmDialog
-      title={`Dừng tác vụ ${taskLabel[job.kind]}?`}
+      title={`Dừng tác vụ ${JOB_LABEL[job.kind]}?`}
       description="Tiến trình đang chạy sẽ dừng ngay. Các tệp đã ghi vẫn được giữ lại."
       confirmLabel="Dừng tác vụ"
       onCancel={() => setConfirmStopFor(null)}
@@ -151,12 +157,13 @@ export function AgentSummary({ logs }: { logs: LogEntry[] }) {
   }]} />;
 }
 
-export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boolean; onSend: (message: string) => Promise<void>; placeholder: string }) {
+export function FeedbackBox({ disabled, onSend, placeholder }: { disabled: boolean; onSend: (message: string) => Promise<boolean>; placeholder: string }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   async function send() {
     setSending(true);
-    try { await onSend(text); setText(""); } finally { setSending(false); }
+    // A failed send (409 while another job runs) keeps the text: it is the only copy of what the user wrote.
+    try { if (await onSend(text)) setText(""); } finally { setSending(false); }
   }
   return <div className="vs-feedback">
     <label className="field vs-counted-textarea">Góp ý cho agent

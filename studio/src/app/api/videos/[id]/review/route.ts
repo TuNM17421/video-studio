@@ -1,7 +1,7 @@
 import { isAgentProvider } from "@/lib/agent-providers";
 import { normalizeReview } from "@/lib/review";
 import { baseUrl, handle } from "@/lib/server/http";
-import { emit, isRunning, log } from "@/lib/server/jobs";
+import { emit, isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { runReviewJob } from "@/lib/server/qa";
 import { readState, updateState } from "@/lib/server/videos";
@@ -21,7 +21,9 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy.");
     if (!["review", "error"].includes(state.stages.scenes)) throw new HttpError(400, "Chỉ review lại được khi dựng cảnh đang chờ duyệt hoặc vừa lỗi.");
     if (state.stages.voice !== "done") throw new HttpError(400, "Tạo giọng đọc trước khi dựng cảnh.");
-    void runReviewJob(id, baseUrl(req));
+    void runReviewJob(id, baseUrl(req)).catch((error) => {
+      if (!jobHandled(error)) log(id, "error", error instanceof Error ? error.message : String(error));
+    });
     return Response.json({ started: true }, { status: 202 });
   }
 

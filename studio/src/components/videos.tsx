@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/client";
 import type { VideoSummary } from "@/lib/types";
 import { completedStages, matchesVideo, nextStageLabel, overallStageStatus, VIDEO_STAGES, type VideoFilter } from "@/lib/video-status";
+import { costLabels } from "@/lib/video-cost";
 import { Shell } from "./shell";
 import { StageBadge } from "./agent-panel";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -42,6 +43,19 @@ function VideoProgress({ video }: { video: VideoSummary }) {
     <div className={styles.progressLabels} aria-hidden="true">
       {VIDEO_STAGES.map(({ id, short }, index) => <span key={id} data-current={index === current || undefined}>{short}</span>)}
     </div>
+  </div>;
+}
+
+/** Agent USD and ElevenLabs characters so far; each line says what it leaves out (lib/video-cost.ts). */
+function VideoCost({ video }: { video: VideoSummary }) {
+  const { agent, tts } = costLabels(video.cost);
+  if (!agent && !tts) return <span className={styles.costNone} aria-label="Chưa có chi phí ghi nhận">—</span>;
+  return <div className={styles.cost}>
+    {([["agent", agent], ["ElevenLabs", tts]] as const).map(([kind, line]) => line && <div key={kind} title={line.note}>
+      {line.known
+        ? <><strong>{line.value}</strong><span>{kind}{line.missing ? ` · ${line.missing}` : ""}</span></>
+        : <span>{kind}: chưa có số</span>}
+    </div>)}
   </div>;
 }
 
@@ -107,11 +121,12 @@ export default function Videos() {
   }
 
   const columns: TableProps<VideoSummary>["columns"] = [
-    { title: "Video", key: "video", width: "24%", render: (_, video) => <VideoIdentity video={video} /> },
-    { title: "Lịch", key: "schedule", width: "16%", render: (_, video) => <div className={styles.schedule}><strong>{video.day || "—"}</strong><span>Cập nhật {updatedLabel(video.updatedAt)}</span></div> },
-    { title: "Tiến độ 5 cổng", key: "progress", width: "28%", render: (_, video) => <VideoProgress video={video} /> },
-    { title: "Cổng hiện tại", key: "status", width: "17%", render: (_, video) => <div className={styles.videoState}><StageBadge status={overallStageStatus(video.stages)} /><span>{nextStageLabel(video.stages)}</span></div> },
-    { title: <span className="sr-only">Thao tác</span>, key: "action", width: "15%", align: "right", render: (_, video) => <div className={styles.desktopActions}>
+    { title: "Video", key: "video", width: "21%", render: (_, video) => <VideoIdentity video={video} /> },
+    { title: "Lịch", key: "schedule", width: "13%", render: (_, video) => <div className={styles.schedule}><strong>{video.day || "—"}</strong><span>Cập nhật {updatedLabel(video.updatedAt)}</span></div> },
+    { title: "Tiến độ 5 cổng", key: "progress", width: "24%", render: (_, video) => <VideoProgress video={video} /> },
+    { title: "Cổng hiện tại", key: "status", width: "15%", render: (_, video) => <div className={styles.videoState}><StageBadge status={overallStageStatus(video.stages)} /><span>{nextStageLabel(video.stages)}</span></div> },
+    { title: "Chi phí", key: "cost", width: "13%", render: (_, video) => <VideoCost video={video} /> },
+    { title: <span className="sr-only">Thao tác</span>, key: "action", width: "14%", align: "right", render: (_, video) => <div className={styles.desktopActions}>
       <Button type="link" onClick={() => router.push(`/?id=${encodeURIComponent(video.id)}`)} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở</Button>
       <Button type="text" danger icon={<DeleteOutlined />} aria-label={`Xóa video ${video.id}`} onClick={() => { setDeleteError(null); setDeleteTarget(video); }}>Xóa</Button>
     </div> },
@@ -144,6 +159,7 @@ export default function Videos() {
                     <div><dt>Cập nhật</dt><dd>{updatedLabel(video.updatedAt)}</dd></div>
                     <div><dt>Cổng hiện tại</dt><dd>{nextStageLabel(video.stages)}</dd></div>
                   </dl>
+                  <div className={styles.cardCost}><span>Chi phí</span><VideoCost video={video} /></div>
                   <VideoProgress video={video} />
                   <div className={styles.mobileActions}>
                     <Button type="primary" onClick={() => router.push(`/?id=${encodeURIComponent(video.id)}`)} icon={video.running ? <LoadingOutlined spin /> : <ArrowRightOutlined />} iconPlacement="end">Mở video</Button>

@@ -1,6 +1,6 @@
 import type { VoiceSettings, VoiceSource } from "@/lib/types";
 import { handle } from "@/lib/server/http";
-import { isRunning, log } from "@/lib/server/jobs";
+import { isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { readState, setStage, updateState } from "@/lib/server/videos";
 import { dryRun, exportScript, generateKaggle, generateVoice, hasKey, importVoice, kaggleStatus, lastDryRun, lastImportReport, generateLocal, omnivoiceCast, omnivoiceServer, omnivoiceStatus, beginRetake, scanImport, setupAlign, setupKaggle, setupOmnivoice } from "@/lib/server/voice";
@@ -103,14 +103,16 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   if (body.action === "kaggle-generate") {
     const v = settings(body, state.voice);
     updateState(id, (s) => { s.voice = { ...s.voice, voiceId: v.voiceId, speakers: v.speakers, pause: v.pause }; });
+    // Its automatic import runs importVoice, whose own failures are already logged (jobHandled).
     void generateKaggle(id, v)
-      .catch((error) => log(id, "error", error instanceof Error ? error.message : String(error)));
+      .catch((error) => { if (!jobHandled(error)) log(id, "error", error instanceof Error ? error.message : String(error)); });
     return Response.json({ started: true }, { status: 202 });
   }
   if (body.action === "generate") {
     if (!hasKey()) throw new HttpError(400, "Nhập API key ElevenLabs trước.");
     if (!lastDryRun(id)) throw new HttpError(400, "Chạy kiểm tra (dry-run) trước khi tạo giọng.");
     void generateVoice(id).catch((error) => {
+      if (jobHandled(error)) return;
       log(id, "error", error instanceof Error ? error.message : String(error));
       setStage(id, "voice", "error", "Tạo giọng thất bại.");
     });
@@ -144,6 +146,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     if (!report) throw new HttpError(400, "Kiểm tra thư mục audio trước khi nhập.");
     if (!report.ok && !body.force) throw new HttpError(400, "Thư mục còn câu chưa dùng được. Sửa rồi kiểm tra lại.");
     void importVoice(id, Boolean(body.force)).catch((error) => {
+      if (jobHandled(error)) return;
       log(id, "error", error instanceof Error ? error.message : String(error));
       setStage(id, "voice", "error", "Nhập giọng thất bại.");
     });

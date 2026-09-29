@@ -5,7 +5,8 @@ import { agentProviderLabel } from "../agent-providers";
 import { resolveReviewer } from "../review";
 import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
 import { agentBin, installedAgents } from "./agent-config";
-import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
+import { resolveAgentBin } from "./agent-step";
+import { finishJob, log, machineLabel, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
 import { moduleQaCriteria } from "./modules";
 import { styleQaCriteria } from "./style-guides";
@@ -318,7 +319,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
   setProgress(id, null, `${label} đang QA ảnh…`);
   log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
-  const code = await run(id, agentBin(provider), args, {
+  const code = await run(id, (await resolveAgentBin(provider)) ?? agentBin(provider), args, {
     cwd: packet.packet,
     env: sanitizedAgentEnv(),
     input: prompt,
@@ -378,7 +379,14 @@ export const REVIEW_MARKER = "Review lại dựng cảnh";
  * Gate + review without an agent turn: after switching review on, changing who grades, or fixing a scene
  * by hand. Runs as its own job so Dừng works and the ledger records it.
  */
-export async function runReviewJob(id: string, base: string) {
+export function runReviewJob(id: string, base: string) {
+  return ownJob(id, () => reviewJob(id, base), (error) => {
+    try { setStage(id, "scenes", "error", error); } catch {}
+    endHarness(id, "error", error);
+  });
+}
+
+async function reviewJob(id: string, base: string) {
   startJob(id, "review", { actor: "system", mode: "deterministic", label: "review lại" });
   setStage(id, "scenes", "running");
   beginHarness(id, "scenes", "review", HARNESS_STEPS.review);

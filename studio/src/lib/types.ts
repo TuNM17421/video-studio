@@ -5,7 +5,7 @@ export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 import type { ImagesView } from "./images";
 
-export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick";
+export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
@@ -393,8 +393,8 @@ export type HarnessStage = "cues" | "scenes" | "deliver";
 /** The latest run of the checks for one stage; persisted in .studio/harness/<stage>.json. */
 export interface HarnessRun {
   stage: HarnessStage;
-  /** `agent` = an agent turn then the gates; `review` = gates + review only (Chạy lại review). */
-  kind: "agent" | "review";
+  /** `agent` = an agent turn then the gates; `review` = gates + review only (Chạy lại review); `edit` = a câu edited by hand, then the dry-run. */
+  kind: "agent" | "review" | "edit";
   status: "running" | "done" | "error" | "stopped";
   startedAt: number;
   finishedAt?: number;
@@ -445,6 +445,39 @@ export interface VideoDetail {
   blocking: Record<"cues" | "scenes", number>;
   /** Image suggestions (capability `images`); null when the video does not use it. */
   images: ImagesView | null;
+  cost: VideoCost;
+}
+
+/** A câu edited by hand in the cues step (lib/server/cue-edit.ts, tools/cue-edit.mjs). */
+export type CueEditField = "text" | "title" | "visual";
+export interface CueEditResult {
+  n: number;
+  changed: Partial<Record<CueEditField, { before: string; after: string }>>;
+  /** The script's `- **Lời:**` line: rewritten, or why it was left alone. */
+  script: "updated" | "not-found" | "ambiguous" | "none";
+  /** The TTS dry-run the edited cues went through. */
+  gate: "ok" | "failed" | "skipped";
+  gateError?: string;
+}
+
+/** What a video has cost so far (lib/video-cost.ts): agent USD and ElevenLabs characters, each with what is missing. */
+export interface VideoCost {
+  /** USD reported by the agent runs that report one (Claude Code): API price, also on a subscription. */
+  agentUsd: number;
+  /** Every agent run that ran: authoring, visual QA and image suggestions, any CLI. */
+  agentRuns: number;
+  pricedRuns: number;
+  /** Runs that reported tokens but no price (Codex), their tokens in + out, and which CLIs they were. */
+  tokenRuns: number;
+  tokens: number;
+  tokenProviders: string[];
+  /** Runs that reported nothing (Antigravity, runs from before the ledger). */
+  silentRuns: number;
+  /** Characters ElevenLabs billed, summed over the voice runs that recorded it. */
+  ttsCharacters: number;
+  ttsRuns: number;
+  /** ElevenLabs runs from before the Studio recorded billed characters. */
+  ttsUnrecorded: number;
 }
 
 export interface VideoSummary {
@@ -458,6 +491,7 @@ export interface VideoSummary {
   artifacts: Artifacts;
   running: boolean;
   updatedAt: string | null;
+  cost: VideoCost;
 }
 
 export interface PaletteColor {

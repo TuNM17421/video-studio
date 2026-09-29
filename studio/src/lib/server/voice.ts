@@ -2,10 +2,11 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, RetakeEntry, RetakeResult, VoiceBound, VoiceScript, VoiceSettings } from "../types";
-import { finishJob, gpuJobElsewhere, isRunning, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, gpuJobElsewhere, isRunning, log, ownJob, recordJobMetrics, registry, run, setProgress, startJob, wasStopped } from "./jobs";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
+import { billedFromLine } from "../video-cost";
 
 export const hasKey = () => Boolean(registry.elevenKey);
 export function setKey(key: string) {
@@ -106,17 +107,23 @@ export async function dryRun(id: string, v: VoiceSettings) {
 }
 
 /** Paid: synthesize (cached câu are free), assemble the master, bind it to the video with --write-cues. */
-export async function generateVoice(id: string) {
+export function generateVoice(id: string) {
+  return ownJob(id, () => generateEleven(id), (error) => setStage(id, "voice", "error", error));
+}
+
+async function generateEleven(id: string) {
   const key = registry.elevenKey;
   if (!key) throw new HttpError(400, "Nhập API key ElevenLabs trước.");
   const { state } = readState(id);
   const v = state.voice;
   validateVoice(v);
-  startJob(id, "voice");
+  startJob(id, "voice", { actor: "elevenlabs", label: "voice · ElevenLabs" });
   setStage(id, "voice", "running");
   log(id, "system", `Tạo giọng · ${v.model} · nghỉ ${v.pause} s`);
   const total = lastDryRun(id)?.toGenerate || 0;
   let done = 0;
+  let billed = 0;
+  let billedCues = 0;
   const code = await run(id, process.execPath, ttsArgs(id, v), {
     env: ttsEnv(v, key),
     onLine(line, stream) {
@@ -127,8 +134,16 @@ export async function generateVoice(id: string) {
         done++;
         setProgress(id, total ? Math.min(99, (done / total) * 100) : null, `Đang tạo câu ${done}${total ? `/${total}` : ""}…`);
       }
+      const chars = stream === "stdout" ? billedFromLine(line) : null;
+      if (chars !== null) {
+        billed += chars;
+        billedCues++;
+      }
     },
   });
+  // Recorded whatever the outcome: câu synthesized before a failure or a Dừng were billed all the same.
+  recordJobMetrics(id, { ttsCharacters: billed, ttsCues: billedCues, model: v.model });
+  if (billedCues) log(id, "system", `ElevenLabs tính phí ${billed.toLocaleString("vi-VN")} ký tự cho ${billedCues} câu ở lượt này.`);
   if (code !== 0 || wasStopped(id)) {
     setStage(id, "voice", "error", wasStopped(id) ? "Đã dừng." : "Tạo giọng thất bại, xem nhật ký.");
     finishJob(id, "error");
@@ -590,6 +605,16 @@ export function lastImportReport(id: string): ImportReport | null {
   try { return JSON.parse(fs.readFileSync(importReportFile(id), "utf8")); } catch { return null; }
 }
 
+/**
+ * The narration changed (a câu edited by hand): the dry-run counted the old words and the folder scan matched
+ * recordings against them. Kept, the scan would still say "khớp" and the import would bind a recording of the
+ * old sentence. Dropped, the voice step asks for both again.
+ */
+export function forgetVoiceChecks(id: string) {
+  fs.rmSync(dryRunFile(id), { force: true });
+  fs.rmSync(importReportFile(id), { force: true });
+}
+
 // ── Sinh lại một câu ─────────────────────────────────────────────────────────
 //
 // Câu bị gắn cờ (hoặc người dựng nghe thấy đọc sai) thì sinh lại riêng câu đó vài bản bằng model local,
@@ -788,7 +813,11 @@ function recordBound(id: string, source: VoiceBound["source"], v: VoiceSettings)
 }
 
 /** Assemble the master from the folder and bind it to the video, exactly as the ElevenLabs path does. */
-export async function importVoice(id: string, force: boolean) {
+export function importVoice(id: string, force: boolean) {
+  return ownJob(id, () => importFolder(id, force), (error) => setStage(id, "voice", "error", error));
+}
+
+async function importFolder(id: string, force: boolean) {
   const { state } = readState(id);
   const v = state.voice;
   const target = assertImportDir(v.importDir);
