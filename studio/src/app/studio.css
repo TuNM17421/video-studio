@@ -59,6 +59,14 @@
   color: var(--vu-red-700);
   font-weight: var(--vu-font-bold);
 }
+/* "Báo khi xong" sits beside Dừng in every job bar: quiet until turned on. */
+.job-progress .vs-notify {
+  color: var(--vu-blue-700);
+}
+.job-progress .vs-notify[aria-pressed="true"] {
+  color: var(--vu-blue-900);
+  font-weight: var(--vu-font-semibold);
+}
 
 /* ── style picker + showcase ────────────────────────────────────────────── */
 .vs-style-picker {

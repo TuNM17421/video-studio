@@ -9,6 +9,7 @@ import { inferDay } from "@/lib/day";
 import type { AgentConfig, AgentProvider, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { resolveReviewer } from "@/lib/review";
+import { useJobNotice, useVideoTabTitle } from "@/lib/use-job-notice";
 import { STUDIO_STEP_EVENT } from "@/lib/tours";
 import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
@@ -201,7 +202,9 @@ export default function Studio() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoStep, setAutoStep] = useState(true);
-  const { detail, logs, job, error: loadError, refresh } = useVideo(id);
+  const jobNotice = useJobNotice(id);
+  const { detail, logs, job, error: loadError, refresh } = useVideo(id, jobNotice.onJobEnd);
+  useVideoTabTitle(jobNotice, detail ? detail.state.request.title || detail.state.id : null, job);
 
   // "Tạo video từ kịch bản này" ở trang Đóng gói kịch bản: điền sẵn kịch bản đã duyệt vào form, như thể
   // người dùng vừa chọn tệp. Mã video, style, ngày vẫn do người dùng chọn.
