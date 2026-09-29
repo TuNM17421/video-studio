@@ -36,7 +36,7 @@ import https from 'node:https';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { encodeSegment, EMPTY_SHA, objectUrl, signRequest } from './lib/r2.mjs';
-import { pruneGuard } from './lib/media.mjs';
+import { pruneGuard, normalizeOnly, inOnlyScope } from './lib/media.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEDIA = path.join(ROOT, 'media');
@@ -50,7 +50,7 @@ for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--only') {
     const v = argv[++i];
     if (!v || v.startsWith('--')) fail('--only cần một prefix key, ví dụ: --only images/hero.png');
-    only.push(v.replace(/^\/+/, ''));
+    only.push(normalizeOnly(v));
     continue;
   }
   flags.add(argv[i]);
@@ -60,7 +60,7 @@ if (flags.has('--prune') && only.length) fail('--prune và --only không dùng �
 const listOnly = flags.has('--list');
 const dryRun = listOnly || flags.has('--dry-run');
 /** Không khai `--only` ⇒ phạm vi là cả cây, y như trước. */
-const inScope = (key) => !only.length || only.some((p) => key === p || key.startsWith(p.endsWith('/') ? p : `${p}/`));
+const inScope = (key) => inOnlyScope(key, only);
 
 // ── config ────────────────────────────────────────────────────────────────────
 function loadEnv(file) {
@@ -155,7 +155,11 @@ manifest.assets ||= {};
 
 if (!fs.existsSync(FILES)) fail(`Chưa có thư mục ${path.relative(ROOT, FILES)}. Tạo nó rồi bỏ video/audio vào theo đúng key muốn dùng.`);
 const local = walk(FILES).filter(inScope);
-if (only.length) console.log(`\nPhạm vi --only: ${only.join(' · ')} → ${local.length} file local lọt phạm vi`);
+if (only.length) {
+  console.log(`\nPhạm vi --only: ${only.join(' · ')} → ${local.length} file local lọt phạm vi`);
+  const stale = Object.keys(manifest.assets).some(inScope);
+  if (!local.length && !stale) fail(`--only ${only.join(' · ')} không khớp file nào trong media/files/ (cũng không có trong manifest).\n  Dùng key tính từ media/files/, ví dụ: --only evidence/ hoặc --only images/hero.png`);
+}
 const unknown = local.filter((k) => !TYPES[path.extname(k).toLowerCase()]);
 if (unknown.length) fail(`Không nhận ra định dạng: ${unknown.join(', ')}.\n  Định dạng hỗ trợ: ${Object.keys(TYPES).join(' ')}`);
 

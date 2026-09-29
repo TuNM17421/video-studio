@@ -72,7 +72,8 @@ if (!fs.existsSync(rendered)) fail(`pdftoppm không tạo ra file — kiểm l�
 fs.mkdirSync(path.dirname(out), { recursive: true });
 
 if (!flags.box) {
-  fs.renameSync(rendered, out);
+  fs.copyFileSync(rendered, out); // không renameSync: tmp và --out khác ổ sẽ lỗi EXDEV
+  fs.rmSync(rendered, { force: true });
   console.log(`✓ ${path.relative(process.cwd(), out)} · trang ${page} @ ${dpi}dpi (cả trang, chưa crop)`);
   console.log('  Mở ảnh, đọc toạ độ vùng cần cắt theo tỉ lệ 0–1 (góc trên-trái x0,y0 · góc dưới-phải x1,y1),');
   console.log('  rồi chạy lại kèm --box x0,y0,x1,y1 để crop.');
