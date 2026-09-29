@@ -605,6 +605,15 @@ export function lastImportReport(id: string): ImportReport | null {
   try { return JSON.parse(fs.readFileSync(importReportFile(id), "utf8")); } catch { return null; }
 }
 
+/**
+ * The narration changed (a câu edited by hand): the dry-run counted the old words and the folder scan matched
+ * recordings against them. Kept, the scan would still say "khớp" and the import would bind a recording of the
+ * old sentence. Dropped, the voice step asks for both again.
+ */
+export function forgetVoiceChecks(id: string) {
+  fs.rmSync(dryRunFile(id), { force: true });
+  fs.rmSync(importReportFile(id), { force: true });
+}
 
 // ── Sinh lại một câu ─────────────────────────────────────────────────────────
 //

@@ -1112,6 +1112,37 @@ button.vs-tile:hover {
 .vs-cue-list .vs-cue-text {
   white-space: normal;
 }
+/* Sửa trực tiếp một câu: the pencil sits at the row's end; the open row becomes a small form in place. */
+.vs-cue-list .vs-cue-edit-button {
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--vu-blue-700);
+}
+.vs-cue-list .vs-cue-editing {
+  align-items: flex-start;
+}
+.vs-cue-edit {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--vu-space-3);
+}
+.vs-cue-edit-hint {
+  margin: 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-snug);
+}
+.vs-cue-edit-actions {
+  display: flex;
+  gap: var(--vu-space-2);
+}
+.vs-cue-notice {
+  margin-bottom: var(--vu-space-3);
+}
+.vs-cue-locked {
+  margin: var(--vu-space-2) 0 0;
+}
 .vs-key-field {
   flex: 1;
   margin: 0;

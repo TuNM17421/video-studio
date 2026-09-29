@@ -25,6 +25,7 @@ export const JOB_LABEL: Record<JobKind, string> = {
   "kaggle-generate": "Sinh giọng trên Kaggle",
   "voice-retake": "Sinh lại một câu",
   "voice-retake-pick": "Đặt bản đã chọn",
+  "cue-edit": "Sửa câu",
 };
 
 /**
