@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { cleanValue, EDITABLE, editCueSource, lostAnchors, syncScriptNarration } from './lib/cue-edit.mjs';
+import { cleanValue, EDITABLE, editCueSource, lostAnchors, opaqueAnchors, syncScriptNarration } from './lib/cue-edit.mjs';
 
 const fail = (message) => {
   console.error(`✗ ${message}`);
@@ -60,6 +60,11 @@ if ('text' in changes) {
   // Scenes already built on this câu time their beats to phrases of its narration; losing one breaks the video.
   const videoDir = path.dirname(cuesFile);
   const scenes = fs.readdirSync(videoDir).filter((name) => name.endsWith('.jsx')).map((name) => ({ file: name, source: fs.readFileSync(path.join(videoDir, name), 'utf8') }));
+  const opaque = opaqueAnchors(scenes, n);
+  if (opaque.length) {
+    const list = opaque.slice(0, 3).map(({ file, expr }) => `${file} neo nhịp vào ${expr}`).join('; ');
+    fail(`Cảnh đã dựng neo nhịp của câu ${n} bằng biến, không đọc được thành cụm từ (${list}${opaque.length > 3 ? `; và ${opaque.length - 3} chỗ khác` : ''}), nên không kiểm được lời mới có giữ đủ nhịp không. Nhờ agent sửa câu này cùng cảnh.`);
+  }
   const lost = lostAnchors(scenes, n, changes.text);
   if (lost.length) {
     const list = lost.slice(0, 3).map(({ file, phrase }) => `${file} neo nhịp vào "${phrase}"`).join('; ');

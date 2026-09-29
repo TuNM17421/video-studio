@@ -171,6 +171,40 @@ export function syncScriptNarration(script, oldText, newText) {
   return { script: lines.join('\n'), result: 'updated' };
 }
 
+/** The `spokenAt(cue, …)` calls of one scene, with the câu they anchor to and the phrase when it can be read. */
+function sceneAnchors(source) {
+  // Scenes write `const N = 2;` then `spokenAt(N, …)`; a number in place of the constant is also accepted.
+  const numbers = new Map([...source.matchAll(/\bconst\s+([\w$]+)\s*=\s*(\d+)\s*;/g)].map((m) => [m[1], Number(m[2])]));
+  // `const SAID = ['…', '…'];` — a list of plain literals, so `SAID[1]` reads as exactly one phrase.
+  const lists = new Map();
+  for (const m of source.matchAll(/\bconst\s+([\w$]+)\s*=\s*\[([^\]]*)\]\s*;/g)) {
+    const items = [...m[2].matchAll(/(['"`])((?:\\.|(?!\1).)*?)\1/g)];
+    // only when the array is nothing but literals: a list of objects says nothing about `X[0]`
+    if (items.length && !m[2].replace(/(['"`])(?:\\.|(?!\1).)*?\1/g, '').replace(/[\s,]/g, '')) {
+      lists.set(m[1], items.map((it) => readLiteral(it[2])));
+    }
+  }
+  const out = [];
+  for (const m of source.matchAll(/spokenAt\(\s*([\w$]+)\s*,\s*([^()]*?)\s*\)/g)) {
+    const cue = /^\d+$/.test(m[1]) ? Number(m[1]) : numbers.get(m[1]);
+    if (cue === undefined) continue;
+    const arg = m[2];
+    const literal = arg.match(/^(['"`])((?:\\.|(?!\1).)*)\1$/);
+    if (literal && !(literal[1] === '`' && /\$\{/.test(literal[2]))) { out.push({ cue, phrase: readLiteral(literal[2]) }); continue; }
+    const indexed = arg.match(/^([\w$]+)\s*\[\s*(\d+)\s*\]$/);
+    const item = indexed ? lists.get(indexed[1])?.[Number(indexed[2])] : undefined;
+    if (item !== undefined) { out.push({ cue, phrase: item }); continue; }
+    // a variable, a field, a map callback's parameter: this reader cannot say which phrase it holds
+    out.push({ cue, expr: arg });
+  }
+  return out;
+}
+
+/** A phrase literal as JavaScript reads it: the only escapes a phrase uses are quotes and backslashes. */
+function readLiteral(raw) {
+  return raw.replace(/\\(.)/g, '$1');
+}
+
 /**
  * Phrases the scenes anchor to câu `n`'s narration — `spokenAt(n, 'cụm từ')` places a beat on the frame that
  * phrase is said, and throws while the video loads when the phrase is gone from the text. Returns the ones the
@@ -179,20 +213,32 @@ export function syncScriptNarration(script, oldText, newText) {
  */
 export function lostAnchors(sceneFiles, n, newText) {
   const lost = [];
-  // Scenes write `const N = 2;` then `spokenAt(N, '…')` (all but one call in the repo); a number is also accepted.
-  const call = /spokenAt\(\s*([\w$]+)\s*,\s*(['"`])((?:\\.|(?!\2).)*?)\2\s*\)/g;
   for (const { file, source } of sceneFiles) {
-    const constants = new Map([...source.matchAll(/\bconst\s+([\w$]+)\s*=\s*(\d+)\s*;/g)].map((m) => [m[1], Number(m[2])]));
-    for (const m of source.matchAll(call)) {
-      const cue = /^\d+$/.test(m[1]) ? Number(m[1]) : constants.get(m[1]);
-      if (cue !== n) continue;
-      // the literal as JavaScript reads it: the only escapes a phrase uses are quotes and backslashes
-      const phrase = m[3].replace(/\\(.)/g, '$1');
+    for (const anchor of sceneAnchors(source)) {
+      if (anchor.cue !== n || anchor.phrase === undefined) continue;
+      const { phrase } = anchor;
       // one scene may time several beats to the same phrase: name it once
       if (!newText.includes(phrase) && !lost.some((l) => l.file === file && l.phrase === phrase)) lost.push({ file, phrase });
     }
   }
   return lost;
+}
+
+/**
+ * Anchors of câu `n` whose phrase this reader cannot resolve — `spokenAt(N, p)` inside a `.map()`, `spokenAt(N,
+ * c.say)` over a table of beats. `lostAnchors` cannot tell whether a new narration still contains them, so a
+ * hand edit is refused rather than accepted on a check that never looked: the câu goes to the agent, which
+ * reads the scene properly and fixes both together.
+ */
+export function opaqueAnchors(sceneFiles, n) {
+  const out = [];
+  for (const { file, source } of sceneFiles) {
+    for (const anchor of sceneAnchors(source)) {
+      if (anchor.cue !== n || anchor.expr === undefined) continue;
+      if (!out.some((o) => o.file === file && o.expr === anchor.expr)) out.push({ file, expr: anchor.expr });
+    }
+  }
+  return out;
 }
 
 /** What a member typed, as it goes into cues.js: one line, no stray spaces. */

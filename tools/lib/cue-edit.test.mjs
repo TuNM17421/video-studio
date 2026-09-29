@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
-import { cleanValue, editCueSource, literal, lostAnchors, rawCues, syncScriptNarration } from './cue-edit.mjs';
+import { cleanValue, editCueSource, literal, lostAnchors, opaqueAnchors, rawCues, syncScriptNarration } from './cue-edit.mjs';
 
 const execFileP = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -104,6 +104,27 @@ test('lostAnchors names the scene phrases a new narration would drop', () => {
   assert.deepEqual(lostAnchors(scenes, 2, 'Trí tuệ nhân tạo bao trùm máy học, và trong cùng là AI tạo sinh.'), [{ file: 's02.jsx', phrase: 'bọc máy học' }]);
   assert.deepEqual(lostAnchors(scenes, 2, 'AI bọc máy học, và trong cùng là AI tạo sinh.'), []);
   assert.deepEqual(lostAnchors(scenes, 3, 'Không còn cụm đó.'), [{ file: 's03.jsx', phrase: 'bọc máy học' }]);
+});
+
+test('lostAnchors reads a phrase held in a list of literals', () => {
+  // d03-v1-duong/s37.jsx: `const SAID = ['…', '…', '…'];` then `spokenAt(N, SAID[0])`
+  const scenes = [{ file: 's37.jsx', source: "const N = 37;\nconst SAID = ['một công cụ tìm kiếm', 'một cơ sở dữ liệu'];\nconst s0 = spokenAt(N, SAID[0]) - 16;\nconst s1 = spokenAt(N, SAID[1]);" }];
+  assert.deepEqual(opaqueAnchors(scenes, 37), []);
+  assert.deepEqual(lostAnchors(scenes, 37, 'Gọi một công cụ tìm kiếm rồi một cơ sở dữ liệu.'), []);
+  assert.deepEqual(lostAnchors(scenes, 37, 'Gọi một công cụ tìm kiếm thôi.'), [{ file: 's37.jsx', phrase: 'một cơ sở dữ liệu' }]);
+});
+
+test('opaqueAnchors names the beats whose phrase cannot be read', () => {
+  // d2-01-lab/s37.jsx and friends: the phrase comes from a map callback or a table of beats
+  const scenes = [
+    { file: 's37.jsx', source: "const N = 37;\nconst T = PHRASES.map((p) => spokenAt(N, p));\nconst u = CAUSES.map((c) => spokenAt(N, c.say));" },
+    { file: 's02.jsx', source: "const N = 2;\nconst T = { a: spokenAt(N, 'bọc máy học') };" }, // readable: not opaque
+    { file: 's38.jsx', source: "const N = 38;\nconst T = spokenAt(N, q.say);" }, // another câu
+  ];
+  assert.deepEqual(opaqueAnchors(scenes, 37), [{ file: 's37.jsx', expr: 'p' }, { file: 's37.jsx', expr: 'c.say' }]);
+  assert.deepEqual(opaqueAnchors(scenes, 2), []);
+  // an opaque anchor is invisible to lostAnchors — which is why the caller refuses on it
+  assert.deepEqual(lostAnchors(scenes, 37, 'Lời hoàn toàn khác.'), []);
 });
 
 test('cue-edit.mjs writes nothing when the edit changes more than the câu', async () => {
