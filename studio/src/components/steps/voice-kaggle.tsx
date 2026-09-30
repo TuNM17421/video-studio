@@ -113,8 +113,8 @@ export function KagglePanel({ detail, settings, setSettings, busy, act }: {
         <div className="vs-local-body">
           <strong>Sinh giọng trên Kaggle</strong>
           <small>
-            Đẩy {spoken || "tất cả"} câu lên một kernel private theo mã video, chờ Kaggle chạy xong rồi tải về. Không
-            câu nào lỗi thì giọng được nhập thẳng vào video; có câu lỗi thì dừng ở bước 5 cho bạn nghe lại.
+            Đẩy {spoken || "tất cả"} câu lên một kernel private theo mã video, chờ Kaggle chạy xong rồi tải về. Mọi
+            câu đều sạch thì giọng được nhập thẳng vào video; có câu lỗi hay cần nghe lại thì dừng ở bước 5 cho bạn nghe.
           </small>
           <Button
             type="primary"
@@ -141,7 +141,7 @@ export function KagglePanel({ detail, settings, setSettings, busy, act }: {
         <div className="vs-local-body">
           <strong>Nhập vào video</strong>
           <small>Whisper soát từng câu tải về có đúng lời của nó không, rồi ghép thành một bản thu liền.</small>
-          <GeneratedImport detail={detail} settings={settings} result={result} aligned={!status || status.align} aligning={aligning} busy={busy} act={act} />
+          <GeneratedImport detail={detail} settings={settings} result={result} aligned={!status || status.align} aligning={aligning} canGenerate={status ? Boolean(status.localModel) : null} busy={busy} act={act} />
         </div>
       </li>
     </ol>

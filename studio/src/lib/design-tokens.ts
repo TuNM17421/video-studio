@@ -188,6 +188,8 @@ export const STUDIO_LAYOUT = [
   { token: "research.strip.gate", value: "44 px", usage: "Hình thoi Bạn duyệt / Bạn quyết — khác hình với ô bước; nhãn 12 px nằm dưới" },
   { token: "research.drawer", value: "560 px", usage: "Ngăn Chi tiết: nhật ký, chi phí, file, làm lại một bước" },
   { token: "research.sheet", value: "70 vh", usage: "Cột nguồn trên màn hẹp mở thành tấm trượt từ đáy" },
+  { token: "voice.row.key", value: "28 px", usage: "Cột số câu của bảng Nghe từng câu (bước Giọng đọc): số ba chữ số bằng chữ mono vẫn vừa" },
+  { token: "voice.row.actions", value: "112 px", usage: "Cột “Nghe · độ dài” ở cuối mỗi câu — cố định để nút của mọi hàng thẳng một cột" },
   { token: "mascot.matrix.cell", value: "84 px", usage: "Ô ảnh của bảng tư thế × biểu cảm (Thư viện · Mascot): đủ nhận ra nét mặt, bảy cột vẫn vừa khung" },
   { token: "tour.panel", value: "440 px", usage: "Khung lời thoại của tour hướng dẫn: đủ cho Griffin bên trái và hai câu ngắn bên phải" },
   { token: "tour.mascot", value: "104 px", usage: "Chiều cao Griffin trong khung tour — nhận ra nét mặt mà không lấn chữ" },

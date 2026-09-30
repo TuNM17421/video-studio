@@ -7,7 +7,8 @@ import { antigravityQaArgs, claudeQaArgs, codexQaArgs, IGNORE_PERSONA_LINE, sani
 import { abandonGatewayRun, activeGateway, beginGatewayRun, endGatewayRun, gatewayRuntimeEnv, keepGatewayRunAlive, withGatewayArgs, withGatewayEnv } from "./gateway";
 import { safelyRecordAiLog } from "./ai-log";
 import { agentBin, installedAgents } from "./agent-config";
-import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
+import { resolveAgentBin } from "./agent-step";
+import { finishJob, log, machineLabel, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
 import { moduleQaCriteria } from "./modules";
 import { styleQaCriteria } from "./style-guides";
@@ -174,7 +175,9 @@ async function deterministicSceneGate(id: string, base: string) {
 
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Static verification", "npm", ["run", "verify"]);
+    // Chỉ video này (cộng các phép soát chung của design system): video khác trên máy có lỗi thì không được chặn
+    // cổng của video này — lỗi đó người dựng video này không sửa được, agent cũng không nên sửa.
+    const verify = await command(id, "Static verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));
@@ -211,15 +214,27 @@ async function deterministicSceneGate(id: string, base: string) {
   }
 }
 
-/** The lines verify flags as problems, for the step's detail — the whole output is in the log. */
-function problemLines(output: string) {
+/**
+ * The problems verify reports, for the step's detail — the whole output is in the log. The "- …" items under
+ * "N problem(s):" come first: the count line alone ("2 problem(s):") does not say which video is at fault.
+ */
+export function problemLines(output: string) {
+  const items = output.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).slice(0, 3).map((line) => line.slice(2));
+  if (items.length) return items.join(" · ");
   const lines = output.split("\n").filter((line) => /✗|problem|error/i.test(line)).slice(0, 3);
   return lines.join(" · ") || "xem nhật ký";
 }
 
-/** "all checks passed", or the warning count when there are some. */
-function verifySummary(output: string) {
-  const warnings = output.split("\n").filter((line) => /warn|⚠/i.test(line)).length;
+/**
+ * "all checks passed", or the warning count when there are some.
+ *
+ * Counted by the shape verify.mjs actually prints — `  ! <cảnh báo>` — not by the word "warning", which
+ * appears nowhere in its output. Matching on the word made every run report "không có lỗi", including a
+ * run with thirteen warnings, so the one line a member reads at the verify step said the opposite of the
+ * log right under it. Same reading as problemLines just above, which takes the `  - <lỗi>` lines.
+ */
+export function verifySummary(output: string) {
+  const warnings = output.split("\n").filter((line) => line.trim().startsWith("! ")).length;
   return warnings ? `${warnings} cảnh báo` : "không có lỗi";
 }
 
@@ -320,7 +335,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
     if (gateway) releaseLease = keepGatewayRunAlive(qaRun.runId);
     let code = 1;
     try {
-      code = await run(id, agentBin(provider), gateway ? withGatewayArgs(args, gateway) : args, {
+      code = await run(id, (await resolveAgentBin(provider)) ?? agentBin(provider), gateway ? withGatewayArgs(args, gateway) : args, {
         cwd: packet.packet,
         env: gateway ? withGatewayEnv(sanitizedAgentEnv(), gateway) : sanitizedAgentEnv(),
         input: prompt,
@@ -391,7 +406,14 @@ export const REVIEW_MARKER = "Review lại dựng cảnh";
  * Gate + review without an agent turn: after switching review on, changing who grades, or fixing a scene
  * by hand. Runs as its own job so Dừng works and the ledger records it.
  */
-export async function runReviewJob(id: string, base: string) {
+export function runReviewJob(id: string, base: string) {
+  return ownJob(id, () => reviewJob(id, base), (error) => {
+    try { setStage(id, "scenes", "error", error); } catch {}
+    endHarness(id, "error", error);
+  });
+}
+
+async function reviewJob(id: string, base: string) {
   startJob(id, "review", { actor: "system", mode: "deterministic", label: "review lại" });
   setStage(id, "scenes", "running");
   beginHarness(id, "scenes", "review", HARNESS_STEPS.review);
@@ -455,7 +477,7 @@ export async function runFinalGate(id: string) {
     stepDone(id, "build");
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Final verification", "npm", ["run", "verify"]);
+    const verify = await command(id, "Final verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Final verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));

@@ -17,6 +17,12 @@
  *  · pictures in videos (PhotoCard): `src` is a design-system file given from its root (never http), every
  *    PhotoCard has a `credit`, and the slots it uses exist in the video's images.js as kind `use`.
  *    The smoke render needs esbuild + react-dom (same lookup as build.mjs); skipped if absent.
+ *
+ *   node tools/verify.mjs --video <id> [--video <id>…]   only those videos, plus every design-system check
+ *
+ * Studio's scene and final gates pass `--video`: without it, one local video with a problem (they live only on
+ * the member's machine) blocks every other video's gate with an error that is not about that video. The other
+ * videos' files are left out of every scan, the card, palette and determinism checks included.
  */
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -36,8 +42,16 @@ const walk = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
     d.isDirectory() ? (SKIP.has(d.name) ? [] : walk(path.join(dir, d.name))) : [path.join(dir, d.name)],
   );
-const files = walk(DS);
-const rel = (f) => path.relative(DS, f);
+const onlyVideos = process.argv.flatMap((a, i, all) => (all[i - 1] === '--video' ? [a] : []));
+// A file inside another video's folder: with --video, no scan below may fail this gate on it.
+const otherVideo = (f) => {
+  const r = path.relative(path.join(DS, 'ui_kits/lesson-video/videos'), f).split(path.sep);
+  return onlyVideos.length > 0 && r.length > 1 && r[0] !== '..' && !onlyVideos.includes(r[0]);
+};
+const files = walk(DS).filter((f) => !otherVideo(f));
+// Always with '/': on Windows path.relative gives '\', and every startsWith('components/') below then
+// matched nothing — three checks skipped in silence while the summary still said all passed.
+const rel = (f) => path.relative(DS, f).split(path.sep).join('/');
 const problems = [];
 
 // 0 · the built bundle
@@ -115,9 +129,11 @@ for (const f of files.filter((x) => rel(x).startsWith('ui_kits/lesson-video/scen
 
 // 5 · example videos
 const VIDEOS_DIR = path.join(DS, 'ui_kits/lesson-video/videos');
-const videoDirs = fs.existsSync(VIDEOS_DIR)
+const allVideoDirs = fs.existsSync(VIDEOS_DIR)
   ? fs.readdirSync(VIDEOS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
   : [];
+for (const id of onlyVideos) if (!allVideoDirs.includes(id)) problems.push(`--video ${id}: no such folder in ${path.relative(ROOT, VIDEOS_DIR)}`);
+const videoDirs = onlyVideos.length ? allVideoDirs.filter((d) => onlyVideos.includes(d)) : allVideoDirs;
 const NODE_MODULES = [
   process.env.VK_NODE_MODULES,
   path.join(ROOT, 'node_modules'),
@@ -307,7 +323,7 @@ for (const c of cards) byGroup[c.group] = (byGroup[c.group] || 0) + 1;
 console.log(`cards: ${cards.length}  ${Object.entries(byGroup).map(([g, n]) => `${g} ${n}`).join(' · ')}`);
 console.log(`components: ${files.filter((x) => x.endsWith('.jsx') && rel(x).startsWith('components/')).length} files · scenes: ${scenes.length}`);
 for (const s of scenes.sort((a, b) => a.file.localeCompare(b.file))) console.log(`  ${s.id.padEnd(20)} ${String(s.duration).padStart(4)} f · ${s.captions} captions`);
-console.log(`videos: ${videoDirs.length}`);
+console.log(`videos: ${videoDirs.length}${onlyVideos.length ? ` (--video; ${allVideoDirs.length - videoDirs.length} other video(s) not checked)` : ''}`);
 for (const line of videoReports) console.log(line);
 console.log(`design system: ${path.relative(ROOT, DS)}`);
 for (const w of warnings) console.log(`  ! ${w}`);

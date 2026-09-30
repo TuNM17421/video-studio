@@ -10,7 +10,7 @@ import { AgentLog } from "../agent-panel";
 import { ProductionState } from "../production-state";
 import { post } from "./shared";
 
-type Act = (fn: () => Promise<unknown>) => Promise<void>;
+type Act = (fn: () => Promise<unknown>) => Promise<unknown>;
 
 const DECISION_LABEL: Record<ImageAction, string> = { use: "Dùng ảnh trong video", reference: "Dùng làm tham khảo", skip: "Dùng animation" };
 const KIND_LABEL: Record<ImageSlot["kind"], string> = { use: "ảnh trong video", reference: "tham khảo để vẽ lại" };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircleFilled, CloseOutlined, DeleteOutlined, KeyOutlined, LockOutlined, PauseOutlined, CaretRightFilled, RedoOutlined, SearchOutlined, SoundOutlined, TeamOutlined } from "@ant-design/icons";
 import { Button, Collapse, Form, Input, InputNumber, Segmented, Select, Tag } from "antd";
 import { api, fileUrl, formatFrames } from "@/lib/client";
@@ -30,7 +30,7 @@ const SOURCES: { value: VoiceSource; label: string }[] = [
 ];
 const sourceLabel = (source: VoiceSource) => SOURCES.find((s) => s.value === source)?.label ?? source;
 
-const VOICE_JOBS = ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup", "kaggle-setup", "kaggle-generate"];
+const VOICE_JOBS = ["voice", "import-scan", "omnivoice-setup", "omnivoice-generate", "align-setup", "kaggle-setup", "kaggle-generate", "voice-retake", "voice-retake-pick"];
 
 /**
  * Who actually reads this video. The cast is not a setting — it comes from the script: every câu names its
@@ -210,9 +210,15 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
 export function VoiceStep({ detail, logs, job, busy, act, stop, nav, refresh, hasKey, setHasKey }: StepProps & { hasKey: boolean; setHasKey: (v: boolean) => void }) {
   const status = detail.state.stages.voice;
   const [settings, setSettings] = useState<VoiceSettings>(detail.state.voice);
-  // Voice settings can change after a server-side job refreshes this video.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setSettings(detail.state.voice); }, [detail.state.voice]);
+  // A server-side job can change the voice settings, so take them over when they change — by value. Every
+  // refresh brings a new object (the image panel refreshes every 3 s while its job runs), and following
+  // the object reset the folder, voice or pause the user had just picked before they could use it.
+  const serverVoice = JSON.stringify(detail.state.voice);
+  const [seenVoice, setSeenVoice] = useState(serverVoice);
+  if (seenVoice !== serverVoice) {
+    setSeenVoice(serverVoice);
+    setSettings(detail.state.voice);
+  }
   // Which source's setup is on screen. Looking is not choosing: the source is saved by the action that
   // uses it (dry-run, scan, generate, import), never by clicking a tab.
   const [view, setView] = useState<VoiceSource>(detail.state.voiceBound?.source ?? detail.state.voice.source);

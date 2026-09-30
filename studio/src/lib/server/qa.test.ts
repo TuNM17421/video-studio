@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQaReport, usageFrom } from "./qa";
+import { parseQaReport, problemLines, usageFrom, verifySummary } from "./qa";
 
 describe("QA report protocol", () => {
   it("accepts the CLI envelope while preserving structured findings", () => {
@@ -78,5 +78,55 @@ describe("usageFrom cache creation", () => {
   it("counts Claude cache_creation as input", () => {
     const raw = JSON.stringify({ usage: { input_tokens: 400, cache_creation_input_tokens: 48000, cache_read_input_tokens: 52000, output_tokens: 6000 } });
     expect(usageFrom(raw)).toMatchObject({ inputTokens: 48400, cachedInputTokens: 52000, outputTokens: 6000 });
+  });
+});
+
+/**
+ * Hai hàm này đọc output của `tools/verify.mjs`, nên bài test giữ đúng hình dạng thật của output đó:
+ * cảnh báo là `  ! …`, lỗi là `  - …` dưới dòng `N problem(s):`. Chữ "warning" không có ở đâu cả — bắt
+ * theo chữ đó là cách bản cũ luôn báo "không có lỗi".
+ */
+const VERIFY_PASS = [
+  "cards: 37  Components 15 · Iconography 1 · Brand 1",
+  "components: 62 files · scenes: 24",
+  "videos: 1 (--video; 13 other video(s) not checked)",
+  "  d2-01-lab                     9491 f · 47 cues · 87 caption pages · 3258 frames rendered in 1135 ms",
+  "design system: vinuni-lesson-video-ds",
+  "  ! components/brand has 0 card files (want 1)",
+  "  ! components/code has 0 card files (want 1)",
+  "  ! videos/n2-00-bang-trang: board — p1-real starts 48 frames after its beat",
+  "",
+  "all checks passed",
+].join("\n");
+
+const VERIFY_FAIL = [
+  "videos: 14",
+  "design system: vinuni-lesson-video-ds",
+  "  ! videos/test-giong: chưa dựng cảnh (có cues.js, chưa có video.jsx) — bỏ qua",
+  "",
+  "2 problem(s):",
+  "  - videos/n1-05-co-che-chu-y is missing cues.js",
+  "  - videos/n1-05-co-che-chu-y does not build or load: Build failed with 3 errors:",
+].join("\n");
+
+describe("đọc output của verify", () => {
+  it("đếm cảnh báo theo dòng `! …` mà verify thật sự in ra", () => {
+    expect(verifySummary(VERIFY_PASS)).toBe("3 cảnh báo");
+  });
+
+  it("không nhận nhầm dòng thống kê hay dòng lỗi thành cảnh báo", () => {
+    expect(verifySummary(VERIFY_FAIL)).toBe("1 cảnh báo");
+    expect(verifySummary("videos: 1\nall checks passed")).toBe("không có lỗi");
+  });
+
+  it("nêu chính các lỗi, không phải dòng đếm — dòng đếm không cho biết video nào hỏng", () => {
+    expect(problemLines(VERIFY_FAIL)).toBe(
+      "videos/n1-05-co-che-chu-y is missing cues.js · videos/n1-05-co-che-chu-y does not build or load: Build failed with 3 errors:",
+    );
+  });
+
+  it("verify chết vì lý do khác (không có dòng lỗi nào) thì vẫn có gì đó để đọc", () => {
+    expect(problemLines("npm ERR! Lifecycle script `verify` failed with error:")).toContain("error");
+    expect(problemLines("")).toBe("xem nhật ký");
   });
 });

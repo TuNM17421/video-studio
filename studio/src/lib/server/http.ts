@@ -41,6 +41,9 @@ const TYPES: Record<string, string> = {
   ".jsx": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
   ".ttf": "font/ttf", ".woff2": "font/woff2", ".woff": "font/woff", ".mp4": "video/mp4", ".wav": "audio/wav",
+  // Every format an audio folder may hold (tools/lib/voice-files.mjs AUDIO_EXT), for the per-câu player.
+  ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".flac": "audio/flac", ".ogg": "audio/ogg",
+  ".opus": "audio/ogg", ".webm": "audio/webm",
   ".md": "text/markdown; charset=utf-8", ".txt": "text/plain; charset=utf-8",
 };
 

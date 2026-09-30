@@ -27,7 +27,8 @@ import { assemble, FPS, sha256 } from '../tools/lib/voice-audio.mjs';
 import { castSpeaker, defaultVoice, resolveVoice, speedFor } from '../tools/lib/voices.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const API = 'https://api.elevenlabs.io';
+// Overridable only so a test can point the real request path at a local fake server (no credit spent).
+const API = process.env.ELEVENLABS_API_BASE || 'https://api.elevenlabs.io';
 
 // ── config ────────────────────────────────────────────────────────────────────
 function loadEnv(file) {
@@ -111,6 +112,16 @@ async function api(pathname, { method = 'GET', body, query } = {}) {
     throw new Error(`${method} ${url.pathname} → HTTP ${res.status} ${text.slice(0, 300)}`);
   }
   return res;
+}
+
+/**
+ * What one request cost: ElevenLabs' own `character-cost` response header when it sends one (the figure its
+ * quota counts, which can differ from the text length by model), else the characters sent.
+ */
+function billedCharacters(header, text) {
+  const reported = header === null || header === undefined || String(header).trim() === '' ? NaN : Number(header);
+  if (Number.isFinite(reported) && reported >= 0) return { chars: Math.round(reported), reported: true };
+  return { chars: [...text].length, reported: false };
 }
 
 async function check() {
@@ -211,7 +222,8 @@ async function generate() {
   const cues = await loadCues(cuesFile);
   const name = path.basename(path.dirname(cuesFile));
   const outDir = path.resolve(args.out || path.join(HERE, 'out', name));
-  const cacheDir = path.join(HERE, 'cache');
+  // TTS_CACHE_DIR: a test's own cache, so the fake audio it makes never lands among real paid câu.
+  const cacheDir = process.env.TTS_CACHE_DIR ? path.resolve(process.env.TTS_CACHE_DIR) : path.join(HERE, 'cache');
   const pause = Number(args.pause ?? 1);
   const pronounce = args.pronounce ? JSON.parse(fs.readFileSync(path.resolve(args.pronounce), 'utf8')) : {};
   const only = args.only ? new Set(String(args.only).split(',').map(Number)) : null;
@@ -304,6 +316,8 @@ async function generate() {
 
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.mkdirSync(outDir, { recursive: true });
+  let billed = 0;
+  let billedCues = 0;
   for (const c of items) {
     const selected = !only || only.has(c.n);
     // A cue voiced before with-timestamps existed has audio but no word marks, and the beats that
@@ -328,11 +342,17 @@ async function generate() {
       alignment = json.alignment
         ? { characters: json.alignment.characters, start: json.alignment.character_start_times_seconds }
         : null;
-      console.log(`${(pcm.length / 2 / sampleRate).toFixed(2)} s${alignment ? '' : ' · no timestamps'}`);
+      const cost = billedCharacters(res.headers.get('character-cost'), c.ttsText);
+      billed += cost.chars;
+      billedCues++;
+      // Video Studio adds up this "tính phí N ký tự" per câu, so a run that fails half-way still counts what
+      // it was billed for. "(ước)" = ElevenLabs sent no character-cost header; the count is what was sent.
+      console.log(`${(pcm.length / 2 / sampleRate).toFixed(2)} s${alignment ? '' : ' · no timestamps'} · tính phí ${cost.chars} ký tự${cost.reported ? '' : ' (ước)'}`);
     }
     fs.writeFileSync(c.cache, pcm);
     if (alignment) fs.writeFileSync(c.align, JSON.stringify(alignment));
   }
+  if (billedCues) console.log(`· ElevenLabs tính phí ${billed} ký tự cho ${billedCues} câu; các câu còn lại lấy từ cache`);
 
   // Assemble: every cue starts on a frame boundary; its segment = speech + pause, padded to whole frames.
   const built = assemble({

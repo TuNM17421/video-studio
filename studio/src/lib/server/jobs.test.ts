@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clearTelemetrySettings, currentJob, finishJob, readTelemetrySettings, registry, setProgress, startJob, writeTelemetrySettings } from "./jobs";
+import { clearTelemetrySettings, currentJob, finishJob, isRunning, ownJob, readTelemetrySettings, registry, setProgress, startJob, writeTelemetrySettings } from "./jobs";
 
 // startJob opens a workflow run, which writes projects/<id>/.studio and the telemetry outbox of the real repo.
 // With the fake clock that leaked 1970-dated "videos" into the cost dashboard; the countdown needs none of it.
@@ -56,6 +56,29 @@ describe("job countdown", () => {
     vi.setSystemTime(5_000);
     setProgress(ID, 12, "Render 12/100 frame");
     expect(currentJob(ID)?.progress?.etaMs).toBeNull();
+  });
+});
+
+describe("a runner that throws", () => {
+  // `research` keeps the video workflow ledger out of it, so these tests touch no folder under projects/.
+  it("ends the job it started, so the video is not stuck answering 409", async () => {
+    const seen: string[] = [];
+    await expect(ownJob(ID, async () => {
+      startJob(ID, "research");
+      throw new Error("state.json bị khoá");
+    }, (message) => seen.push(message))).rejects.toThrow("state.json bị khoá");
+    expect(isRunning(ID)).toBe(false);
+    expect(currentJob(ID)?.status).toBe("error");
+    expect(seen).toEqual(["state.json bị khoá"]);
+  });
+
+  it("leaves alone the job that made it refuse to start", async () => {
+    startJob(ID, "research");
+    const seen: string[] = [];
+    await expect(ownJob(ID, async () => { startJob(ID, "research"); }, (message) => seen.push(message))).rejects.toThrow(/đang có một tác vụ/);
+    // A second click on Render used to end the render already running, which then could not be stopped.
+    expect(isRunning(ID)).toBe(true);
+    expect(seen).toEqual([]);
   });
 });
 
