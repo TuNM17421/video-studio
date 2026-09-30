@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import { pickRenderAudio } from "../../../../tools/lib/render-audio.mjs";
 import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
 import { finishJob, isRunning, jobHandled, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, qaManifestPath, rel, transcriptPath, voiceOut } from "./paths";
+import { HttpError, mp4Path, qaManifestPath, REPO, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
 /** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
@@ -24,6 +25,11 @@ async function renderSteps(id: string, base: string) {
   const { state } = readState(id);
   renderPreflight(id);
   const wav = path.join(voiceOut(id), "voice.wav");
+  // A layered-SFX mix (tools/sfx-mix.mjs → projects/<id>/voice-sfx.wav) replaces the raw narration when it is
+  // newer; rendering the raw file after a mix silently drops every accent, and no gate would catch it.
+  const pick = pickRenderAudio(id, REPO, { voiceRawRel: rel(wav) });
+  if (pick.stale) throw new HttpError(409, pick.note);
+  const audio = pick.audio ?? rel(wav);
   const day = state.request.day;
   // render.mjs resolves both tracks against music.json: it caches the audio from the media bucket into
   // assets/music/ and reads the gain from the track's measured loudness. A track it cannot fetch is
@@ -33,6 +39,7 @@ async function renderSteps(id: string, base: string) {
   setStage(id, "render", "running");
   // Opens this run in the shared log — the scenes gate also starts with "Build design system".
   log(id, "system", `Bắt đầu render · phụ đề ${state.captions ? "có" : "không"}`);
+  log(id, "system", `Âm thanh: ${pick.note}`);
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
     log(id, "system", label);
     setProgress(id, null, label);
@@ -55,7 +62,7 @@ async function renderSteps(id: string, base: string) {
   // twice at the exact same frame, but a single tab clears the same range fine. Forcing 1 worker
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
   const renderOk = await step("Render MP4", process.execPath, [
-    "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
+    "tools/render.mjs", "--scene", id, "--audio", audio, "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
     // always explicit: render.mjs falls back to the catalog's default bed when the flag is missing
     "--music-track", background,
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
