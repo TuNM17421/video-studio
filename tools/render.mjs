@@ -67,7 +67,9 @@ const fail = (msg) => {
   console.error(`✗ ${msg}`);
   process.exit(1);
 };
-if (!args.scene || !args.out) fail('usage: node tools/render.mjs --scene <id> --out <file.mp4> [--audio voice.wav] [--workers 4]');
+const RENDER_USAGE = 'usage: node tools/render.mjs --scene <id> --out <file.mp4> [--audio voice.wav] [--workers 4] [--base <url>]';
+if (process.argv.includes('--help') || process.argv.includes('-h')) { console.log(RENDER_USAGE); process.exit(0); }
+if (!args.scene || !args.out) fail(RENDER_USAGE);
 
 // ── ffmpeg ────────────────────────────────────────────────────────────────────
 const require = createRequire(import.meta.url);
