@@ -65,11 +65,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
+import { FPS, LEAD_FRAMES, toTarget, computeStartFrame, overrideKey } from './lib/sfx-gain.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const FPS = 30;
-/** Chế độ cổ điển: phát sớm 6 frame (0,2 s) cho mọi tiếng. Chế độ phân lớp dùng `peakAtMs` thay. */
-const LEAD_FRAMES = 6;
 const MAX_ACCENTS = 4;
 /** Mức đích của từng lớp nằm ở `sfx.json._layers`, không hằng số hoá ở đây. */
 /** Trần pan — quá ±0,3 thì một tiếng nhỏ nhảy hẳn sang một tai, nghe thành lỗi chứ không thành không gian. */
@@ -149,7 +147,20 @@ const layered = declaresLayers && !args.legacy;
 const overridden = new Set();
 if (declaresLayers) {
   for (const sc of storyboard.scenes) {
-    for (const b of sc.beats || []) if (b.sfx) overridden.add(`${b.cue}\u0000${b.anchor}`);
+    for (const b of sc.beats || []) {
+      if (!b.sfx) continue;
+      // Fix: beat mới khai `anchor` mà không khai `cue` → key sẽ là `undefined\0anchor`, không khớp
+      // được với key `${t.n}\0${word}` trong vòng lặp dưới. Giải đúng cue number trước khi dựng key.
+      let cueN = b.cue;
+      if (cueN == null) {
+        const t = [...timingByN.values()].find((x) => x.scene === sc.id && String(x.text || '').includes(String(b.anchor)))
+          || sceneCueList.filter((c) => c.scene === sc.id && String(c.text || '').includes(String(b.anchor)))
+            .map((c) => timingByN.get(c.n)).find(Boolean);
+        cueN = t?.n;
+      }
+      const key = overrideKey(cueN, b.anchor);
+      if (key) overridden.add(key);
+    }
   }
 }
 
@@ -157,7 +168,10 @@ const hits = [{ frame: 0, id: 'whoosh-long', why: 'mở màn' }];
 let lastSection = null;
 for (const t of timing) {
   const c = sceneById.get(t.n) || {};
-  const frame = Math.max(0, t.startFrame - LEAD_FRAMES);
+  // Fix double-subtract: chế độ cổ điển trừ LEAD_FRAMES ở đây rồi dùng h.frame trực tiếp làm
+  // startFrame. Chế độ phân lớp dùng h.frame là MỐC ĐÍCH (đỉnh tiếng phải rơi đúng chỗ này) và
+  // tính startFrame = h.frame - peakAtMs_frames ở dưới — không trừ LEAD_FRAMES ở đây nữa.
+  const frame = Math.max(0, layered ? t.startFrame : t.startFrame - LEAD_FRAMES);
   if (layered && c.sfx && typeof c.sfx === 'object' && overridden.has(`${t.n}\u0000${c.sfx.word}`)) {
     // storyboard đã khai cho đúng mốc này — bỏ bản cũ, không để hai tiếng chồng lên nhau.
   } else if (c.sfx) {
@@ -166,7 +180,7 @@ for (const t of timing) {
     const id = typeof c.sfx === 'string' ? c.sfx : c.sfx.id;
     const at = typeof c.sfx === 'string' || !c.sfx.word
       ? frame
-      : Math.max(0, t.startFrame + spokenAt(t.n, c.sfx.word) - LEAD_FRAMES);
+      : Math.max(0, t.startFrame + spokenAt(t.n, c.sfx.word) - (layered ? 0 : LEAD_FRAMES));
     hits.push({ frame: at, id, why: `cue ${t.n}${c.sfx.word ? ` · "${c.sfx.word}"` : ''}` });
   } else if (c.section && c.section !== lastSection && lastSection !== null) {
     hits.push({ frame, id: 'whoosh', why: `vào section "${c.section}"` });
@@ -267,15 +281,6 @@ const speech = timing.filter((t) => !t.silent && t.speechFrames > 0)
 const overSpeech = (f) => speech.some(([a, b]) => f >= a && f < b);
 
 /**
- * Độ lợi đưa một tiếng về ĐÍCH của lớp nó. One-shot chuẩn theo đỉnh, bed chuẩn theo RMS —
- * xem `sfx.json._layers._doc` cho lý do.
- */
-const toTarget = (e, L) => {
-  if (Number.isFinite(L.peakTargetDb) && Number.isFinite(e.peak)) return L.peakTargetDb - e.peak;
-  if (Number.isFinite(L.rmsTargetDb) && Number.isFinite(e.rmsDb)) return L.rmsTargetDb - e.rmsDb;
-  return 0;
-};
-/**
  * Duck của cả một chuỗi burst lấy theo tiếng ĐẦU chuỗi. Tính riêng từng tiếng thì một chuỗi
  * "tạch tạch" vắt qua chỗ lời dứt sẽ nhảy 7 dB giữa chừng — nghe ra ngay là lỗi.
  */
@@ -294,9 +299,7 @@ for (const h of hits) {
     ? baseDb + (e.gainDb ?? 0) + (Number(h.gainDb) || 0) + h.norm + h.duck
     : baseDb;
   // Chế độ phân lớp căn ĐỈNH tiếng vào mốc hình; chế độ cổ điển đã trừ LEAD_FRAMES ở trên rồi.
-  h.startFrame = layered
-    ? Math.max(0, h.frame - Math.round(((e.peakAtMs ?? 0) / 1000) * FPS))
-    : h.frame;
+  h.startFrame = computeStartFrame(h.frame, e.peakAtMs, layered);
   h.panPos = Math.max(-PAN_CAP, Math.min(PAN_CAP, Number(h.pan) || 0));
 }
 for (const b of beds) {

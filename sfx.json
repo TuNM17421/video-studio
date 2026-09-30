@@ -31,12 +31,14 @@
     "gainDb": "bù riêng của tiếng này so với đích của lớp (âm = nhỏ hơn)",
     "seconds|lufs|peak|peakAtMs": "do `node tools/sfx-fetch.mjs --write` đo và ghi; đừng sửa tay",
     "peakAtMs": "đỉnh tiếng nằm ở mili-giây nào kể từ đầu file — sfx-mix căn ĐỈNH vào mốc hình, thay cho hằng LEAD_FRAMES=6 dùng chung cho mọi tiếng",
-    "trimSec": "cắt về đúng lần lấy ĐẦU TIÊN của một bản thu nhiều nhát (số chọn từ đường bao RMS 50ms), kèm fade out 60ms"
+    "trimSec": "cắt về đúng lần lấy ĐẦU TIÊN của một bản thu nhiều nhát (số chọn từ đường bao RMS 50ms), kèm fade out 60ms",
+    "media": "key trong media/manifest.json (R2 bucket) — sfx-fetch.mjs tải từ đây; chưa có trên R2 thì để null hoặc thêm sau khi upload"
   },
   "sfx": [
     {
       "id": "whoosh",
       "file": "whoosh.wav",
+      "media": "sfx/whoosh.wav",
       "layer": "transition",
       "gainDb": 0,
       "use": "Chuyển section. sfx-mix tự đặt ở đầu mỗi section, không phải khai tay.",
@@ -51,6 +53,7 @@
     {
       "id": "whoosh-long",
       "file": "whoosh-long.wav",
+      "media": "sfx/whoosh-long.wav",
       "layer": "transition",
       "gainDb": 0,
       "use": "Chỉ cho mở đầu video và cú chốt cuối. Dài 2 giây nên dùng giữa bài sẽ đè lời.",
@@ -65,6 +68,7 @@
     {
       "id": "ding",
       "file": "ding.wav",
+      "media": "sfx/ding.wav",
       "layer": "accent",
       "gainDb": 0,
       "use": "Một ý chốt hiện ra (Callout, Spark, con số). Tính vào trần 4 accent/video.",
@@ -79,6 +83,7 @@
     {
       "id": "pop",
       "file": "pop.wav",
+      "media": "sfx/pop.wav",
       "layer": "accent",
       "gainDb": 0,
       "use": "Một item trong danh sách bật lên. Nhẹ nhất trong bộ accent. Tính vào trần 4.",
@@ -93,6 +98,7 @@
     {
       "id": "ting",
       "file": "ting.wav",
+      "media": "sfx/ting.wav",
       "layer": "accent",
       "gainDb": 2,
       "use": "Chuông ấm cho một kết quả ĐÚNG (\"MÈO ✓\"). Bản thu này đỉnh thấp (−16 dBFS) nên +2 dB để ngang các accent khác. Tính vào trần 4 accent.",
@@ -108,6 +114,7 @@
     {
       "id": "flash",
       "file": "flash.wav",
+      "media": "sfx/flash.wav",
       "layer": "accent",
       "gainDb": 6,
       "use": "Cú mạnh nhất của cả phim, đúng MỘT lần (flash ChatGPT). Có đuôi ngân — chừa lặng sau nó.",
@@ -122,6 +129,7 @@
     {
       "id": "riser",
       "file": "riser.wav",
+      "media": "sfx/riser.wav",
       "layer": "transition",
       "gainDb": -3,
       "use": "Căng dần vào một cú nhấn. Chỉ đặt NGAY TRƯỚC một accent, không đứng một mình.",
@@ -137,6 +145,7 @@
     {
       "id": "stamp",
       "file": "stamp.wav",
+      "media": "sfx/stamp.wav",
       "layer": "foley",
       "gainDb": 0,
       "use": "Con dấu đóng xuống — \"cạch\". Mốc năm (1973, 2006) đóng xuống như con dấu.",
@@ -152,6 +161,7 @@
     {
       "id": "paper",
       "file": "paper.wav",
+      "media": "sfx/paper.wav",
       "layer": "foley",
       "gainDb": 0,
       "use": "Giấy/hồ sơ sột soạt — bìa báo cáo trượt vào, trang lật.",
@@ -166,6 +176,7 @@
     {
       "id": "tick",
       "file": "tick.wav",
+      "media": "sfx/tick.wav",
       "layer": "foley",
       "gainDb": 0,
       "use": "\"Tách\" khô rất ngắn — mỗi lần một nhánh nở. Dùng thành CHUỖI dồn nhịp (`burst`), không dùng lẻ.",
@@ -181,6 +192,7 @@
     {
       "id": "snip",
       "file": "snip.wav",
+      "media": "sfx/snip.wav",
       "layer": "foley",
       "gainDb": 0,
       "use": "\"Phựt\" cắt đứt — cắt tiền tài trợ, cắt một dòng đang chảy.",
@@ -196,6 +208,7 @@
     {
       "id": "counter",
       "file": "counter.wav",
+      "media": "sfx/counter.wav",
       "layer": "foley",
       "gainDb": -2,
       "use": "Bộ đếm \"tạch\" một nhịp — số nhảy 10 → 10.000. Dùng thành chuỗi `burst`.",
@@ -211,6 +224,7 @@
     {
       "id": "soft-pop",
       "file": "soft-pop.wav",
+      "media": "sfx/soft-pop.wav",
       "layer": "foley",
       "gainDb": 0,
       "use": "Pop mềm — mỗi đặc trưng (tai, chân, lông) nhảy ra. Nhẹ hơn `pop` và KHÔNG tính vào trần accent.",
@@ -225,6 +239,7 @@
     {
       "id": "snap",
       "file": "snap.wav",
+      "media": "sfx/snap.wav",
       "layer": "foley",
       "gainDb": 0,
       "use": "\"Khớp\" — một nhánh nhập vào trục, hai vật ăn vào nhau.",
@@ -239,6 +254,7 @@
     {
       "id": "chisel",
       "file": "chisel.wav",
+      "media": "sfx/chisel.wav",
       "layer": "foley",
       "gainDb": 0,
       "use": "Đục khắc chữ lên bia đá — mỗi dòng bài học khắc xuống.",
@@ -254,6 +270,7 @@
     {
       "id": "wind",
       "file": "wind.wav",
+      "media": "sfx/wind.wav",
       "layer": "ambience",
       "gainDb": 0,
       "use": "Gió lạnh — bed cho cảnh mùa đông AI. Khai ở `ambience` của CẢNH, không khai theo beat.",
@@ -269,6 +286,7 @@
     {
       "id": "conveyor",
       "file": "conveyor.wav",
+      "media": "sfx/conveyor.wav",
       "layer": "ambience",
       "gainDb": -2,
       "use": "Băng chuyền lạch cạch đều — bed cho cảnh ảnh chạy vào máy. Khai ở `ambience` của CẢNH.",
