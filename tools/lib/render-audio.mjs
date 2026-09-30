@@ -17,12 +17,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /**
+ * @param {{ voiceRawRel?: string }} [opts]  `voiceRawRel`: đường dẫn voice.wav thật, tương đối gốc repo — Studio
+ *   truyền vào vì video cũ vẫn nằm ở `tts-elevenlabs/out/` chứ không phải `voice/out/`.
  * @returns {{ audio: string|null, stale: boolean, note: string }}
  *   `audio` là đường dẫn tương đối gốc repo; `stale: true` ⇒ người gọi phải dừng với exit 2.
  */
-export function pickRenderAudio(videoId, repoRoot = ROOT) {
+export function pickRenderAudio(videoId, repoRoot = ROOT, opts = {}) {
   const voiceSfxRel = `projects/${videoId}/voice-sfx.wav`;
-  const voiceRawRel = `voice/out/${videoId}/voice.wav`;
+  const voiceRawRel = opts.voiceRawRel || `voice/out/${videoId}/voice.wav`;
   const voiceSfx = path.join(repoRoot, voiceSfxRel);
   const voiceRaw = path.join(repoRoot, voiceRawRel);
   const hasSfx = fs.existsSync(voiceSfx);
