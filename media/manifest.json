@@ -601,6 +601,24 @@
       "sha256": "dc5c5ff81afdd641cb96a75cf75dd3f2512097241726af88ce7bd666741ce9f1",
       "updated": "2026-09-12"
     },
+    "styles/morph/demo-bien-hinh.mp4": {
+      "type": "video/mp4",
+      "bytes": 446691,
+      "sha256": "f0ddda73c518c4962389f181ece0f8eca88ce7c0ff6e00af0e479fb2f1432940",
+      "updated": "2026-09-29"
+    },
+    "styles/morph/sample.mp4": {
+      "type": "video/mp4",
+      "bytes": 5240115,
+      "sha256": "a0a7456b06e32d17ec7310185f0d509420972edd65a19230cf8030eeea09e371",
+      "updated": "2026-09-29"
+    },
+    "styles/whiteboard/sample.mp4": {
+      "type": "video/mp4",
+      "bytes": 14462964,
+      "sha256": "9ff2797666f84a68f2d7ffbf7033cd05c0e8ee7be1c1678a5ee7e8c1c04c056e",
+      "updated": "2026-09-22"
+    },
     "voices/cam-hong.wav": {
       "type": "audio/wav",
       "bytes": 635342,

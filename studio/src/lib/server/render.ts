@@ -3,15 +3,27 @@ import path from "node:path";
 import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
-import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, isRunning, jobHandled, log, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
 import { HttpError, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
-/** Build → render MP4 (frames from this server's /ds) → transcript; then the agent writes chapters. */
-export async function renderVideo(id: string, base: string) {
+/** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
+export function renderPreflight(id: string) {
+  if (!fs.existsSync(path.join(voiceOut(id), "voice.wav"))) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
+}
+
+/**
+ * Build → render MP4 (frames from this server's /ds) → transcript; then the agent writes chapters. Starts
+ * the job before its first await, so a caller that checked `isRunning` just before cannot race a second one.
+ */
+export function renderVideo(id: string, base: string) {
+  return ownJob(id, () => renderSteps(id, base), (error) => setStage(id, "render", "error", error));
+}
+
+async function renderSteps(id: string, base: string) {
   const { state } = readState(id);
+  renderPreflight(id);
   const wav = path.join(voiceOut(id), "voice.wav");
-  if (!fs.existsSync(wav)) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
   const day = state.request.day;
   // render.mjs resolves both tracks against music.json: it caches the audio from the media bucket into
   // assets/music/ and reads the gain from the track's measured loudness. A track it cannot fetch is
@@ -75,6 +87,17 @@ export async function renderVideo(id: string, base: string) {
   if (!manifestOk) return fail("Không tạo được manifest.json cho platform QA, xem nhật ký.");
   setStage(id, "render", "done");
   finishJob(id, "done");
-  // chapters + PROMPTS.md need judgement (chapter titles), so the agent finishes the delivery
-  return runAgent(id, "deliver", base);
+  // chapters + PROMPTS.md need judgement (chapter titles), so the agent finishes the delivery. The MP4 is
+  // done whatever happens there: a deliver that fails shows on its own stage, never as a failed render.
+  try {
+    return await runAgent(id, "deliver", base);
+  } catch (error) {
+    // After its job started, runAgent has already logged it and marked the deliver stage.
+    if (!jobHandled(error)) {
+      const message = error instanceof Error ? error.message : String(error);
+      log(id, "error", message);
+      if (!isRunning(id)) setStage(id, "deliver", "error", message);
+    }
+    return false;
+  }
 }

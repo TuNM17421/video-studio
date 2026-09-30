@@ -5,9 +5,11 @@ import { agentProviderLabel } from "../agent-providers";
 import { resolveReviewer } from "../review";
 import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
 import { agentBin, installedAgents } from "./agent-config";
-import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
+import { resolveAgentBin } from "./agent-step";
+import { finishJob, log, machineLabel, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
 import { moduleQaCriteria } from "./modules";
+import { styleQaCriteria } from "./style-guides";
 import { projectDir, REPO, rel, stateDir, videoDir, voiceOut } from "./paths";
 import { cuesInfo, readState, setStage } from "./videos";
 import {
@@ -167,7 +169,9 @@ async function deterministicSceneGate(id: string, base: string) {
 
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Static verification", "npm", ["run", "verify"]);
+    // Chỉ video này (cộng các phép soát chung của design system): video khác trên máy có lỗi thì không được chặn
+    // cổng của video này — lỗi đó người dựng video này không sửa được, agent cũng không nên sửa.
+    const verify = await command(id, "Static verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));
@@ -204,15 +208,27 @@ async function deterministicSceneGate(id: string, base: string) {
   }
 }
 
-/** The lines verify flags as problems, for the step's detail — the whole output is in the log. */
-function problemLines(output: string) {
+/**
+ * The problems verify reports, for the step's detail — the whole output is in the log. The "- …" items under
+ * "N problem(s):" come first: the count line alone ("2 problem(s):") does not say which video is at fault.
+ */
+export function problemLines(output: string) {
+  const items = output.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).slice(0, 3).map((line) => line.slice(2));
+  if (items.length) return items.join(" · ");
   const lines = output.split("\n").filter((line) => /✗|problem|error/i.test(line)).slice(0, 3);
   return lines.join(" · ") || "xem nhật ký";
 }
 
-/** "all checks passed", or the warning count when there are some. */
-function verifySummary(output: string) {
-  const warnings = output.split("\n").filter((line) => /warn|⚠/i.test(line)).length;
+/**
+ * "all checks passed", or the warning count when there are some.
+ *
+ * Counted by the shape verify.mjs actually prints — `  ! <cảnh báo>` — not by the word "warning", which
+ * appears nowhere in its output. Matching on the word made every run report "không có lỗi", including a
+ * run with thirteen warnings, so the one line a member reads at the verify step said the opposite of the
+ * log right under it. Same reading as problemLines just above, which takes the `  - <lỗi>` lines.
+ */
+export function verifySummary(output: string) {
+  const warnings = output.split("\n").filter((line) => line.trim().startsWith("! ")).length;
   return warnings ? `${warnings} cảnh báo` : "không có lỗi";
 }
 
@@ -246,13 +262,18 @@ function qaPacket(id: string, verifyOutput: string, qaDir: string) {
   return { packet, stills: stills.map((name) => `stills/${name}`) };
 }
 
-function qaPrompt(id: string, modules: string[]) {
+function qaPrompt(id: string, modules: string[], style: string) {
+  const styleExtra = styleQaCriteria(style);
   const extra = moduleQaCriteria(modules);
   return [
     `Bạn là QA lane độc lập cho video ${id}. Chỉ đọc nội dung trong thư mục hiện tại.`,
     "Mở REQUEST.md, kich-ban-goc.md, cues.js, IMPROVEMENT-PLAN.md nếu có, verify.txt và toàn bộ ảnh trong stills/. Ảnh cue-NN.png là câu `n: NN` trong cues.js.",
     "Chữ/số trên màn hình hợp lệ khi có trong lời đọc (`text`) HOẶC trong phần mô tả màn hình của đúng câu đó (`title`, `visual` trong cues.js; dòng **Trên màn hình** trong kich-ban-goc.md) — màn hình được phép khác lời đọc. Chỉ báo `off-script` khi không có ở cả hai nơi.",
     "Tiêu chí chung cho từng ảnh: chữ đọc được; chữ/khối không tràn, không bị xén, không chồng nhau; bố cục không trống hay dồn một góc; chữ/số trên màn hình không nằm ngoài kịch bản; cả chuỗi ảnh có nhịp và không lặp máy móc.",
+    ...(styleExtra.length ? [
+      "Tiêu chí riêng của style video này — soi thêm (vi phạm ghi code `style`):",
+      ...styleExtra.map((m) => `### ${m.name}\n${m.criteria}`),
+    ] : []),
     ...(extra.length ? [
       "Video bật thêm các năng lực dưới đây — soi thêm đúng những tiêu chí này, không tự đặt tiêu chí khác (vi phạm ghi code `module`):",
       ...extra.map((m) => `### ${m.name}\n${m.criteria}`),
@@ -275,7 +296,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   const label = agentProviderLabel(provider);
   const model = process.env.STUDIO_QA_MODEL?.trim() || undefined;
   const qaRun = startRun(REPO, id, { stage: "scenes.qa", actor: provider, mode: "agent", label: `visual QA · ${label}`, machine: machineLabel() });
-  const prompt = qaPrompt(id, state.request.modules);
+  const prompt = qaPrompt(id, state.request.modules, state.request.style);
   const outDir = path.join(stateDir(id), "qa");
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -298,7 +319,7 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
   setProgress(id, null, `${label} đang QA ảnh…`);
   log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
-  const code = await run(id, agentBin(provider), args, {
+  const code = await run(id, (await resolveAgentBin(provider)) ?? agentBin(provider), args, {
     cwd: packet.packet,
     env: sanitizedAgentEnv(),
     input: prompt,
@@ -358,7 +379,14 @@ export const REVIEW_MARKER = "Review lại dựng cảnh";
  * Gate + review without an agent turn: after switching review on, changing who grades, or fixing a scene
  * by hand. Runs as its own job so Dừng works and the ledger records it.
  */
-export async function runReviewJob(id: string, base: string) {
+export function runReviewJob(id: string, base: string) {
+  return ownJob(id, () => reviewJob(id, base), (error) => {
+    try { setStage(id, "scenes", "error", error); } catch {}
+    endHarness(id, "error", error);
+  });
+}
+
+async function reviewJob(id: string, base: string) {
   startJob(id, "review", { actor: "system", mode: "deterministic", label: "review lại" });
   setStage(id, "scenes", "running");
   beginHarness(id, "scenes", "review", HARNESS_STEPS.review);
@@ -422,7 +450,7 @@ export async function runFinalGate(id: string) {
     stepDone(id, "build");
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Final verification", "npm", ["run", "verify"]);
+    const verify = await command(id, "Final verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Final verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));

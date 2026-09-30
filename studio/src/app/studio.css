@@ -59,6 +59,14 @@
   color: var(--vu-red-700);
   font-weight: var(--vu-font-bold);
 }
+/* "Báo khi xong" sits beside Dừng in every job bar: quiet until turned on. */
+.job-progress .vs-notify {
+  color: var(--vu-blue-700);
+}
+.job-progress .vs-notify[aria-pressed="true"] {
+  color: var(--vu-blue-900);
+  font-weight: var(--vu-font-semibold);
+}
 
 /* ── style picker + showcase ────────────────────────────────────────────── */
 .vs-style-picker {
@@ -915,17 +923,6 @@ button.vs-tile:hover {
 .vs-source-manual .ant-btn {
   flex: 0 0 auto;
 }
-.vs-scope {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
-  margin-bottom: 18px;
-}
-.vs-scope legend {
-  font-size: var(--vu-text-sm);
-  font-weight: var(--vu-font-bold);
-  margin-bottom: 10px;
-}
 .vs-check-option {
   display: inline-flex;
   align-items: center;
@@ -941,32 +938,6 @@ button.vs-tile:hover {
 .vs-check-option.is-locked {
   color: var(--subtle);
 }
-.vs-prompt {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px 14px;
-}
-.vs-prompt summary,
-.vs-log summary {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  font-weight: var(--vu-font-bold);
-  color: var(--vu-blue-800);
-  cursor: pointer;
-}
-.vs-prompt pre {
-  white-space: pre-wrap;
-  font-size: 12px;
-  line-height: 1.7;
-  background: var(--vu-neutral-50);
-  border-radius: 6px;
-  padding: 12px;
-  margin: 12px 0;
-  font-family: var(--vu-font-utility);
-}
-
 .vs-inline-state {
   min-height: 116px;
   display: flex;
@@ -986,13 +957,6 @@ button.vs-tile:hover {
   color: var(--vu-text-danger);
 }
 
-.vs-optional-sources {
-  margin-bottom: 17px;
-}
-
-.vs-optional-sources .ant-collapse-content-box > .field:last-child {
-  margin-bottom: 0;
-}
 @media (max-width: 680px) {
   .vs-page-agent {
     align-items: stretch;
@@ -1148,6 +1112,37 @@ button.vs-tile:hover {
 .vs-cue-list .vs-cue-text {
   white-space: normal;
 }
+/* Sửa trực tiếp một câu: the pencil sits at the row's end; the open row becomes a small form in place. */
+.vs-cue-list .vs-cue-edit-button {
+  flex: 0 0 auto;
+  align-self: center;
+  color: var(--vu-blue-700);
+}
+.vs-cue-list .vs-cue-editing {
+  align-items: flex-start;
+}
+.vs-cue-edit {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--vu-space-3);
+}
+.vs-cue-edit-hint {
+  margin: 0;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-snug);
+}
+.vs-cue-edit-actions {
+  display: flex;
+  gap: var(--vu-space-2);
+}
+.vs-cue-notice {
+  margin-bottom: var(--vu-space-3);
+}
+.vs-cue-locked {
+  margin: var(--vu-space-2) 0 0;
+}
 .vs-key-field {
   flex: 1;
   margin: 0;
@@ -1248,99 +1243,376 @@ button.vs-tile:hover {
   color: var(--amber);
 }
 
-/* Câu → tệp, with the measured length and how much of the câu was actually heard in it. */
+/* The verdict above the table leads with an icon in its tone; its hint lines up under the words. */
+.vs-import-summary > .anticon {
+  align-self: center;
+  font-size: 14px;
+}
+.vs-import-summary.is-ok > .anticon {
+  color: var(--green);
+}
+.vs-import-summary.is-warn > .anticon {
+  color: var(--amber);
+}
+.vs-import-summary.is-error > .anticon {
+  color: var(--vu-red-800);
+}
+.vs-import-summary.is-stale > .anticon {
+  color: var(--subtle);
+}
+.vs-import-summary > .anticon ~ small {
+  padding-left: 20px;
+  font-size: 11px;
+}
+
+/* "Nghe từng câu": the verdict first, the details only where they help. */
+details.vs-flow-more > summary:focus-visible {
+  outline: 2px solid var(--vu-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--vu-radius-sm);
+}
+.vs-map-count {
+  margin-left: var(--vu-space-2);
+  font-weight: var(--vu-font-regular);
+  color: var(--muted);
+}
+.vs-map-count.is-warn {
+  color: var(--amber);
+}
+.vs-map-count.is-error {
+  color: var(--vu-red-800);
+}
+.vs-map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-3);
+  padding: var(--vu-space-2) var(--vu-space-3);
+  background: var(--vu-neutral-50);
+  border-bottom: 1px solid var(--line);
+}
+.vs-map-hint {
+  flex: 1 1 220px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--vu-text-xs);
+  color: var(--muted);
+}
+.vs-map-hint .anticon {
+  color: var(--green);
+}
+.vs-map-toolbar .vs-rs-switchline {
+  margin-left: auto;
+  font-size: var(--vu-text-xs);
+}
+/* The table answers to its own width, not the window's: beside the sidebar and preview panel it can be
+   narrow on a wide screen. */
+.vs-cue-check {
+  container-type: inline-size;
+}
+/* A region wrapper only: the verdict line keeps its place in the row it sits in. (Not .vs-verdict — that is the
+   scene review's green verdict card.) */
+.vs-import-verdict {
+  display: contents;
+}
+/* Inside the model-local panel every button gets a top margin meant for stacked forms; not in this table. */
+.vs-cue-check .ant-btn {
+  margin-top: 0;
+  justify-self: auto;
+}
+/* One page, one scroll: the list flows in the page, framed by the fold's own border. */
 .vs-map {
-  margin: 0 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  max-height: 420px;
-  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .vs-map-row {
   display: grid;
-  grid-template-columns: 34px 132px minmax(0, 1fr) 54px 46px;
-  align-items: baseline;
-  gap: 4px 10px;
-  padding: 8px 12px;
-  font-size: 12px;
+  grid-template-columns: var(--vu-space-4) var(--vu-voice-row-key) minmax(0, 1fr) var(--vu-voice-row-actions);
+  gap: var(--vu-space-1) var(--vu-space-2);
+  align-items: start;
+  padding: var(--vu-space-2) var(--vu-space-3);
   border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 20px;
 }
 .vs-map-row:last-child {
   border-bottom: 0;
 }
-.vs-map-row.is-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--vu-blue-50);
-  border-bottom: 1px solid var(--vu-blue-100);
-  font-size: 10px;
-  font-weight: var(--vu-font-bold);
-  letter-spacing: 0.02em;
-  color: var(--vu-blue-800);
-  text-transform: uppercase;
+/* The first line of text centres on the Nghe button beside it (a small control, --vu-control-sm tall). */
+.vs-map-key,
+.vs-map-text {
+  padding-top: calc((var(--vu-control-sm) - 20px) / 2);
 }
-.vs-map-row.is-head > span:nth-child(4),
-.vs-map-row.is-head > span:nth-child(5) {
-  text-align: right;
+.vs-map-row .vs-map-status {
+  display: inline-flex;
+  align-items: center;
+  height: var(--vu-control-sm);
+  font-size: 13px;
 }
+.vs-map-row.is-ok .vs-map-status {
+  color: var(--green);
+}
+/* A marked câu: tint, a stripe on the left, its icon and its words — the same stripe language as a QA finding. */
 .vs-map-row.is-warn {
   background: var(--amber-light);
+  box-shadow: inset 3px 0 0 var(--amber);
 }
 .vs-map-row.is-error {
   background: var(--red-light);
+  box-shadow: inset 3px 0 0 var(--vu-red-800);
 }
-.vs-map-key {
-  font-weight: var(--vu-font-bold);
-  color: var(--vu-blue-800);
-}
-.vs-map-file,
-.vs-map-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vs-map-file {
-  color: var(--muted);
-}
-.vs-map-file.is-none {
-  color: var(--subtle);
-  font-style: italic;
-}
-.vs-map-text {
-  color: var(--text);
-}
-.vs-map-len,
-.vs-map-match {
-  text-align: right;
-  color: var(--subtle);
-  white-space: nowrap;
-}
-/* A câu matched this poorly is mostly interpolated timing — worth a second look before importing. */
-.vs-map-match.is-weak {
+.vs-map-row.is-warn .vs-map-status {
   color: var(--amber);
-  font-weight: var(--vu-font-bold);
 }
-.vs-map-row.is-error .vs-map-match.is-weak {
+.vs-map-row.is-error .vs-map-status {
   color: var(--vu-red-800);
 }
-.vs-map-notes {
-  grid-column: 2 / -1;
+/* Playing: a clean câu lights up in blue; a marked one keeps its warning colours (the button says Dừng). */
+.vs-map-row.is-ok.is-playing {
+  background: var(--blue-light);
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+.vs-map-key {
+  font-family: var(--vu-font-utility);
+  font-size: 12px;
+  font-weight: var(--vu-font-semibold);
+  color: var(--blue-dark);
+}
+.vs-map-text {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+/* The words the machine doubts: a plain underline in the row's tone — not a squiggle, which reads as a typo. */
+.vs-map-mark {
+  background: none;
+  color: inherit;
+  text-decoration: underline 2px var(--amber);
+  text-underline-offset: 3px;
+  text-decoration-skip-ink: none;
+}
+.vs-map-row.is-error .vs-map-mark {
+  text-decoration-color: var(--vu-red-800);
+}
+.vs-map-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--vu-space-1);
+  white-space: nowrap;
+}
+.vs-map-actions .ant-btn {
+  padding-inline: 6px;
+  font-size: var(--vu-text-xs);
+  color: var(--blue-dark);
+}
+.vs-map-len {
+  min-width: 3.4em;
+  font-family: var(--vu-font-utility);
+  font-size: 11px;
+  text-align: right;
+  color: var(--subtle);
+}
+/* Everything under the text of a câu: reasons, what the machine heard, takes, the fix, technical detail. */
+.vs-map-more {
+  grid-column: 3 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: var(--vu-space-1);
+  font-size: var(--vu-text-xs);
+  line-height: 18px;
+  color: var(--muted);
+}
+.vs-map-more > * {
+  max-width: 100%;
+}
+.vs-map-more .ant-btn-link {
+  height: auto;
+  padding: 0;
+  font-size: var(--vu-text-xs);
+}
+.vs-map-reasons {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+}
+.vs-map-reasons li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--vu-space-2);
+}
+.vs-map-reasons strong {
+  font-weight: var(--vu-font-semibold);
+  color: var(--amber);
+}
+.vs-map-row.is-error .vs-map-reasons strong {
+  color: var(--vu-red-800);
+}
+.vs-map-heard,
+.vs-map-tech {
+  margin: 0;
+  color: var(--subtle);
+  overflow-wrap: anywhere;
+}
+.vs-map-heard > span {
+  font-weight: var(--vu-font-semibold);
+  color: var(--muted);
+}
+.vs-map-tech {
+  font-size: 11px;
+}
+.vs-map-tech .mono {
+  font-family: var(--vu-font-utility);
+}
+.vs-map-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-1) var(--vu-space-2);
+  margin: 0;
+  color: var(--text);
+}
+.vs-map-next .ant-btn {
+  font-size: var(--vu-text-xs);
+}
+.vs-map-next small,
+.vs-map-busy {
   font-size: 11px;
   color: var(--subtle);
 }
-.vs-map-row.is-warn .vs-map-notes {
+.vs-map-busy {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: var(--vu-space-1) 0 0;
+}
+.vs-map-error {
+  margin: 0;
+  color: var(--vu-red-800);
+}
+/* A pause has no file and no actions: one quiet line in the text column. */
+.vs-map-row.is-silent {
+  padding-block: var(--vu-space-1);
+  font-size: var(--vu-text-xs);
+  font-style: italic;
+  color: var(--subtle);
+}
+.vs-map-row.is-silent .vs-map-status {
+  height: auto;
+  padding-top: 3px;
+  font-size: var(--vu-text-xs);
+}
+.vs-map-pause {
+  grid-column: 3 / -1;
+}
+.vs-map-note {
+  margin: 0;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  font-size: 11px;
+  color: var(--subtle);
+}
+.vs-map-note.is-foot {
+  border-top: 1px solid var(--line);
+}
+/* The takes of the last retake: a small card of its own inside the row. */
+.vs-map-retake {
+  width: 100%;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+.vs-map-retake p {
+  margin: 0 0 6px;
+}
+.vs-map-retake ul {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vs-map-retake li {
+  display: grid;
+  grid-template-columns: auto 5.5em 3.4em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 var(--vu-space-2);
+  padding: 2px var(--vu-space-1);
+  border-radius: var(--vu-radius-sm);
+}
+.vs-map-retake li > strong {
+  white-space: nowrap;
+}
+.vs-map-retake li.is-in-use {
+  background: var(--blue-light);
+}
+.vs-map-retake li > .vs-map-tech {
+  grid-column: 2 / -1;
+}
+.vs-map-retake .is-pass {
+  color: var(--green);
+}
+.vs-map-retake .is-fail {
   color: var(--amber);
 }
-.vs-map-row.is-error .vs-map-notes {
-  color: var(--vu-red-800);
+/* "Đang dùng" is a button that does nothing (so focus stays on it after a pick), and looks like a label. */
+.vs-map-retake .ant-btn {
+  font-size: var(--vu-text-xs);
+}
+.vs-map-retake .ant-btn.vs-map-retake-use {
+  font-weight: var(--vu-font-semibold);
+  color: var(--blue-dark);
+  cursor: default;
 }
 .vs-map-aside {
   list-style: none;
-  margin: 0 0 14px;
-  padding: 0;
+  margin: 0;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  border-top: 1px solid var(--line);
   font-size: 11px;
   color: var(--amber);
+}
+/* A narrow table (phone, or squeezed beside the sidebar and preview): the text keeps the width, Nghe and the
+   length drop under it, the details span the row. */
+@container (max-width: 560px) {
+  .vs-map-row {
+    grid-template-columns: var(--vu-space-4) var(--vu-voice-row-key) minmax(0, 1fr);
+  }
+  .vs-map-key,
+  .vs-map-text {
+    padding-top: 0;
+  }
+  .vs-map-row .vs-map-status {
+    height: 20px;
+  }
+  .vs-map-actions {
+    grid-row: 2;
+    grid-column: 3;
+    justify-content: flex-start;
+  }
+  .vs-map-more {
+    grid-column: 2 / -1;
+  }
+  .vs-map-toolbar .vs-rs-switchline {
+    margin-left: 0;
+  }
+}
+/* The take list needs about 360px as a grid; below that each take wraps onto two lines. */
+@container (max-width: 640px) {
+  .vs-map-retake li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
 }
 .vs-force {
   display: block;
@@ -2291,23 +2563,6 @@ button.vs-tile:hover {
   .vs-import-run {
     flex-wrap: wrap;
   }
-  /* The import table drops its length and match columns rather than squeezing the narration. */
-  .vs-map-row,
-  .vs-map-row.has-play {
-    grid-template-columns: 34px minmax(0, 1fr) 46px;
-  }
-  .vs-map-file,
-  .vs-map-len,
-  .vs-map-play {
-    display: none;
-  }
-  .vs-map-row.is-head > span:nth-child(2),
-  .vs-map-row.is-head > span:nth-child(4) {
-    display: none;
-  }
-  .vs-map-notes {
-    grid-column: 1 / -1;
-  }
   .vs-section,
   .vs-step-body {
     padding: 18px;
@@ -3226,23 +3481,19 @@ button.vs-tile:hover {
   font-weight: var(--vu-font-medium);
 }
 .vs-showcase-details.ant-collapse,
-.vs-prompt.ant-collapse,
 .vs-log.ant-collapse {
   padding: 0;
   overflow: hidden;
 }
 .vs-showcase-details .ant-collapse-header,
-.vs-prompt .ant-collapse-header,
 .vs-log .ant-collapse-header {
   align-items: center !important;
   min-height: 46px;
 }
 .vs-showcase-details .ant-collapse-content-box,
-.vs-prompt .ant-collapse-content-box,
 .vs-log .ant-collapse-content-box {
   padding: 16px !important;
 }
-.vs-prompt .ant-collapse-header-text > span,
 .vs-log-label {
   display: flex;
   align-items: center;
@@ -3256,10 +3507,6 @@ button.vs-tile:hover {
 }
 .vs-log ol {
   margin-top: 0;
-}
-.vs-scope.ant-form-item {
-  display: block;
-  margin-bottom: 17px;
 }
 .vs-scope-options {
   display: grid;
@@ -5650,3 +5897,287 @@ details.vs-flow-more[open] > summary {
 .vs-image-confirm { display: grid; gap: 8px; max-width: 320px; }
 .vs-image-confirm p { margin: 0; }
 .vs-image-confirm .ant-select { width: 200px; }
+
+/* ── bước Kế hoạch: kịch bản → hình thức → tuỳ chọn nâng cao ───────────────── */
+.vs-plan-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  margin: 0 0 var(--vu-space-4);
+}
+.vs-plan-number {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--vu-blue-100);
+  color: var(--vu-blue-800);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  font-weight: var(--vu-font-bold);
+  line-height: 1;
+}
+.vs-plan-form .vs-script-field {
+  margin-bottom: var(--vu-space-4);
+}
+/* Bàn dựng hẹp (tablet có panel phải): ba ô xuống thành hai + một thay vì bị bóp tới "Chọ…". */
+.vs-plan-form .field-grid.vs-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+/* Placeholder là ví dụ, không phải giá trị: nhạt hẳn so với chữ đã gõ. */
+.vs-plan-form .ant-input::placeholder,
+.vs-plan-form .ant-select-selection-placeholder {
+  color: var(--vu-neutral-400);
+}
+
+/* Ba style một hàng, không để thẻ thứ ba lẻ loi (cùng cách tính với lưới tính năng). */
+.vs-plan-form .vs-style-picker.ant-radio-group {
+  grid-template-columns: repeat(auto-fit, minmax(max(var(--vu-style-card-min-width), calc((100% - (var(--vu-style-grid-columns) - 1) * var(--vu-space-3)) / var(--vu-style-grid-columns))), 1fr));
+}
+.vs-plan-form .vs-style-option.ant-radio-wrapper > span:last-child {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+.vs-plan-form .vs-style-copy {
+  margin: var(--vu-space-3) var(--vu-space-1) 0;
+}
+.vs-plan-form .vs-style-option strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vu-space-2);
+  margin-bottom: var(--vu-space-1);
+  font-size: var(--vu-text-md);
+}
+.vs-plan-form .vs-style-footer {
+  margin: var(--vu-space-3) var(--vu-space-1) 0;
+  padding-top: var(--vu-space-2);
+}
+.vs-style-sample {
+  margin: var(--vu-space-2) 0 0;
+}
+/* Ba thẻ một hàng thì hẹp: bỏ số "nét đặc trưng", tag và bảng màu đi thành hai dòng thay vì dựng đứng. */
+.vs-plan-form .vs-style-specimen-heading > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-plan-form .vs-style-specimen-heading > span:last-child {
+  display: none;
+}
+.vs-plan-form .vs-style-footer {
+  display: grid;
+  gap: var(--vu-space-2);
+}
+.vs-plan-form .vs-style-palette {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.vs-plan-form .vs-file {
+  min-height: var(--vu-control-lg);
+  border-color: var(--vu-blue-200);
+  background: var(--vu-lesson-surface);
+  font-size: var(--vu-text-lg);
+}
+.vs-plan-form .vs-file > span {
+  align-items: flex-start;
+  text-align: left;
+}
+/* Icon cũng là một <span>: không cho nó ăn `flex: 1` của cột tên tệp. */
+.vs-plan-form .vs-file > .anticon {
+  flex: 0 0 auto;
+}
+
+/* Tính năng: trạng thái bật nằm cạnh tên; các link luôn ở đáy thẻ, cùng một hàng. */
+.vs-plan-form .vs-capabilities {
+  margin-top: var(--vu-space-2);
+}
+.vs-capabilities-head h4 {
+  margin: 0;
+}
+.vs-plan-form .vs-module {
+  min-height: 0;
+}
+.vs-plan-form .vs-module-copy strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-plan-form .vs-module-status {
+  margin-top: 0;
+}
+.vs-module-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--vu-space-2);
+  margin-top: auto;
+  padding: 0 var(--vu-capability-card-padding) var(--vu-space-2);
+}
+.vs-module-links .vs-module-play {
+  margin: 0;
+}
+.vs-module-links:empty {
+  display: none;
+}
+
+/* Tuỳ chọn nâng cao: gấp lại, nhưng dòng tóm tắt luôn nói nó sẽ làm gì. */
+.vs-advanced.ant-collapse {
+  overflow: hidden;
+}
+.vs-advanced .ant-collapse-header {
+  align-items: center !important;
+  min-height: 52px;
+}
+.vs-advanced .vs-collapse-label {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-1) var(--vu-space-4);
+}
+.vs-advanced .vs-collapse-label strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  color: var(--vu-blue-900);
+  font-size: var(--vu-text-sm);
+}
+.vs-advanced .vs-collapse-label small {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vu-space-1);
+  font-size: var(--vu-text-xs);
+}
+.vs-advanced .vs-collapse-label small.is-warn {
+  color: var(--vu-amber-700);
+}
+.vs-advanced .ant-collapse-content-box {
+  padding: var(--vu-space-4) !important;
+}
+.vs-advanced-body {
+  display: grid;
+  gap: var(--vu-space-5);
+}
+.vs-advanced-body > .ant-form-item,
+.vs-advanced-body .vs-review {
+  margin: 0;
+}
+.vs-item-id .ant-input {
+  max-width: 360px;
+}
+.vs-scope {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.vs-scope legend {
+  margin-bottom: var(--vu-space-1);
+  padding: 0;
+}
+.vs-scope-note {
+  margin: 0 0 var(--vu-space-2);
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+}
+.vs-plan-form .vs-scope-options {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.vs-advanced-group {
+  display: grid;
+  gap: var(--vu-space-3);
+  padding-top: var(--vu-space-4);
+  border-top: 1px solid var(--vu-border-subtle);
+}
+.vs-advanced-group > .vs-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-advanced-group .field-grid .field,
+.vs-advanced-group > .ant-form-item {
+  margin-bottom: 0;
+}
+
+/* Panel phải trước khi tạo: bảng tóm tắt để đọc lại trước khi bấm Tạo video. */
+.vs-preview-missing {
+  color: var(--vu-text-muted);
+  font-style: italic;
+  font-weight: var(--vu-font-medium);
+}
+.vs-preview-file {
+  overflow-wrap: anywhere;
+}
+.vs-summary-style {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-summary-style .vs-module-play {
+  margin: 0;
+}
+
+/* Nhãn "beta" không được bị cắt cùng tên mục: chữ tự rút gọn, nhãn đứng yên. */
+.vs-nav-link {
+  display: flex !important;
+  min-width: 0;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-nav-beta {
+  flex: 0 0 auto;
+  line-height: 1.4;
+}
+
+/* Dải "Luồng sản xuất" dùng mực navy làm nền; ở chế độ tối mực lật thành màu sáng nên phải đổi bậc. */
+:root[data-theme="dark"] .vs-production-rail-head {
+  background: var(--vu-lesson-rail);
+  color: var(--vu-text-primary);
+}
+:root[data-theme="dark"] .vs-production-rail-head strong {
+  color: var(--vu-blue-700);
+}
+
+@media (max-width: 680px) {
+  /* Nút Griffin cố định ở góc phải dưới: chừa chỗ để nó không đè nút Tạo video. */
+  .vs-plan-form .panel-footer {
+    padding-right: calc(var(--vu-tour-launcher) + var(--vu-space-6));
+  }
+  .vs-item-id .ant-input {
+    max-width: none;
+  }
+
+  /* Menu trên điện thoại: icon trên, chữ dưới (hai dòng được) thay vì cắt "Đóng g…". */
+  .vs-sidebar-menu.ant-menu > .ant-menu-item,
+  .vs-sidebar-menu.ant-menu .ant-menu-sub .ant-menu-item,
+  .vs-sidebar-menu.ant-menu .ant-menu-submenu-title {
+    height: auto !important;
+    min-height: 52px;
+    padding-block: var(--vu-space-1) !important;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px !important;
+    line-height: 1.2 !important;
+  }
+  .vs-sidebar-menu.ant-menu .ant-menu-title-content {
+    margin-inline-start: 0 !important;
+    white-space: normal !important;
+    text-align: center;
+  }
+  .vs-sidebar-menu.ant-menu .ant-menu-title-content .vs-nav-link {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2px var(--vu-space-1);
+  }
+  .vs-sidebar-menu.ant-menu .vs-nav-label {
+    white-space: normal;
+  }
+}

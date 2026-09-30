@@ -1,11 +1,11 @@
 import type { VoiceSettings, VoiceSource } from "@/lib/types";
 import { handle } from "@/lib/server/http";
-import { isRunning, log } from "@/lib/server/jobs";
+import { isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { readState, setStage, updateState } from "@/lib/server/videos";
-import { dryRun, exportScript, generateKaggle, generateVoice, hasKey, importVoice, kaggleStatus, lastDryRun, lastImportReport, generateLocal, omnivoiceCast, omnivoiceServer, omnivoiceStatus, scanImport, setupAlign, setupKaggle, setupOmnivoice } from "@/lib/server/voice";
+import { dryRun, exportScript, generateKaggle, generateVoice, hasKey, importVoice, kaggleStatus, lastDryRun, lastImportReport, generateLocal, omnivoiceCast, omnivoiceServer, omnivoiceStatus, beginRetake, scanImport, setupAlign, setupKaggle, setupOmnivoice } from "@/lib/server/voice";
 
-type Action = "source" | "export-script" | "dry-run" | "generate" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-cast" | "omnivoice-generate" | "align-setup" | "kaggle-status" | "kaggle-setup" | "kaggle-generate";
+type Action = "source" | "export-script" | "dry-run" | "generate" | "scan-import" | "import" | "omnivoice-status" | "omnivoice-setup" | "omnivoice-server-start" | "omnivoice-server-stop" | "omnivoice-cast" | "omnivoice-generate" | "align-setup" | "kaggle-status" | "kaggle-setup" | "kaggle-generate" | "retake" | "retake-pick";
 
 const SOURCES: VoiceSource[] = ["elevenlabs", "kaggle", "import", "local"];
 
@@ -39,7 +39,7 @@ function cast(value: unknown): Record<string, string> {
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
   assertId(id);
-  const body = (await req.json().catch(() => ({}))) as { action: Action; settings?: VoiceSettings; force?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { action: Action; settings?: VoiceSettings; force?: boolean; n?: number; takes?: number; take?: string };
   // Trạng thái model local là của cả máy, không thuộc video nào: hỏi được cả khi video đang chạy job,
   // cả khi chưa duyệt cue. Chặn nó là panel trắng trơn giữa lúc đang cài.
   if (body.action === "omnivoice-status") return Response.json(await omnivoiceStatus());
@@ -99,21 +99,46 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     return Response.json({ started: true }, { status: 202 });
   }
   // Như model local: sinh xong mới chỉ là một thư mục wav; bước Giọng đọc xong khi nhập xong (tự nhập
-  // nếu Whisper không thấy câu nào lỗi), nên hành động này không đụng trạng thái bước.
+  // chỉ khi Whisper thấy mọi câu đều sạch), nên hành động này không đụng trạng thái bước.
   if (body.action === "kaggle-generate") {
     const v = settings(body, state.voice);
     updateState(id, (s) => { s.voice = { ...s.voice, voiceId: v.voiceId, speakers: v.speakers, pause: v.pause }; });
+    // Its automatic import runs importVoice, whose own failures are already logged (jobHandled).
     void generateKaggle(id, v)
-      .catch((error) => log(id, "error", error instanceof Error ? error.message : String(error)));
+      .catch((error) => { if (!jobHandled(error)) log(id, "error", error instanceof Error ? error.message : String(error)); });
     return Response.json({ started: true }, { status: 202 });
   }
   if (body.action === "generate") {
     if (!hasKey()) throw new HttpError(400, "Nhập API key ElevenLabs trước.");
     if (!lastDryRun(id)) throw new HttpError(400, "Chạy kiểm tra (dry-run) trước khi tạo giọng.");
     void generateVoice(id).catch((error) => {
+      if (jobHandled(error)) return;
       log(id, "error", error instanceof Error ? error.message : String(error));
       setStage(id, "voice", "error", "Tạo giọng thất bại.");
     });
+    return Response.json({ started: true }, { status: 202 });
+  }
+  // Sinh lại một câu (vài bản, tự chọn bản đạt) hoặc đặt bản người dùng đã nghe và chọn. Đều đụng GPU hoặc
+  // ghi đè một file trong thư mục giọng, nên chạy như một job: có nhật ký, có nút Dừng.
+  if (body.action === "retake" || body.action === "retake-pick") {
+    const n = Number(body.n);
+    const report = lastImportReport(id);
+    const row = report?.rows.find((r) => r.n === n);
+    if (!Number.isInteger(n) || !row || row.silent) throw new HttpError(400, "Câu này không có lời để sinh lại.");
+    let what: { takes: number } | { pick: string };
+    if (body.action === "retake") {
+      const takes = Number(body.takes ?? 3);
+      if (!Number.isInteger(takes) || takes < 1 || takes > 6) throw new HttpError(400, "Số bản phải từ 1 tới 6.");
+      what = { takes };
+    } else {
+      const take = String(body.take || "");
+      if (!/^(t\d{1,2}|orig|prev)$/.test(take)) throw new HttpError(400, "Bản không hợp lệ.");
+      what = { pick: take };
+    }
+    // Preflight and the job claim happen before the answer: a missing model or a busy card shows on screen,
+    // and a second click gets a 409 instead of racing the first.
+    const { done } = await beginRetake(id, n, what);
+    void done.catch((error) => log(id, "error", error instanceof Error ? error.message : String(error)));
     return Response.json({ started: true }, { status: 202 });
   }
   if (body.action === "import") {
@@ -121,6 +146,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     if (!report) throw new HttpError(400, "Kiểm tra thư mục audio trước khi nhập.");
     if (!report.ok && !body.force) throw new HttpError(400, "Thư mục còn câu chưa dùng được. Sửa rồi kiểm tra lại.");
     void importVoice(id, Boolean(body.force)).catch((error) => {
+      if (jobHandled(error)) return;
       log(id, "error", error instanceof Error ? error.message : String(error));
       setStage(id, "voice", "error", "Nhập giọng thất bại.");
     });

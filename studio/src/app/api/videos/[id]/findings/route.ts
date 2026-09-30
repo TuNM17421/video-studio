@@ -1,6 +1,6 @@
 import { runAgent } from "@/lib/server/agent";
 import { baseUrl, handle } from "@/lib/server/http";
-import { emit, isRunning, log } from "@/lib/server/jobs";
+import { emit, isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError, REPO } from "@/lib/server/paths";
 import { readState, setStage } from "@/lib/server/videos";
 import { qaFindings, updateFeedback } from "@/lib/server/workflow";
@@ -64,6 +64,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   if (!fix.length) return Response.json({ started: false });
   const base = baseUrl(req);
   void runAgent(id, "scenes", base, note || undefined, { focus: fix.map((item) => item.id) }).catch((error) => {
+    if (jobHandled(error)) return;
     log(id, "error", error instanceof Error ? error.message : String(error));
     if (!isRunning(id)) setStage(id, "scenes", "error", "Không chạy được agent.");
   });

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Whiteboard — bảng tư liệu lịch sử (thử nghiệm)</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Bảng kể chuyện lịch sử (ảnh tham khảo original-9f701bfd… — lịch sử viễn thông): phần dựng được
+  // bằng bộ doodle + parts của style bảng trắng. Cụm icon có chú thích, ô chính sách, khung ảnh tư liệu,
+  // trục thời gian, chữ viền rỗng.
+  // KHÔNG dựng bằng code (phải nhập ảnh ngoài qua images.js / PhotoCard): bản đồ quốc gia, cầu, chân
+  // dung người thật, logo thương hiệu, chữ lettering khối 3D. Ở đây chúng là khung ảnh tô gạch chéo —
+  // chỗ chờ thay bằng ảnh tư liệu có giấy phép.
+  var C = VK.C;
+  var b = VK.createBoard({ timeline: [{ n: 1, start: 0 }], spokenAt: function () { return 0; } });
+  var d = function (id, m) { return b.draw(null, Object.assign({ id: id }, m)); };
+  b.look(0, { x: 960, y: 550, w: 1920 });
+
+  // hàng trên: mốc mở đầu — khung ảnh tư liệu, toà nhà bưu điện, trạm phát sóng
+  VK.WbPhotoFrame(b, 'ph1', null, { x: 90, y: 150, w: 270, h: 300, caption: 'Ảnh tư liệu' });
+  VK.WbIconLabel(b, 'post', null, { x: 500, y: 245, doodle: 'landmark', size: 150, label: '1885', labelSize: 44 });
+  VK.WbIconLabel(b, 'tower', null, { x: 760, y: 240, doodle: 'radio-tower', size: 160, label: 'Trạm đầu tiên', labelSize: 38 });
+  d('ant', { kind: 'doodle', name: 'antenna', x: 960, y: 225, size: 105, color: C.accent });
+
+  // hàng trên bên phải: chính sách và luật lệ
+  VK.WbIconLabel(b, 'news', null, { x: 1180, y: 235, doodle: 'newspaper', size: 130, label: 'Chính sách', labelSize: 38 });
+  d('gavel', { kind: 'doodle', name: 'gavel', x: 1400, y: 240, size: 130 });
+  VK.WbIconLabel(b, 'law', null, { x: 1620, y: 240, doodle: 'scale', size: 140, label: 'Luật lệ', labelSize: 38 });
+  d('cal', { kind: 'doodle', name: 'calendar', x: 1820, y: 230, size: 105, color: C.accent });
+
+  // hàng giữa: tổng đài tay, chân dung, rồi làn sóng thiết bị
+  VK.WbIconLabel(b, 'sw', null, { x: 160, y: 585, doodle: 'phone-old', size: 140, label: 'Tổng đài tay', labelSize: 36 });
+  VK.WbPhotoFrame(b, 'ph2', null, { x: 330, y: 470, w: 250, h: 280, caption: 'Chân dung' });
+  d('dish', { kind: 'doodle', name: 'satellite-dish', x: 700, y: 560, size: 140 });
+  d('wifi', { kind: 'doodle', name: 'wifi', x: 890, y: 545, size: 115, color: C.accent });
+  d('tv', { kind: 'doodle', name: 'tv', x: 1075, y: 570, size: 140 });
+  d('mobile', { kind: 'doodle', name: 'phone', x: 1250, y: 570, size: 120, color: C.accent });
+  VK.WbIconLabel(b, 'gold', null, { x: 1460, y: 555, doodle: 'medal', size: 130, label: 'Thời hoàng kim', labelSize: 36 });
+  VK.WbIconLabel(b, 'fdi', null, { x: 1720, y: 550, doodle: 'percent', size: 120, label: 'Vốn ngoại', labelSize: 36 });
+
+  // chữ viền rỗng — chỗ của lettering trang trí trong ảnh gốc
+  d('era', { kind: 'text', x: 960, y: 720, text: '3G · 4G', size: 86, outline: true, anchor: 'middle' });
+
+  // trục thời gian dưới cùng
+  VK.WbTimeline(b, 'tl', null, {
+    x: 110, y: 855, w: 1460, size: 36,
+    items: [
+      { label: '1885', sub: 'Bưu điện' },
+      { label: '1947', sub: 'Tổng đài' },
+      { label: '1994', sub: 'Mở cửa' },
+      { label: '2005', sub: 'Di động' },
+      { label: '2020', sub: 'Băng rộng' }
+    ]
+  });
+
+  var end = b.marks.reduce(function (e, m) { return Math.max(e, b.endOf(m)); }, 0) + 45;
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: end,
+    render: function (f) { return VK.h(VK.Whiteboard, { frame: f, marks: b.marks, camera: b.camera }); }
+  });
+</script>
+</body>
+</html>

@@ -9,7 +9,9 @@ import { DEFAULT_BUILD_NO, isBuildNo, itemIdFor } from "../qa-manifest";
 import { BASE_TEMPLATE_PATH } from "../modules";
 import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
+import { styleGuideLine } from "./style-guides";
 import { defaultVoiceId, listVoices } from "./catalog";
+import { videoCost } from "./cost";
 import { isRunning } from "./jobs";
 import { chaptersPath, exists, HttpError, mp4Path, projectDir, qaManifestPath, REPO, rel, stateDir, transcriptPath, videoDir, voiceOut, voiceScriptDir } from "./paths";
 
@@ -153,7 +155,37 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
 export function writeState(state: VideoState) {
   state.updatedAt = new Date().toISOString();
   fs.mkdirSync(stateDir(state.id), { recursive: true });
-  fs.writeFileSync(stateFile(state.id), `${JSON.stringify(state, null, 2)}\n`);
+  // Through a temp file: a write cut short (Studio stopped, disk full) left half a JSON document, and one
+  // unreadable state.json failed the whole video list, not just that video.
+  const file = stateFile(state.id);
+  const tmp = `${file}.${process.pid}.tmp`;
+  const text = `${JSON.stringify(state, null, 2)}\n`;
+  fs.writeFileSync(tmp, text);
+  try {
+    replaceFile(tmp, file);
+  } catch {
+    // Windows refuses to replace a file another program holds open (antivirus, indexer, a sync client) for a
+    // moment. After a few tries write it in place, as before — never fail a job over it.
+    fs.writeFileSync(file, text);
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
+const BUSY = new Set(["EPERM", "EACCES", "EBUSY"]);
+const pause = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/** rename over an existing file, retried while Windows says the target is in use. */
+function replaceFile(from: string, to: string) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (error) {
+      if (attempt >= 4 || !BUSY.has((error as NodeJS.ErrnoException).code ?? "")) throw error;
+      pause(15 * (attempt + 1));
+    }
+  }
 }
 
 export function updateState(id: string, patch: (state: VideoState) => void) {
@@ -192,10 +224,17 @@ export function listVideos(): VideoSummary[] {
   const ids = new Set<string>();
   const projects = path.join(REPO, "projects");
   if (exists(projects)) for (const d of fs.readdirSync(projects, { withFileTypes: true })) if (d.isDirectory()) ids.add(d.name);
-  return [...ids].sort().map((id) => {
-    const { state, managed } = readState(id);
+  return [...ids].sort().flatMap((id) => {
+    let read: ReturnType<typeof readState>;
+    // One video whose state.json cannot be read must not take the list of every other video down with it;
+    // opening that video still shows the error.
+    try { read = readState(id); } catch (error) {
+      console.error(`Bỏ qua ${id} trong danh sách: ${error instanceof Error ? error.message : String(error)}`);
+      return [];
+    }
+    const { state, managed } = read;
     const a = artifacts(id, state.request.day);
-    return {
+    return [{
       id,
       day: state.request.day,
       style: state.request.style,
@@ -206,13 +245,22 @@ export function listVideos(): VideoSummary[] {
       artifacts: a,
       running: isRunning(id),
       updatedAt: managed ? state.updatedAt : null,
-    };
+      cost: videoCost(id),
+    }];
   });
 }
 
 export function styleName(id: string) {
   const file = path.join(REPO, "styles", `${id}.json`);
   return exists(file) ? (JSON.parse(fs.readFileSync(file, "utf8")).name as string) : id;
+}
+
+/** Capabilities the style cannot build yet (styles/<id>.json `unsupportedModules`). */
+export function styleUnsupportedModules(id: string): string[] {
+  const file = path.join(REPO, "styles", `${id}.json`);
+  if (!exists(file)) return [];
+  const list = (JSON.parse(fs.readFileSync(file, "utf8")) as { unsupportedModules?: unknown }).unsupportedModules;
+  return Array.isArray(list) ? list.filter((m): m is string => typeof m === "string") : [];
 }
 
 /** REQUEST.md: what the agent (and anyone running the video by hand) reads first. */
@@ -309,6 +357,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Tên video: ${r.title || id}`,
     `- Mã item gửi QA: ${itemIdFor(r.itemId, id)}`,
     `- Style: ${styleName(r.style)} (\`styles/${r.style}.json\`)`,
+    ...(styleGuideLine(r.style) ? [`- ${styleGuideLine(r.style)}`] : []),
     `- Ngày: ${r.day}`,
     `- Kịch bản: \`projects/${id}/kich-ban-goc.md\`${r.scriptName ? ` (tệp gốc: ${r.scriptName})` : ""}`,
     `- Feedback bản cũ: ${r.feedbackDir ? `\`${r.feedbackDir}\`` : "không có"}`,

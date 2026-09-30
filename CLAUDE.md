@@ -48,7 +48,9 @@ style is `styles/<style>.json` (palette, showcase components, rules — they ove
    starts). Content zone y 250–960, captions ≤ 78 chars via lib/captions.js, colors from the style + lib/tokens.js,
    Montserrat, connectors: particle on the drawn path, hidden on card faces, one pulse per arrival; no
    numbers/results the script does not give. Parallel forks per scene group work well.
-   `npm run build && npm run verify`; QA stills to `projects/<id>/qa/` with `node tools/shoot.mjs --batch`.
+   `npm run build && npm run verify -- --video <id>` (chỉ video đó + phép soát chung của design system — Studio cũng
+   gọi đúng như vậy, nên lỗi của một video khác trên máy không chặn video này); QA stills to `projects/<id>/qa/` with
+   `node tools/shoot.mjs --batch`.
 4. **render** — `node tools/render.mjs --scene <id> --audio voice/out/<id>/voice.wav --out projects/<id>/render/<id>.mp4`
    (+ `--base` of the preview server; `--no-captions` bỏ thanh phụ đề — Studio hỏi "Phụ đề: Có/Không" ở bước
    Render, mặc định Có), QA the MP4; `node tools/transcript.mjs <voice.cues.json> transcripts/DayNN/<id>.txt`.
@@ -65,7 +67,24 @@ Local web UI over the same pipeline: the form writes REQUEST.md + `projects/<id>
 cues/scenes/deliver run headless `claude -p` (dontAsk, allowlist in `studio/src/lib/server/agent.ts`); the
 server itself runs TTS (key in RAM only), the audio import, voice-timing, render and transcript. It serves the design system at
 `/ds` (render/QA base). `STUDIO_TTS_MOCK=1` = silent mock voice for development. New styles = new
-`styles/*.json`, no code change.
+`styles/<id>.json` (palette, showcase, rules, `unsupportedModules`) + `styles/<id>.md` (how that style builds
+scenes, its reference video, `## Tiêu chí QA`; front matter `extends: <parent>` adds to the parent's guide),
+no code change. The skill `make-video` is the core every style shares; REQUEST.md and the agent prompt name
+the style's guides, and the QA lane adds their criteria.
+
+### Sửa một câu tay, báo khi xong, chi phí từng video
+- **Sửa một câu** không qua agent: `tools/cue-edit.mjs` (lõi ở `tools/lib/cue-edit.mjs`) thay đúng chuỗi `text` /
+  `title` / `visual` của một câu trong `RAW`, nạp lại file để kiểm rồi mới ghi, đồng bộ dòng `- **Lời:**` trong
+  `kich-ban-goc.md`, và từ chối khi cảnh đã dựng `spokenAt(N, 'cụm')` vào cụm mà lời mới làm mất. Studio (`lib/server/
+  cue-edit.ts`) chỉ cho sửa trước khi có giọng (`lib/cue-edit.ts` → `cueEditBlocked`), chạy lại TTS dry-run, giữ cue
+  đã duyệt ở "đã duyệt" (duyệt lại sẽ chạy lại đề xuất ảnh từ đầu) và xoá dry-run/báo cáo quét audio cũ khi lời đổi.
+- **Chi phí** (`lib/video-cost.ts`, đọc ở `lib/server/cost.ts`): giữ đơn vị mỗi nguồn báo — USD của Claude Code, token
+  của Codex (không quy ra giá), "không báo số" cho Antigravity và lượt trước khi có ledger; không bao giờ biến thiếu số
+  thành $0. Ký tự ElevenLabs lấy từ dòng `câu NN → ElevenLabs … · tính phí N ký tự` mà `tts.mjs` in ở từng câu —
+  **đổi định dạng dòng đó thì sửa `billedFromLine` cùng lúc**. `ELEVENLABS_API_BASE` và `TTS_CACHE_DIR` chỉ để test
+  chạy đường request thật với server giả (`tools/tts-billing.test.mjs`), không tốn credit, không đụng cache thật.
+- **Báo khi xong** (`lib/job-notice.ts`, `lib/use-job-notice.ts`, `lib/notify.ts`): tiêu đề tab + thông báo trình
+  duyệt cho job từ 30 giây, chỉ khi người dùng không nhìn trang; lựa chọn lưu ở localStorage của trình duyệt.
 
 ### Giao diện Studio đi theo design system, không tự chế
 Mọi thay đổi UI/UX trong `studio/` phải theo **`studio/src/lib/design-tokens.ts`** — nguồn chuẩn duy nhất

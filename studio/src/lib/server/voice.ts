@@ -1,11 +1,12 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, VoiceBound, VoiceScript, VoiceSettings } from "../types";
-import { finishJob, log, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, RetakeEntry, RetakeResult, VoiceBound, VoiceScript, VoiceSettings } from "../types";
+import { finishJob, gpuJobElsewhere, isRunning, log, ownJob, recordJobMetrics, registry, run, setProgress, startJob, wasStopped } from "./jobs";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
+import { billedFromLine } from "../video-cost";
 
 export const hasKey = () => Boolean(registry.elevenKey);
 export function setKey(key: string) {
@@ -106,17 +107,23 @@ export async function dryRun(id: string, v: VoiceSettings) {
 }
 
 /** Paid: synthesize (cached câu are free), assemble the master, bind it to the video with --write-cues. */
-export async function generateVoice(id: string) {
+export function generateVoice(id: string) {
+  return ownJob(id, () => generateEleven(id), (error) => setStage(id, "voice", "error", error));
+}
+
+async function generateEleven(id: string) {
   const key = registry.elevenKey;
   if (!key) throw new HttpError(400, "Nhập API key ElevenLabs trước.");
   const { state } = readState(id);
   const v = state.voice;
   validateVoice(v);
-  startJob(id, "voice");
+  startJob(id, "voice", { actor: "elevenlabs", label: "voice · ElevenLabs" });
   setStage(id, "voice", "running");
   log(id, "system", `Tạo giọng · ${v.model} · nghỉ ${v.pause} s`);
   const total = lastDryRun(id)?.toGenerate || 0;
   let done = 0;
+  let billed = 0;
+  let billedCues = 0;
   const code = await run(id, process.execPath, ttsArgs(id, v), {
     env: ttsEnv(v, key),
     onLine(line, stream) {
@@ -127,8 +134,16 @@ export async function generateVoice(id: string) {
         done++;
         setProgress(id, total ? Math.min(99, (done / total) * 100) : null, `Đang tạo câu ${done}${total ? `/${total}` : ""}…`);
       }
+      const chars = stream === "stdout" ? billedFromLine(line) : null;
+      if (chars !== null) {
+        billed += chars;
+        billedCues++;
+      }
     },
   });
+  // Recorded whatever the outcome: câu synthesized before a failure or a Dừng were billed all the same.
+  recordJobMetrics(id, { ttsCharacters: billed, ttsCues: billedCues, model: v.model });
+  if (billedCues) log(id, "system", `ElevenLabs tính phí ${billed.toLocaleString("vi-VN")} ký tự cho ${billedCues} câu ở lượt này.`);
   if (code !== 0 || wasStopped(id)) {
     setStage(id, "voice", "error", wasStopped(id) ? "Đã dừng." : "Tạo giọng thất bại, xem nhật ký.");
     finishJob(id, "error");
@@ -348,6 +363,10 @@ export async function generateLocal(id: string, v: VoiceSettings) {
     // cáo quét cũ: giữ lại thì màn hình Nhập hiện "không có vấn đề" cho một thư mục vừa bị ghi đè.
     updateState(id, (s) => { s.voice = { ...s.voice, importDir: out }; });
     fs.rmSync(importReportFile(id), { force: true });
+    // Các bản "sinh lại câu này" của lượt trước nói về những file vừa bị ghi đè; giọng của lượt này là giọng
+    // mà mọi lần sinh lại một câu về sau phải dùng.
+    forgetRetakes(id, out, "omnivoice");
+    rememberCast(id, out, v);
     log(id, "system", `Model local đã sinh ${result.files}/${result.cues} câu · giọng ${result.voice} → ${result.dir}`);
     finishJob(id, "done");
     // Thư mục vừa sinh là của chính Studio, không phải thư mục người dùng dán vào — nên tự kiểm luôn.
@@ -381,8 +400,12 @@ const KAGGLE_POLL_MS = 20_000;
 export async function kaggleStatus(): Promise<KaggleStatus> {
   const cli = await toolState(["tools/setup-kaggle.mjs", "--check", "--json"], {
     installed: false, bin: null, version: null, venv: "voice/.venv-kaggle", from: null,
-  } as Omit<KaggleStatus, "hasCreds" | "username" | "align">);
-  return { ...cli, hasCreds: hasKaggleCreds(), username: hasKaggleCreds() ? kaggleUsername() : null, align: await alignInstalled() };
+  } as Omit<KaggleStatus, "hasCreds" | "username" | "align" | "localModel">);
+  const [align, local] = await Promise.all([
+    alignInstalled(),
+    toolState(["tools/setup-omnivoice.mjs", "--check"], { installed: false }),
+  ]);
+  return { ...cli, hasCreds: hasKaggleCreds(), username: hasKaggleCreds() ? kaggleUsername() : null, align, localModel: Boolean(local.installed) };
 }
 
 /** `pip install kaggle` (một bản cho cả máy, dùng lại nếu đã có) — nhẹ, vài chục giây, nhưng vẫn là một job để có nhật ký. */
@@ -421,7 +444,7 @@ async function pause(id: string, ms: number) {
 /**
  * Sinh cả video trên Kaggle. Hỏng ở bước nào cũng nói rõ bước đó; kernel lỗi thì kéo đuôi log của chính
  * kernel về nhật ký, vì lý do thật (hết quota GPU, tài khoản chưa xác minh số điện thoại, pip lỗi…) chỉ
- * nằm ở đó. Xong thì tự soát bằng Whisper, và tự gắn luôn nếu không câu nào có vấn đề.
+ * nằm ở đó. Xong thì tự soát bằng Whisper, và tự gắn luôn chỉ khi mọi câu đều sạch (không lỗi, không cảnh báo).
  */
 export async function generateKaggle(id: string, v: VoiceSettings) {
   const status = await kaggleStatus();
@@ -489,6 +512,8 @@ export async function generateKaggle(id: string, v: VoiceSettings) {
     // Như model local: trỏ ô nhập vào thư mục vừa tải, xoá báo cáo quét cũ của thư mục trước.
     updateState(id, (s) => { s.voice = { ...s.voice, ...v, source: "kaggle", importDir: audioDir }; });
     fs.rmSync(importReportFile(id), { force: true });
+    forgetRetakes(id, audioDir, "kaggle");
+    rememberCast(id, audioDir, v);
     log(id, "system", `Kaggle đã sinh ${wavs}/${kernel.cues} câu → ${rel(audioDir)}`);
     finishJob(id, "done");
   } catch (error) {
@@ -496,12 +521,15 @@ export async function generateKaggle(id: string, v: VoiceSettings) {
     throw error;
   }
 
+  // Chỉ tự gắn khi MỌI câu đều sạch. Cảnh báo (khớp một phần, dài/ngắn bất thường, có thể mất đuôi, nuốt
+  // hay lặp chữ) là chuyện phải nghe tận tai: tự gắn thì chúng lọt thẳng vào video mà không ai nghe.
   await autoScan(id, kaggleAudioDir(id));
   const report = lastImportReport(id);
-  if (report?.ok && report.rows.every((r) => r.level !== "error")) {
+  if (report?.ok && report.rows.every((r) => r.level === "ok")) {
     await importVoice(id, false);
   } else if (report) {
-    log(id, "system", "Có câu cần nghe lại — xem bảng đối chiếu ở bước Nhập vào video rồi quyết định.");
+    const listen = report.rows.filter((r) => r.level !== "ok").map((r) => r.key);
+    log(id, "system", `Chưa tự gắn giọng: ${listen.length} câu cần nghe lại (${listen.join(", ")}). Nghe trong bảng đối chiếu ở bước Nhập vào video rồi bấm Nhập giọng.`);
   }
 }
 
@@ -577,6 +605,166 @@ export function lastImportReport(id: string): ImportReport | null {
   try { return JSON.parse(fs.readFileSync(importReportFile(id), "utf8")); } catch { return null; }
 }
 
+/**
+ * The narration changed (a câu edited by hand): the dry-run counted the old words and the folder scan matched
+ * recordings against them. Kept, the scan would still say "khớp" and the import would bind a recording of the
+ * old sentence. Dropped, the voice step asks for both again.
+ */
+export function forgetVoiceChecks(id: string) {
+  fs.rmSync(dryRunFile(id), { force: true });
+  fs.rmSync(importReportFile(id), { force: true });
+}
+
+// ── Sinh lại một câu ─────────────────────────────────────────────────────────
+//
+// Câu bị gắn cờ (hoặc người dựng nghe thấy đọc sai) thì sinh lại riêng câu đó vài bản bằng model local,
+// tools/voice-retake.mjs chấm từng bản bằng đúng phép soát của bảng đối chiếu và chỉ thay khi có bản đạt.
+// Không bản nào đạt thì giữ nguyên và để người dùng nghe rồi tự chọn. Bản gốc luôn trả lại được.
+
+// Mỗi thư mục giọng một sổ riêng: thư mục model local và thư mục Kaggle giữ hai bộ audio khác nhau.
+type RetakeBook = Record<string, Record<string, RetakeEntry>>;
+const retakesFile = (id: string) => path.join(stateDir(id), "retakes.json");
+function readBook(id: string): RetakeBook {
+  try { return JSON.parse(fs.readFileSync(retakesFile(id), "utf8")) as RetakeBook; } catch { return {}; }
+}
+function writeBook(id: string, book: RetakeBook) {
+  fs.mkdirSync(stateDir(id), { recursive: true });
+  fs.writeFileSync(`${retakesFile(id)}.tmp`, JSON.stringify(book));
+  fs.renameSync(`${retakesFile(id)}.tmp`, retakesFile(id));
+}
+/** The retakes of the folder being imported now, by câu. */
+export function retakesFor(id: string, dir: string): Record<string, RetakeEntry> {
+  const folder = dir ? readBook(id)[rel(path.resolve(dir))] ?? {} : {};
+  // `running` lives on disk, the job in memory: a Studio restart mid-run would leave the row spinning for
+  // good, with its button stuck in loading. No retake job alive → that run was cut off.
+  const kind = isRunning(id) ? registry.jobs.get(id)?.kind : undefined;
+  if (kind === "voice-retake" || kind === "voice-retake-pick") return folder;
+  return Object.fromEntries(Object.entries(folder).map(([n, entry]) => [n, entry.running
+    ? { ...entry, running: null, failed: entry.running, error: entry.error ?? "Lần chạy trước bị ngắt giữa chừng (Studio đã tắt hoặc khởi động lại)." }
+    : entry]));
+}
+function updateEntry(id: string, dir: string, n: number, change: (entry: RetakeEntry) => RetakeEntry) {
+  const book = readBook(id);
+  const folder = (book[rel(dir)] ??= {});
+  folder[String(n)] = change(folder[String(n)] ?? { n });
+  writeBook(id, book);
+}
+/**
+ * A folder was generated again: its retakes describe files that no longer exist. Drop its entries and its
+ * takes on disk (projects/<id>/voice-script/retake/<omnivoice|kaggle>/, the layout of tools/voice-retake.mjs).
+ */
+function forgetRetakes(id: string, dir: string, tag: "omnivoice" | "kaggle") {
+  const book = readBook(id);
+  delete book[rel(dir)];
+  writeBook(id, book);
+  fs.rmSync(path.join(voiceScriptDir(id), "retake", tag), { recursive: true, force: true });
+}
+
+/**
+ * The cast a folder was generated with. A retake must read with that voice, not with whatever the picker
+ * shows now: a scan or a dry-run saves the picker into state, and one câu in another voice passes Whisper.
+ */
+const castFile = (id: string) => path.join(stateDir(id), "generated-cast.json");
+function rememberCast(id: string, dir: string, v: VoiceSettings) {
+  let all: Record<string, Pick<VoiceSettings, "voiceId" | "speakers">> = {};
+  try { all = JSON.parse(fs.readFileSync(castFile(id), "utf8")); } catch { /* first one */ }
+  all[rel(dir)] = { voiceId: v.voiceId, speakers: v.speakers };
+  fs.mkdirSync(stateDir(id), { recursive: true });
+  fs.writeFileSync(castFile(id), JSON.stringify(all));
+}
+function castOf(id: string, dir: string) {
+  try { return (JSON.parse(fs.readFileSync(castFile(id), "utf8")) as Record<string, Pick<VoiceSettings, "voiceId" | "speakers">>)[rel(dir)] ?? null; } catch { return null; }
+}
+
+/** Which of THIS video's generated folders `dir` is — another video's folder, or a recording, is neither. */
+function generatedKind(id: string, dir: string): "omnivoice" | "kaggle" | null {
+  const same = (a: string, b: string) => (process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b);
+  const target = path.resolve(dir);
+  if (same(target, path.resolve(voiceScriptDir(id), "omnivoice"))) return "omnivoice";
+  if (same(target, path.resolve(kaggleAudioDir(id)))) return "kaggle";
+  return null;
+}
+
+/**
+ * Everything that must hold before a retake or a pick starts, said plainly. The route runs this BEFORE it
+ * answers, so the reason shows on screen instead of sinking into the log of a background job.
+ * `generate` = false for a pick: no GPU, no Whisper.
+ */
+export async function retakePreflight(id: string, generate: boolean) {
+  const v = readState(id).state.voice;
+  const dir = assertImportDir(v.importDir);
+  if (!generatedKind(id, dir)) throw new HttpError(400, "Chỉ sinh lại được câu của giọng do model sinh cho chính video này (trên máy hoặc Kaggle). Giọng tự thu thì thu lại đúng câu đó.");
+  if (!generate) return { v, dir };
+  const status = await omnivoiceStatus();
+  if (!status.installed) throw new HttpError(400, "Máy này chưa cài model local nên chưa sinh lại được. Cài ở tab Model local trước.");
+  if (!status.align) throw new HttpError(400, "Chưa cài môi trường nhận diện giọng (Whisper) — bước sinh lại cần nó để nghe và chọn bản.");
+  if (status.device.tight) {
+    if (status.server.running) throw new HttpError(409, "Trang nghe thử đang giữ bộ nhớ card. Đóng trang nghe thử (tab Model local) rồi sinh lại.");
+    const other = gpuJobElsewhere(id);
+    if (other) throw new HttpError(409, `Video ${other} đang dùng model local trên card này. Chờ nó xong rồi sinh lại — hai lượt cùng lúc sẽ tràn bộ nhớ card.`);
+  }
+  return { v, dir };
+}
+
+const retakeArgs = (id: string, dir: string, n: number) =>
+  ["tools/voice-retake.mjs", "--cues", rel(path.join(videoDir(id), "cues.js")), "--dir", dir, "--n", String(n), "--json"];
+const takeLabel = (take: string) => (take === "orig" ? "bản gốc" : take === "prev" ? "bản trước" : `bản ${take}`);
+
+/**
+ * Claim the job and mark the row before answering the request, then run in the background. Claiming in the
+ * request closes the window where a second click passes `isRunning` and puts the spinner on the wrong row.
+ */
+export async function beginRetake(id: string, n: number, what: { takes: number } | { pick: string }) {
+  const generate = "takes" in what;
+  const { v, dir } = await retakePreflight(id, generate);
+  if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy. Chờ xong hoặc bấm Dừng.");
+  if (!generate) {
+    const entry = retakesFor(id, dir)[String(n)];
+    const listed = [entry?.original, entry?.previous, ...(entry?.takes ?? [])].some((t) => t?.name === what.pick);
+    if (!listed) throw new HttpError(400, `Bản này không có trong lần sinh lại gần nhất của câu ${n}.`);
+  }
+  startJob(id, generate ? "voice-retake" : "voice-retake-pick");
+  updateEntry(id, dir, n, (entry) => ({ ...entry, n, running: generate ? "retake" : "pick", error: null, failed: null }));
+  if (generate) {
+    setProgress(id, null, `Sinh lại câu ${n} · ${what.takes} bản…`);
+    log(id, "system", `Sinh lại câu ${n}: ${what.takes} bản bằng model local; chỉ thay khi bản đang dùng không đạt và có bản đạt`);
+  } else {
+    setProgress(id, null, `Câu ${n}: đặt ${takeLabel(what.pick)}…`);
+    log(id, "system", `Sinh lại câu ${n}: dùng ${takeLabel(what.pick)}`);
+  }
+  const done = (async () => {
+    try {
+      let result: RetakeResult;
+      if (generate) {
+        const cast = castOf(id, dir);
+        if (!cast) log(id, "system", "Chưa có bản ghi giọng lúc sinh thư mục này (sinh trước khi có tính năng này) — đọc bằng giọng đang chọn.");
+        result = await toolJson<RetakeResult>(id, [...retakeArgs(id, dir, n), "--takes", String(what.takes), ...castArgs({ ...v, ...(cast ?? {}) })], (line) => {
+          log(id, "output", line);
+          if (/^Nghe lại/.test(line.trim())) setProgress(id, null, `Câu ${n}: nghe lại các bản…`);
+        });
+      } else {
+        result = await toolJson<RetakeResult>(id, [...retakeArgs(id, dir, n), "--pick", what.pick]);
+      }
+      updateEntry(id, dir, n, () => ({ ...result, running: null, error: null }));
+      log(id, "system", {
+        replaced: `Câu ${n}: đã thay bằng ${takeLabel(result.chosen ?? "")} (${result.takes.filter((t) => t.pass).length}/${result.takes.length} bản đạt).`,
+        "kept-passing": `Câu ${n}: bản đang dùng vẫn đạt — giữ nguyên. Nghe các bản mới trong bảng rồi chọn nếu muốn đổi.`,
+        "none-passed": `Câu ${n}: không bản nào đạt — giữ bản cũ. Nghe các bản trong bảng rồi chọn, hoặc sinh lại lần nữa.`,
+        picked: `Câu ${n}: đang dùng ${takeLabel(result.chosen ?? "")}.`,
+      }[result.decision]);
+      finishJob(id, "done");
+    } catch (error) {
+      const message = wasStopped(id) ? "Đã dừng." : error instanceof Error ? error.message : String(error);
+      // The tool keeps the previous run's takes until a run fully succeeds, so the list stays usable.
+      updateEntry(id, dir, n, (entry) => ({ ...entry, running: null, error: message, failed: generate ? "retake" : "pick" }));
+      finishJob(id, "error");
+      throw new HttpError(500, message);
+    }
+    await autoScan(id, dir);
+  })();
+  return { done };
+}
+
 function importArgs(id: string, dir: string, v: VoiceSettings) {
   return [
     "tools/voice-import.mjs",
@@ -625,7 +813,11 @@ function recordBound(id: string, source: VoiceBound["source"], v: VoiceSettings)
 }
 
 /** Assemble the master from the folder and bind it to the video, exactly as the ElevenLabs path does. */
-export async function importVoice(id: string, force: boolean) {
+export function importVoice(id: string, force: boolean) {
+  return ownJob(id, () => importFolder(id, force), (error) => setStage(id, "voice", "error", error));
+}
+
+async function importFolder(id: string, force: boolean) {
   const { state } = readState(id);
   const v = state.voice;
   const target = assertImportDir(v.importDir);

@@ -18,6 +18,23 @@ const RESEARCH_VARS: Record<string, string> = {
   "research.sheet": "--vu-research-sheet-height",
 };
 
+const VOICE_VARS: Record<string, string> = {
+  "voice.row.key": "--vu-voice-row-key",
+  "voice.row.actions": "--vu-voice-row-actions",
+};
+
+describe("token bố cục của bảng Nghe từng câu", () => {
+  it("mỗi dòng voice.* trong bảng khớp biến CSS của nó", () => {
+    const rows = STUDIO_LAYOUT.filter((r) => r.token.startsWith("voice."));
+    expect(rows.map((r) => r.token).sort()).toEqual(Object.keys(VOICE_VARS).sort());
+    for (const row of rows) {
+      const m = new RegExp(`${VOICE_VARS[row.token]}:\\s*([^;]+);`).exec(CSS);
+      expect(m, row.token).not.toBeNull();
+      expect(m![1].trim().replace(/\s+/g, "")).toBe(row.value.replace(/\s+/g, ""));
+    }
+  });
+});
+
 describe("token bố cục của trang Đóng gói kịch bản", () => {
   it("mỗi dòng research.* trong bảng khớp biến CSS của nó", () => {
     const rows = STUDIO_LAYOUT.filter((r) => r.token.startsWith("research."));

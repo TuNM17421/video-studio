@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 import type { AgentProvider, StageId } from "../types";
 import { agentProviderLabel } from "../agent-providers";
 import { antigravityExecArgs, antigravityStdin, claudeExecArgs, codexExecArgs, sanitizedAgentEnv } from "./agent-cli";
+import { resolveAgentBin } from "./agent-step";
 import { createStreamParser, short, type AgentEvent } from "./agent-stream";
-import { finishJob, log, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { finishJob, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
 import { REPO } from "./paths";
 import { beginHarness, endHarness, HARNESS_STEPS, stepDone, stepError, stepStart } from "./harness";
 import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
+import { styleGuideLine } from "./style-guides";
 import { scenesImagesLine } from "./images";
 import { readState, setStage, styleName, updateState } from "./videos";
 import { readFeedback, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
@@ -58,13 +60,14 @@ function stagePrompt(id: string, stage: AgentStage, base: string) {
     `Bạn đang chạy trong Video Studio (web local) cho video \`${id}\` (${r.day}, style ${styleName(r.style)}).`,
     "Dùng skill make-video: đọc `.claude/skills/make-video/SKILL.md` và làm đúng chỉ dẫn ở đó.",
     `Yêu cầu của video: \`projects/${id}/REQUEST.md\`. Style: \`styles/${r.style}.json\` (luật của style được ưu tiên).`,
+    styleGuideLine(r.style),
     `Việc cần làm lần này — ${STAGE_TASK[stage].replace("<id>", id)}`,
     ...(stage === "scenes" ? [scenesImagesLine(id, r.modules)].filter((line): line is string => Boolean(line)) : []),
     `Preview server (dùng làm <base> khi chụp QA): ${base}/ds`,
     feedbackContext(id, stage),
     "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync.",
     "Kết thúc bằng một bản tóm tắt ngắn bằng tiếng Việt: đã làm gì, điểm cần người dùng xem, câu hỏi còn mở.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function feedbackPrompt(id: string, stage: AgentStage, message: string) {
@@ -93,10 +96,16 @@ function focusPrompt(stage: AgentStage, items: FocusItem[], note?: string) {
 }
 
 function saveSession(id: string, provider: AgentProvider, sessionId: string) {
-  updateState(id, (state) => {
-    // Provider is immutable after creation; an event can only update its own provider's session.
-    if (state.agent.provider === provider) state.agent.sessionId = sessionId;
-  });
+  // Called from the agent's output stream, where a throw is caught by nobody: it would drop the rest of
+  // that chunk's log lines. Not saving only costs the next feedback round its --resume.
+  try {
+    updateState(id, (state) => {
+      // Provider is immutable after creation; an event can only update its own provider's session.
+      if (state.agent.provider === provider) state.agent.sessionId = sessionId;
+    });
+  } catch (error) {
+    log(id, "error", `Không lưu được phiên agent: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** What the workflow ledger keeps about one agent run (`recordJobMetrics`). */
@@ -116,12 +125,11 @@ function configuredModel(provider: AgentProvider) {
   return process.env[name]?.trim() || undefined;
 }
 
-/** How each CLI is started for a video stage: binary, arguments, and what goes on stdin. */
+/** How each CLI is started for a video stage: arguments, and what goes on stdin. */
 function invocation(provider: AgentProvider, prompt: string, sessionId: string | null, model: string | undefined) {
-  if (provider === "codex") return { bin: process.env.CODEX_BIN || "codex", args: codexExecArgs(sessionId, model), input: prompt };
-  if (provider === "antigravity") return { bin: process.env.ANTIGRAVITY_BIN || "agy", args: antigravityExecArgs(sessionId, model), input: antigravityStdin(prompt) };
+  if (provider === "codex") return { args: codexExecArgs(sessionId, model), input: prompt };
+  if (provider === "antigravity") return { args: antigravityExecArgs(sessionId, model), input: antigravityStdin(prompt) };
   return {
-    bin: process.env.CLAUDE_BIN || "claude",
     args: claudeExecArgs(sessionId ?? randomUUID(), Boolean(sessionId), ALLOWED, DENIED, model),
     input: prompt,
   };
@@ -142,7 +150,14 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
   const label = agentProviderLabel(provider);
   const parse = createStreamParser(provider);
   const model = configuredModel(provider);
-  const { bin, args, input } = invocation(provider, prompt, sessionId, model);
+  // The binary as the research steps find it: a CLI installed through npm is only `codex.cmd` on Windows,
+  // and spawning the bare name failed with ENOENT while the picker still offered that agent.
+  const bin = await resolveAgentBin(provider);
+  if (!bin) {
+    log(id, "error", `Không tìm thấy ${label} trên máy này (PATH).`);
+    return { ok: false, code: 127, metrics: { toolCalls: 0 } as AgentMetrics };
+  }
+  const { args, input } = invocation(provider, prompt, sessionId, model);
   // Claude names the model it ran in its init line; Codex and agy never say, so record what was asked for.
   const metrics: AgentMetrics = { toolCalls: 0, ...(provider === "claude" ? {} : { model: model || "(mặc định CLI, chưa rõ)" }) };
   let ok = false;
@@ -188,7 +203,14 @@ async function runProvider(id: string, provider: AgentProvider, prompt: string, 
 }
 
 /** Run one agent stage (or a feedback round on it) as the video's job; resolves when the agent stops. */
-export async function runAgent(id: string, stage: AgentStage, base: string, message?: string, opts: { focus?: string[] } = {}) {
+export function runAgent(id: string, stage: AgentStage, base: string, message?: string, opts: { focus?: string[] } = {}) {
+  return ownJob(id, () => agentStage(id, stage, base, message, opts), (error) => {
+    try { setStage(id, stage, "error", error); } catch {}
+    endHarness(id, "error", error);
+  });
+}
+
+async function agentStage(id: string, stage: AgentStage, base: string, message: string | undefined, opts: { focus?: string[] }) {
   const { state } = readState(id);
   const provider = state.agent.provider;
   const providerLabel = agentProviderLabel(provider);
