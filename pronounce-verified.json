@@ -1,0 +1,32 @@
+{
+  "AI": {
+    "say": "ây ai",
+    "verified": "n5-03, n5-05, n5-06 (2026-09-16/17)",
+    "note": "OmniVoice đọc 'AI' thành từ tiếng Việt 'ai' nếu không ép. Quy tắc chung cho mọi video."
+  },
+  "PM": {
+    "say": "pi em",
+    "verified": "n5-03 (2026-09-16)",
+    "note": "Quy tắc đọc viết tắt chung."
+  },
+  "MVP": {
+    "say": "em vê pê",
+    "verified": "n5-03, n5-05 (2026-09-16/17)",
+    "note": "Quy tắc đọc viết tắt chung."
+  },
+  "POC": {
+    "say": "pi ô xê",
+    "verified": "n5-03, n5-05 (2026-09-16/17)",
+    "note": "Quy tắc đọc viết tắt chung."
+  },
+  "HR": {
+    "say": "hát rờ",
+    "verified": "n5-06 (2026-09-16/17)",
+    "note": "Quy tắc đọc viết tắt chung. Có thể áp dụng máy móc cho các video khác dùng từ này."
+  },
+  "kcal": {
+    "say": "calo",
+    "verified": "n5-06 (2026-09-16/17)",
+    "note": "Quy tắc đọc chuyên ngành phổ biến. Có thể áp dụng máy móc cho các video khác dùng từ này."
+  }
+}

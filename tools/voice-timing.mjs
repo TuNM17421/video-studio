@@ -20,6 +20,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const argv = process.argv.slice(2);
+if (argv.includes('--help') || argv.includes('-h')) {
+  console.log(`usage: node tools/voice-timing.mjs <voice.cues.json> <video dir> [--write-cues]
+       node tools/voice-timing.mjs --clear <video dir>   # voice.js rỗng: scene chạy theo độ dài ước từ kịch bản`);
+  process.exit(0);
+}
 const writeCues = argv.includes('--write-cues');
 const [a, b] = argv.filter((x) => x !== '--write-cues');
 const fail = (m) => {
@@ -48,6 +53,13 @@ manifest.cues.forEach((m, i) => {
 const wavPath = path.join(path.dirname(path.resolve(a)), 'voice.wav');
 const voice = {
   generator: manifest.generator,
+  /**
+   * Backend giọng đi theo `voice.js` để `voice-pace`/`audio-qa` biết clip này đọc nhanh hay chậm.
+   * `generator: 'import'` gom mọi backend vào một rổ nên không dùng được cho việc đó. Video bind
+   * trước 21/09/2026 không có trường này → đọc ra `null`, và bên đọc phải coi `null` = OmniVoice.
+   */
+  backend: manifest.backend ?? null,
+  backendVoice: manifest.backendVoice ?? null,
   model: manifest.model ?? null,
   // repo-relative, so voice.js is the same on every machine
   source: path.relative(ROOT, path.resolve(a)).split(path.sep).join('/'),

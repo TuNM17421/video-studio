@@ -10,6 +10,13 @@
  *   --slug     tên kernel (mặc định theo mã video: vs-<id>-voice)
  *   --out      nơi ghi run.py + kernel-metadata.json
  *   --json     in một dòng JSON kết quả (Video Studio đọc cái này)
+ *   --backend  `omnivoice` (mặc định) | `zerotts[:<giọng>]`. ZeroTTS KHÔNG clone và không dùng GPU —
+ *              nó là một tool riêng (`tools/voice-zerotts.mjs`) đọc `voice-batch.jsonl`, nên cờ này
+ *              chỉ CHUYỂN TIẾP sang đó; phải kèm `--batch <voice-batch.jsonl>` (chỗ duy nhất đã áp
+ *              pronounce.json — sinh batch từ cues.js thẳng ở đây sẽ nuốt mất pronounce, FM-19).
+ *   --push     đẩy kernel lên Kaggle bằng CLI, chờ status, rồi tải `out/` về `<out>/results`.
+ *              MẶC ĐỊNH LÀ KHÔNG: Studio push. Agent chỉ được dùng cờ này khi REQUEST/brief cho phép.
+ *   --timeout  số phút chờ kernel chạy xong khi có `--push` (mặc định 45)
  *
  * Phân vai dùng đúng castLocal() của model local: video hội thoại ra mỗi nhân vật một giọng trong cùng một
  * kernel, mặc định là giọng voices.json đã gán cho nhân vật. Giọng trong danh mục được kernel tải thẳng từ
@@ -22,8 +29,9 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { buildRunPy, kernelMetadata, kernelSlug, MAX_EMBED_BYTES } from './lib/kaggle.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildRunPy, kaggleStatus, kernelMetadata, kernelSlug, MAX_EMBED_BYTES } from './lib/kaggle.mjs';
+import { resolveBackend } from './lib/voice-backends.mjs';
 import { mediaUrl } from './lib/media.mjs';
 import { castLocal, resolveRefs } from './lib/omnivoice.mjs';
 import { cueKey } from './lib/voice-files.mjs';
@@ -38,10 +46,54 @@ const values = (name) => argv.flatMap((a, i) => (a === `--${name}` && argv[i + 1
 const fail = (m) => { console.error(`✗ ${m}`); process.exit(1); };
 const note = (m) => console.error(`  ${m}`);
 
+const USAGE = `Dựng kernel Kaggle sinh giọng cả video bằng OmniVoice (GPU T4).
+
+  node tools/voice-kaggle.mjs --cues <video dir>/cues.js --out <thư mục kernel>
+                              [--voice <giọng|file>] [--speaker "Tên=giọng"]… [--slug <tên>]
+                              [--backend omnivoice|zerotts[:<giọng>] --batch <voice-batch.jsonl>]
+                              [--push [--timeout 45]] [--json]
+
+  --cues     cues.js của video (lời đọc lấy nguyên văn từ đây)
+  --out      nơi ghi run.py + kernel-metadata.json
+  --voice    giọng cho video một người dẫn: tên/id trong voices.json, hoặc file mẫu
+  --speaker  đổi giọng cho riêng một nhân vật (khai được nhiều lần)
+  --slug     tên kernel (mặc định vs-<id>-voice)
+  --backend  omnivoice (mặc định) | zerotts[:<giọng>] → chuyển tiếp sang tools/voice-zerotts.mjs
+  --batch    voice-batch.jsonl (bắt buộc khi --backend zerotts)
+  --push     đẩy kernel + chờ status + tải out/ về <out>/results. Mặc định Studio push; agent chỉ
+             dùng cờ này khi REQUEST/brief cho phép.
+  --timeout  số phút chờ khi --push (mặc định 45)
+  --json     in một dòng JSON kết quả`;
+if (flag('help') || argv.includes('-h')) { console.log(USAGE); process.exit(0); }
+
 const cuesPath = value('cues', null);
 const outDir = value('out', null);
-if (!cuesPath || !outDir) fail('usage: node tools/voice-kaggle.mjs --cues <video dir>/cues.js --out <thư mục kernel> [--voice <giọng>] [--speaker "Tên=giọng"]');
+if (!cuesPath || !outDir) fail(USAGE);
 if (!fs.existsSync(cuesPath)) fail(`Không thấy ${cuesPath}.`);
+
+/*
+ * ── Backend ───────────────────────────────────────────────────────────────────────────────────
+ * Tool này LÀ đường OmniVoice (clone giọng, GPU T4). `--backend zerotts` không đổi cách tool này
+ * chạy — nó chuyển tiếp sang `tools/voice-zerotts.mjs` (8 giọng dựng sẵn, KHÔNG clone, kernel CPU).
+ * Vào bằng `voice-batch.jsonl` chứ không bằng cues.js: đó là file duy nhất đã áp pronounce.json.
+ */
+let chosen;
+try { chosen = resolveBackend(value('backend', null), { fallback: 'omnivoice' }); }
+catch (e) { fail(e.message); }
+if (chosen.backend.id !== 'omnivoice') {
+  const batch = value('batch', null);
+  const voiceArgs = chosen.voice ? ['--voice', chosen.voice] : [];
+  if (!batch) {
+    fail([
+      `backend "${chosen.spec}" chạy bằng tools/voice-zerotts.mjs, không bằng kernel OmniVoice.`,
+      '  Hai bước:',
+      `    node tools/voice-export.mjs ${path.dirname(cuesPath)} --out <thư mục voice-script> --backend ${chosen.spec} --pronounce <projects/<id>/pronounce.json>`,
+      `    node tools/voice-kaggle.mjs --cues ${cuesPath} --out ${outDir} --backend ${chosen.spec} --batch <thư mục voice-script>/voice-batch.jsonl`,
+    ].join('\n'));
+  }
+  const res = spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'voice-zerotts.mjs'), '--batch', batch, '--out', outDir, ...voiceArgs], { stdio: 'inherit' });
+  process.exit(res.status ?? 1);
+}
 const owner = String(process.env.KAGGLE_USERNAME || '').trim();
 if (!/^[A-Za-z0-9_-]{2,64}$/.test(owner)) fail('Thiếu KAGGLE_USERNAME hợp lệ — cần nó để đặt id của kernel.');
 
@@ -142,6 +194,42 @@ const result = {
   voice: cast.roles.map((r) => `${roleLabel(r)}: ${r.voiceName}`).join(' · '),
   roles: cast.roles.map((r) => ({ name: roleLabel(r), voice: r.voiceName, source: r.source, cues: r.cues.length })),
 };
+/*
+ * ── `--push` ──────────────────────────────────────────────────────────────────────────────────
+ * Mặc định của nhà vẫn là **Studio push**; cờ này là đường cho agent khi REQUEST/brief cho phép rõ.
+ * Ba bước bằng đúng CLI in ra ở nhánh không-push: `push` → chờ `status` → `output`. Chờ bằng poll vì
+ * Kaggle không có webhook; 20 giây một nhịp là đủ thưa để không bị chặn.
+ */
+if (flag('push')) {
+  const kg = kaggleStatus();
+  if (!kg.installed) fail('không thấy CLI `kaggle` — chạy `npm run setup:kaggle` trước, hoặc bỏ --push và để Studio đẩy.');
+  const run = (args) => spawnSync(kg.bin, args, { encoding: 'utf8', shell: process.platform === 'win32' });
+  console.error(`→ kaggle kernels push -p ${out}`);
+  const pushed = run(['kernels', 'push', '-p', out, '--accelerator', 'NvidiaTeslaT4']);
+  if (pushed.status !== 0) fail(`push hỏng: ${String(pushed.stderr || pushed.stdout || '').trim().split('\n').pop()}`);
+  console.error(`  ${String(pushed.stdout || '').trim()}`);
+  const minutes = Number(value('timeout', '45'));
+  const deadline = Date.now() + minutes * 60_000;
+  let state = 'queued';
+  while (Date.now() < deadline) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20_000);
+    const st = run(['kernels', 'status', metadata.id]);
+    const text = `${st.stdout || ''}${st.stderr || ''}`;
+    state = (text.match(/status\s+"?([a-z]+)"?/i) || [])[1]?.toLowerCase() || state;
+    console.error(`  status: ${state}`);
+    if (state === 'complete') break;
+    if (state === 'error' || state === 'cancelacknowledged') fail(`kernel dừng ở trạng thái "${state}" — xem log trên kaggle.com/${metadata.id}`);
+  }
+  if (state !== 'complete') fail(`quá ${minutes} phút mà kernel chưa xong (trạng thái cuối "${state}") — tăng --timeout hoặc tải tay bằng \`kaggle kernels output ${metadata.id}\`.`);
+  const dest = path.join(out, 'results');
+  fs.mkdirSync(dest, { recursive: true });
+  const got = run(['kernels', 'output', metadata.id, '-p', dest]);
+  if (got.status !== 0) fail(`tải output hỏng: ${String(got.stderr || got.stdout || '').trim().split('\n').pop()}`);
+  const wavs = fs.existsSync(path.join(dest, 'out')) ? fs.readdirSync(path.join(dest, 'out')).filter((f) => f.endsWith('.wav')).length : 0;
+  result.pushed = { kernel: metadata.id, state, results: dest, wav: wavs };
+  console.error(`✓ tải về ${wavs} file .wav → ${dest}`);
+}
+
 if (flag('json')) console.log(JSON.stringify(result));
 else {
   console.log(`✓ ${rows.length} câu · ${cast.roles.length} giọng → ${out} (${Math.round(result.bytes / 1024)} KB)`);
