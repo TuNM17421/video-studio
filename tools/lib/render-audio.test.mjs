@@ -58,3 +58,18 @@ test('không có file nào → trả đường dẫn voice.wav để lệnh rend
   assert.equal(r.audio, 'voice/out/v1/voice.wav');
   assert.equal(r.stale, false);
 });
+
+test('voiceRawRel: video cũ ở tts-elevenlabs/out vẫn so mốc với voice-sfx.wav đúng chỗ', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'render-audio-legacy-'));
+  const put = (rel, ms) => {
+    const f = path.join(root, rel);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, '');
+    fs.utimesSync(f, ms / 1000, ms / 1000);
+  };
+  put('tts-elevenlabs/out/v1/voice.wav', 2_000_000);
+  put('projects/v1/voice-sfx.wav', 1_000_000);
+  const r = pickRenderAudio('v1', root, { voiceRawRel: 'tts-elevenlabs/out/v1/voice.wav' });
+  assert.equal(r.stale, true, 'voice.wav (legacy) mới hơn bản trộn ⇒ phải báo stale');
+  assert.equal(r.audio, null);
+});

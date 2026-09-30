@@ -39,8 +39,16 @@ import { createRequire } from 'node:module';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG = path.join(REPO, 'sfx.json');
 const DIR = path.join(REPO, 'assets/sfx');
-/** Pixabay chặn bot theo User-Agent; link cdn thì tải được khi khai UA trình duyệt (soát 21/09/2026). */
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
+const MANIFEST = path.join(REPO, 'media/manifest.json');
+
+/** Trả URL công khai của một asset key từ media/manifest.json, hoặc null nếu key chưa có. */
+function mediaUrl(key) {
+  if (!key || !fs.existsSync(MANIFEST)) return null;
+  const m = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
+  const base = (process.env.MEDIA_BASE || m.base || '').replace(/\/+$/, '');
+  if (!base || !m.assets?.[key]) return null;
+  return `${base}/${key.split('/').map(encodeURIComponent).join('/')}`;
+}
 
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
@@ -109,13 +117,23 @@ function measure(file) {
 }
 
 async function download(entry) {
-  if (!entry.download) return `không có link "download" trong sfx.json`;
+  // TODO: chốt với Thái — SFX pipeline hiện là CLI tool, chưa nối vào Studio render.
+
+  // Tải từ R2 bucket (entry.media = key trong media/manifest.json).
+  // File SFX chưa có trên R2: thêm "media" key vào sfx.json và upload lên R2 trước khi dùng.
+  const url = mediaUrl(entry.media);
+  if (!url) {
+    const hint = entry.media
+      ? `key "${entry.media}" chưa có trong media/manifest.json — cần upload lên R2 trước khi dùng`
+      : `thiếu trường "media" trong sfx.json cho id "${entry.id}" — cần upload lên R2 và thêm key`;
+    return hint;
+  }
   const tmp = path.join(os.tmpdir(), `sfx-${entry.id}-${process.pid}.src`);
   try {
-    const res = await fetch(entry.download, { headers: { 'User-Agent': UA, Referer: 'https://pixabay.com/' } });
-    if (!res.ok) return `HTTP ${res.status} khi tải — mở ${entry.source} bằng trình duyệt và lấy link cdn mới`;
+    const res = await fetch(url);
+    if (!res.ok) return `HTTP ${res.status} khi tải từ R2 — kiểm tra media/manifest.json và bucket`;
     fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
-  } catch (e) { return `không tải được: ${e.message}`; }
+  } catch (e) { return `không tải được từ R2: ${e.message}`; }
   fs.mkdirSync(DIR, { recursive: true });
   // Tiếng nền phải giữ nguyên đầu file để vòng lặp không bị gãy; tiếng điểm thì cắt lặng đầu.
   const chain = [];
