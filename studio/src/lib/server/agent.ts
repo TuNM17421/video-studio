@@ -65,17 +65,30 @@ function stagePrompt(id: string, stage: AgentStage, base: string) {
     ...(stage === "scenes" ? [scenesImagesLine(id, r.modules)].filter((line): line is string => Boolean(line)) : []),
     `Preview server (dùng làm <base> khi chụp QA): ${base}/ds`,
     feedbackContext(id, stage),
-    "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync.",
+    ...(stage === "scenes"
+      ? [selfCheckLine(id), "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync."]
+      : ["Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync."]),
     "Kết thúc bằng một bản tóm tắt ngắn bằng tiếng Việt: đã làm gì, điểm cần người dùng xem, câu hỏi còn mở.",
   ].filter(Boolean).join("\n");
 }
+
+/**
+ * The scenes gate (build + verify) only ran AFTER the agent stopped, so every defect it caught cost a whole new
+ * agent turn: the session is re-read from cache and the context re-loaded just to fix one id. verify takes
+ * about a second; the turn takes minutes. Let the agent run the same two commands itself before it stops.
+ * `node tools/*` is already in the allowlist, and these are the commands `npm run build` / `verify` wrap.
+ */
+const selfCheckLine = (id: string) =>
+  `Trước khi dừng, tự chạy \`node tools/build.mjs && node tools/verify.mjs --video ${id}\` (mỗi lần ~vài giây). Có "problem" thì sửa rồi chạy lại, tối đa 3 lần; warning thì bỏ qua. Runner vẫn chạy lại build + verify + chụp ảnh + QA sau khi bạn dừng, nên chỉ chạy hai lệnh này, không chạy shoot, render hay TTS.`;
 
 function feedbackPrompt(id: string, stage: AgentStage, message: string) {
   return [
     `Góp ý của người dùng cho stage "${stage}" (Video Studio):`,
     `"""${message.trim()}"""`,
     feedbackContext(id, stage),
-    "Sửa theo góp ý, chỉ trong phạm vi stage này. Runner sẽ chạy mọi gate deterministic và QA ảnh; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt.",
+    ...(stage === "scenes"
+      ? ["Sửa theo góp ý, chỉ trong phạm vi stage này.", selfCheckLine(id), "Dừng và tóm tắt ngắn bằng tiếng Việt."]
+      : ["Sửa theo góp ý, chỉ trong phạm vi stage này. Runner sẽ chạy mọi gate deterministic và QA ảnh; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt."]),
   ].join("\n");
 }
 
