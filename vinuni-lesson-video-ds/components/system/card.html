@@ -1,0 +1,83 @@
+<!-- @dsCard group="Components" viewport="900x350" name="System · ai làm gì, công cụ, kiến trúc, rẽ nhánh" subtitle="Swimlane 3 làn có việc trong làn · ToolCard khai công cụ · ArchitectureNode host và server · DecisionNode đã chốt · BranchRouter chọn một nhánh" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=900" />
+<title>System</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 900px; height: 350px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h, C = VK.C;
+  // Ba chỗ bản đầu đã vấp, đều vì đặt bằng mắt chứ không bằng số:
+  //   · Swimlane không có children → ba làn rỗng, nhìn như hỏng.
+  //   · ToolCard cao 356 px (VK.toolCardHeight), nhánh trên của BranchRouter chạy đè lên nó.
+  //   · sourceLabel neo 'end' ở x − 26, tức nó mọc sang TRÁI 155 px và đè vào DecisionNode.
+  var LANES = [
+    { label: 'NGƯỜI DÙNG', icon: 'users', tone: 'input', sub: 'đặt câu hỏi' },
+    { label: 'MÔ HÌNH', icon: 'bot', tone: 'reasoning', sub: 'chọn việc cần làm' },
+    { label: 'CÔNG CỤ', icon: 'wrench', tone: 'action', sub: 'chạy thật' }
+  ];
+  var SW = { x: 50, y: 50, w: 820, h: 270, lanes: LANES, headerW: 220 };
+  var WORK = [
+    { lane: 0, dx: 20, label: 'Hạn nộp tuần này?' },
+    { lane: 1, dx: 200, label: 'cần gọi tra_han_nop' },
+    { lane: 2, dx: 380, label: 'tra_han_nop(AI20K)', active: true }
+  ];
+  VK.mountCard('#root', {
+    width: 1800, height: 700, duration: 260,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.Swimlane, Object.assign({}, SW, { activeLane: 1, activeLevel: 1, frame: f, start: 10, per: 12 }),
+          WORK.map(function (wk) {
+            var b = VK.laneBox(SW, wk.lane);
+            return h(VK.Pill, {
+              key: wk.label, x: b.x + wk.dx, y: b.y + b.h / 2 - 25,
+              label: wk.label, active: wk.active, size: 18
+            });
+          })
+        ),
+
+        h(VK.ToolCard, {
+          x: 920, y: 50, w: 560, name: 'tra_han_nop', illustrative: true, state: 'active',
+          does: 'Tra hạn nộp bài của một lớp.',
+          inputs: [{ name: 'ma_lop', type: 'chuỗi', required: true }, { name: 'tuan', type: 'số' }],
+          returns: 'Ngày hạn nộp, dạng chuỗi.',
+          frame: f, at: 60
+        }),
+
+        h(VK.ArchitectureNode, {
+          x: 50, y: 400, w: 300, h: 130, kind: 'host', title: 'Ứng dụng chủ', subtitle: 'giữ khoá và quyền'
+        }),
+        h(VK.ArchitectureNode, {
+          x: 50, y: 550, w: 300, h: 110, kind: 'server', title: 'Máy chủ công cụ', subtitle: 'chạy việc thật', active: 1
+        }),
+
+        h(VK.DecisionNode, {
+          x: 520, y: 530, size: 200, label: ['ĐỦ', 'THÔNG TIN?'],
+          state: 'resolved', answer: 'CHƯA ĐỦ', answerSide: 'bottom', frame: f, at: 90
+        }),
+
+        h(VK.BranchRouter, {
+          x: 900, y: 540, spread: 110, length: 420, destW: 240, active: 1,
+          sourceLabel: 'ĐỘ CHẮC CHẮN',
+          branches: [
+            { label: 'CAO ≥ 0,9', dest: 'TỰ ĐỘNG GỬI', tone: 'output' },
+            { label: 'TRUNG BÌNH', dest: 'NGƯỜI DUYỆT', tone: 'memory' },
+            { label: 'THẤP', dest: 'HỎI LẠI KHÁCH', tone: 'red' }
+          ],
+          frame: f, start: 120, end: 180
+        })
+      );
+    }
+  });
+</script>
+</body>
+</html>

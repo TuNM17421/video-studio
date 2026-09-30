@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="760x420" name="Evidence · ảnh chụp nguồn thật" subtitle="Giấy nghiêng · băng keo · khung đỏ khoanh dòng · con dấu · chú thích nguồn" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=760" />
+<title>Evidence</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; width: 760px; height: 420px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  // Dựng qua VK.mountCard như mọi card khác: VK không export `ReactDOM` (chỉ `React` và
+  // `createRoot`), và bản cũ gọi `ReactDOM.createRoot` nên card này ném lỗi rồi trắng trang —
+  // cũng là lý do chưa video nào dùng Evidence. mountCard còn gọi markReady() cho tools/shoot.mjs.
+  var h = VK.h;
+  var PAGE = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="660">' +
+    '<rect width="1320" height="660" fill="#ffffff"/>' +
+    '<text x="60" y="90" font-family="Georgia,serif" font-size="34" fill="#111">Trang nguo\u0300n ma\u0303u</text>' +
+    '<text x="60" y="150" font-family="Georgia,serif" font-size="24" fill="#333">Do\u0300ng n\u00f4\u0323i dung \u0111\u01b0\u01a1\u0323c khoanh \u0111o\u0309 b\u00ean d\u01b0\u01a1\u0301i</text>' +
+    '<rect x="60" y="220" width="1200" height="60" fill="#f3f5f8"/>' +
+    '<rect x="60" y="400" width="1200" height="60" fill="#f3f5f8"/></svg>');
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: 120,
+    render: function (f) {
+      return h(VK.Fragment, null,
+        h(VK.EvidenceBoard, null),
+        h(VK.Evidence, {
+          frame: f, href: PAGE,
+          caption: 'T\u00ean ngu\u1ed3n \u00b7 n\u01a1i tra l\u1ea1i \u0111\u01b0\u1ee3c',
+          stamp: 'NGU\u1ed2N TH\u1eacT',
+          marks: [{ x: 0.04, y: 0.32, w: 0.92, h: 0.10 }, { x: 0.04, y: 0.60, w: 0.92, h: 0.10 }]
+        })
+      );
+    }
+  });
+</script>
+</body>
+</html>

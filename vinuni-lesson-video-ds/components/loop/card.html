@@ -1,0 +1,37 @@
+<!-- @dsCard group="Components" viewport="700x394" name="Loop · vòng lặp agent (ReAct) và nhánh thoát" subtitle="AgentLoop variant 'loop': 3 chặng SUY NGHĨ → HÀNH ĐỘNG → QUAN SÁT, hạt đỏ chạy một vòng, nhánh thoát sang thẻ đỏ HỎI NGƯỜI DÙNG" -->
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=700" />
+<title>Loop</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { margin: 0; }
+  body { width: 700px; height: 394px; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../dist/vk.js"></script>
+<script>
+  var h = VK.h;
+  VK.mountCard('#root', {
+    width: 1280, height: 720, duration: 220,
+    render: function (f) {
+      return h(VK.AgentLoop, {
+        cx: 560, cy: 360, w: 440, h: 320, fontSize: 22, illustrative: true,
+        center: 'VÒNG LẶP AGENT', centerSub: 'lặp tới khi đủ hoặc chạm hạn mức',
+        stages: [
+          { label: 'SUY NGHĨ', sub: 'chọn việc tiếp theo', role: 'reasoning', icon: 'brain' },
+          { label: 'HÀNH ĐỘNG', sub: 'gọi một công cụ', role: 'action', icon: 'wrench' },
+          { label: 'QUAN SÁT', sub: 'đọc kết quả trả về', role: 'input', icon: 'eye' }
+        ],
+        exit: { stage: 0, label: 'HỎI NGƯỜI DÙNG', sub: 'khi chưa đủ thông tin', side: 'right', length: 150 },
+        frame: f, start: 10, lap: 180, laps: 1
+      });
+    }
+  });
+</script>
+</body>
+</html>

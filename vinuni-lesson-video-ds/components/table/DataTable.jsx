@@ -144,8 +144,8 @@ export function DataTable(props) {
   if (opacity <= 0.001) return null;
   const L = dataTableLayout({ ...props, x, y, w, fontSize, illustrative });
   const animated = frame != null;
-  const headO = animated ? appear(frame, start, 18) : 1;
-  const rowO = (i) => (animated ? appear(frame, start + per * (i + 1), 18) : 1);
+  const headO = animated ? appear(frame, typeof start === 'function' ? start(-1) : start, 18) : 1;
+  const rowO = (i) => (animated ? appear(frame, typeof start === 'function' ? start(i) : start + per * (i + 1), 18) : 1);
   const hiRows = highlightRow == null ? [] : Array.isArray(highlightRow) ? highlightRow : [highlightRow];
   const top = L.top;
   const bottom = L.bottom;

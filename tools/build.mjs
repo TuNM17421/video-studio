@@ -124,6 +124,31 @@ for (const [name, markup] of Object.entries(rendered)) {
   await fsp.writeFile(path.join(DS, 'assets/icons', `${name}.svg`), `${markup}\n`);
 }
 
+// Manifest of component cards, so gallery.html lists every group instead of a hand-kept array.
+// A group whose card.html was never added to that array stayed invisible even though it existed
+// (evidence/ and shapes/ both did) — and a component nobody can see is a component nobody uses.
+const cards = [];
+for (const group of (await fsp.readdir(path.join(DS, 'components'), { withFileTypes: true }))
+  .filter((e) => e.isDirectory())
+  .map((e) => e.name)
+  .sort()) {
+  const file = path.join(DS, 'components', group, 'card.html');
+  if (!fs.existsSync(file)) continue;
+  const head = (await fsp.readFile(file, 'utf8')).slice(0, 2048);
+  const meta = head.match(/<!--\s*@dsCard([\s\S]*?)-->/);
+  const attr = (k) => meta?.[1].match(new RegExp(`${k}="([^"]*)"`))?.[1] ?? '';
+  const [w, h] = (attr('viewport') || '700x300').split('x').map(Number);
+  cards.push({
+    group,
+    path: `components/${group}/card.html`,
+    width: Number.isFinite(w) ? w : 700,
+    height: Number.isFinite(h) ? h : 300,
+    name: attr('name') || group,
+    subtitle: attr('subtitle'),
+  });
+}
+await fsp.writeFile(path.join(DS, 'dist/cards.json'), `${JSON.stringify(cards, null, 2)}\n`);
+
 const size = fs.statSync(path.join(DS, 'dist/vk.js')).size;
 const sceneCount = (await fsp.readdir(SCENES_DIR)).filter((f) => f.endsWith('.jsx')).length;
-console.log(`dist/vk.js ${(size / 1024).toFixed(1)} KiB · ${sceneCount} scenes · ${Object.keys(rendered).length} icons · ${Date.now() - t0} ms`);
+console.log(`dist/vk.js ${(size / 1024).toFixed(1)} KiB · ${sceneCount} scenes · ${Object.keys(rendered).length} icons · ${cards.length} cards · ${Date.now() - t0} ms`);
