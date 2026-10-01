@@ -5,6 +5,16 @@ import path from "node:path";
 export const REPO = path.resolve(process.cwd(), "..");
 export const DS = path.join(REPO, "vinuni-lesson-video-ds");
 export const STYLES = path.join(REPO, "styles");
+/** Bản design system đã chuyển sang khuôn project của claude.ai/design — /design-sync sinh ra, gitignore. */
+export const DS_BUNDLE = path.join(REPO, "ds-bundle");
+/** Cảnh dựng bên Claude Design, mang về. Sâu đúng hai cấp để mọi `../../` của trang về đúng gốc ds-bundle. */
+export const importedDir = (id: string) => path.join(DS_BUNDLE, "cd", id);
+/** Trang của bản nhập, hoặc null khi video này chưa nhập gì. */
+export const importedPage = (id: string) => {
+  const dir = importedDir(id);
+  if (!fs.existsSync(dir)) return null;
+  return fs.readdirSync(dir).find((f) => /\.html$/i.test(f)) ?? null;
+};
 export const ID_RE = /^[a-z0-9][a-z0-9-]{1,60}$/;
 export const DAY_RE = /^Day\d{2}$/;
 

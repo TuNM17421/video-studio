@@ -79,6 +79,17 @@ if (command === 'import') {
     report.checks.push({ name: 'tổng frame khớp giọng', ok: true, detail: 'không đọc được tổng frame bên kia — render sẽ tự đối chiếu với giọng', level: 'warning' });
   }
 
+  // Trang nạp `../../_ds_bundle.js` và `../../_vendor/react.js` — hai thứ chỉ có trong ds-bundle, do
+  // /design-sync sinh ra. Máy chưa sync thì chép xong vẫn ra trang trắng, nên nói trước.
+  const rootNeeds = ['_ds_bundle.js', '_vendor/react.js', '_vendor/react-dom.js', 'styles.css'];
+  const rootMissing = rootNeeds.filter((f) => !fs.existsSync(path.join(repoRoot, 'ds-bundle', f)));
+  report.checks.push({
+    name: 'ds-bundle sẵn sàng', ok: rootMissing.length === 0,
+    detail: rootMissing.length ? `thiếu ${rootMissing.join(', ')} — chạy /design-sync trước` : 'đủ file gốc trang cần',
+    level: rootMissing.length ? 'problem' : 'ok',
+  });
+  if (rootMissing.length) report.ok = false;
+
   const dest = path.join(repoRoot, 'ds-bundle', 'cd', id);
   const out = { ok: report.ok, page, files: files.length, dest: path.relative(repoRoot, dest), checks: report.checks };
 

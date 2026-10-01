@@ -4,7 +4,7 @@ import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
 import { finishJob, isRunning, jobHandled, log, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
+import { HttpError, importedPage, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
 /** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
@@ -54,8 +54,12 @@ async function renderSteps(id: string, base: string) {
   // TODO: on Windows, 6-tab (default) capture hangs deterministically partway through — reproduced
   // twice at the exact same frame, but a single tab clears the same range fine. Forcing 1 worker
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
+  const imported = importedPage(id);
   const renderOk = await step("Render MP4", process.execPath, [
-    "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
+    "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)),
+    // Cảnh dựng bên Claude Design không nằm trong khuôn videos/<id>/ của repo, nên chụp thẳng trang của nó.
+    // `--scene` vẫn giữ: render.mjs đọc cues.js của video để lấy mốc nhạc quiz và đối chiếu độ dài giọng.
+    ...(imported ? ["--url", `${base}/ds-bundle/cd/${id}/${imported}`] : ["--base", `${base}/ds`]),
     // always explicit: render.mjs falls back to the catalog's default bed when the flag is missing
     "--music-track", background,
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
