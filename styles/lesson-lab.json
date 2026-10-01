@@ -96,6 +96,36 @@
       "component": "Countdown",
       "group": "figures",
       "image": "figures__Countdown.png"
+    },
+    {
+      "component": "LineChart",
+      "group": "data",
+      "image": "data__LineChart.png"
+    },
+    {
+      "component": "MetricRow",
+      "group": "data",
+      "image": "data__MetricRow.png"
+    },
+    {
+      "component": "WorkStrip",
+      "group": "data",
+      "image": "data__WorkStrip.png"
+    },
+    {
+      "component": "ParticleField",
+      "group": "data",
+      "image": "data__ParticleField.png"
+    },
+    {
+      "component": "TwinPair",
+      "group": "teaching",
+      "image": "teaching__TwinPair.png"
+    },
+    {
+      "component": "WipeSplit",
+      "group": "teaching",
+      "image": "teaching__WipeSplit.png"
     }
   ],
   "sampleVideo": null,
