@@ -114,7 +114,7 @@ export function ClaudeDesignPanel({ detail, act, busy }: { detail: VideoDetail; 
       </p>
 
       {brief && !brief.measured && <Alert type="warning" showIcon
-        message="Thời lượng trong brief là ước lượng vì chưa thu giọng."
+        title="Thời lượng trong brief là ước lượng vì chưa thu giọng."
         description="Dựng theo số ước thì khi có giọng thật phải chỉnh lại nhịp. Sinh lại brief sau bước Giọng đọc để lấy số đo thật." />}
 
       {brief && <Typography.Text type="secondary" className="mono">{brief.file}</Typography.Text>}
@@ -132,7 +132,7 @@ export function ClaudeDesignPanel({ detail, act, busy }: { detail: VideoDetail; 
         </div>
         {report && <CheckList report={report} />}
         {report?.copied !== undefined && <Alert type="success" showIcon
-          message={`Đã chép ${report.copied} file vào ${report.dest}`}
+          title={`Đã chép ${report.copied} file vào ${report.dest}`}
           description="Sang bước Render để xuất MP4 với đúng giọng và nhạc nền của video này." />}
       </div>
 
