@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- Nghiệm thu issue #62: cùng cảnh "bảng so sánh có cơ chế và hệ quả" (ảnh 01:05), nhưng dựng bằng
+     TwinPair + MetricRow + LineChart thay vì vẽ tay. SVG thô còn lại chỉ là hình của *nội dung này*
+     (chiếc máy, mặt cắt buồng hơi), không còn là bố cục. -->
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Mẫu A — bảng so sánh có cơ chế và hệ quả</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>html, body, #root { height: 100%; margin: 0; } #root { position: relative; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+var h = VK.h, C = VK.C, T = VK.SvgText;
+var L = function (p, s) { p.anchor = 'start'; return h(T, p, s); };
+
+/* hình của nội dung này: chiếc máy. Một hàm duy nhất cho cả hai bên — TwinPair ép như vậy. */
+function Phone(s) {
+  var spread = s.variant === 'b';
+  return h('g', null,
+    h('rect', { x: s.x, y: s.y, width: s.w, height: s.h, rx: 26, fill: C.bg, stroke: s.accent, strokeWidth: spread ? 5 : 3 }),
+    h('rect', { x: s.x + 24, y: s.y + 22, width: 74, height: 74, rx: 16, fill: 'none', stroke: C.dotInactive, strokeWidth: 3 }),
+    h('circle', { cx: s.x + 46, cy: s.y + 44, r: 9, fill: C.dotInactive }),
+    h('circle', { cx: s.x + 76, cy: s.y + 44, r: 9, fill: C.dotInactive }),
+    h('circle', { cx: s.x + 46, cy: s.y + 74, r: 9, fill: C.dotInactive }),
+    spread
+      ? h('rect', { x: s.x + 26, y: s.y + 122, width: s.w - 52, height: 100, rx: 10, fill: C.redSoft })
+      : h('circle', { cx: s.x + s.w / 2, cy: s.y + 172, r: 78, fill: C.redSoft }),
+    h('rect', { x: s.x + s.w / 2 - 32, y: s.y + 152, width: 64, height: 40, rx: 7, fill: C.bg, stroke: C.red, strokeWidth: 2.5 }),
+    h(T, { x: s.x + s.w / 2, y: s.y + 178, size: 17, weight: 700, color: C.red }, 'Chip'),
+    h('rect', { x: s.x + 46, y: s.y + 274, width: s.w - 92, height: 100, rx: 12, fill: 'none', stroke: C.dotInactive, strokeWidth: 3, strokeDasharray: '10 8' }),
+    h(T, { x: s.x + s.w / 2, y: s.y + 332, size: 20, color: C.textMuted }, 'Pin'));
+}
+
+/* hình của nội dung này: mặt cắt buồng hơi */
+function Cutaway() {
+  var i, dots = [];
+  for (i = 0; i < 12; i++) dots.push(h('circle', { key: 'v' + i, cx: 952 + i * 71, cy: 370 + (i % 3) * 9, r: 5, fill: C.red, opacity: 0.75 }));
+  for (i = 0; i < 12; i++) dots.push(h('circle', { key: 'l' + i, cx: 936 + i * 71, cy: 416, r: 4.5, fill: C.accent }));
+  return h('g', null,
+    h('rect', { x: 920, y: 346, width: 840, height: 84, rx: 12, fill: C.bg, stroke: C.red, strokeWidth: 3 }),
+    h('rect', { x: 920, y: 400, width: 840, height: 30, fill: C.dotInactive }),
+    dots,
+    h('rect', { x: 1296, y: 436, width: 88, height: 34, rx: 7, fill: C.bg, stroke: C.red, strokeWidth: 2.5 }),
+    h(T, { x: 1340, y: 459, size: 17, weight: 700, color: C.red }, 'Chip'));
+}
+
+function Scene() {
+  var steps = [['Chip nóng, chất lỏng bốc hơi', 944, 508], ['Hơi nóng lan khắp buồng', 1370, 508], ['Nhả nhiệt rộng, ngưng tụ lại', 944, 548]];
+  return h(VK.SceneFrame, {
+    eyebrow: 'NGHIÊN CỨU · NGÔN NGỮ HÌNH ẢNH',
+    title: 'Buồng hơi giúp gì cho điện thoại?',
+    tag: 'SO SÁNH',
+    footer: { left: 'Ảnh 01:05 dựng lại bằng TwinPair · MetricRow · LineChart', right: 'Mẫu A' },
+    captions: [],
+  },
+    h(VK.Card, { x: 880, y: 268, w: 920, h: 300, label: 'BÊN TRONG BUỒNG HƠI', accent: C.accent }),
+    h(VK.Card, { x: 880, y: 600, w: 920, h: 320, label: 'FPS KHI CHƠI GAME LÂU', accent: C.accent }),
+    h(VK.Pill, { x: 126, y: 252, label: 'Tải game nặng', variant: 'muted' }),
+
+    h(VK.TwinPair, {
+      x: 126, y: 356, w: 660, h: 400, gap: 60,
+      a: { label: 'Không có buồng hơi' }, b: { label: 'Có buồng hơi' },
+      diff: 'Khác đúng một chỗ: nhiệt tụ một điểm, hay trải thành tấm',
+      render: Phone,
+    }),
+    h(VK.MetricRow, { x: 126, y: 828, w: 300, size: 32, items: [{ label: 'Nóng nhất', value: '47,2 °C' }, { label: 'FPS', value: '48' }] }),
+    h(VK.MetricRow, { x: 486, y: 828, w: 300, size: 32, lead: true, items: [{ label: 'Nóng nhất', value: '39,0 °C' }, { label: 'FPS', value: '60', accent: true }] }),
+
+    h(T, { x: 1718, y: 312, size: 17, anchor: 'end', color: C.textMuted }, 'Mặt cắt minh hoạ'),
+    h(Cutaway),
+    steps.map(function (s, i) {
+      return h('g', { key: i },
+        h(VK.NumberBadge, { x: s[1], y: s[2] - 7, value: String(i + 1), active: i === 0 }),
+        L({ x: s[1] + 38, y: s[2], size: 19, color: C.text }, s[0]));
+    }),
+
+    h(VK.LineChart, {
+      x: 1000, y: 700, w: 620, h: 150,
+      xRange: [0, 20], yRange: [30, 60], xTicks: [0, 5, 10, 15, 20], yTicks: [30, 40, 50, 60], xTickLabel: 'phút',
+      series: [
+        { label: 'Không có buồng hơi', accent: C.accent, points: [{x:0,y:60},{x:4,y:59},{x:7,y:55},{x:10,y:51},{x:14,y:48},{x:20,y:47}] },
+        { label: 'Có buồng hơi', accent: C.red, points: [{x:0,y:60},{x:20,y:60}] },
+      ],
+    }));
+}
+
+VK.mountScene('#root', { component: Scene, duration: 1, id: 'viz-bang-so-sanh' });
+</script>
+</body>
+</html>

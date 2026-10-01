@@ -1,0 +1,162 @@
+<!doctype html>
+<!-- Preview 5 component mới (issue #62): LineChart · MetricRow · TwinPair · WipeSplit · WorkStrip.
+     Mỗi component một nhịp 72 frame, tự chạy và lặp. ?frame=N để đứng yên một frame. -->
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>5 component mới — xem thử</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>html, body, #root { height: 100%; margin: 0; } body { background: var(--vu-blue-900); } #root { position: relative; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+var h = VK.h, C = VK.C, T = VK.SvgText, F = VK.Fragment;
+var BEAT = 72, N = 5;
+var L = function (p, s) { p.anchor = 'start'; return h(T, p, s); };
+
+var TITLES = [
+  ['data/LineChart', 'Một đại lượng đổi theo thời gian — thứ data/ chưa từng vẽ được'],
+  ['data/MetricRow', 'Số đo của một trường hợp: cùng nhãn, cùng thứ tự'],
+  ['teaching/TwinPair', 'Cùng một vật vẽ hai lần, khác đúng một chỗ'],
+  ['teaching/WipeSplit', 'Thanh trượt mang tên tác nhân — câu nhân quả, không phải phép so sánh'],
+  ['data/WorkStrip', 'Việc vô hình của máy, đếm được bằng mắt'],
+];
+
+/* ── nhịp 1 · LineChart ───────────────────────────────────────────────────────────────────── */
+function Beat1(f) {
+  return h(F, null,
+    h(VK.Card, { x: 300, y: 360, w: 1320, h: 400, label: 'FPS KHI CHƠI GAME LÂU', accent: C.accent }),
+    h(VK.LineChart, {
+      x: 470, y: 486, w: 1000, h: 206,
+      xRange: [0, 20], yRange: [30, 60], xTicks: [0, 5, 10, 15, 20], yTicks: [30, 40, 50, 60], xTickLabel: 'phút',
+      progress: VK.smooth(f, 14, 60),
+      series: [
+        { label: 'Không có buồng hơi', accent: C.accent, points: [{x:0,y:60},{x:4,y:59},{x:7,y:55},{x:10,y:51},{x:14,y:48},{x:20,y:47}] },
+        { label: 'Có buồng hơi', accent: C.red, points: [{x:0,y:60},{x:20,y:60}] },
+      ],
+    }));
+}
+
+/* ── nhịp 2 · MetricRow ───────────────────────────────────────────────────────────────────── */
+function Beat2(f) {
+  return h(F, null,
+    L({ x: 300, y: 372, size: 19, weight: 700, color: C.textMuted }, 'Trường hợp nền'),
+    h(VK.MetricRow, { x: 300, y: 392, w: 560, reveal: VK.appear(f, 8),
+      items: [{ label: 'Nóng nhất', value: '47,2 °C' }, { label: 'FPS', value: '48' }] }),
+    L({ x: 300, y: 572, size: 19, weight: 700, color: C.textMuted }, 'Trường hợp bài học dừng lại'),
+    h(VK.MetricRow, { x: 300, y: 592, w: 560, lead: true, reveal: VK.appear(f, 22),
+      items: [{ label: 'Nóng nhất', value: '39,0 °C' }, { label: 'FPS', value: '60', accent: true }] }),
+    L({ x: 1020, y: 372, size: 19, weight: 700, color: C.textMuted }, 'Có chênh lệch mà kịch bản nêu'),
+    h(VK.MetricRow, { x: 1020, y: 392, w: 600, h: 150, size: 46, lead: true, reveal: VK.appear(f, 36),
+      items: [{ label: 'Quay 8K', value: '60 fps', accent: true, delta: '×2' }] }),
+    h(VK.MetricRow, { x: 1020, y: 592, w: 600, h: 150, size: 46, reveal: VK.appear(f, 46),
+      items: [{ label: 'Slow-motion 4K', value: '240 fps', delta: '×2' }] }));
+}
+
+/* ── nhịp 3 · TwinPair ────────────────────────────────────────────────────────────────────── */
+function Phone(s) {
+  var spread = s.variant === 'b';
+  return h('g', null,
+    h('rect', { x: s.x, y: s.y, width: s.w, height: s.h, rx: 26, fill: C.bg, stroke: s.accent, strokeWidth: spread ? 5 : 3 }),
+    spread
+      ? h('rect', { x: s.x + 26, y: s.y + 60, width: s.w - 52, height: 92, rx: 10, fill: C.redSoft })
+      : h('circle', { cx: s.x + s.w / 2, cy: s.y + 106, r: 72, fill: C.redSoft }),
+    h('rect', { x: s.x + s.w / 2 - 32, y: s.y + 86, width: 64, height: 40, rx: 7, fill: C.bg, stroke: C.red, strokeWidth: 2.5 }),
+    h(T, { x: s.x + s.w / 2, y: s.y + 112, size: 17, weight: 700, color: C.red }, 'Chip'),
+    h('rect', { x: s.x + 44, y: s.y + 196, width: s.w - 88, height: 76, rx: 12, fill: 'none', stroke: C.dotInactive, strokeWidth: 3, strokeDasharray: '10 8' }),
+    h(T, { x: s.x + s.w / 2, y: s.y + 242, size: 20, color: C.textMuted }, 'Pin'));
+}
+function Beat3(f) {
+  return h(F, null,
+    h(VK.TwinPair, {
+      x: 560, y: 352, w: 800, h: 300, gap: 60,
+      a: { label: 'Không có buồng hơi' }, b: { label: 'Có buồng hơi' },
+      diff: 'Khác đúng một chỗ: nhiệt tụ một điểm, hay trải thành tấm',
+      aReveal: VK.appear(f, 8), bReveal: VK.appear(f, 26), diffReveal: VK.appear(f, 46),
+      render: Phone,
+    }),
+    h(VK.MetricRow, { x: 560, y: 734, w: 370, reveal: VK.appear(f, 14),
+      items: [{ label: 'Nóng nhất', value: '47,2 °C' }, { label: 'FPS', value: '48' }] }),
+    h(VK.MetricRow, { x: 990, y: 734, w: 370, lead: true, reveal: VK.appear(f, 32),
+      items: [{ label: 'Nóng nhất', value: '39,0 °C' }, { label: 'FPS', value: '60', accent: true }] }));
+}
+
+/* ── nhịp 4 · WipeSplit ───────────────────────────────────────────────────────────────────── */
+var RIDGE = [[160,640],[380,520],[560,596],[800,476],[1040,576],[1300,486],[1560,600],[1760,556]];
+function ridgeY(x) {
+  for (var i = 1; i < RIDGE.length; i++) {
+    if (x <= RIDGE[i][0]) { var a = RIDGE[i-1], b = RIDGE[i]; return a[1] + (b[1]-a[1]) * ((x-a[0])/(b[0]-a[0])); }
+  }
+  return RIDGE[RIDGE.length-1][1];
+}
+var SUN = { cx: 960, cy: 470, r: 96 }, ROAD = 700, CELL = 44;
+function Fine() {
+  var pts = RIDGE.map(function (p) { return p[0] + ',' + p[1]; }).join(' ');
+  return h('g', null,
+    h('circle', { cx: SUN.cx, cy: SUN.cy, r: SUN.r, fill: C.redSoft }),
+    h('circle', { cx: SUN.cx, cy: SUN.cy, r: SUN.r, fill: 'none', stroke: C.red, strokeWidth: 3 }),
+    h('polygon', { points: pts + ' 1760,' + ROAD + ' 160,' + ROAD, fill: C.dotInactive }),
+    h('polyline', { points: pts, fill: 'none', stroke: C.accent, strokeWidth: 3 }));
+}
+function Coarse() {
+  var cells = [], x, cx, cy;
+  for (x = 160; x < 1760; x += CELL) {
+    var top = Math.floor(ridgeY(x + CELL/2) / CELL) * CELL;
+    if (top < ROAD) cells.push(h('rect', { key: 'm'+x, x: x, y: top, width: CELL, height: ROAD-top, fill: C.dotInactive }));
+    cells.push(h('rect', { key: 'e'+x, x: x, y: top, width: CELL, height: CELL, fill: C.bg, stroke: C.accent, strokeWidth: 3 }));
+  }
+  for (cx = SUN.cx - SUN.r - CELL; cx < SUN.cx + SUN.r + CELL; cx += CELL) {
+    for (cy = SUN.cy - SUN.r - CELL; cy < SUN.cy + SUN.r + CELL; cy += CELL) {
+      var gx = Math.round((cx-160)/CELL)*CELL + 160, gy = Math.round(cy/CELL)*CELL;
+      var dx = gx + CELL/2 - SUN.cx, dy = gy + CELL/2 - SUN.cy;
+      if (dx*dx + dy*dy <= SUN.r*SUN.r) cells.push(h('rect', { key: 's'+gx+'_'+gy, x: gx, y: gy, width: CELL, height: CELL, fill: C.redSoft, stroke: C.red, strokeWidth: 2 }));
+    }
+  }
+  return h('g', null, cells);
+}
+function Beat4(f) {
+  return h(VK.WipeSplit, {
+    x: 140, y: 330, w: 1640, h: 420,
+    at: VK.interpolate(f, [10, 40, 52, 62], [0.5, 0.5, 0.12, 0.88], VK.CLAMP),
+    label: 'AI', labelY: 512,
+    leftLabel: 'AI dựng lại, hình nét', rightLabel: 'GPU vẽ ở độ phân giải thấp',
+    left: h(Fine), right: h(Coarse),
+  });
+}
+
+/* ── nhịp 5 · WorkStrip ───────────────────────────────────────────────────────────────────── */
+function Beat5(f) {
+  var gpu = [], steps = [];
+  for (var i = 0; i < 16; i++) gpu.push({ state: i % 2 ? 'skip' : 'done', label: i % 2 ? 'AI' : 'GPU' });
+  for (var j = 0; j < 8; j++) steps.push({ state: j < 3 ? 'done' : j === 3 ? 'skip' : 'pending', label: 'B' + (j + 1) });
+  return h(F, null,
+    h(VK.WorkStrip, { x: 240, y: 420, w: 1440, cells: gpu, caption: 'Mỗi ô là một khung hình · liền = GPU vẽ thật, đứt = AI dựng thay',
+      reveal: VK.smooth(f, 10, 44) }),
+    h(VK.WorkStrip, { x: 240, y: 620, w: 1440, cells: steps, cellH: 72, size: 20,
+      caption: 'Cũng dùng được cho một chuỗi bước: đã chạy · bỏ qua · còn chờ', reveal: VK.smooth(f, 26, 58) }));
+}
+
+var BEATS = [Beat1, Beat2, Beat3, Beat4, Beat5];
+
+function Scene(props) {
+  var f = props.frame;
+  var i = Math.min(N - 1, Math.floor(f / BEAT));
+  var local = f - i * BEAT;
+  var o = VK.fadeWindow(local, 0, BEAT, 10);
+  return h(VK.SceneFrame, {
+    eyebrow: 'DESIGN SYSTEM · 5 COMPONENT MỚI',
+    title: TITLES[i][0],
+    tag: (i + 1) + ' / ' + N,
+    footer: { left: TITLES[i][1], right: 'issue #62' },
+    captions: [],
+  }, h('g', { opacity: o }, BEATS[i](local)));
+}
+
+VK.mountScene('#root', { component: Scene, duration: BEAT * N, id: 'viz-components',
+  markers: TITLES.map(function (t, i) { return { frame: i * BEAT, label: t[0] }; }) });
+</script>
+</body>
+</html>

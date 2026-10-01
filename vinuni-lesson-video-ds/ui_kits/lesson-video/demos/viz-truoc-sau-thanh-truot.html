@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- Nghiệm thu issue #62: cùng cảnh "trước/sau bằng thanh trượt" (ảnh 03:59), dựng bằng
+     WipeSplit + WorkStrip. SVG thô còn lại chỉ là phong cảnh — nội dung, không phải bố cục. -->
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Mẫu B — trước/sau bằng thanh trượt</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>html, body, #root { height: 100%; margin: 0; } #root { position: relative; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+var h = VK.h, C = VK.C, T = VK.SvgText;
+var X0 = 120, X1 = 1800, ROAD = 700, CELL = 48;
+var SUN = { cx: 960, cy: 452, r: 112 };
+var RIDGE = [[120,692],[330,540],[520,626],[760,486],[1010,606],[1270,506],[1530,640],[1800,580]];
+
+function ridgeY(x) {
+  for (var i = 1; i < RIDGE.length; i++) {
+    if (x <= RIDGE[i][0]) { var a = RIDGE[i-1], b = RIDGE[i]; return a[1] + (b[1]-a[1]) * ((x-a[0])/(b[0]-a[0])); }
+  }
+  return RIDGE[RIDGE.length-1][1];
+}
+function Fine() {
+  var pts = RIDGE.map(function (p) { return p[0] + ',' + p[1]; }).join(' ');
+  return h('g', null,
+    h('circle', { cx: SUN.cx, cy: SUN.cy, r: SUN.r, fill: C.redSoft }),
+    h('circle', { cx: SUN.cx, cy: SUN.cy, r: SUN.r, fill: 'none', stroke: C.red, strokeWidth: 3 }),
+    h('polygon', { points: pts + ' 1800,' + ROAD + ' 120,' + ROAD, fill: C.dotInactive }),
+    h('polyline', { points: pts, fill: 'none', stroke: C.accent, strokeWidth: 3 }));
+}
+function Coarse() {
+  var cells = [], x, cx, cy;
+  for (x = X0; x < X1; x += CELL) {
+    var top = Math.floor(ridgeY(x + CELL/2) / CELL) * CELL;
+    if (top < ROAD) cells.push(h('rect', { key: 'm'+x, x: x, y: top, width: CELL, height: ROAD-top, fill: C.dotInactive }));
+    cells.push(h('rect', { key: 'e'+x, x: x, y: top, width: CELL, height: CELL, fill: C.bg, stroke: C.accent, strokeWidth: 3 }));
+  }
+  for (cx = SUN.cx - SUN.r - CELL; cx < SUN.cx + SUN.r + CELL; cx += CELL) {
+    for (cy = SUN.cy - SUN.r - CELL; cy < SUN.cy + SUN.r + CELL; cy += CELL) {
+      var gx = Math.round((cx-X0)/CELL)*CELL + X0, gy = Math.round(cy/CELL)*CELL;
+      var dx = gx + CELL/2 - SUN.cx, dy = gy + CELL/2 - SUN.cy;
+      if (dx*dx + dy*dy <= SUN.r*SUN.r) cells.push(h('rect', { key: 's'+gx+'_'+gy, x: gx, y: gy, width: CELL, height: CELL, fill: C.redSoft, stroke: C.red, strokeWidth: 2 }));
+    }
+  }
+  return h('g', null, cells);
+}
+
+function Scene() {
+  var frames = [], i;
+  for (i = 0; i < 16; i++) frames.push({ state: i % 2 ? 'skip' : 'done', label: i % 2 ? 'AI' : 'GPU' });
+  return h(VK.SceneFrame, {
+    eyebrow: 'NGHIÊN CỨU · NGÔN NGỮ HÌNH ẢNH',
+    title: 'Adreno Neural Fusion',
+    tag: 'SO SÁNH',
+    footer: { left: 'Ảnh 03:59 dựng lại bằng WipeSplit · WorkStrip', right: 'Mẫu B' },
+    captions: [],
+  },
+    h(VK.Pill, { x: 120, y: 252, label: 'BƯỚC 2 / 4', variant: 'outline', accent: C.accent }),
+    h(VK.WipeSplit, {
+      x: X0, y: 296, w: X1 - X0, h: 516, at: 0.5, label: 'AI', labelY: 500,
+      leftLabel: 'GPU vẽ ở độ phân giải thấp', rightLabel: 'AI dựng lại, hình nét',
+      left: h(Coarse), right: h(Fine),
+    }),
+    h(VK.Pill, { x: 1444, y: 376, label: 'Độ phân giải cao', variant: 'outline', accent: C.red, active: true }),
+    h(VK.Pill, { x: 1636, y: 442, label: '30 FPS', variant: 'muted' }),
+    h(VK.WorkStrip, { x: 120, y: 896, w: 1680, cells: frames, caption: 'Mỗi ô là một khung hình · liền = GPU vẽ thật, đứt = AI dựng thay' }));
+}
+
+VK.mountScene('#root', { component: Scene, duration: 1, id: 'viz-truoc-sau' });
+</script>
+</body>
+</html>
