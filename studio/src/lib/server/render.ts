@@ -54,7 +54,9 @@ async function renderSteps(id: string, base: string) {
   // TODO: on Windows, 6-tab (default) capture hangs deterministically partway through — reproduced
   // twice at the exact same frame, but a single tab clears the same range fine. Forcing 1 worker
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
-  const imported = importedPage(id);
+  // Chỉ dùng bản nhập khi người dùng đã chọn Claude Design, không phải cứ thấy thư mục là lấy: một video
+  // dựng bằng agent ở máy rồi nhập thêm bản của Claude Design để so sẽ bị render nhầm bản, không một lời báo.
+  const imported = state.request.sceneBuilder === "claude-design" ? importedPage(id) : null;
   const renderOk = await step("Render MP4", process.execPath, [
     "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)),
     // Cảnh dựng bên Claude Design không nằm trong khuôn videos/<id>/ của repo, nên chụp thẳng trang của nó.
