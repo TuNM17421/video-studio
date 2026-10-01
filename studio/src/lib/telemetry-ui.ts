@@ -7,6 +7,8 @@ export const EVENT_STATUS: Record<TelemetryEventStatus, { label: string; tone: T
   acked: { label: "Đã có biên nhận", tone: "success" },
   pending: { label: "Chờ gửi", tone: "processing" },
   blocked: { label: "Bị chặn", tone: "error" },
+  // The collector said no with a 4xx: the uploader parked it and will not offer it again. Not a queue.
+  rejected: { label: "Bị từ chối", tone: "error" },
 };
 
 /** One headline for the send channel, from config + the last attempt the uploader recorded. */
@@ -25,8 +27,14 @@ export function sendingSummary(data: LocalTelemetry): { tone: Tone; title: strin
     return { tone: "error", title: "Lần gửi gần nhất thất bại", detail: `${receipts.lastError ?? "Không rõ lỗi."} Event chưa có biên nhận vẫn chờ gửi lại.` };
   }
   if (!receipts.found) return { tone: "warning", title: "Chưa có biên nhận", detail: "Chưa lần gửi nào ghi biên nhận trên máy này." };
-  if (counts.pending === 0 && counts.blocked === 0) return { tone: "success", title: "Đã gửi hết", detail: "Mọi event đều có biên nhận của máy chủ." };
-  return { tone: "warning", title: "Còn event chờ gửi", detail: "Sẽ gửi ở lần kết thúc job tiếp theo." };
+  const refused = counts.blocked + counts.rejected > 0
+    ? ` ${counts.rejected} event bị máy chủ từ chối, ${counts.blocked} bị chặn tại máy — cả hai sẽ không gửi lại.`
+    : "";
+  if (counts.pending === 0 && counts.blocked === 0 && counts.rejected === 0) {
+    return { tone: "success", title: "Đã gửi hết", detail: "Mọi event đều có biên nhận của máy chủ." };
+  }
+  if (counts.pending === 0) return { tone: "warning", title: "Không còn event chờ gửi", detail: refused.trim() };
+  return { tone: "warning", title: "Còn event chờ gửi", detail: `Sẽ gửi ở lần kết thúc job tiếp theo.${refused}` };
 }
 
 /** No receipt file means "not known to be sent" — never "never sent": older uploads kept no receipts. */

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { elevenCreditsUsed, elevenLabsCost, freeVoiceCost } from "./voice-cost";
+import { billedCharacters, elevenCreditsUsed, elevenLabsCost, freeVoiceCost } from "./voice-cost";
 
 const reply = (status: number, body: unknown) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
 
@@ -44,6 +44,32 @@ describe("voice cost", () => {
   it("free paths are a known zero, with Kaggle GPU time kept", () => {
     expect(freeVoiceCost("kaggle", 540.4)).toEqual({ provider: "kaggle", gpuSeconds: 540, costUsd: 0, costSource: "no_charge" });
     expect(freeVoiceCost("omnivoice-local")).toEqual({ provider: "omnivoice-local", costUsd: 0, costSource: "no_charge" });
+  });
+});
+
+describe("which characters price a run", () => {
+  it("prices a run stopped part-way by what it was billed, not by the whole video's forecast", () => {
+    // 30 câu / 4500 ký tự forecast, Dừng sau câu 5 (700 ký tự đã in dòng tính phí). Lấy forecast thì ghi
+    // $0,225 cho một lượt tốn $0,035.
+    expect(billedCharacters(5, 700, 5)).toBe(700);
+    expect(elevenLabsCost("eleven_turbo_v2_5", billedCharacters(5, 700, 5), null, null).costUsd).toBe(0.035);
+  });
+
+  it("a câu regenerated because its word marks were missing is not a measured zero", () => {
+    // Dry-run coi câu có .pcm là cached (billable 0); lượt thật đòi cả .align.json nên sinh lại và bị tính phí.
+    const measured = elevenLabsCost("eleven_turbo_v2_5", billedCharacters(1, 240, 1), null, null);
+    expect(measured).toMatchObject({ characters: 240, costUsd: 0.012, costSource: "server_price_estimate" });
+    const forecast = elevenLabsCost("eleven_turbo_v2_5", 0, null, null);
+    expect(forecast).toMatchObject({ costUsd: 0, costSource: "server_price_estimate" });
+  });
+
+  it("requests without a billing line stay unmeasured; no request at all is a real zero", () => {
+    // Chết giữa request đầu, hoặc billedFromLine lệch định dạng dòng của tts.mjs.
+    expect(billedCharacters(3, 0, 0)).toBeNull();
+    expect(elevenLabsCost("eleven_turbo_v2_5", billedCharacters(3, 0, 0), null, null).costUsd).toBeUndefined();
+    // Mọi câu lấy từ cache: lượt này thật sự không tốn gì.
+    expect(billedCharacters(0, 0, 0)).toBe(0);
+    expect(elevenLabsCost("eleven_turbo_v2_5", billedCharacters(0, 0, 0), null, null).costUsd).toBe(0);
   });
 });
 

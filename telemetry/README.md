@@ -64,6 +64,12 @@ nó giải mã rồi gửi AI log opt-in; không có hai biến này, raw AI log
 Để Studio tự sync sau mỗi job hoàn tất, bật `STUDIO_TELEMETRY_AUTO_SYNC=1` cùng
 `STUDIO_TELEMETRY_URL` và `STUDIO_TELEMETRY_TOKEN`. Không có đủ ba biến này, Studio không mở network.
 
+Biên nhận nằm ở `.studio/telemetry/sync-state.json` (`sentEventIds` cho event, `sentLogIds` cho AI log): đã
+gửi rồi thì lần sau không gửi lại. Thứ máy chủ trả 4xx — dữ liệu sai, thử lại cũng vô ích — bị chuyển sang
+`outbox.rejected.jsonl` / `ai-logs.rejected.jsonl` kèm lý do (AI log chỉ lưu `log_id`, không lưu nội dung) và
+không bao giờ gửi lại; tab **Số liệu** gọi chúng là "Máy chủ từ chối", tách khỏi hàng "Chờ gửi". 401/403/429,
+5xx hay mất mạng thì giữ nguyên để lần sau thử lại.
+
 Retention chạy mỗi 6 giờ và mặc định **tắt** (`EVENT_RETENTION_DAYS=0`, `AI_LOG_RETENTION_DAYS=0`).
 Trên VM phải đặt số ngày cụ thể, đặc biệt cho AI log; thay đổi policy là thao tác xóa dữ liệu có chủ đích.
 
@@ -75,6 +81,11 @@ chỉ **Studio server** mới capture stream của agent stage và AI visual QA.
 AI log. Local outbox chỉ giữ AES-256-GCM ciphertext. Connector gửi plaintext qua HTTPS tới `/v1/ai-logs`; collector
 chỉ nhận khi cả server đã bật AI log và request có explicit consent, rồi mã hóa AES-256-GCM trước khi lưu Postgres.
 Grafana chỉ hiển thị số lượng log, không hiển thị nội dung.
+
+Đổi `STUDIO_TELEMETRY_AI_LOG_KEY` thì các log mã hoá bằng key cũ không giải mã lại được: chúng bị chuyển sang
+`ai-logs.rejected.jsonl` (chỉ `log_id` + lý do) và các log mới vẫn gửi bình thường. Còn key **sai độ dài** là
+lỗi cấu hình của máy, không phải của log nào: cả chặng AI log dừng lại, không log nào bị loại, sửa biến rồi
+sync lại là đi tiếp.
 
 AI log có thể chứa nội dung nhạy cảm dù đã redaction một số token phổ biến. Chỉ opt-in khi người làm có quyền
 chia sẻ nội dung đó; VM bắt buộc chạy HTTPS, giữ encryption key trong secret manager và đặt retention/RBAC trước

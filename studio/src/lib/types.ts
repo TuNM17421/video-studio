@@ -619,12 +619,14 @@ export interface Library {
  * `acked` is only what sync-state.json receipts establish; there is no per-event "failed" state, because the
  * uploader only records the last attempt's error for the whole run.
  */
-export type TelemetryEventStatus = "acked" | "pending" | "blocked";
+export type TelemetryEventStatus = "acked" | "pending" | "blocked" | "rejected";
 
 export interface TelemetryPreviewEvent {
   status: TelemetryEventStatus;
   /** Why the uploader would refuse it (field path, never its value). */
   blockedReason: string | null;
+  /** Why the collector refused it, from `outbox.rejected.jsonl`: the uploader will not try it again. */
+  rejectedReason: string | null;
   /** Keys outside the preview whitelist that the raw event carries. */
   extraKeys: string[];
   event: Record<string, unknown>;
@@ -648,7 +650,7 @@ export interface TelemetryVideoMetrics {
 
 export interface LocalTelemetry {
   outbox: { total: number; unreadableLines: number; byType: Record<string, number> };
-  counts: { acked: number; pending: number; blocked: number };
+  counts: { acked: number; pending: number; blocked: number; rejected: number };
   receipts: {
     found: boolean;
     lastAttemptAt: string | null;
@@ -658,7 +660,7 @@ export interface LocalTelemetry {
   };
   sending: { url: string; hasToken: boolean; autoSync: boolean; enabled: boolean; syncing: boolean };
   /** Encrypted, opt-in AI logs: counted only — their content is never previewed. */
-  aiLogs: { count: number; enabled: boolean };
+  aiLogs: { count: number; enabled: boolean; rejected: number };
   videos: TelemetryVideoMetrics[];
   preview: TelemetryPreviewEvent[];
   previewLimit: number;

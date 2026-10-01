@@ -55,6 +55,8 @@ export async function elevenCreditsUsed(key: string, fetcher: typeof fetch = fet
  * silently mis-priced whichever model the rate wasn't tuned for — see COST-COMPARISON-2026-09-26.md).
  * Credits are still recorded (`credits`), as the account's own truth for cross-checking, just not what prices it.
  * A model missing from `pricing-catalog.ts`, or no character count, leaves cost unavailable — never a guessed rate.
+ *
+ * `characters` must be what ElevenLabs actually billed (`billedCharacters`), not a forecast.
  */
 export function elevenLabsCost(model: string | undefined, characters: number | null, before: number | null, after: number | null): VoiceCost {
   const credits = before !== null && after !== null && after >= before ? after - before : null;
@@ -68,6 +70,23 @@ export function elevenLabsCost(model: string | undefined, characters: number | n
       ? { costUsd: Math.round(((characters * entry.usdPer1kChars) / 1000) * 1e6) / 1e6, costSource: "server_price_estimate" as const }
       : {}),
   };
+}
+
+/**
+ * The characters to price a run by: what ElevenLabs actually charged, summed from the per-câu lines tts.mjs
+ * prints (`lib/video-cost.ts#billedFromLine`) — never the dry-run's forecast, which diverges in both
+ * directions. The forecast calls a câu cached on its audio alone (tts.mjs:301) while a real run needs the word
+ * marks too (tts.mjs:325), so a câu whose alignment came back empty is regenerated and paid for while the
+ * forecast counts it free: $0 under a "measured" label, which is the one thing this module must never report.
+ * And a run stopped or failed part-way keeps the whole video's forecast, over-reporting instead.
+ *
+ * `requests` = câu that reached ElevenLabs. Requests but no billing line means either the process died
+ * mid-request or the parser drifted from tts.mjs's wording — unmeasured (null), never a guessed zero.
+ * No request at all is a real zero: every câu came from the cache, so the run cost nothing.
+ */
+export function billedCharacters(requests: number, billed: number, billedCues: number): number | null {
+  if (billedCues > 0) return billed;
+  return requests > 0 ? null : 0;
 }
 
 export const freeVoiceCost = (provider: "kaggle" | "omnivoice-local" | "import", gpuSeconds?: number): VoiceCost => ({

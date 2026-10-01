@@ -5,10 +5,10 @@ import { formatDuration, formatUsd, receiptNote, sendingSummary } from "./teleme
 function data(patch: { sending?: Partial<LocalTelemetry["sending"]>; receipts?: Partial<LocalTelemetry["receipts"]>; counts?: Partial<LocalTelemetry["counts"]> } = {}): LocalTelemetry {
   return {
     outbox: { total: 2, unreadableLines: 0, byType: {} },
-    counts: { acked: 1, pending: 1, blocked: 0, ...patch.counts },
+    counts: { acked: 1, pending: 1, blocked: 0, rejected: 0, ...patch.counts },
     receipts: { found: true, lastAttemptAt: null, lastSuccessAt: null, lastFailureAt: null, lastError: null, ...patch.receipts },
     sending: { url: "https://x", hasToken: true, autoSync: true, enabled: true, syncing: false, ...patch.sending },
-    aiLogs: { count: 0, enabled: false },
+    aiLogs: { count: 0, enabled: false, rejected: 0 },
     videos: [],
     preview: [],
     previewLimit: 50,
@@ -30,9 +30,19 @@ describe("sendingSummary", () => {
     expect(recovered.title).toBe("Còn event chờ gửi");
   });
 
-  it("claims all sent only when nothing is pending or blocked", () => {
+  it("claims all sent only when nothing is pending, blocked or refused", () => {
     expect(sendingSummary(data({ counts: { pending: 0, blocked: 0 } })).title).toBe("Đã gửi hết");
-    expect(sendingSummary(data({ counts: { pending: 0, blocked: 1 } })).title).toBe("Còn event chờ gửi");
+    expect(sendingSummary(data({ counts: { pending: 0, blocked: 1 } })).title).toBe("Không còn event chờ gửi");
+  });
+
+  it("does not call an event the collector refused a queue", () => {
+    const refused = sendingSummary(data({ counts: { acked: 1, pending: 0, blocked: 0, rejected: 2 } }));
+    expect(refused.title).toBe("Không còn event chờ gửi");
+    expect(refused.detail).toContain("2 event bị máy chủ từ chối");
+    expect(refused.detail).toContain("không gửi lại");
+    // Vẫn còn hàng chờ thật thì nói cả hai, không gộp làm một.
+    expect(sendingSummary(data({ counts: { pending: 3, rejected: 1 } })).detail)
+      .toContain("Sẽ gửi ở lần kết thúc job tiếp theo.");
   });
 
   it("never claims sent without a receipt file", () => {

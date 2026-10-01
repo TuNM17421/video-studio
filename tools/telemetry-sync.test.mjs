@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createCipheriv, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,6 +16,17 @@ function fixture(events) {
 
 const event = (id, extra = {}) => ({ event_id: id, schema_version: 1, privacy: { payload_class: "metadata_only" }, ...extra });
 const response = (value, status = 202) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
+
+function aiLog(logId, key) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([cipher.update(`transcript ${logId}`, "utf8"), cipher.final()]);
+  return {
+    log_id: logId, occurred_at: "2026-09-28T01:00:00.000Z", installation_id: "inst", project_ref: "v1",
+    video_ref: "v1", run_id: "r1", kind: "agent_stream", consent: { scope: "ai_log", explicit: true },
+    encrypted: { iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), ciphertext: ciphertext.toString("base64") },
+  };
+}
 
 test("sync stores local acknowledgements and skips them on the next run", async () => {
   const { repo, root } = fixture([event("a"), event("b")]);
@@ -118,14 +130,74 @@ test("a half-written outbox line is skipped, not fatal", async () => {
   assert.equal(result.skipped_lines, 1);
 });
 
-test("AI-log refusal does not fail the event upload", async () => {
+test("AI logs are acknowledged too: a second sync re-sends none of them", async () => {
   const { repo, root } = fixture([event("a")]);
-  fs.writeFileSync(path.join(root, "ai-logs-outbox.jsonl"), `${JSON.stringify({ log_id: "l1", encrypted: { iv: "", tag: "", ciphertext: "" } })}\n`);
+  const key = Buffer.alloc(32);
+  fs.writeFileSync(path.join(root, "ai-logs-outbox.jsonl"), [aiLog("l1", key), aiLog("l2", key)].map((l) => JSON.stringify(l)).join("\n") + "\n");
+  const posted = [];
+  const fetchImpl = async (url, init) => {
+    const body = JSON.parse(init.body);
+    if (url.endsWith("/v1/ai-logs")) { posted.push(body.log_id); return response({ accepted: true, inserted: true }); }
+    return response({ inserted: body.events.length, duplicate: 0 });
+  };
+  const options = { repo, endpoint: "https://collector.test", token: "secret", aiLogsEnabled: true, aiLogKey: key.toString("base64"), fetchImpl };
+  assert.equal((await syncTelemetry(options)).ai_logs_inserted, 2);
+  assert.equal((await syncTelemetry(options)).ai_logs_inserted, 0);
+  assert.deepEqual(posted, ["l1", "l2"]);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "sync-state.json"), "utf8")).sentLogIds, ["l1", "l2"]);
+});
+
+test("a log encrypted with a rotated key is parked, and the logs behind it still go up", async () => {
+  const { repo, root } = fixture([event("a")]);
+  const key = Buffer.alloc(32);
+  const stale = aiLog("old", Buffer.alloc(32, 7));
+  fs.writeFileSync(path.join(root, "ai-logs-outbox.jsonl"), [stale, aiLog("new", key)].map((l) => JSON.stringify(l)).join("\n") + "\n");
+  const posted = [];
+  const fetchImpl = async (url, init) => {
+    const body = JSON.parse(init.body);
+    if (url.endsWith("/v1/ai-logs")) { posted.push(body.log_id); return response({ accepted: true, inserted: true }); }
+    return response({ inserted: body.events.length, duplicate: 0 });
+  };
+  const result = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", aiLogsEnabled: true, aiLogKey: key.toString("base64"), fetchImpl });
+  assert.deepEqual(posted, ["new"]);
+  assert.equal(result.ai_logs_inserted, 1);
+  assert.equal(result.ai_logs_rejected, 1);
+  const parked = fs.readFileSync(path.join(root, "ai-logs.rejected.jsonl"), "utf8");
+  assert.equal(JSON.parse(parked).log_id, "old");
+  // Lý do thôi, không bao giờ kèm bản sao transcript.
+  assert.equal(parked.includes("ciphertext"), false);
+});
+
+test("a misconfigured AI-log key parks nothing: the logs are fine, the env var is not", async () => {
+  const { repo, root } = fixture([event("a")]);
+  fs.writeFileSync(path.join(root, "ai-logs-outbox.jsonl"), `${JSON.stringify(aiLog("l1", Buffer.alloc(32)))}\n`);
+  const posted = [];
+  const fetchImpl = async (url, init) => {
+    if (url.endsWith("/v1/ai-logs")) { posted.push(url); return response({ inserted: true }); }
+    return response({ inserted: JSON.parse(init.body).events.length, duplicate: 0 });
+  };
+  const result = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", aiLogsEnabled: true, aiLogKey: "khong-phai-32-byte", fetchImpl });
+  assert.equal(result.inserted, 1);
+  assert.match(result.ai_logs_error, /32 bytes/);
+  assert.deepEqual(posted, []);
+  assert.equal(result.ai_logs_rejected, undefined);
+  assert.equal(fs.existsSync(path.join(root, "ai-logs.rejected.jsonl")), false);
+});
+
+test("AI-log refusal does not fail the event upload, and keeps the log queued", async () => {
+  const { repo, root } = fixture([event("a")]);
+  const key = Buffer.alloc(32);
+  fs.writeFileSync(path.join(root, "ai-logs-outbox.jsonl"), `${JSON.stringify(aiLog("l1", key))}\n`);
   const fetchImpl = async (url, init) => url.endsWith("/v1/ai-logs") ? response({ error: "ai_logs_disabled" }, 403) : response({ inserted: JSON.parse(init.body).events.length, duplicate: 0 });
-  const result = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", aiLogsEnabled: true, aiLogKey: Buffer.alloc(32).toString("base64"), fetchImpl });
+  const result = await syncTelemetry({ repo, endpoint: "https://collector.test", token: "secret", aiLogsEnabled: true, aiLogKey: key.toString("base64"), fetchImpl });
   assert.equal(result.inserted, 1);
   assert.ok(result.ai_logs_error);
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "sync-state.json"), "utf8")).sentEventIds, ["a"]);
+  // 403 là chuyện của máy chủ (đang tắt AI log), không phải dữ liệu sai: không park, không ghi biên nhận.
+  assert.equal(result.ai_logs_rejected, undefined);
+  assert.equal(fs.existsSync(path.join(root, "ai-logs.rejected.jsonl")), false);
+  const state = JSON.parse(fs.readFileSync(path.join(root, "sync-state.json"), "utf8"));
+  assert.deepEqual(state.sentEventIds, ["a"]);
+  assert.deepEqual(state.sentLogIds, []);
 });
 
 test("a 5xx is retried later, never parked", async () => {

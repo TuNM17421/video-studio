@@ -78,10 +78,18 @@ export function readLocalTelemetry(repo: string, options: LocalTelemetryOptions)
   const receiptsFound = fs.existsSync(syncStateFile(repo));
   const state = readState(syncStateFile(repo));
   const acked = new Set<string>(state.sentEventIds);
+  // The uploader parks an event the collector refused with a 4xx and never offers it again. Without reading
+  // that file this view would keep calling it "chờ gửi" for good — a queue that is not actually a queue.
+  const rejected = new Map<string, string>();
+  for (const row of readLines(path.join(root, "outbox.rejected.jsonl")).rows) {
+    const entry = row as { event?: { event_id?: unknown }; reason?: unknown };
+    const id = typeof entry.event?.event_id === "string" ? entry.event.event_id : "";
+    if (id) rejected.set(id, typeof entry.reason === "string" ? entry.reason : "Máy chủ từ chối event này.");
+  }
   const previewLimit = options.previewLimit ?? 50;
 
   const byType: Record<string, number> = {};
-  const counts = { acked: 0, pending: 0, blocked: 0 };
+  const counts = { acked: 0, pending: 0, blocked: 0, rejected: 0 };
   const videos = new Map<string, TelemetryVideoMetrics>();
   const feedbackLatest = new Map<string, { video: string; status: string }>();
   const unsent: TelemetryPreviewEvent[] = [];
@@ -90,11 +98,14 @@ export function readLocalTelemetry(repo: string, options: LocalTelemetryOptions)
     const { event, extraKeys } = projectEvent(raw);
     const blockedReason = unsafeReason(raw);
     const id = typeof event.event_id === "string" ? event.event_id : "";
-    const status: TelemetryEventStatus = blockedReason ? "blocked" : acked.has(id) ? "acked" : "pending";
+    const rejectedReason = rejected.get(id) ?? null;
+    const status: TelemetryEventStatus = blockedReason
+      ? "blocked"
+      : acked.has(id) ? "acked" : rejectedReason ? "rejected" : "pending";
     counts[status]++;
     const type = typeof event.event_type === "string" ? event.event_type : "unknown";
     byType[type] = (byType[type] || 0) + 1;
-    if (status !== "acked") unsent.push({ status, blockedReason, extraKeys, event });
+    if (status !== "acked") unsent.push({ status, blockedReason, rejectedReason, extraKeys, event });
 
     const video = typeof event.video_ref === "string" && event.video_ref ? event.video_ref : "(không rõ)";
     const row = videos.get(video) ?? {
@@ -135,9 +146,11 @@ export function readLocalTelemetry(repo: string, options: LocalTelemetryOptions)
   }
 
   const aiLogs = readLines(path.join(root, "ai-logs-outbox.jsonl"));
-  // Newest first; blocked events lead so a refusal is never hidden past the limit.
+  const aiLogsRejected = readLines(path.join(root, "ai-logs.rejected.jsonl"));
+  // Newest first; a refused event leads so it is never hidden past the limit.
+  const refusedFirst = (p: TelemetryPreviewEvent) => Number(p.status === "blocked" || p.status === "rejected");
   const preview = unsent
-    .sort((a, b) => Number(b.status === "blocked") - Number(a.status === "blocked") || String(b.event.occurred_at ?? "").localeCompare(String(a.event.occurred_at ?? "")))
+    .sort((a, b) => refusedFirst(b) - refusedFirst(a) || String(b.event.occurred_at ?? "").localeCompare(String(a.event.occurred_at ?? "")))
     .slice(0, previewLimit);
 
   return {
@@ -151,7 +164,11 @@ export function readLocalTelemetry(repo: string, options: LocalTelemetryOptions)
       lastError: state.lastError,
     },
     sending: options.sending,
-    aiLogs: { count: aiLogs.rows.length + aiLogs.unreadable, enabled: options.aiLogsEnabled },
+    aiLogs: {
+      count: aiLogs.rows.length + aiLogs.unreadable,
+      enabled: options.aiLogsEnabled,
+      rejected: aiLogsRejected.rows.length,
+    },
     videos: [...videos.values()].sort((a, b) => String(b.lastAt ?? "").localeCompare(String(a.lastAt ?? ""))),
     preview,
     previewLimit,

@@ -24,6 +24,14 @@ class HttpError extends Error {
   }
 }
 
+/**
+ * A 4xx other than auth/rate says the data itself is wrong, so retrying can never help: park it and let the
+ * rest through. 401/403/429 are about the client or the server's own state, and 5xx/network say nothing about
+ * the data — both are transient, so they propagate and the same payload is tried again next sync.
+ */
+const isPermanentlyRejected = (error) =>
+  error instanceof HttpError && error.status >= 400 && error.status < 500 && ![401, 403, 429].includes(error.status);
+
 export const syncStateFile = (repo) => path.join(repo, ".studio", "telemetry", "sync-state.json");
 
 // Exported so Studio's preview reads receipts and refuses events with exactly the uploader's rules.
@@ -33,6 +41,9 @@ export function readState(file) {
     return {
       schemaVersion: 1,
       sentEventIds: Array.isArray(value.sentEventIds) ? value.sentEventIds.filter((id) => typeof id === "string") : [],
+      // AI logs need their own receipts: they are a separate endpoint, and each one is up to 256 KiB, so
+      // re-sending the whole history after every job is not a rounding error.
+      sentLogIds: Array.isArray(value.sentLogIds) ? value.sentLogIds.filter((id) => typeof id === "string") : [],
       lastAttemptAt: typeof value.lastAttemptAt === "string" ? value.lastAttemptAt : null,
       lastSuccessAt: typeof value.lastSuccessAt === "string" ? value.lastSuccessAt : null,
       lastFailureAt: typeof value.lastFailureAt === "string" ? value.lastFailureAt : null,
@@ -40,7 +51,7 @@ export function readState(file) {
       lastResult: value.lastResult && typeof value.lastResult === "object" ? value.lastResult : null,
     };
   } catch {
-    return { schemaVersion: 1, sentEventIds: [], lastAttemptAt: null, lastSuccessAt: null, lastFailureAt: null, lastError: null, lastResult: null };
+    return { schemaVersion: 1, sentEventIds: [], sentLogIds: [], lastAttemptAt: null, lastSuccessAt: null, lastFailureAt: null, lastError: null, lastResult: null };
   }
 }
 
@@ -82,9 +93,17 @@ function assertSafeEvent(event) {
   if (reason) throw new Error(`Event ${event?.event_id || "?"} ${reason}; không gửi gì.`);
 }
 
-function decrypt(log, keyText) {
+/**
+ * A key of the wrong length is this machine's configuration, not any one log's fault — checked once, before
+ * the loop, so a typo in the env var never parks a queue of logs that are all perfectly readable.
+ */
+function aiLogKeyBuffer(keyText) {
   const key = Buffer.from(keyText || "", "base64");
   if (key.length !== 32) throw new Error("STUDIO_TELEMETRY_AI_LOG_KEY phải là base64 của đúng 32 bytes để sync AI log.");
+  return key;
+}
+
+function decrypt(log, key) {
   const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(log.encrypted.iv, "base64"));
   decipher.setAuthTag(Buffer.from(log.encrypted.tag, "base64"));
   return Buffer.concat([decipher.update(Buffer.from(log.encrypted.ciphertext, "base64")), decipher.final()]).toString("utf8");
@@ -106,9 +125,9 @@ export async function syncTelemetry({
   const stateFile = syncStateFile(repo);
   const state = readState(stateFile);
   const sent = new Set(state.sentEventIds);
+  const sentLogs = new Set(state.sentLogIds);
   const outbox = readJsonl(path.join(root, "outbox.jsonl"));
-  const rejectedFile = path.join(root, "outbox.rejected.jsonl");
-  const rejectedBefore = new Set(readJsonl(rejectedFile).rows.map((row) => row.event?.event_id));
+  const rejectedBefore = new Set(readJsonl(path.join(root, "outbox.rejected.jsonl")).rows.map((row) => row.event?.event_id));
   const events = outbox.rows.filter((event) => !sent.has(event.event_id) && !rejectedBefore.has(event.event_id));
   state.lastAttemptAt = now();
   state.lastError = null;
@@ -127,15 +146,20 @@ export async function syncTelemetry({
   // The collector refuses a whole batch when one event is bad. 4xx = the data is wrong, so retrying can never help:
   // split the batch to find the culprit, park it in outbox.rejected.jsonl and let the rest through. 5xx/network
   // errors say nothing about the data, so they propagate and the batch is retried next time.
-  const rejected = [];
+  const rejectedFile = path.join(root, "outbox.rejected.jsonl");
+  const park = (file, row) => fs.appendFileSync(file, `${JSON.stringify(row)}\n`);
+  let rejected = 0;
   async function sendEvents(batch) {
     let result;
     try {
       result = await post("/v1/events", { events: batch });
     } catch (error) {
-      if (!(error instanceof HttpError) || error.status < 400 || error.status >= 500 || error.status === 401 || error.status === 403 || error.status === 429) throw error;
+      if (!isPermanentlyRejected(error)) throw error;
       if (batch.length === 1) {
-        rejected.push({ at: now(), reason: error.message, event: batch[0] });
+        // Written now, not at the end of the sync: a later batch failing with a 5xx must not lose the record
+        // of what was already refused, or the next sync re-splits the same batch to rediscover it.
+        park(rejectedFile, { at: now(), reason: error.message, event: batch[0] });
+        rejected++;
         return;
       }
       const mid = Math.ceil(batch.length / 2);
@@ -157,6 +181,7 @@ export async function syncTelemetry({
   let inserted = 0;
   let duplicate = 0;
   let aiLogs = 0;
+  let aiLogsRejected = 0;
   try {
     // Validate every pending event before the first request. A forbidden field is a local refusal, never a
     // collector-side accident after an earlier batch was already sent.
@@ -165,16 +190,31 @@ export async function syncTelemetry({
       const batch = events.slice(index, index + 500);
       await sendEvents(batch);
     }
-    if (rejected.length) {
-      fs.appendFileSync(rejectedFile, rejected.map((row) => `${JSON.stringify(row)}\n`).join(""));
-    }
 
     // Separate leg: AI logs are optional, so a refusal here (server has them off, key rotated) must not turn a
     // successful event upload into a failed sync.
     let aiLogsSkipped = null;
+    let key = null;
     if (aiLogsEnabled) {
-      try {
-        for (const log of readJsonl(path.join(root, "ai-logs-outbox.jsonl")).rows) {
+      try { key = aiLogKeyBuffer(aiLogKey); } catch (error) { aiLogsSkipped = error.message; }
+    }
+    if (key) {
+      const logsFile = path.join(root, "ai-logs-outbox.jsonl");
+      const logsRejectedFile = path.join(root, "ai-logs.rejected.jsonl");
+      const logsRejectedBefore = new Set(readJsonl(logsRejectedFile).rows.map((row) => row.log_id));
+      // Only the id and the reason are parked, never the log: a refusal record must not become a second,
+      // unencrypted copy of a transcript.
+      const parkLog = (log, reason) => {
+        park(logsRejectedFile, { at: now(), reason, log_id: log.log_id });
+        aiLogsRejected++;
+      };
+      for (const log of readJsonl(logsFile).rows) {
+        if (sentLogs.has(log.log_id) || logsRejectedBefore.has(log.log_id)) continue;
+        let content;
+        // The key is known good here, so this is a log encrypted with an older one: it can never be read
+        // again. Parked, or it stops every log behind it — and nothing prunes the outbox, so that is for good.
+        try { content = decrypt(log, key); } catch (error) { parkLog(log, error.message); continue; }
+        try {
           const result = await post("/v1/ai-logs", {
             log_id: log.log_id,
             occurred_at: log.occurred_at,
@@ -184,12 +224,18 @@ export async function syncTelemetry({
             run_id: log.run_id,
             kind: log.kind,
             consent: log.consent,
-            content: decrypt(log, aiLogKey),
+            content,
           }, { "x-telemetry-ai-log-consent": "true" });
           if (result.inserted) aiLogs++;
+          sentLogs.add(log.log_id);
+          state.sentLogIds = [...sentLogs];
+          writeState(stateFile, state);
+        } catch (error) {
+          if (isPermanentlyRejected(error)) { parkLog(log, error.message); continue; }
+          // The server has AI logs off, or is down: stop this leg and keep every remaining log queued.
+          aiLogsSkipped = error instanceof Error ? error.message : "AI log sync thất bại.";
+          break;
         }
-      } catch (error) {
-        aiLogsSkipped = error instanceof Error ? error.message : "AI log sync thất bại.";
       }
     }
 
@@ -199,7 +245,8 @@ export async function syncTelemetry({
     writeState(stateFile, state);
     return {
       events: events.length, inserted, duplicate, ai_logs_inserted: aiLogs, ai_logs_enabled: aiLogsEnabled,
-      ...(rejected.length ? { rejected: rejected.length } : {}),
+      ...(rejected ? { rejected } : {}),
+      ...(aiLogsRejected ? { ai_logs_rejected: aiLogsRejected } : {}),
       ...(outbox.skipped ? { skipped_lines: outbox.skipped } : {}),
       ...(aiLogsSkipped ? { ai_logs_error: aiLogsSkipped } : {}),
     };
@@ -207,6 +254,7 @@ export async function syncTelemetry({
     state.lastFailureAt = now();
     state.lastError = error instanceof Error ? error.message : "Telemetry sync thất bại.";
     state.sentEventIds = [...sent];
+    state.sentLogIds = [...sentLogs];
     state.lastResult = { attempted: events.length, sent: sent.size, inserted, duplicate };
     writeState(stateFile, state);
     throw error;

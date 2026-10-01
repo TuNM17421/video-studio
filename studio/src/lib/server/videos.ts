@@ -220,10 +220,28 @@ export function qaImages(id: string) {
     : []);
 }
 
+/**
+ * A `projects/<id>/` holding nothing but `.studio/` is bookkeeping, not a video. The workflow ledger writes
+ * `projects/<videoId>/.studio/runs.jsonl` for every run, and a run's `videoId` is not always a video: the
+ * research pipeline passes `research-<rid>` as its telemetry ref (`research/agent.ts`), so one directory
+ * appeared in this list per research turn. A video made outside Studio always has more than that — its
+ * script and renders in `projects/<id>/`, or its scenes in the design system.
+ */
+export function isLedgerOnlyProject(roots: { project: string; scenes: string; state: string }) {
+  if (exists(roots.state) || exists(roots.scenes)) return false;
+  return exists(roots.project) && fs.readdirSync(roots.project).every((entry) => entry === ".studio");
+}
+
 export function listVideos(): VideoSummary[] {
   const ids = new Set<string>();
   const projects = path.join(REPO, "projects");
-  if (exists(projects)) for (const d of fs.readdirSync(projects, { withFileTypes: true })) if (d.isDirectory()) ids.add(d.name);
+  if (exists(projects)) {
+    for (const d of fs.readdirSync(projects, { withFileTypes: true })) {
+      if (!d.isDirectory()) continue;
+      if (isLedgerOnlyProject({ project: projectDir(d.name), scenes: videoDir(d.name), state: stateFile(d.name) })) continue;
+      ids.add(d.name);
+    }
+  }
   return [...ids].sort().flatMap((id) => {
     let read: ReturnType<typeof readState>;
     // One video whose state.json cannot be read must not take the list of every other video down with it;

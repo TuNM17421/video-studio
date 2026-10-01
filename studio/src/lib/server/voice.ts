@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, RetakeEntry, RetakeResult, VoiceBound, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, gpuJobElsewhere, isRunning, log, ownJob, recordJobMetrics, registry, run, setProgress, startJob, wasStopped } from "./jobs";
-import { beginCreditRun, elevenCreditsUsed, elevenLabsCost, endCreditRun, freeVoiceCost } from "./voice-cost";
+import { beginCreditRun, billedCharacters, elevenCreditsUsed, elevenLabsCost, endCreditRun, freeVoiceCost } from "./voice-cost";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -74,15 +74,6 @@ function ttsArgs(id: string, v: VoiceSettings) {
   ];
 }
 
-/** Characters the next generate will send (uncached, non-silent cues): the free dry-run, without opening a job. */
-function billableChars(id: string, v: VoiceSettings): Promise<number | null> {
-  return new Promise((resolve) => {
-    execFile(process.execPath, [...ttsArgs(id, v), "--dry-run", "--json"], { cwd: REPO, env: ttsEnv(v, ""), maxBuffer: 16 << 20 }, (error, stdout) => {
-      try { resolve(error ? null : Number(JSON.parse(stdout).billable)); } catch { resolve(null); }
-    });
-  });
-}
-
 export function validateVoice(v: VoiceSettings) {
   if (!(v.pause >= 0 && v.pause <= 5)) throw new HttpError(400, "Khoảng nghỉ phải trong 0–5 giây.");
   // Giọng tự thu và model local không gọi API ElevenLabs: model/ngôn ngữ của ElevenLabs không liên quan,
@@ -132,13 +123,13 @@ async function generateEleven(id: string) {
   setStage(id, "voice", "running");
   log(id, "system", `Tạo giọng · ${v.model} · nghỉ ${v.pause} s`);
   const total = lastDryRun(id)?.toGenerate || 0;
-  // Cost telemetry: what will be sent, and the account's credit counter on both sides of the run.
+  // Cost telemetry: the account's credit counter on both sides of the run; the characters come from the run
+  // itself, once it has said what it was billed for (`billedCharacters`) — a forecast must never price it.
   const mock = process.env.STUDIO_TTS_MOCK === "1";
-  const characters = await billableChars(id, v);
   const creditToken = randomUUID();
   if (!mock) beginCreditRun(creditToken);
   const creditsBefore = mock ? null : await elevenCreditsUsed(key);
-  const recordCost = async () => {
+  const recordCost = async (characters: number | null) => {
     // A mock run synthesizes nothing: it has no cost to report, measured or zero.
     // A run that shared the account counter with another voice job cannot tell its credits from theirs: it keeps
     // the character-priced cost but reports no credit delta.
@@ -170,7 +161,7 @@ async function generateEleven(id: string) {
         }
       },
     });
-    await recordCost();
+    await recordCost(billedCharacters(done, billed, billedCues));
   } finally {
     endCreditRun(creditToken);
   }

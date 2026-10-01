@@ -7,12 +7,13 @@ import { projectEvent, readLocalTelemetry } from "./telemetry-local";
 const SENDING_OFF = { url: "", hasToken: false, autoSync: false, enabled: false, syncing: false };
 const dirs: string[] = [];
 
-function repoWith(lines: (object | string)[], state?: object, aiLogs = 0) {
+function repoWith(lines: (object | string)[], state?: object, aiLogs = 0, refused: object[] = []) {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), "telemetry-local-"));
   dirs.push(repo);
   const root = path.join(repo, ".studio", "telemetry");
   fs.mkdirSync(root, { recursive: true });
   fs.writeFileSync(path.join(root, "outbox.jsonl"), lines.map((l) => (typeof l === "string" ? l : JSON.stringify(l))).join("\n") + "\n");
+  if (refused.length) fs.writeFileSync(path.join(root, "outbox.rejected.jsonl"), refused.map((r) => JSON.stringify(r)).join("\n") + "\n");
   if (state) fs.writeFileSync(path.join(root, "sync-state.json"), JSON.stringify(state));
   if (aiLogs) fs.writeFileSync(path.join(root, "ai-logs-outbox.jsonl"), Array.from({ length: aiLogs }, (_, i) => JSON.stringify({ log_id: `l${i}`, encrypted: { ciphertext: "SECRET-CIPHER" } })).join("\n") + "\n");
   return repo;
@@ -56,7 +57,7 @@ describe("readLocalTelemetry", () => {
     ], { sentEventIds: ["a"], lastAttemptAt: "2026-09-28T01:00:00.000Z", lastFailureAt: "2026-09-28T01:00:00.000Z", lastError: "/v1/events: HTTP 503" });
     const data = readLocalTelemetry(repo, { sending: SENDING_OFF, aiLogsEnabled: false });
 
-    expect(data.counts).toEqual({ acked: 1, pending: 1, blocked: 1 });
+    expect(data.counts).toEqual({ acked: 1, pending: 1, blocked: 1, rejected: 0 });
     expect(data.outbox).toEqual({ total: 3, unreadableLines: 1, byType: { run_started: 1, run_finished: 1, usage_recorded: 1 } });
     expect(data.receipts).toMatchObject({ found: true, lastError: "/v1/events: HTTP 503" });
     expect(data.preview.map((p) => [p.event.event_id, p.status])).toEqual([["ccc", "blocked"], ["bb", "pending"]]);
@@ -67,7 +68,7 @@ describe("readLocalTelemetry", () => {
   it("treats a missing receipt file as unknown, not as sent", () => {
     const data = readLocalTelemetry(repoWith([base("a", "run_started")]), { sending: SENDING_OFF, aiLogsEnabled: false });
     expect(data.receipts.found).toBe(false);
-    expect(data.counts).toEqual({ acked: 0, pending: 1, blocked: 0 });
+    expect(data.counts).toEqual({ acked: 0, pending: 1, blocked: 0, rejected: 0 });
   });
 
   it("sums only measured costs and keeps unmeasured ones null, not $0", () => {
@@ -91,10 +92,23 @@ describe("readLocalTelemetry", () => {
     expect(data.videos[0].feedbackOpen).toBe(1);
   });
 
+  it("an event the collector parked is refused, not pending: the uploader never offers it again", () => {
+    const repo = repoWith(
+      [base("a", "run_started"), base("bb", "run_finished")],
+      { sentEventIds: ["a"] },
+      0,
+      [{ at: "2026-09-28T02:00:00.000Z", reason: "/v1/events: HTTP 400", event: { event_id: "bb" } }],
+    );
+    const data = readLocalTelemetry(repo, { sending: SENDING_OFF, aiLogsEnabled: false });
+    expect(data.counts).toEqual({ acked: 1, pending: 0, blocked: 0, rejected: 1 });
+    expect(data.preview.map((p) => [p.event.event_id, p.status])).toEqual([["bb", "rejected"]]);
+    expect(data.preview[0].rejectedReason).toBe("/v1/events: HTTP 400");
+  });
+
   it("counts encrypted AI logs without exposing them, and caps the preview", () => {
     const events = Array.from({ length: 5 }, (_, i) => base("x".repeat(i + 1), "run_started"));
     const data = readLocalTelemetry(repoWith(events, undefined, 2), { sending: SENDING_OFF, aiLogsEnabled: true, previewLimit: 3 });
-    expect(data.aiLogs).toEqual({ count: 2, enabled: true });
+    expect(data.aiLogs).toEqual({ count: 2, enabled: true, rejected: 0 });
     expect(data.preview).toHaveLength(3);
     expect(JSON.stringify(data)).not.toContain("SECRET-CIPHER");
   });

@@ -16,7 +16,8 @@ function Counts({ data }: { data: LocalTelemetry }) {
     ["total", data.outbox.total, "Event đã ghi trên máy"],
     ["acked", data.counts.acked, "Đã có biên nhận"],
     ["pending", data.counts.pending, "Chờ gửi"],
-    ["blocked", data.counts.blocked, "Bị chặn (không gửi)"],
+    ["rejected", data.counts.rejected, "Máy chủ từ chối (không gửi lại)"],
+    ["blocked", data.counts.blocked, "Bị chặn tại máy (không gửi)"],
     ["ai", data.aiLogs.count, data.aiLogs.enabled ? "AI log mã hoá (bật)" : "AI log mã hoá (tắt)"],
   ];
   return <div className={styles.counts}>
@@ -52,7 +53,8 @@ const previewColumns = [
   {
     title: "Ghi chú",
     key: "note",
-    render: (p: TelemetryPreviewEvent) => p.blockedReason ?? (p.extraKeys.length ? `Có field ngoài danh sách xem trước: ${p.extraKeys.join(", ")}` : ""),
+    render: (p: TelemetryPreviewEvent) => p.blockedReason ?? p.rejectedReason
+      ?? (p.extraKeys.length ? `Có field ngoài danh sách xem trước: ${p.extraKeys.join(", ")}` : ""),
   },
 ];
 
@@ -88,6 +90,7 @@ export default function TelemetryTab() {
         <div className={styles.meta}>
           Lần thử gần nhất: {formatTime(data.receipts.lastAttemptAt)} · thành công: {formatTime(data.receipts.lastSuccessAt)} · thất bại: {formatTime(data.receipts.lastFailureAt)}
           {data.outbox.unreadableLines > 0 && ` · ${data.outbox.unreadableLines} dòng outbox không đọc được`}
+          {data.aiLogs.rejected > 0 && ` · ${data.aiLogs.rejected} AI log bị từ chối`}
         </div>
       </section>
       <section className={`editor-panel ${styles.panel}`} aria-labelledby="telemetry-videos-title">
@@ -97,7 +100,7 @@ export default function TelemetryTab() {
       </section>
       <section className={`editor-panel ${styles.panel}`} aria-labelledby="telemetry-preview-title">
         <span className="eyebrow">XEM TRƯỚC DỮ LIỆU GỬI</span>
-        <h2 id="telemetry-preview-title">Event chưa có biên nhận ({formatCount(data.counts.pending + data.counts.blocked)}, hiện tối đa {data.previewLimit})</h2>
+        <h2 id="telemetry-preview-title">Event chưa có biên nhận ({formatCount(data.counts.pending + data.counts.blocked + data.counts.rejected)}, hiện tối đa {data.previewLimit})</h2>
         <Table
           rowKey={(p) => String(p.event.event_id ?? JSON.stringify(p.event))}
           size="small"
