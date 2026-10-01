@@ -26,7 +26,12 @@ agent chỉ để chạy lại cùng một lệnh.
 
 ## Cổng và khả năng resume
 
-- Mỗi job ghi event `started → metrics → finished` vào `projects/<id>/.studio/runs.jsonl`.
+- Mỗi job ghi event `started → metrics → finished` vào `projects/<id>/.studio/runs.jsonl` và một bản
+  metadata-only vào `.studio/telemetry/outbox.jsonl`. Outbox offline này chưa gửi network; collector sẽ
+  batch/deduplicate theo `event_id` ở phase sau.
+- External CLI dùng `run start → run metrics → run finish`. Nếu có `cost-usd`, bắt buộc kèm provenance:
+  `provider_reported`, `gateway_reported` hoặc `server_price_estimate`; thiếu provenance là `unavailable`,
+  không phải `$0`.
 - Event append-only giúp giữ được lần chạy lỗi và nhận ra run còn dang dở sau khi process chết.
 - Stage chỉ chuyển sang `review` khi agent và deterministic gate đều chạy xong.
 - Cues chỉ sang `review` sau `tts.mjs generate --dry-run` (không truyền key, không tốn credit): nó ép

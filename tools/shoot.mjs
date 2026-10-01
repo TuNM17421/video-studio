@@ -35,7 +35,8 @@ async function shootAll(jobs) {
     try {
       await s('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
       await s('Page.navigate', { url: job.url });
-      const ready = await waitReady(s, 'true', 100);
+      const ready = await waitReady(s, 'true', 200);
+
       await sleep(job.settle ?? 150);
       const shot = await s('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       fs.mkdirSync(path.dirname(job.out), { recursive: true });

@@ -515,6 +515,52 @@ button.vs-tile:hover {
   flex: 1 0 100%;
   margin-top: var(--vu-space-2);
 }
+/* ── system status (telemetry + 9router) ─────────────────────────────────── */
+.vs-system-status {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--vu-space-2);
+}
+.vs-system-modal .ant-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vu-space-5);
+}
+.vs-settings-section h3 {
+  margin: 0 0 4px;
+  font-family: var(--vs-font-display);
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-bold);
+  color: var(--vu-blue-900);
+}
+.vs-settings-hint {
+  margin: 0 0 12px;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-settings-advanced.ant-collapse-ghost {
+  margin-bottom: 8px;
+}
+.vs-settings-advanced .ant-collapse-header {
+  padding-inline: 0 !important;
+  font-size: var(--vu-text-xs);
+  color: var(--vu-neutral-600);
+}
+.vs-settings-advanced .ant-collapse-content-box {
+  padding: 4px 0 0 !important;
+}
+.vs-settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
 .vs-section-title,
 .vs-field-label {
   display: inline-flex;

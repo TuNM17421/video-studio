@@ -3,8 +3,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { JobInfo, JobKind, LogEntry } from "../types";
+import type { GatewayUiSettings } from "./gateway";
 import { HttpError, REPO, stateDir } from "./paths";
-import { addRunMetrics, finishRun as finishWorkflowRun, startRun as startWorkflowRun } from "../../../../tools/workflow-ledger.mjs";
+import { addRunMetrics, finishRun as finishWorkflowRun, recordAiLog, startRun as startWorkflowRun } from "../../../../tools/workflow-ledger.mjs";
 
 export const machineLabel = () => (process.env.STUDIO_MACHINE_LABEL || os.hostname() || "unknown").trim();
 
@@ -27,9 +28,15 @@ interface Registry {
   elevenKey: string | null;
   /** Kaggle username + API key (from kaggle.json or typed in): memory only, same rule as elevenKey. */
   kaggle: { username: string; key: string } | null;
+  telemetrySyncing?: boolean;
+  /** UI override for STUDIO_TELEMETRY_*, set from the settings panel: RAM only, takes effect immediately, lost on
+   *  restart — env vars are the boot default, same rule as elevenKey/kaggle. */
+  telemetry: TelemetrySettings | null;
+  /** UI override for the 9router toggle, same rule as `telemetry` above. Read by gateway.ts. */
+  gateway: GatewayUiSettings | null;
 }
 const g = globalThis as typeof globalThis & { __videoStudio?: Registry };
-export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null });
+export const registry: Registry = (g.__videoStudio ??= { jobs: new Map(), logs: new Map(), listeners: new Map(), elevenKey: null, kaggle: null, telemetrySyncing: false, telemetry: null, gateway: null });
 
 const MAX_LOGS = 1500;
 
@@ -98,7 +105,7 @@ export function gpuJobElsewhere(id: string): string | null {
 export function startJob(
   id: string,
   kind: JobKind,
-  meta: { actor?: string; mode?: "agent" | "deterministic"; label?: string } = {},
+  meta: { actor?: string; mode?: "agent" | "deterministic"; label?: string; trigger?: string; feedbackIds?: string[] } = {},
 ) {
   if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy. Chờ xong hoặc bấm Dừng.");
   // The workflow ledger lives in projects/<video id>/.studio. A research run is not a video: its job key
@@ -111,6 +118,8 @@ export function startJob(
     mode: meta.mode || "deterministic",
     label: meta.label || kind,
     machine: machineLabel(),
+    trigger: meta.trigger,
+    feedbackIds: meta.feedbackIds,
   }));
   const job = {
     kind,
@@ -130,6 +139,17 @@ export function recordJobMetrics(id: string, metrics: {
   cachedInputTokens?: number;
   outputTokens?: number;
   costUsd?: number;
+  costSource?: string;
+  gatewayStatus?: string;
+  gatewayRequests?: number;
+  provider?: string;
+  sessionId?: string;
+  promptSha256?: string;
+  characters?: number;
+  credits?: number;
+  gpuSeconds?: number;
+  /** ffprobe'd off the finished MP4 (render.ts), so $/phút compares videos of different length fairly. */
+  videoDurationSec?: number;
   toolCalls?: number;
   turns?: number;
   model?: string;
@@ -154,6 +174,61 @@ function ledger<T>(id: string, write: () => T): T | null {
     log(id, "error", `Không ghi được nhật ký luồng (runs.jsonl): ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
+}
+
+/** Raw transcript is only captured by a Studio server job and only when the local owner opted in. */
+export function recordStudioAiLog(id: string, kind: string, text: string) {
+  const runId = registry.jobs.get(id)?.workflowRunId;
+  if (!runId) return { recorded: false, reason: "no_studio_run" };
+  return recordAiLog(REPO, id, { source: "studio", runId, kind, text });
+}
+
+export interface TelemetrySettings { url: string; token: string; autoSync: boolean }
+
+function telemetryFromEnv(): TelemetrySettings {
+  return {
+    url: (process.env.STUDIO_TELEMETRY_URL || "").trim(),
+    token: (process.env.STUDIO_TELEMETRY_TOKEN || "").trim(),
+    autoSync: process.env.STUDIO_TELEMETRY_AUTO_SYNC === "1",
+  };
+}
+
+/** The settings panel's override if one was saved this session, else the `.env` a person configured by hand. */
+export const readTelemetrySettings = (): TelemetrySettings => registry.telemetry ?? telemetryFromEnv();
+
+export function writeTelemetrySettings(patch: Partial<TelemetrySettings>): TelemetrySettings {
+  const current = readTelemetrySettings();
+  const url = (patch.url ?? current.url).trim();
+  if (url) {
+    try { new URL(url); } catch { throw new HttpError(400, "URL hệ thống log không hợp lệ."); }
+  }
+  const token = (patch.token ?? current.token).trim();
+  registry.telemetry = { url, token, autoSync: patch.autoSync ?? current.autoSync };
+  return registry.telemetry;
+}
+
+export const clearTelemetrySettings = () => { registry.telemetry = null; };
+
+/** Optional, non-blocking uploader. No endpoint/token means Studio never opens a network connection. */
+function scheduleTelemetrySync(id: string) {
+  const settings = readTelemetrySettings();
+  if (!settings.autoSync || !settings.url || !settings.token || registry.telemetrySyncing) return;
+  registry.telemetrySyncing = true;
+  const child = spawn(process.execPath, [path.join(REPO, "tools", "telemetry-sync.mjs")], {
+    cwd: REPO,
+    // The child reads STUDIO_TELEMETRY_URL/TOKEN itself; the settings-panel override must reach it too, since
+    // it may differ from what `.env` says.
+    env: { ...process.env, STUDIO_TELEMETRY_URL: settings.url, STUDIO_TELEMETRY_TOKEN: settings.token },
+    stdio: "ignore",
+  });
+  child.on("error", (error) => {
+    registry.telemetrySyncing = false;
+    log(id, "error", `Telemetry sync không chạy được: ${error.message}`);
+  });
+  child.on("close", (code) => {
+    registry.telemetrySyncing = false;
+    if (code !== 0) log(id, "error", `Telemetry sync thất bại (mã ${code}). Outbox vẫn giữ để thử lại.`);
+  });
 }
 
 /**
@@ -186,6 +261,7 @@ export function finishJob(id: string, status: JobInfo["status"]) {
   }
   emit(id, { type: "job", job: currentJob(id) });
   emit(id, { type: "state" });
+  scheduleTelemetrySync(id);
 }
 
 /** Errors `ownJob` has already logged and shown on the stage: a caller's catch must not add a second copy. */

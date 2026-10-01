@@ -15,6 +15,22 @@ export interface AgentConfig {
   review: { defaults: ReviewSettings; installed: AgentProvider[] };
 }
 
+/** `/api/gateway-settings` — the 9router cost-tracking toggle for Codex, plus a live diagnosis. */
+export interface GatewayStatus {
+  status: "disabled" | "unreachable" | "key_missing" | "ok";
+  message: string;
+  settings: { enabled: boolean; keyName: string; profile: string };
+}
+
+/** `/api/telemetry-settings` — where video metrics are sent; `hasToken` only, the token itself never round-trips. */
+export interface TelemetryStatus {
+  url: string;
+  hasToken: boolean;
+  autoSync: boolean;
+  ok: boolean;
+  message: string;
+}
+
 /** Cross-review of scene stills by a separate read-only session (lib/review.ts). Changeable any time. */
 export interface ReviewSettings {
   enabled: boolean;
@@ -417,6 +433,8 @@ export interface QaFindingItem {
   runId?: string | null;
   /** The review run that no longer saw it (set when QA verifies it). */
   resolvedBy?: string;
+  /** The QA run that stopped seeing the finding; `resolvedBy` keeps the same value for the review panel. */
+  verifiedBy?: string;
   /** Why the user skipped it (status wontfix), and when. */
   skipReason?: string | null;
   decidedAt?: string;
@@ -593,4 +611,57 @@ export interface LibraryGroup {
 export interface Library {
   groups: LibraryGroup[];
   videos: { id: string; player: string }[];
+}
+
+/**
+ * `/api/telemetry-local` — this machine's outbox as the "Số liệu" tab shows it. Built from a field whitelist:
+ * values never outside it reach the browser, and a key outside it is reported by name only.
+ * `acked` is only what sync-state.json receipts establish; there is no per-event "failed" state, because the
+ * uploader only records the last attempt's error for the whole run.
+ */
+export type TelemetryEventStatus = "acked" | "pending" | "blocked" | "rejected";
+
+export interface TelemetryPreviewEvent {
+  status: TelemetryEventStatus;
+  /** Why the uploader would refuse it (field path, never its value). */
+  blockedReason: string | null;
+  /** Why the collector refused it, from `outbox.rejected.jsonl`: the uploader will not try it again. */
+  rejectedReason: string | null;
+  /** Keys outside the preview whitelist that the raw event carries. */
+  extraKeys: string[];
+  event: Record<string, unknown>;
+}
+
+export interface TelemetryVideoMetrics {
+  video: string;
+  runs: number;
+  finished: number;
+  errors: number;
+  durationMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  /** Sum of measured costs only; null when no event carried a cost with a source. */
+  costUsd: number | null;
+  costMeasured: number;
+  costUnknown: number;
+  feedbackOpen: number;
+  lastAt: string | null;
+}
+
+export interface LocalTelemetry {
+  outbox: { total: number; unreadableLines: number; byType: Record<string, number> };
+  counts: { acked: number; pending: number; blocked: number; rejected: number };
+  receipts: {
+    found: boolean;
+    lastAttemptAt: string | null;
+    lastSuccessAt: string | null;
+    lastFailureAt: string | null;
+    lastError: string | null;
+  };
+  sending: { url: string; hasToken: boolean; autoSync: boolean; enabled: boolean; syncing: boolean };
+  /** Encrypted, opt-in AI logs: counted only — their content is never previewed. */
+  aiLogs: { count: number; enabled: boolean; rejected: number };
+  videos: TelemetryVideoMetrics[];
+  preview: TelemetryPreviewEvent[];
+  previewLimit: number;
 }

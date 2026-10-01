@@ -40,6 +40,8 @@ docs/
 # QA stills and Video Studio's per-machine run state (agent session ids, logs)
 projects/*/qa/
 projects/*/.studio/
+.studio/telemetry/
+telemetry/.env
 # Per-video inputs and generated deliverables stay local. Existing tracked Day02
 # templates remain tracked; add a future template explicitly when it is approved.
 /projects/*/

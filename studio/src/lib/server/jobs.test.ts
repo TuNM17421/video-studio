@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { currentJob, finishJob, isRunning, ownJob, registry, setProgress, startJob } from "./jobs";
+import { clearTelemetrySettings, currentJob, finishJob, isRunning, ownJob, readTelemetrySettings, registry, setProgress, startJob, writeTelemetrySettings } from "./jobs";
+
+// startJob opens a workflow run, which writes projects/<id>/.studio and the telemetry outbox of the real repo.
+// With the fake clock that leaked 1970-dated "videos" into the cost dashboard; the countdown needs none of it.
+vi.mock("../../../../tools/workflow-ledger.mjs", () => ({
+  startRun: () => ({ runId: "test-run" }),
+  finishRun: () => {},
+  addRunMetrics: () => {},
+  recordAiLog: () => ({ recorded: false, reason: "test" }),
+}));
 
 const ID = "test-eta";
 
@@ -8,7 +17,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Only the countdown is exercised here — starting a real job never touches the filesystem. */
+/** Only the countdown is exercised here — the workflow ledger is mocked so no job touches the filesystem. */
 describe("job countdown", () => {
   it("has no estimate before the job reports a percent", () => {
     startJob(ID, "render");
@@ -90,6 +99,29 @@ describe("arguments through a Windows .cmd shim", () => {
     expect(code).toBe(0);
     expect(JSON.parse(fs.readFileSync(out, "utf8"))).toEqual(args);
   }, 20_000);
+});
+
+describe("telemetry settings panel", () => {
+  afterEach(() => clearTelemetrySettings());
+
+  it("defaults to whatever .env says — nothing in a bare test environment", () => {
+    expect(readTelemetrySettings()).toEqual({ url: "", token: "", autoSync: false });
+  });
+
+  it("an override from the panel takes effect immediately, and a partial save keeps the rest", () => {
+    writeTelemetrySettings({ url: "https://video-telemetry.duckdns.org", token: "tok-1", autoSync: true });
+    expect(readTelemetrySettings()).toEqual({ url: "https://video-telemetry.duckdns.org", token: "tok-1", autoSync: true });
+    // Leaving the token field empty ("chưa lưu — để trống nếu giữ nguyên") must not blank out a saved token.
+    writeTelemetrySettings({ url: "https://video-telemetry.duckdns.org/" });
+    expect(readTelemetrySettings()).toMatchObject({ token: "tok-1", autoSync: true });
+  });
+
+  it("refuses a URL that isn't one, and clearing drops back to the env default", () => {
+    expect(() => writeTelemetrySettings({ url: "not a url" })).toThrow(/không hợp lệ/);
+    writeTelemetrySettings({ url: "https://x.duckdns.org" });
+    clearTelemetrySettings();
+    expect(readTelemetrySettings()).toEqual({ url: "", token: "", autoSync: false });
+  });
 });
 
 describe("a research job", () => {

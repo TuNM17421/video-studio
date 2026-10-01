@@ -74,6 +74,13 @@ describe("QA usage", () => {
   });
 });
 
+describe("usageFrom cache creation", () => {
+  it("counts Claude cache_creation as input", () => {
+    const raw = JSON.stringify({ usage: { input_tokens: 400, cache_creation_input_tokens: 48000, cache_read_input_tokens: 52000, output_tokens: 6000 } });
+    expect(usageFrom(raw)).toMatchObject({ inputTokens: 48400, cachedInputTokens: 52000, outputTokens: 6000 });
+  });
+});
+
 /**
  * Hai hàm này đọc output của `tools/verify.mjs`, nên bài test giữ đúng hình dạng thật của output đó:
  * cảnh báo là `  ! …`, lỗi là `  - …` dưới dòng `N problem(s):`. Chữ "warning" không có ở đâu cả — bắt

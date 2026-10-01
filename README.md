@@ -309,9 +309,11 @@ Agent chỉ viết nội dung của bước; server tự chạy phần máy móc
 - **Bàn giao** — build và verify lần cuối.
 
 Mỗi lượt ghi bước, actor, máy, model, thời gian, token và chi phí vào `projects/<id>/.studio/runs.jsonl`; feedback vào
-`feedback.jsonl`, lỗi tái diễn tăng `recurrence`, và `IMPROVEMENT-PLAN.md` được viết lại tự động. Xem báo cáo bằng
-`npm run workflow -- report --video <id>`; chạy ngoài Studio thì bọc gate bằng `tools/run-logged.mjs` và phần agent
-bằng `tools/video-workflow.mjs run start|finish`.
+`feedback.jsonl`, lỗi tái diễn tăng `recurrence`, và `IMPROVEMENT-PLAN.md` được viết lại tự động. Bản metadata-only
+của event cũng được append offline vào `.studio/telemetry/outbox.jsonl` để chuẩn bị gửi collector; chi phí thiếu
+provenance không được biến thành `$0`. Xem báo cáo bằng `npm run workflow -- report --video <id>`; chạy ngoài Studio
+thì bọc gate bằng `tools/run-logged.mjs`, phần agent bằng `tools/video-workflow.mjs run start|metrics|finish`, và chỉ
+ghi `--cost-usd` khi kèm `--cost-source` rõ ràng.
 
 ### Tour hướng dẫn và chế độ tập
 

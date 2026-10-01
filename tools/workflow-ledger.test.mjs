@@ -8,9 +8,12 @@ import {
   blockingFeedback,
   finishRun,
   readFeedback,
+  readAiLogOutbox,
   readRuns,
+  readTelemetryOutbox,
   recordFeedback,
   reconcileQaFeedback,
+  recordAiLog,
   startRun,
   updateFeedback,
   workflowReport,
@@ -64,6 +67,119 @@ test("a run with no machine, or an agent run with no model, groups under the unk
   const report = workflowReport(repo, id);
   assert.deepEqual(report.byModel, { "(chưa rõ)": { runs: 1, tokens: 0, costUsd: 0, failures: 0 } });
   assert.ok(report.byMachine["(chưa rõ)"]);
+});
+
+test("telemetry outbox is metadata-only and never turns an unknown cost into zero", () => {
+  const { repo, id } = fixture();
+  const run = startRun(repo, id, { stage: "scenes", actor: "codex", mode: "agent", model: "gpt-test" });
+  addRunMetrics(repo, id, run.runId, { inputTokens: 500, outputTokens: 100, costUsd: 9, rawPrompt: "must-not-export" });
+  finishRun(repo, id, run.runId, { status: "done" });
+
+  const events = readTelemetryOutbox(repo);
+  assert.deepEqual(events.map((event) => event.event_type), ["run_started", "usage_recorded", "run_finished"]);
+  assert.equal(events[1].measurement.input_tokens, 500);
+  assert.equal(events[1].measurement.cost.amount, null);
+  assert.equal(events[1].measurement.cost.source, "unavailable");
+  assert.equal(events[2].measurement.input_tokens, null);
+  assert.equal(events[2].measurement.cost.amount, null);
+  assert.equal(JSON.stringify(events).includes("must-not-export"), false);
+  assert.equal(events[0].installation_id, events[2].installation_id);
+});
+
+test("telemetry preserves a cost only when its provenance is explicit", () => {
+  const { repo, id } = fixture();
+  const run = startRun(repo, id, { stage: "script.write", actor: "cli", mode: "agent" });
+  addRunMetrics(repo, id, run.runId, { outputTokens: 42, costUsd: 0.03, costSource: "gateway_reported" });
+
+  const usage = readTelemetryOutbox(repo).at(-1);
+  assert.deepEqual(usage.measurement.cost, { amount: 0.03, currency: "USD", source: "gateway_reported" });
+});
+
+test("video duration rides on the render run, so cost/minute can be computed downstream", () => {
+  const { repo, id } = fixture();
+  const render = startRun(repo, id, { stage: "render", actor: "system", mode: "deterministic" });
+  addRunMetrics(repo, id, render.runId, { videoDurationSec: 372.4 });
+  const usage = readTelemetryOutbox(repo).find((event) => event.event_type === "usage_recorded");
+  assert.equal(usage.measurement.video_duration_s, 372.4);
+});
+
+test("usage event carries the run's stage and actor so tokens can be grouped per phase", () => {
+  const { repo, id } = fixture();
+  const run = startRun(repo, id, { stage: "scenes.qa", actor: "claude", mode: "agent" });
+  addRunMetrics(repo, id, run.runId, { inputTokens: 1200, cachedInputTokens: 800, outputTokens: 300, model: "claude-test", costUsd: 0.12, costSource: "provider_reported" });
+
+  const usage = readTelemetryOutbox(repo).find((event) => event.event_type === "usage_recorded");
+  assert.equal(usage.stage, "scenes.qa");
+  assert.equal(usage.actor_kind, "claude");
+  assert.equal(usage.model, "claude-test");
+  assert.deepEqual(usage.measurement.cost, { amount: 0.12, currency: "USD", source: "provider_reported" });
+});
+
+test("a voice step records characters/credits/GPU time, and a free step is a known zero, not unknown", () => {
+  const { repo, id } = fixture();
+  const eleven = startRun(repo, id, { stage: "voice", actor: "system", mode: "deterministic" });
+  addRunMetrics(repo, id, eleven.runId, { provider: "elevenlabs", characters: 1200, credits: 600 });
+  const kaggle = startRun(repo, id, { stage: "kaggle-generate", actor: "system", mode: "deterministic" });
+  addRunMetrics(repo, id, kaggle.runId, { provider: "kaggle", gpuSeconds: 540, costUsd: 5, costSource: "no_charge" });
+
+  const [a, b] = readTelemetryOutbox(repo).filter((event) => event.event_type === "usage_recorded");
+  assert.equal(a.provider, "elevenlabs");
+  assert.equal(a.measurement.characters, 1200);
+  assert.equal(a.measurement.credits, 600);
+  assert.deepEqual(a.measurement.cost, { amount: null, currency: "USD", source: "unavailable" });
+  assert.equal(b.measurement.gpu_seconds, 540);
+  assert.deepEqual(b.measurement.cost, { amount: 0, currency: "USD", source: "no_charge" });
+});
+
+test("regeneration is numbered: attempt per stage, version per delivered render, trigger and feedback ids", () => {
+  const { repo, id } = fixture();
+  const first = startRun(repo, id, { stage: "scenes", actor: "codex", mode: "agent" });
+  finishRun(repo, id, first.runId, { status: "done" });
+  const render = startRun(repo, id, { stage: "render", actor: "system", mode: "deterministic" });
+  finishRun(repo, id, render.runId, { status: "done" });
+  const deliver = startRun(repo, id, { stage: "deliver.gate", actor: "system", mode: "deterministic" });
+  const fix = startRun(repo, id, { stage: "scenes", actor: "codex", mode: "agent", trigger: "qa_fix", feedbackIds: ["fb-1"] });
+  assert.equal(deliver.version, 1, "delivery ships the version just rendered, it does not open v2");
+
+  assert.deepEqual([first.attempt, first.version, first.trigger], [1, 1, "initial"]);
+  assert.deepEqual([render.attempt, render.version], [1, 1]);
+  assert.deepEqual([fix.attempt, fix.version, fix.trigger, fix.feedbackIds], [2, 2, "qa_fix", ["fb-1"]]);
+  const started = readTelemetryOutbox(repo).filter((event) => event.event_type === "run_started").at(-1);
+  assert.deepEqual(started.run_context, { attempt: 2, version: 2, trigger: "qa_fix", feedback_ids: ["fb-1"] });
+});
+
+test("feedback reaches telemetry as metadata linked to the run that found it, never its text", () => {
+  const { repo, id } = fixture();
+  const run = startRun(repo, id, { stage: "scenes.qa", actor: "claude", mode: "agent" });
+  const item = recordFeedback(repo, id, { stage: "scenes", scope: "cue-03", code: "overlap", source: "qa", severity: "major", message: "Chữ đè mascot bí mật", runId: run.runId });
+  updateFeedback(repo, id, item.id, { status: "verified", resolvedBy: "run-fix" });
+
+  const states = readTelemetryOutbox(repo).filter((event) => event.event_type === "feedback_state");
+  assert.equal(states.length, 2);
+  assert.equal(states[0].run_id, run.runId);
+  assert.deepEqual([states[1].feedback.status, states[1].feedback.resolved_by_run, states[1].feedback.found_by_run], ["verified", "run-fix", run.runId]);
+  assert.equal(JSON.stringify(states).includes("bí mật"), false);
+});
+
+test("AI log is disabled by default, and opt-in log stays encrypted in its separate outbox", () => {
+  const { repo, id } = fixture();
+  const run = startRun(repo, id, { stage: "qa", actor: "cli", mode: "agent" });
+  const before = process.env.STUDIO_TELEMETRY_AI_LOGS;
+  const keyBefore = process.env.STUDIO_TELEMETRY_AI_LOG_KEY;
+  delete process.env.STUDIO_TELEMETRY_AI_LOGS;
+  assert.deepEqual(recordAiLog(repo, id, { runId: run.runId, kind: "agent_transcript", text: "private thinking" }), { recorded: false, reason: "disabled" });
+  process.env.STUDIO_TELEMETRY_AI_LOGS = "1";
+  process.env.STUDIO_TELEMETRY_AI_LOG_KEY = Buffer.alloc(32, 7).toString("base64");
+  assert.throws(() => recordAiLog(repo, id, { runId: run.runId, kind: "agent_transcript", text: "outside" }), /chỉ được Video Studio/);
+  const recorded = recordAiLog(repo, id, { source: "studio", runId: run.runId, kind: "agent_transcript", text: "Authorization: Bearer test-fixture-token" });
+  const [log] = readAiLogOutbox(repo);
+  assert.equal(recorded.recorded, true);
+  assert.equal(log.consent.explicit, true);
+  assert.equal(log.encrypted.algorithm, "aes-256-gcm");
+  assert.equal(JSON.stringify(log).includes("secret-token"), false);
+  assert.equal(JSON.stringify(log).includes("abcdefghijklmnop"), false);
+  if (before === undefined) delete process.env.STUDIO_TELEMETRY_AI_LOGS; else process.env.STUDIO_TELEMETRY_AI_LOGS = before;
+  if (keyBefore === undefined) delete process.env.STUDIO_TELEMETRY_AI_LOG_KEY; else process.env.STUDIO_TELEMETRY_AI_LOG_KEY = keyBefore;
 });
 
 test("feedback is deduplicated, counted and kept in the generated plan", () => {
@@ -139,4 +255,19 @@ test("a finding the agent claimed to fix reopens when review still sees it", () 
   reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "clipped", scene: "cue-05.png", message: "a" }], "qa-2");
   assert.equal(readFeedback(repo, id)[0].status, "open");
   assert.equal(blockingFeedback(repo, id, "scenes").length, 1);
+});
+
+test("telemetry names the fixing run as resolver and the QA run as verifier", () => {
+  const { repo, id } = fixture();
+  const found = startRun(repo, id, { stage: "scenes.qa", provider: "codex" });
+  reconcileQaFeedback(repo, id, "scenes", [{ severity: "major", code: "text-overflow", message: "Chữ tràn khung", scene: "cue-03.png" }], found.runId);
+  const item = readFeedback(repo, id)[0];
+  const fix = startRun(repo, id, { stage: "scenes", provider: "codex", feedbackIds: [item.id] });
+  const qa = startRun(repo, id, { stage: "scenes.qa", provider: "codex" });
+  reconcileQaFeedback(repo, id, "scenes", [], qa.runId);
+  const last = readTelemetryOutbox(repo).filter((e) => e.event_type === "feedback_state").at(-1).feedback;
+  assert.equal(last.resolved_by_run, fix.runId);
+  assert.equal(last.verified_by_run, qa.runId);
+  // Local field the review panel reads is unchanged.
+  assert.equal(readFeedback(repo, id)[0].resolvedBy, qa.runId);
 });
