@@ -67,7 +67,23 @@
 - `Icon` / every `icon` prop falls back to LineIcon names; HTML beats use `iconComponent(name)`.
 
 ## Known render warns
-- (none after authoring — all 69 components have authored previews)
+- **21 whiteboard parts throw in the floor card** (`WbAgentLoop`, `WbBarChart`, `WbChatWindow`, `WbChecklist`,
+  `WbCompare`, `WbCycle`, `WbFlight`, `WbFlow`, `WbIconLabel`, `WbIdea`, `WbMindMap`, `WbPhotoFrame`, `WbPromptBox`,
+  `WbRagFlow`, `WbSpeech`, `WbSteps`, `WbStickyNote`, `WbTable`, `WbTerminal`, `WbTimeline`, `WbTitleCloud`):
+  `TypeError: Cannot destructure property 'x'|'cx'|'from' of 'undefined'`. Each takes a required geometry object
+  (`at`, `box`, `from`/`to`…) that the `.d.ts` crash-prevention props don't synthesise, so the single render attempt
+  throws and the card falls to the typographic floor — `fallbackCard: true`, `bad: 0`. Expected until someone
+  authors their previews; NOT a bundle defect.
+- 2026-09-29: 35 components ship the floor card (the 21 above + `Whiteboard`, `Griffin`, `GriffinBadge`, `PhotoCard`,
+  `DialogueCard`, `CompareSplit`, `ConceptMap`, `Gauge`, `Iceberg`, `LayerStack`, `Matrix2x2`, `RangeBand`,
+  `Spotlight`, `UnitGrid`). Authorable on any later re-sync — grades and authored files carry forward.
+
+## Preview authoring gotchas (package shape)
+- The stage svg is `viewBox="0 0 w h"` at `width: 100%`, so **content that centres on the last item runs past the
+  right edge**: `Timeline`'s end label ("TRANSFORMER") was clipped until the stage kept ~150 px past each end of the
+  rail. Check the review sheet for clipped end labels, not just for "did it render".
+- 2026-09-29 authored: `AnalogyBridge`, `MisconceptionCard` (copy ported from `test-chi-phi-4/pD-shared.jsx` `MIS`),
+  `Timeline` (milestones from `thu-anh-tu-lieu/shared.jsx`). Curating from a real video beats inventing content.
 
 ## Re-sync risks
 - `lib/index.d.ts` and `components/index.d.ts` are hand-maintained: a new lib export or component `.d.ts` must be added there
@@ -78,3 +94,14 @@
 - `Flow.jsx` carries `@category flow` purely for design-sync grouping; don't drop it.
 - The durable set (.design-sync/{config.json,NOTES.md,conventions.md,previews/,docs/}) plus the DS additions
   (package.json, index.js, index.d.ts, lib/index.d.ts, components/index.d.ts) is committed to git.
+- **A component that renders "for real" from crash-prevention props can look worse than the floor card.** The
+  2026-09-29 sync found `AnalogyBridge`, `MisconceptionCard` and `Timeline` passing every mechanical flag
+  (`bad: 0`, root non-empty, PNG > 5 KB) while showing overlapping serif text on a white card — the floor only
+  fires when the root comes up EMPTY. Eyeball the new components' screenshots; the fix is authoring the preview.
+- Unmerged branches `feat/style-illustrated` (5 components under `components/illustrated/`) and `feat/style-morph`
+  (those plus 12 under `components/morph/` + `shapes.js`) add DS components and already edit `.design-sync/config.json`,
+  but **neither adds its components to `components/index.d.ts`** — they would be invisible to the sync. Check that
+  barrel first when those merge; `morph` also has no `styles/morph.json` yet.
+- Group dirs whose name equals the component name lose their group (the `Flow` trap): `Whiteboard` carries
+  `@category whiteboard` for that reason. Multi-export files need a `componentSrcMap` pin per export — the 21 `Wb*`
+  parts all pin to `components/whiteboard/parts.js`, `DialogueCard` to `components/figures/Dialogue.jsx`.

@@ -389,6 +389,16 @@ export function toScreen(camera, frame, p) {
   return { x: SCREEN_CENTER.x + (p.x - cam.x) * scale, y: SCREEN_CENTER.y + (p.y - cam.y) * scale, scale };
 }
 
+/**
+ * The board for a WHOLE video, drawn by a marker: every mark in `marks` starts at its own `at` frame and
+ * stays until an `erase` wipes its region, while `camera` pans / zooms over a board wider than the screen
+ * (the camera's `w` maps to 1920 px). Highlights render under the ink; everything else keeps its drawing
+ * order, so an erase covers what came before it. `pen` rides the stroke being written and lifts away
+ * during long pauses; `font` is a key of HAND_FONTS (default `playpen` = Playpen Sans). Mount ONE of
+ * these at the video frame inside a headerless SceneFrame - not a Series. Board rules (ink, timing,
+ * camera, erase) are in Whiteboard.prompt.md; marks come from createBoard/checkBoard in board.js.
+ * @category whiteboard
+ */
 export function Whiteboard({ frame, marks, camera, pen = true, font = HAND_DEFAULT }) {
   const cam = cameraAt(camera, frame);
   const scale = 1920 / cam.w;
