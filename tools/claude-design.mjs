@@ -41,8 +41,8 @@ const id = path.basename(videoDir);
 const mod = await import(pathToFileURL(cuesFile).href);
 const raw = mod.CUES ?? mod.RAW;
 if (!Array.isArray(raw) || !raw.length) fail('cues.js không phơi ra CUES');
+// SECTIONS chỉ là TÊN phần; số phần nằm trên từng câu. Thiếu tên thì brief vẫn dựng được, phần gọi là "Phần N".
 const sections = mod.SECTIONS ?? [];
-if (!sections.length) fail('cues.js không phơi ra SECTIONS — brief chia theo phần, không có phần thì không dựng được');
 
 // Giọng đã thu thì dùng số đo thật; chưa thu thì dùng ước của kịch bản, và brief nói rõ là ước.
 const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');

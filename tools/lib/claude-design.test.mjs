@@ -57,10 +57,32 @@ test('hợp đồng chụp frame luôn có mặt — nếu không thì không re
 test('câu không có chữ màn hình hay tiêu đề thì bỏ dòng đó, không in dòng rỗng', () => {
   const out = buildPrompt({ ...base, cues: [cue(1, 1, { visual: '', title: '' })], sections: ['Mở đầu'] });
   assert.match(out, /^1\. \[100 frame\] {2}Lời của câu 1\.$/m);
-  assert.doesNotMatch(out, /chữ phải thấy:\s*$/m);
+  assert.doesNotMatch(out, /trên màn hình:\s*$/m);
   assert.doesNotMatch(out, /tiêu đề cảnh:\s*$/m);
 });
 
 test('không có câu nào thì từ chối, không sinh brief rỗng', () => {
   assert.throws(() => buildPrompt({ ...base, cues: [] }), /không có câu nào/);
+});
+
+test('thiếu tên phần thì vẫn gom được, phần gọi là "Phần N"', () => {
+  const out = buildPrompt({ ...base, sections: [] });
+  assert.match(out, /chia làm 2 phần/);
+  assert.match(out, /### Phần 1 · Phần 1 {2}— 2 cảnh/);
+  assert.match(out, /### Phần 2 · Phần 2 {2}— 1 cảnh/);
+});
+
+test('câu ở phần không có tên KHÔNG được biến mất', () => {
+  // Hai video trong repo có `section:` trên từng câu mà không export SECTIONS — gom theo danh sách tên
+  // thì câu ở phần 2 rơi mất, và brief thiếu câu chỉ lộ ra sau khi đã dựng xong.
+  const out = buildPrompt({ ...base, sections: ['Chỉ có tên phần một'] });
+  assert.match(out, /### Phần 2 · Phần 2/);
+  for (const n of [1, 2, 3]) assert.match(out, new RegExp(`^${n}\\. \\[100 frame\\]`, 'm'));
+});
+
+test('số phần nhảy cóc vẫn gom đúng, không tạo phần rỗng', () => {
+  const out = buildPrompt({ ...base, cues: [cue(1, 1), cue(2, 5)], sections: [] });
+  assert.match(out, /chia làm 2 phần/);
+  assert.match(out, /### Phần 5 · Phần 5/);
+  assert.doesNotMatch(out, /### Phần 3/);
 });

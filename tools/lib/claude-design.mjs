@@ -35,7 +35,7 @@ export const CORE_RULES = `## Ràng buộc bắt buộc
 1. **Chỉ dùng component có sẵn trong design system này** (\`window.VK.*\`). Trước khi dựng, đọc \`<Tên>.prompt.md\` và \`<Tên>.d.ts\` của những component định dùng. **Không tự vẽ lại bằng \`div\` hay SVG thô một thứ design system đã có.** Thiếu component cho ý nào thì nói ra ở phần báo cáo — đừng chế một cái trông na ná.
 2. **Mỗi cảnh là một hàm thuần của frame.** Đọc frame bằng \`useFrame()\`, mọi giá trị chuyển động đi qua \`appear\`, \`fade\`, \`pulse\`, \`interpolate\`, \`spring\`, \`smooth\`. **Không** CSS transition, \`setTimeout\`, thời gian thực hay \`Math.random\` — cùng một frame phải luôn cho ra cùng một khung hình.
 3. **Màu chỉ lấy từ chín token \`C\`**: \`C.bg\`, \`C.bgAlt\`, \`C.text\`, \`C.textMuted\`, \`C.accent\`, \`C.accentStrong\`, \`C.red\`, \`C.redSoft\`, \`C.dotInactive\`. Nhạt thì \`alpha('red', 0.24)\`. **Không thêm mã màu hex mới, không gradient.**
-4. **Không thêm con số, kết quả hay tên riêng nào không có trong danh sách câu dưới đây.** Ngược lại, dòng chữ đi kèm mỗi câu là thứ **bắt buộc** xuất hiện — người xem cần đọc được, không chỉ nghe.
+4. **Không thêm con số, kết quả hay tên riêng nào không có trong danh sách câu dưới đây.** Ngược lại, dòng \`trên màn hình\` của mỗi câu là thứ cảnh **phải** cho thấy — người xem cần đọc được con số, không chỉ nghe. Dòng đó là của người viết kịch bản: chữ thì chép đúng, còn ý đồ hình (nếu có) là gợi ý, bạn dựng theo cách của bạn.
 5. Chữ trong cảnh: dòng đầu là danh từ VIẾT HOA, dòng sau là giải thích chữ thường.`;
 
 /** The five answers that make a run worth reading: what it used, where it stopped, what it had to give up. */
@@ -73,7 +73,7 @@ export function durationWords(frames) {
  */
 function cueLines(cue, measured) {
   const out = [`${cue.n}. [${measured ? '' : '~'}${cue.frames} frame]  ${cue.text}`];
-  if (cue.visual) out.push(`    chữ phải thấy: ${cue.visual}`);
+  if (cue.visual) out.push(`    trên màn hình: ${cue.visual}`);
   if (cue.title) out.push(`    tiêu đề cảnh: ${cue.title}`);
   return out.join('\n');
 }
@@ -82,13 +82,18 @@ function cueLines(cue, measured) {
  * The whole brief. `cues` carry `{ n, section, text, title, visual, frames }`; `measured` says whether those
  * frames came from `voice.cues.json` (real) or from the script's estimate (the voice is not recorded yet).
  */
-export function buildPrompt({ id, title, sections, cues, measured, styleName, styleBlock }) {
+export function buildPrompt({ id, title, sections = [], cues, measured, styleName, styleBlock }) {
   if (!cues?.length) throw new Error('không có câu nào');
   const total = cues.reduce((sum, c) => sum + c.frames, 0);
+  // Gom theo số phần của chính các câu, không theo danh sách tên: hai video trong repo có `section:` trên
+  // từng câu mà không export SECTIONS, và nếu gom theo tên thì câu ở phần không có tên sẽ biến mất không
+  // một lời báo — brief thiếu câu là thứ chỉ lộ ra khi đã dựng xong.
+  const groups = [...new Set(cues.map((c) => c.section))].sort((a, b) => a - b)
+    .map((n) => ({ n, name: sections[n - 1] || `Phần ${n}`, cues: cues.filter((c) => c.section === n) }));
   const head = [
     `Mình cần dựng một video bài giảng bằng đúng design system có sẵn trong project này.`,
     '',
-    `**Quy mô.** ${cues.length} cảnh, tổng **${total.toLocaleString('vi-VN')} frame** ở ${FPS} hình mỗi giây (khoảng ${durationWords(total)}), chia làm ${sections.length} phần. Video: *${title || id}*.`,
+    `**Quy mô.** ${cues.length} cảnh, tổng **${total.toLocaleString('vi-VN')} frame** ở ${FPS} hình mỗi giây (khoảng ${durationWords(total)}), chia làm ${groups.length} phần. Video: *${title || id}*.`,
     '',
     measured
       ? `**Thời lượng từng cảnh là số đo thật** từ file giọng đã thu, **không được đổi** — cảnh phải vừa đúng khung giờ của câu đang đọc.`
@@ -99,11 +104,10 @@ export function buildPrompt({ id, title, sections, cues, measured, styleName, st
     `**Phần hình là của bạn.** Mình chỉ đưa ba thứ đã khoá: lời đang đọc, thời lượng cảnh, và chữ bắt buộc phải xuất hiện. Còn bố cục, chọn component, cách chuyển cảnh, có hay không một mạch hình xuyên suốt — bạn tự quyết. Đừng hỏi lại mình từng cảnh.`,
   ].join('\n');
 
-  const body = sections.map((name, i) => {
-    const group = cues.filter((c) => c.section === i + 1);
+  const body = groups.map(({ n, name, cues: group }) => {
     const frames = group.reduce((sum, c) => sum + c.frames, 0);
     return [
-      `\n### Phần ${i + 1} · ${name}  — ${group.length} cảnh, ${frames.toLocaleString('vi-VN')} frame\n`,
+      `\n### Phần ${n} · ${name}  — ${group.length} cảnh, ${frames.toLocaleString('vi-VN')} frame\n`,
       ...group.map((c) => cueLines(c, measured)),
     ].join('\n');
   }).join('\n');
@@ -114,7 +118,7 @@ export function buildPrompt({ id, title, sections, cues, measured, styleName, st
     styleBlock ? `## Style: ${styleName}\n\n${styleBlock.trim()}` : '',
     CAPTURE_CONTRACT,
     WORKING,
-    `## Danh sách ${cues.length} cảnh\n\nĐịnh dạng: \`số thứ tự. [thời lượng]  lời đang đọc\`, rồi \`chữ phải thấy:\` là chữ và số bắt buộc xuất hiện trong cảnh, và \`tiêu đề cảnh:\` là chữ truyền vào \`title\`.\n${body}`,
+    `## Danh sách ${cues.length} cảnh\n\nĐịnh dạng: \`số thứ tự. [thời lượng]  lời đang đọc\`, rồi \`trên màn hình:\` là thứ cảnh phải cho thấy, và \`tiêu đề cảnh:\` là chữ truyền vào \`title\`.\n${body}`,
     REPORT_ASKS,
   ].filter(Boolean).join('\n\n');
 }
