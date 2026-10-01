@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPrompt, durationWords } from './claude-design.mjs';
+import { buildPrompt, bundleFrames, durationWords, inspectBundle } from './claude-design.mjs';
 
 const cue = (n, section, extra = {}) => ({
   n, section, frames: 100, text: `Lời của câu ${n}.`, title: `Tiêu đề ${n}`, visual: `Chữ ${n}`, ...extra,
@@ -85,4 +85,52 @@ test('số phần nhảy cóc vẫn gom đúng, không tạo phần rỗng', () 
   assert.match(out, /chia làm 2 phần/);
   assert.match(out, /### Phần 5 · Phần 5/);
   assert.doesNotMatch(out, /### Phần 3/);
+});
+
+const bundle = (over = {}) => ({
+  files: ['Video.html', 'video.compiled.js', 'cues.js'],
+  page: 'Video.html',
+  pageHtml: '<script src="../../_vendor/react.js"></script><script src="./video.compiled.js"></script><script src="./cues.js"></script>',
+  scripts: ['window.vkDuration = 10; window.vkSetFrame = n => {}; window.__frameReady = true; const f = params.get("frame");'],
+  ...over,
+});
+
+test('thư mục đủ và đúng hợp đồng thì qua', () => {
+  const r = inspectBundle(bundle());
+  assert.equal(r.ok, true);
+  assert.ok(r.checks.every((c) => c.ok));
+});
+
+test('thiếu file mà trang nạp thì chặn — trang trắng vẫn render ra đủ frame', () => {
+  const r = inspectBundle(bundle({ files: ['Video.html', 'cues.js'] }));
+  assert.equal(r.ok, false);
+  const c = r.checks.find((x) => x.name === 'file trang cần');
+  assert.equal(c.ok, false);
+  assert.match(c.detail, /video\.compiled\.js/);
+});
+
+test('thiếu vkSetFrame thì chặn — bộ chụp không điều khiển được frame nào', () => {
+  const r = inspectBundle(bundle({ scripts: ['window.vkDuration = 10; window.__frameReady = true;'] }));
+  assert.equal(r.ok, false);
+  assert.equal(r.checks.find((x) => x.name === 'phơi vkSetFrame').ok, false);
+});
+
+test('script từ CDN ngoài chỉ là cảnh báo, không chặn', () => {
+  const r = inspectBundle(bundle({ pageHtml: '<script src="https://unpkg.com/react@18/umd/react.js"></script><script src="./video.compiled.js"></script><script src="./cues.js"></script>' }));
+  assert.equal(r.ok, true);
+  const c = r.checks.find((x) => x.name === 'không phụ thuộc CDN');
+  assert.equal(c.ok, false);
+  assert.equal(c.level, 'warning');
+  assert.match(c.detail, /unpkg\.com/);
+});
+
+test('không có file .html thì dừng ngay, không soát tiếp', () => {
+  const r = inspectBundle(bundle({ page: undefined, files: ['a.txt'] }));
+  assert.equal(r.ok, false);
+  assert.equal(r.checks.length, 1);
+});
+
+test('đọc được tổng frame bên kia khai', () => {
+  assert.equal(bundleFrames(['window.PARTS = [{ n: 1, frames: 884 }, { n: 2, frames: 1565 }];']), 2449);
+  assert.equal(bundleFrames(['không có PARTS']), null);
 });

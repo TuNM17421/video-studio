@@ -6224,3 +6224,22 @@ details.vs-flow-more[open] > summary {
 }
 .vs-cd-switch { margin: 6px 0 0; }
 .vs-cd-switch .ant-btn { padding-inline: 0; font-size: var(--vu-text-xs); }
+.vs-cd-import {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.vs-cd-import .vs-field-label { display: flex; align-items: center; gap: 6px; }
+.vs-cd-import .vs-cd-tools { margin: 10px 0; }
+.vs-cd-checks { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.vs-cd-checks li {
+  display: grid;
+  grid-template-columns: 16px minmax(140px, max-content) 1fr;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--vu-text-xs);
+}
+.vs-cd-checks li span { color: var(--vu-neutral-600); }
+.vs-cd-checks li.is-ok > .anticon { color: var(--vu-lesson-ok); }
+.vs-cd-checks li.is-warning > .anticon { color: var(--vu-amber-600); }
+.vs-cd-checks li.is-problem > .anticon { color: var(--vu-red-700); }

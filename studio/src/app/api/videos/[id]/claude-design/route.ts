@@ -1,4 +1,4 @@
-import { readBrief, writeBrief } from "@/lib/server/claude-design";
+import { importBundle, readBrief, writeBrief } from "@/lib/server/claude-design";
 import { handle } from "@/lib/server/http";
 import { emit, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
@@ -7,7 +7,8 @@ import { readState, updateState } from "@/lib/server/videos";
 /**
  * Bàn giao sang Claude Design. `GET` trả brief đã sinh lần trước (hoặc `null`); `POST { action: "prompt" }`
  * sinh lại theo cues.js và thời lượng giọng hiện tại; `POST { action: "builder", value }` đổi chỗ dựng cảnh
- * khi người dùng đổi ý sau lúc tạo video.
+ * khi người dùng đổi ý sau lúc tạo video; `POST { action: "scan" | "import", folder }` soát rồi chép thư
+ * mục tải về từ Claude Design vào `ds-bundle/cd/<id>/`.
  *
  * Không có thao tác "gửi": `DesignSync` không có method nào gửi prompt cho agent thiết kế, nên bước dán vẫn
  * là việc của người dùng. Đừng thêm thao tác giả vờ gửi được.
@@ -21,7 +22,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
 export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
   assertId(id);
-  const body = (await req.json()) as { action?: string; value?: string };
+  const body = (await req.json()) as { action?: string; value?: string; folder?: string };
 
   // Đổi chỗ dựng cảnh sau khi đã tạo video. Chỗ quyết chính vẫn là bước Kế hoạch; đây là đường sửa khi
   // đổi ý, và chỉ mở khi cảnh chưa được duyệt — đổi sau đó thì hai đường cùng ghi vào một thư mục video.
@@ -35,6 +36,15 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     log(id, "system", `Dựng cảnh bằng: ${body.value === "claude-design" ? "Claude Design" : "agent ở máy"}.`);
     emit(id, { type: "state" });
     return Response.json({ sceneBuilder: body.value });
+  }
+
+  if (body.action === "scan" || body.action === "import") {
+    const report = await importBundle(id, String(body.folder || ""), body.action === "scan");
+    if (body.action === "import") {
+      log(id, "system", `Nhập cảnh từ Claude Design: ${report.copied} file → ${report.dest}`);
+      emit(id, { type: "state" });
+    }
+    return Response.json({ report });
   }
 
   if (body.action !== "prompt") throw new HttpError(400, "Thao tác không hợp lệ.");

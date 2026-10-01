@@ -122,3 +122,51 @@ export function buildPrompt({ id, title, sections = [], cues, measured, styleNam
     REPORT_ASKS,
   ].filter(Boolean).join('\n\n');
 }
+
+/**
+ * Soát một thư mục tải về từ Claude Design trước khi chép vào chỗ render.
+ *
+ * Ba thứ dưới đây mà sai thì render ra rác chứ không báo lỗi, nên chặn ở đây — cùng tinh thần với phép quét
+ * thư mục audio của `voice-import`, thứ chặn thẳng một thư mục lệch một câu thay vì để lộ sau khi render xong:
+ *
+ *   · thiếu file trang hoặc thiếu đúng file mà trang nạp → trang trắng, mà `render.mjs` vẫn chụp đủ frame;
+ *   · không phơi `vkSetFrame`/`vkDuration` → bộ chụp không điều khiển được frame nào;
+ *   · nạp script từ CDN ngoài → mạng chớp một nhịp giữa hàng chục nghìn frame là hỏng cả mẻ.
+ *
+ * Trả về danh sách kiểm, không ném lỗi: người gọi quyết định cái nào là chặn, cái nào là cảnh báo.
+ */
+export function inspectBundle({ files, page, pageHtml, scripts }) {
+  const checks = [];
+  const add = (name, ok, detail, level = 'problem') => checks.push({ name, ok, detail, level: ok ? 'ok' : level });
+
+  add('trang', Boolean(page), page ? page : 'không thấy file .html nào trong thư mục');
+  if (!page) return { ok: false, checks };
+
+  // Trang nạp gì thì thứ đó phải có mặt — thiếu một file là trang trắng, mà bộ chụp vẫn chụp đủ frame.
+  const local = [...pageHtml.matchAll(/(?:src|href)="(\.[^"]+)"/g)].map((m) => m[1].replace(/^\.\//, ''));
+  const missing = local.filter((rel) => !rel.startsWith('../') && !files.includes(rel));
+  add('file trang cần', missing.length === 0, missing.length ? `thiếu: ${missing.join(', ')}` : `đủ ${local.length} file`);
+
+  // Script ngoài: với một lượt chụp hàng chục nghìn frame thì mỗi phụ thuộc mạng là một chỗ hỏng.
+  const remote = [...pageHtml.matchAll(/src="(https?:\/\/[^"]+)"/g)].map((m) => new URL(m[1]).host);
+  add('không phụ thuộc CDN', remote.length === 0,
+    remote.length ? `trang nạp script từ ${[...new Set(remote)].join(', ')} — render hàng chục nghìn frame sẽ phụ thuộc mạng` : 'mọi script nằm trong project',
+    'warning');
+
+  // Hợp đồng chụp frame: thiếu là không chụp được frame nào.
+  const js = scripts.join('\n');
+  for (const [name, needle] of [['vkSetFrame', 'vkSetFrame'], ['vkDuration', 'vkDuration'], ['__frameReady', '__frameReady']]) {
+    add(`phơi ${name}`, js.includes(needle), js.includes(needle) ? 'có' : 'không tìm thấy trong mã trang');
+  }
+  add('chế độ ?frame=N', /[?&]frame=|['"]frame['"]/.test(js + pageHtml), 'tham số đóng băng frame', 'warning');
+
+  return { ok: checks.every((c) => c.ok || c.level === 'warning'), checks };
+}
+
+/** Tổng frame bên kia khai, nếu đọc được — lệch với giọng bên này là cảnh trôi so với lời. */
+export function bundleFrames(scripts) {
+  const parts = /PARTS\s*=\s*\[([\s\S]*?)\]\s*;/.exec(scripts.join('\n'));
+  if (!parts) return null;
+  const frames = [...parts[1].matchAll(/frames:\s*(\d+)/g)].map((m) => Number(m[1]));
+  return frames.length ? frames.reduce((a, b) => a + b, 0) : null;
+}

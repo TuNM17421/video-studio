@@ -70,7 +70,7 @@ export function ScenesStep({ detail, logs, job, busy, act, stop, nav, refresh }:
       {!approved && <ImagesPanel detail={detail} act={act} refresh={refresh} />}
       {/* Chọn ở bước Kế hoạch, không phải ở đây: nó đổi cả cách làm của bước này. Nút dưới chỉ là đường
           sửa khi đổi ý, và đóng lại khi cảnh đã duyệt. */}
-      {byClaudeDesign && voiced && !approved && <ClaudeDesignPanel detail={detail} act={act} />}
+      {byClaudeDesign && voiced && !approved && <ClaudeDesignPanel detail={detail} act={act} busy={busy} />}
       {!byClaudeDesign && voiced && !approved && status !== "running" && <p className="vs-cd-switch">
         <Button size="small" type="link" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/claude-design`, { action: "builder", value: "claude-design" }))}>
           Dựng bằng Claude Design thay vì agent ở máy

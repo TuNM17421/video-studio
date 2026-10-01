@@ -28,11 +28,11 @@ export interface DesignBrief {
 
 const BRIEF = (id: string) => path.join(projectDir(id), "prompt-claude-design.md");
 
-function runTool(args: string[]): Promise<{ code: number; stderr: string }> {
+function runTool(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    execFile(process.execPath, args, { cwd: REPO, maxBuffer: 8 << 20 }, (error, _stdout, stderr) => {
+    execFile(process.execPath, args, { cwd: REPO, maxBuffer: 8 << 20 }, (error, stdout, stderr) => {
       const code = error && typeof (error as { code?: number }).code === "number" ? (error as { code: number }).code : error ? 1 : 0;
-      resolve({ code, stderr });
+      resolve({ code, stdout, stderr });
     });
   });
 }
@@ -81,3 +81,44 @@ export function readBrief(id: string): DesignBrief | null {
     measured: !text.includes("Giọng đọc chưa thu"),
   };
 }
+
+export interface BundleCheck { name: string; ok: boolean; detail: string; level: "ok" | "warning" | "problem" }
+export interface ImportReport {
+  ok: boolean;
+  /** File .html của trang, để dựng URL render. */
+  page: string | null;
+  files: number;
+  /** Đường tương đối repo, nơi file được chép tới. */
+  dest: string;
+  checks: BundleCheck[];
+  /** Có mặt khi đã chép thật. */
+  copied?: number;
+}
+
+/**
+ * Nhập cảnh dựng bên Claude Design: người dùng tải thư mục project về, chọn nó ở đây, Studio soát rồi chép
+ * vào `ds-bundle/cd/<id>/`.
+ *
+ * Soát trước khi chép, cùng tinh thần với phép quét thư mục audio: một thư mục thiếu file hay lệch tổng
+ * frame vẫn render ra đủ frame — chỉ là cảnh trắng hoặc trôi so với lời, và chỉ lộ ra sau khi đã render
+ * xong cả bài. `--scan` chỉ soát, không chép.
+ */
+export async function importBundle(id: string, folder: string, scanOnly: boolean): Promise<ImportReport> {
+  const { managed } = readState(id);
+  if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
+  if (!folder.trim()) throw new HttpError(400, "Chọn thư mục tải về từ Claude Design.");
+  if (!path.isAbsolute(folder) || !exists(folder)) throw new HttpError(400, `Không tìm thấy thư mục ${folder}`);
+
+  const args = ["tools/claude-design.mjs", "import", rel(videoDir(id)), "--from", folder];
+  if (scanOnly) args.push("--scan");
+  const { code, stdout, stderr } = await runTool(args);
+  const parsed = stdout.trim().split("\n").pop();
+  if (!parsed) throw new HttpError(500, stderr.trim().split("\n").pop() || "Không soát được thư mục.");
+  const report = JSON.parse(parsed) as ImportReport;
+  if (code !== 0 && !scanOnly) throw new HttpError(400, "Thư mục không qua phép soát — xem danh sách kiểm.");
+  return report;
+}
+
+/** URL trang vừa nhập, để render bằng `--url`. `base` là server đang phục vụ ds-bundle. */
+export const importedUrl = (id: string, page: string, base: string) =>
+  `${base.replace(/\/$/, "")}/cd/${id}/${page}`;

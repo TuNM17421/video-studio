@@ -1,11 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckOutlined, CopyOutlined, ExportOutlined, EyeOutlined, FileTextOutlined, RedoOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseCircleFilled, CheckCircleFilled, CopyOutlined, DownloadOutlined, ExportOutlined, EyeOutlined, FileTextOutlined, RedoOutlined, WarningFilled } from "@ant-design/icons";
 import { Alert, Button, Modal, Popconfirm, Tag, Typography } from "antd";
 import { api } from "@/lib/client";
 import type { VideoDetail } from "@/lib/types";
+import { SourcePickerField } from "../source-picker";
 import { post } from "./shared";
+
+interface BundleCheck { name: string; ok: boolean; detail: string; level: "ok" | "warning" | "problem" }
+interface ImportReport { ok: boolean; page: string | null; files: number; dest: string; checks: BundleCheck[]; copied?: number }
+
+/** Bảng kiểm của phép soát: một thư mục lệch vẫn render ra đủ frame, chỉ là cảnh trắng hoặc trôi so với lời. */
+function CheckList({ report }: { report: ImportReport }) {
+  return <ul className="vs-cd-checks">
+    {report.checks.map((c) => <li key={c.name} className={`is-${c.level}`}>
+      {c.ok ? <CheckCircleFilled /> : c.level === "warning" ? <WarningFilled /> : <CloseCircleFilled />}
+      <b>{c.name}</b>
+      <span>{c.detail}</span>
+    </li>)}
+  </ul>;
+}
 
 interface Brief {
   file: string;
@@ -24,11 +39,13 @@ interface Brief {
  * giả vờ gửi được — thứ Studio làm được là gom brief cho đúng, và đó mới là phần tốn công: lời đọc, thời
  * lượng **đo thật** của từng câu, và phần riêng của style, không lẫn đường dẫn của repo.
  */
-export function ClaudeDesignPanel({ detail, act }: { detail: VideoDetail; act: (fn: () => Promise<unknown>) => Promise<boolean> }) {
+export function ClaudeDesignPanel({ detail, act, busy }: { detail: VideoDetail; act: (fn: () => Promise<unknown>) => Promise<boolean>; busy: boolean }) {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [folder, setFolder] = useState("");
+  const [report, setReport] = useState<ImportReport | null>(null);
   const id = detail.state.id;
 
   const load = useCallback(async () => {
@@ -42,6 +59,16 @@ export function ClaudeDesignPanel({ detail, act }: { detail: VideoDetail; act: (
     const data = await post(`/api/videos/${id}/claude-design`, { action: "prompt" }) as { brief: Brief };
     setBrief(data.brief);
     setCopied(false);
+  });
+
+  const scan = () => act(async () => {
+    const data = await post(`/api/videos/${id}/claude-design`, { action: "scan", folder }) as { report: ImportReport };
+    setReport(data.report);
+  });
+
+  const bringIn = () => act(async () => {
+    const data = await post(`/api/videos/${id}/claude-design`, { action: "import", folder }) as { report: ImportReport };
+    setReport(data.report);
   });
 
   const copy = async () => {
@@ -91,6 +118,23 @@ export function ClaudeDesignPanel({ detail, act }: { detail: VideoDetail; act: (
         description="Dựng theo số ước thì khi có giọng thật phải chỉnh lại nhịp. Sinh lại brief sau bước Giọng đọc để lấy số đo thật." />}
 
       {brief && <Typography.Text type="secondary" className="mono">{brief.file}</Typography.Text>}
+
+      <div className="vs-cd-import">
+        <span className="vs-field-label"><DownloadOutlined /> Mang kết quả về</span>
+        <p className="vs-cd-lede">
+          Dựng xong bên kia thì tải thư mục project về máy, chọn ở đây. Studio soát trước khi chép:
+          thư mục thiếu file hay lệch tổng frame vẫn render ra đủ frame, chỉ là cảnh trắng hoặc trôi so với lời.
+        </p>
+        <SourcePickerField label="Thư mục tải về" purpose="scenes" value={folder} disabled={busy} onChange={(v) => { setFolder(v); setReport(null); }} />
+        <div className="vs-cd-tools">
+          <Button size="small" disabled={!folder || busy} onClick={scan}>Soát thư mục</Button>
+          <Button size="small" type="primary" disabled={!folder || busy || !report?.ok} onClick={bringIn}>Chép vào Studio</Button>
+        </div>
+        {report && <CheckList report={report} />}
+        {report?.copied !== undefined && <Alert type="success" showIcon
+          message={`Đã chép ${report.copied} file vào ${report.dest}`}
+          description="Sang bước Render để xuất MP4 với đúng giọng và nhạc nền của video này." />}
+      </div>
 
       <Modal
         open={preview}
