@@ -46,9 +46,14 @@ const sections = mod.SECTIONS ?? [];
 
 // Giọng đã thu thì dùng số đo thật; chưa thu thì dùng ước của kịch bản, và brief nói rõ là ước.
 const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const voiceFile = path.join(repo, 'voice/out', id, 'voice.cues.json');
+// Giọng nằm ở `voice/out/<id>/` từ 2026; video cũ còn ở `tts-elevenlabs/out/<id>/` (xem voiceOutAll của
+// Studio). Bỏ sót đường cũ thì brief lặng lẽ rơi về ước lượng dù đã có số đo thật.
+const voiceFile = [
+  path.join(repo, 'voice/out', id, 'voice.cues.json'),
+  path.join(repo, 'tts-elevenlabs/out', id, 'voice.cues.json'),
+].find((f) => fs.existsSync(f));
 let measuredFrames = null;
-if (fs.existsSync(voiceFile)) {
+if (voiceFile) {
   const parsed = JSON.parse(fs.readFileSync(voiceFile, 'utf8'));
   const list = Array.isArray(parsed) ? parsed : parsed.cues;
   measuredFrames = new Map(list.map((c) => [c.n, c.durationInFrames]));
