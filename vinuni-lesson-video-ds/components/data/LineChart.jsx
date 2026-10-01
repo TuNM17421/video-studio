@@ -75,9 +75,11 @@ export function LineChart({
   const py = (v) => y + h - ((v - y0) / (y1 - y0 || 1)) * h;
   const headX = x0 + (x1 - x0) * p;
   const drawn = series.map((s) => ({ ...s, pts: pointsOf(s, [x0, x1], samples) }));
-  // Deterministic id from the plot box, which is unique within a scene: verify bans a random or
-  // clock-derived one in components, and two charts in one scene must not share a clip.
-  const clipId = `vk-lc-${Math.round(x)}-${Math.round(y)}-${Math.round(w)}`;
+  // The id must encode EVERYTHING the clip depends on, not just the box. SVG resolves url(#id) to the
+  // first definition in the document, so two charts that share an id share a clip — a second chart at a
+  // different `progress` then gets the first one's cut, with its head dot stranded past the line's end.
+  // Keyed this way, two ids collide only when the clips are identical, which is harmless.
+  const clipId = `vk-lc-${Math.round(x)}-${Math.round(y)}-${Math.round(w)}-${Math.round(h)}-${Math.round(p * 1000)}`;
   return (
     <g opacity={opacity < 1 ? opacity : undefined}>
       <defs>

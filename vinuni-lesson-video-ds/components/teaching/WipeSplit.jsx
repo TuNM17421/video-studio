@@ -40,9 +40,11 @@ export function WipeSplit({
   if (opacity <= 0.001) return null;
   const t = clamp01(at);
   const split = x + w * t;
-  // Deterministic ids from the stage box, which is unique within a scene: verify bans a random or
-  // clock-derived one in components.
-  const key = `${Math.round(x)}-${Math.round(y)}-${Math.round(w)}`;
+  // The id must encode EVERYTHING the clips depend on, `at` included. SVG resolves url(#id) to the
+  // first definition in the document, so two splits sharing an id share a divider: the second one draws
+  // its red line in the right place and clips its halves in the wrong one. Keyed this way, two ids
+  // collide only when the clips are identical, which is harmless.
+  const key = `${Math.round(x)}-${Math.round(y)}-${Math.round(w)}-${Math.round(h)}-${Math.round(t * 1000)}`;
   const lid = `vk-ws-l-${key}`;
   const rid = `vk-ws-r-${key}`;
   return (

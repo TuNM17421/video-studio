@@ -243,3 +243,13 @@ export declare function layoutGraph(
 /* ---------------------------------------------------------------- assets */
 /** Absolute URL of a file addressed from the design-system root ("ui_kits/lesson-video/videos/<id>/img/s3.jpg"); URLs pass through. */
 export declare function dsUrl(path: string): string;
+
+/* ----------------------------------------------------------------- noise */
+/** Deterministic 0–1 from up to three integers. */
+export declare function hash01(a: number, b?: number, c?: number): number;
+/** Smooth value noise in [-1, 1], continuous in `t` (one unit of t = one lattice step). */
+export declare function noise1(seed: number, t: number): number;
+/** Fractal sum of `octaves` noise1 layers, in [-1, 1] — organic where a sine is mechanical. */
+export declare function fbm(seed: number, t: number, octaves?: number): number;
+/** hash01(seed, i) scaled into [lo, hi]. */
+export declare function spread(seed: number, i: number, lo?: number, hi?: number): number;
