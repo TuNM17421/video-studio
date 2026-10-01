@@ -311,6 +311,11 @@ commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "k
 ## Notes
 - Imported voice: `docs/decisions/voice-align.md` records why word timestamps come from Whisper alone and
   what would justify moving to forced alignment; `/voice-align-check` measures whether that day has come.
+- Render: `docs/decisions/render-hoc-tu-video-duyluan.md` has measured numbers for 4K, 60 fps, 9:16,
+  `image2pipe` and ProRes 4444 alpha, and says which of them are worth doing (issue #62). The bench that
+  produced them is `tools/lab/render-lab.mjs` — a one-off, not part of the pipeline. Headline: capture is
+  ~90 % of a render, so ffmpeg-side tricks share the remaining tenth; 60 fps is pointless until
+  `lib/tokens.js` `FPS` changes, because the player rounds the frame.
 - `studio/AGENTS.md` / `studio/CLAUDE.md` are written by `next dev`; read the Next.js docs in
   `studio/node_modules/next/dist/docs/` before changing studio code.
 - ElevenLabs is used only here; the Video-studio Remotion repo (the original style source) mandates Google
