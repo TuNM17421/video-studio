@@ -1,5 +1,6 @@
 export * from './tokens.js';
 export * from './motion.js';
+export * from './noise.js';
 export * from './geometry.js';
 export * from './captions.js';
 export * from './player.jsx';

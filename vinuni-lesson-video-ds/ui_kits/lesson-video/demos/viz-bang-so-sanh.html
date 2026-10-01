@@ -1,22 +1,23 @@
 <!doctype html>
-<!-- Nghiệm thu issue #62: cùng cảnh "bảng so sánh có cơ chế và hệ quả" (ảnh 01:05), nhưng dựng bằng
-     TwinPair + MetricRow + LineChart thay vì vẽ tay. SVG thô còn lại chỉ là hình của *nội dung này*
-     (chiếc máy, mặt cắt buồng hơi), không còn là bố cục. -->
+<!-- Nghiệm thu issue #62 · ảnh 01:05 dựng bằng component của design system.
+     Bản này cảnh **chạy** (300 frame): nhiệt độ biến thiên liên tục, và trong buồng hơi là một
+     ParticleField chạy đúng chu trình bốc hơi → lan → ngưng tụ → mao dẫn về. -->
 <html lang="vi">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Mẫu A — bảng so sánh có cơ chế và hệ quả</title>
 <link rel="stylesheet" href="../../../styles.css" />
-<style>html, body, #root { height: 100%; margin: 0; } #root { position: relative; }</style>
+<style>html, body, #root { height: 100%; margin: 0; } body { background: var(--vu-blue-900); } #root { position: relative; }</style>
 </head>
 <body>
 <div id="root"></div>
 <script src="../../../dist/vk.js"></script>
 <script>
-var h = VK.h, C = VK.C, T = VK.SvgText;
+var h = VK.h, C = VK.C, T = VK.SvgText, fbm = VK.fbm;
 var L = function (p, s) { p.anchor = 'start'; return h(T, p, s); };
 
-/* hình của nội dung này: chiếc máy. Một hàm duy nhất cho cả hai bên — TwinPair ép như vậy. */
+/* ── hình của nội dung này: chiếc máy. Một hàm cho cả hai bên — TwinPair ép như vậy ─────────── */
 function Phone(s) {
   var spread = s.variant === 'b';
   return h('g', null,
@@ -34,30 +35,61 @@ function Phone(s) {
     h(T, { x: s.x + s.w / 2, y: s.y + 332, size: 20, color: C.textMuted }, 'Pin'));
 }
 
-/* hình của nội dung này: mặt cắt buồng hơi */
-function Cutaway() {
-  var i, dots = [];
-  for (i = 0; i < 12; i++) dots.push(h('circle', { key: 'v' + i, cx: 952 + i * 71, cy: 370 + (i % 3) * 9, r: 5, fill: C.red, opacity: 0.75 }));
-  for (i = 0; i < 12; i++) dots.push(h('circle', { key: 'l' + i, cx: 936 + i * 71, cy: 416, r: 4.5, fill: C.accent }));
+/* ── buồng hơi: vỏ + bấc là hình tĩnh, phân tử là ParticleField ────────────────────────────── */
+var BOX = { x: 920, y: 336, w: 840, h: 108 };
+var WICK = 410, CHIP = 1340;
+/* Hai ô đối lưu, vì chip nằm giữa: hơi bốc lên ở chip rồi toả về cả hai phía.
+   Mỗi vòng: lên ở chip → chạy ngang trong khoang hơi → nguội và chìm ở đầu → mao dẫn về theo bấc. */
+var CELL_L = [{x: CHIP, y: 424}, {x: CHIP, y: 372}, {x: 952, y: 372}, {x: 952, y: 424}];
+var CELL_R = [{x: CHIP, y: 424}, {x: CHIP, y: 372}, {x: 1728, y: 372}, {x: 1728, y: 424}];
+var HEAT = { x: CHIP, y: 412, r: 250, boost: 2.6 };
+
+function Chamber(props) {
+  var f = props.frame, hatch = [], i;
+  for (i = 0; i < 42; i++) hatch.push(h('line', { key: 'w' + i, x1: 926 + i * 20, y1: WICK, x2: 918 + i * 20, y2: WICK + 28, stroke: C.dotInactive, strokeWidth: 3 }));
   return h('g', null,
-    h('rect', { x: 920, y: 346, width: 840, height: 84, rx: 12, fill: C.bg, stroke: C.red, strokeWidth: 3 }),
-    h('rect', { x: 920, y: 400, width: 840, height: 30, fill: C.dotInactive }),
-    dots,
-    h('rect', { x: 1296, y: 436, width: 88, height: 34, rx: 7, fill: C.bg, stroke: C.red, strokeWidth: 2.5 }),
-    h(T, { x: 1340, y: 459, size: 17, weight: 700, color: C.red }, 'Chip'));
+    h('rect', { x: BOX.x, y: BOX.y, width: BOX.w, height: BOX.h, rx: 12, fill: C.bg, stroke: C.red, strokeWidth: 3 }),
+    h('rect', { x: BOX.x, y: WICK, width: BOX.w, height: 34, fill: C.bgAlt }),
+    hatch,
+    h('line', { x1: BOX.x, y1: WICK, x2: BOX.x + BOX.w, y2: WICK, stroke: C.dotInactive, strokeWidth: 3 }),
+    h(VK.ParticleField, { x: BOX.x, y: BOX.y, w: BOX.w, h: BOX.h, frame: f, count: 54, seed: 3,
+      speed: 1.15, wander: 27, wanderY: 1, r: 5, path: CELL_L, coolAt: [0.55, 1], heat: HEAT }),
+    h(VK.ParticleField, { x: BOX.x, y: BOX.y, w: BOX.w, h: BOX.h, frame: f, count: 54, seed: 8,
+      speed: 1.15, wander: 27, wanderY: 1, r: 5, path: CELL_R, coolAt: [0.55, 1], heat: HEAT }),
+    h('rect', { x: CHIP - 44, y: 452, width: 88, height: 34, rx: 7, fill: C.bg, stroke: C.red, strokeWidth: 2.5 }),
+    h(T, { x: CHIP, y: 475, size: 17, weight: 700, color: C.red }, 'Chip'),
+    h('line', { x1: CHIP, y1: 444, x2: CHIP, y2: 452, stroke: C.red, strokeWidth: 3 }));
 }
 
-function Scene() {
-  var steps = [['Chip nóng, chất lỏng bốc hơi', 944, 508], ['Hơi nóng lan khắp buồng', 1370, 508], ['Nhả nhiệt rộng, ngưng tụ lại', 944, 548]];
+/* ── nhiệt độ theo thời gian. Không có buồng hơi thì chạm ngưỡng rồi dao động quanh đó ─────── */
+function noVC(t, f) {
+  var base = 30 + 17 * (1 - Math.exp(-t / 3.2));
+  var gate = VK.clamp01((base - 43) / 3);
+  return base + gate * 2.3 * fbm(11, t * 1.8 + f / 30 * 1.1, 3) + 0.45 * fbm(12, t * 0.9 + f / 30 * 0.5, 2);
+}
+function withVC(t, f) {
+  return 30 + 9 * (1 - Math.exp(-t / 4.5)) + 0.5 * fbm(21, t * 1.3 + f / 30 * 0.6, 3);
+}
+var degC = function (v) { return v.toFixed(1).replace('.', ',') + ' °C'; };
+
+var STEPS = [
+  ['Chip nóng, chất lỏng bốc hơi', 944, 512],
+  ['Hơi lan khắp khoang', 1390, 512],
+  ['Vùng mát: hơi ngưng tụ', 944, 552],
+  ['Bấc hút lỏng về chỗ nóng', 1390, 552],
+];
+
+function Scene(props) {
+  var f = props.frame;
   return h(VK.SceneFrame, {
     eyebrow: 'NGHIÊN CỨU · NGÔN NGỮ HÌNH ẢNH',
     title: 'Buồng hơi giúp gì cho điện thoại?',
     tag: 'SO SÁNH',
-    footer: { left: 'Ảnh 01:05 dựng lại bằng TwinPair · MetricRow · LineChart', right: 'Mẫu A' },
+    footer: { left: 'Ảnh 01:05 · TwinPair · MetricRow · LineChart · ParticleField', right: 'Mẫu A' },
     captions: [],
   },
-    h(VK.Card, { x: 880, y: 268, w: 920, h: 300, label: 'BÊN TRONG BUỒNG HƠI', accent: C.accent }),
-    h(VK.Card, { x: 880, y: 600, w: 920, h: 320, label: 'FPS KHI CHƠI GAME LÂU', accent: C.accent }),
+    h(VK.Card, { x: 880, y: 268, w: 920, h: 320, label: 'BÊN TRONG BUỒNG HƠI', accent: C.accent }),
+    h(VK.Card, { x: 880, y: 620, w: 920, h: 300, label: 'NHIỆT ĐỘ KHI CHƠI GAME LÂU', accent: C.accent }),
     h(VK.Pill, { x: 126, y: 252, label: 'Tải game nặng', variant: 'muted' }),
 
     h(VK.TwinPair, {
@@ -70,24 +102,26 @@ function Scene() {
     h(VK.MetricRow, { x: 486, y: 828, w: 300, size: 32, lead: true, items: [{ label: 'Nóng nhất', value: '39,0 °C' }, { label: 'FPS', value: '60', accent: true }] }),
 
     h(T, { x: 1718, y: 312, size: 17, anchor: 'end', color: C.textMuted }, 'Mặt cắt minh hoạ'),
-    h(Cutaway),
-    steps.map(function (s, i) {
+    h(Chamber, { frame: f, key: 'ch' }),
+    STEPS.map(function (s, i) {
       return h('g', { key: i },
         h(VK.NumberBadge, { x: s[1], y: s[2] - 7, value: String(i + 1), active: i === 0 }),
-        L({ x: s[1] + 38, y: s[2], size: 19, color: C.text }, s[0]));
+        L({ x: s[1] + 38, y: s[2], size: 18, color: C.text }, s[0]));
     }),
 
     h(VK.LineChart, {
-      x: 1000, y: 700, w: 620, h: 150,
-      xRange: [0, 20], yRange: [30, 60], xTicks: [0, 5, 10, 15, 20], yTicks: [30, 40, 50, 60], xTickLabel: 'phút',
+      x: 1010, y: 726, w: 600, h: 150,
+      xRange: [0, 20], yRange: [28, 52], xTicks: [0, 5, 10, 15, 20], yTicks: [30, 35, 40, 45, 50], xTickLabel: 'phút',
+      rules: [{ y: 46, label: 'NGƯỠNG HẠ XUNG' }],
+      progress: VK.smooth(f, 12, 76),
       series: [
-        { label: 'Không có buồng hơi', accent: C.accent, points: [{x:0,y:60},{x:4,y:59},{x:7,y:55},{x:10,y:51},{x:14,y:48},{x:20,y:47}] },
-        { label: 'Có buồng hơi', accent: C.red, points: [{x:0,y:60},{x:20,y:60}] },
+        { label: 'Không có buồng hơi', accent: C.accent, readout: degC, sample: function (t) { return noVC(t, f); } },
+        { label: 'Có buồng hơi', accent: C.red, readout: degC, sample: function (t) { return withVC(t, f); } },
       ],
     }));
 }
 
-VK.mountScene('#root', { component: Scene, duration: 1, id: 'viz-bang-so-sanh' });
+VK.mountScene('#root', { component: Scene, duration: 300, id: 'viz-bang-so-sanh' });
 </script>
 </body>
 </html>
