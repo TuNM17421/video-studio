@@ -10,6 +10,12 @@ import { readState, setStage } from "./videos";
 /** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
 export function renderPreflight(id: string) {
   if (!fs.existsSync(path.join(voiceOut(id), "voice.wav"))) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
+  // Chọn Claude Design mà chưa nhập gì thì render sẽ lặng lẽ chụp bản cảnh dựng ở máy (nếu có) và ra một
+  // MP4 trông bình thường nhưng không phải bản người dùng tưởng. Dừng ở đây, nói rõ còn thiếu gì.
+  const { state } = readState(id);
+  if (state.request.sceneBuilder === "claude-design" && !importedPage(id)) {
+    throw new HttpError(400, "Video này đặt dựng cảnh bằng Claude Design nhưng chưa nhập kết quả về. Vào bước Dựng cảnh, chọn thư mục tải về rồi bấm Chép vào Studio.");
+  }
 }
 
 /**

@@ -68,9 +68,10 @@ export function ScenesStep({ detail, logs, job, busy, act, stop, nav, refresh }:
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
       {/* Trước khi dựng cảnh là lúc cuối để chọn ảnh; đã duyệt dựng cảnh thì đổi ảnh phải qua góp ý cho agent. */}
       {!approved && <ImagesPanel detail={detail} act={act} refresh={refresh} />}
-      {/* Chọn ở bước Kế hoạch, không phải ở đây: nó đổi cả cách làm của bước này. Nút dưới chỉ là đường
-          sửa khi đổi ý, và đóng lại khi cảnh đã duyệt. */}
-      {byClaudeDesign && voiced && !approved && <ClaudeDesignPanel detail={detail} act={act} busy={busy} />}
+      {/* Chọn ở bước Kế hoạch, không phải ở đây: nó đổi cả cách làm của bước này. Panel hiện cả khi bước
+          đã duyệt — "duyệt" nói về lane agent ở máy, còn đường này chỉ xong khi đã nhập kết quả về. Nút
+          đổi lại thì vẫn đóng khi đã duyệt. */}
+      {byClaudeDesign && voiced && <ClaudeDesignPanel detail={detail} act={act} busy={busy} />}
       {!byClaudeDesign && voiced && !approved && status !== "running" && <p className="vs-cd-switch">
         <Button size="small" type="link" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/claude-design`, { action: "builder", value: "claude-design" }))}>
           Dựng bằng Claude Design thay vì agent ở máy
