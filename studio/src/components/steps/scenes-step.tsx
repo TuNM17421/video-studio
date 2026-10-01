@@ -9,6 +9,7 @@ import { HarnessPanel } from "../harness-panel";
 import { ProductionState } from "../production-state";
 import { ReviewControl } from "../review-control";
 import { findingMarks, QaGallery } from "./qa-gallery";
+import { ClaudeDesignPanel } from "./claude-design-panel";
 import { ImagesPanel } from "./images-panel";
 import { ReviewComposer, ReviewFindings, useReviewDraft } from "./scenes-review";
 import { post, StepBar, type StepProps } from "./shared";
@@ -64,6 +65,8 @@ export function ScenesStep({ detail, logs, job, busy, act, stop, nav, refresh }:
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
       {/* Trước khi dựng cảnh là lúc cuối để chọn ảnh; đã duyệt dựng cảnh thì đổi ảnh phải qua góp ý cho agent. */}
       {!approved && <ImagesPanel detail={detail} act={act} refresh={refresh} />}
+      {/* Đường thứ hai cho bước này: dựng cảnh bên Claude Design rồi mang về render. */}
+      {voiced && !approved && <ClaudeDesignPanel detail={detail} act={act} />}
       <HarnessPanel run={run} tools={tools} approved={approved} />
       <ReviewFindings
         draft={draft}

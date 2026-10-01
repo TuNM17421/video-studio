@@ -6181,3 +6181,29 @@ details.vs-flow-more[open] > summary {
     white-space: normal;
   }
 }
+
+/* Bàn giao sang Claude Design: cùng khuôn với khối Ảnh đề xuất, chỉ khác tiêu đề và bộ nút. */
+.vs-cd {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-cd-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vs-cd-head > .anticon { color: var(--vu-lesson-data); }
+.vs-cd-head h3 { margin: 0; font-size: 14px; }
+.vs-cd-head .ant-tag { margin-inline-end: 0; }
+.vs-cd-tools { display: flex; gap: 8px; margin-left: auto; }
+.vs-cd-lede {
+  margin: 8px 0 12px;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-cd .ant-alert { margin-bottom: 10px; }
+.vs-cd .mono { color: var(--vu-neutral-600); font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
