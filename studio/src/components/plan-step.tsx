@@ -2,12 +2,12 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PictureOutlined, PlayCircleFilled, QuestionOutlined, SmileOutlined, TeamOutlined, WarningFilled } from "@ant-design/icons";
-import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Select, Tooltip, Upload } from "antd";
+import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Radio, Select, Tooltip, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { inferDay } from "@/lib/day";
 import { ITEM_ID_MAX, itemIdFor } from "@/lib/qa-manifest";
-import type { AgentProvider, ReviewSettings, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
+import type { AgentProvider, ReviewSettings, SceneBuilder, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { DEFAULT_REVIEW, resolveReviewer } from "@/lib/review";
 import { AgentName } from "./agent-mark";
@@ -46,7 +46,7 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
   id: "",
   agentProvider,
   review: { ...DEFAULT_REVIEW },
-  request: { style, modules: [], day: "", itemId: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
+  request: { style, modules: [], day: "", itemId: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", sceneBuilder: "agent", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
 
@@ -328,6 +328,22 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
           >
             <Input value={draft.request.itemId} disabled={busy} maxLength={ITEM_ID_MAX * 2} placeholder={draft.id ? `Mặc định: ${draft.id}` : "Mặc định: mã video"} spellCheck={false} autoComplete="off" aria-describedby={itemIdMessageId} onChange={(e) => set({ itemId: e.target.value })} />
           </Form.Item>
+          <fieldset className="vs-scope vs-builder">
+            <legend className="vs-field-label">Dựng cảnh bằng</legend>
+            <p className="vs-scope-note">
+              Chọn Claude Design thì bước Dựng cảnh không chạy agent ở máy: Studio sinh một bản brief để bạn
+              dán sang claude.ai/design, dựng xong mang kết quả về đây render. Các bước khác không đổi.
+            </p>
+            <Radio.Group
+              value={draft.request.sceneBuilder}
+              disabled={busy}
+              onChange={(e) => set({ sceneBuilder: e.target.value as SceneBuilder })}
+              options={[
+                { value: "agent", label: "Agent ở máy" },
+                { value: "claude-design", label: "Claude Design" },
+              ]}
+            />
+          </fieldset>
           <fieldset className="vs-scope">
             <legend className="vs-field-label">Phạm vi</legend>
             <p className="vs-scope-note">Dựng cảnh và kiểm tra luôn được làm. Bỏ chọn phần bạn sẽ tự làm.</p>
@@ -364,6 +380,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
   return <div className="vs-section">
     <Descriptions className="vs-facts" bordered column={1} size="small" items={[
       { key: "agent", label: "Agent", children: <AgentName provider={state.agent.provider} /> },
+      { key: "builder", label: "Dựng cảnh", children: state.request.sceneBuilder === "claude-design" ? "Claude Design" : "Agent ở máy" },
       { key: "style", label: "Style", children: <span className="vs-summary-style">{style?.name || r.style}{style && <StyleSampleButton style={style} />}</span> },
       { key: "day", label: "Ngày", children: r.day || "—" },
       { key: "item", label: "Mã item gửi QA", children: itemIdFor(r.itemId, state.id) },

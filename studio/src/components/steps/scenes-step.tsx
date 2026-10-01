@@ -29,6 +29,9 @@ export function ScenesStep({ detail, logs, job, busy, act, stop, nav, refresh }:
   const reviewer = resolveReviewer(detail.state.agent.provider, review, detail.installedAgents);
   const reviewLabel = !review.enabled ? "Review: tắt" : reviewer.ok ? `Review: ${agentProviderLabel(reviewer.provider)}` : "Review: chưa chọn được";
   const renderRunning = detail.state.stages.render === "running";
+  // Chọn Claude Design thì cảnh dựng ở bên đó, nên đừng mời chạy agent ở máy nữa — hai đường cùng ghi vào
+  // một thư mục video, chạy cả hai là đè lên nhau.
+  const byClaudeDesign = detail.state.request.sceneBuilder === "claude-design";
 
   const startAgent = () => act(() => post(`/api/videos/${id}/agent`, { stage: "scenes" }));
   const rerun = () => act(() => post(`/api/videos/${id}/review`, { action: "run" }));
@@ -65,8 +68,14 @@ export function ScenesStep({ detail, logs, job, busy, act, stop, nav, refresh }:
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
       {/* Trước khi dựng cảnh là lúc cuối để chọn ảnh; đã duyệt dựng cảnh thì đổi ảnh phải qua góp ý cho agent. */}
       {!approved && <ImagesPanel detail={detail} act={act} refresh={refresh} />}
-      {/* Đường thứ hai cho bước này: dựng cảnh bên Claude Design rồi mang về render. */}
-      {voiced && !approved && <ClaudeDesignPanel detail={detail} act={act} />}
+      {/* Chọn ở bước Kế hoạch, không phải ở đây: nó đổi cả cách làm của bước này. Nút dưới chỉ là đường
+          sửa khi đổi ý, và đóng lại khi cảnh đã duyệt. */}
+      {byClaudeDesign && voiced && !approved && <ClaudeDesignPanel detail={detail} act={act} />}
+      {!byClaudeDesign && voiced && !approved && status !== "running" && <p className="vs-cd-switch">
+        <Button size="small" type="link" disabled={busy} onClick={() => act(() => post(`/api/videos/${id}/claude-design`, { action: "builder", value: "claude-design" }))}>
+          Dựng bằng Claude Design thay vì agent ở máy
+        </Button>
+      </p>}
       <HarnessPanel run={run} tools={tools} approved={approved} />
       <ReviewFindings
         draft={draft}
@@ -99,8 +108,8 @@ export function ScenesStep({ detail, logs, job, busy, act, stop, nav, refresh }:
         : status === "error" ? "Agent dừng giữa chừng"
         : voiced ? "Chưa dựng cảnh" : "Chờ giọng đọc"}
     >
-      {voiced && status === "idle" && <Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={startAgent}>Bắt đầu dựng cảnh</Button>}
-      {status === "error" && <Button disabled={busy} icon={<RedoOutlined />} onClick={startAgent}>Chạy lại agent</Button>}
+      {!byClaudeDesign && voiced && status === "idle" && <Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={startAgent}>Bắt đầu dựng cảnh</Button>}
+      {!byClaudeDesign && status === "error" && <Button disabled={busy} icon={<RedoOutlined />} onClick={startAgent}>Chạy lại agent</Button>}
       {waiting && voiced && <Button icon={<SendOutlined />} disabled={!canSend} onClick={send}>{sendLabel}</Button>}
       {status === "review" && <Button type="primary" disabled={busy || blocking > 0} icon={<CheckCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/approve`, { stage: "scenes" }))}>Duyệt dựng cảnh</Button>}
     </StepBar>

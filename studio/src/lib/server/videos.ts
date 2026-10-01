@@ -58,7 +58,12 @@ export function normalizeVideoState(value: unknown): VideoState {
     ...state,
     agent: { provider, sessionId },
     // itemId defaults to the video id, which is what this course sends as the platform's item code.
-    request: { ...state.request, modules, itemId: typeof state.request?.itemId === "string" ? state.request.itemId : "" },
+    // sceneBuilder có sau; state cũ thiếu nó thì là agent ở máy, đúng cách mọi video trước đây được dựng.
+    request: {
+      ...state.request, modules,
+      itemId: typeof state.request?.itemId === "string" ? state.request.itemId : "",
+      sceneBuilder: state.request?.sceneBuilder === "claude-design" ? "claude-design" : "agent",
+    },
     voice: { ...DEFAULT_VOICE, ...stored.voice },
     music,
     captions: stored.captions !== false,
@@ -143,6 +148,7 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
   const day = findDay(id);
   const request: VideoRequest = {
     style: "lesson-lab", modules: [], day, itemId: "", title: id, scriptName: "kich-ban-goc.md", feedbackDir: "", oldVideoDir: "", notes: "",
+    sceneBuilder: "agent",
     scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true },
   };
   const now = new Date().toISOString();
@@ -364,6 +370,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Video cũ: ${r.oldVideoDir ? `\`${r.oldVideoDir}\`` : "không có"}`,
     ...(agentLabel ? [`- Agent: ${agentLabel} (gắn cố định khi tạo video)`] : []),
     `- Phạm vi: ${[r.scope.scenes && "dựng cảnh + QA", r.scope.voice && "giọng đọc", r.scope.render && "render MP4", r.scope.transcript && "transcript", r.scope.chapters && "file chương"].filter(Boolean).join(", ")}`,
+    `- Dựng cảnh: ${r.sceneBuilder === "claude-design" ? "Claude Design (người dựng dán brief sang claude.ai/design rồi mang kết quả về)" : "agent chạy ở máy"}`,
     `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
     ...moduleSections(r.modules),

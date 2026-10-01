@@ -41,7 +41,11 @@ export const POST = handle(async (req: Request) => {
   if (unknown.length) throw new HttpError(400, `Không có năng lực bổ sung: ${unknown.join(", ")}`);
   const blocked = modules.filter((m) => styleUnsupportedModules(r.style).includes(m));
   if (blocked.length) throw new HttpError(400, `${styleName(r.style)} chưa hỗ trợ: ${blocked.map((m) => moduleById(m)?.name || m).join(", ")}`);
+  if (r.sceneBuilder !== undefined && !["agent", "claude-design"].includes(String(r.sceneBuilder))) {
+    throw new HttpError(400, "Chỗ dựng cảnh không hợp lệ.");
+  }
   const request: VideoRequest = {
+    sceneBuilder: r.sceneBuilder === "claude-design" ? "claude-design" : "agent",
     style: r.style, modules, day: r.day, itemId: String(r.itemId || "").trim().slice(0, ITEM_ID_MAX),
     title: String(r.title || "").slice(0, 200), scriptName: String(body.script.name || "").slice(0, 200),
     feedbackDir: r.feedbackDir || "", oldVideoDir: r.oldVideoDir || "", notes: String(r.notes || "").slice(0, 5000),

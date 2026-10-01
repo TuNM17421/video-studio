@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckOutlined, CopyOutlined, ExportOutlined, FileTextOutlined, RedoOutlined } from "@ant-design/icons";
-import { Alert, Button, Tag, Typography } from "antd";
+import { CheckOutlined, CopyOutlined, ExportOutlined, EyeOutlined, FileTextOutlined, RedoOutlined } from "@ant-design/icons";
+import { Alert, Button, Modal, Popconfirm, Tag, Typography } from "antd";
 import { api } from "@/lib/client";
 import type { VideoDetail } from "@/lib/types";
 import { post } from "./shared";
@@ -28,6 +28,7 @@ export function ClaudeDesignPanel({ detail, act }: { detail: VideoDetail; act: (
   const [brief, setBrief] = useState<Brief | null>(null);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [preview, setPreview] = useState(false);
   const id = detail.state.id;
 
   const load = useCallback(async () => {
@@ -60,10 +61,22 @@ export function ClaudeDesignPanel({ detail, act }: { detail: VideoDetail; act: (
           {brief.cues} câu · {brief.frames.toLocaleString("vi-VN")} frame · {brief.measured ? "thời lượng đo thật" : "thời lượng ước"}
         </Tag>}
         <div className="vs-cd-tools">
-          <Button size="small" icon={<RedoOutlined />} onClick={generate}>{brief ? "Sinh lại" : "Sinh brief"}</Button>
+          {brief
+            ? <Popconfirm
+                title="Sinh lại brief?"
+                description="Bản hiện tại bị ghi đè. Làm vậy khi cues hoặc giọng vừa đổi; brief đã dán sang bên kia thì không đổi theo."
+                okText="Sinh lại" cancelText="Thôi" onConfirm={generate}
+              >
+                <Button size="small" icon={<RedoOutlined />}>Sinh lại</Button>
+              </Popconfirm>
+            : <Button size="small" icon={<RedoOutlined />} onClick={generate}>Sinh brief</Button>}
+          {brief && <Button size="small" icon={<EyeOutlined />} onClick={() => setPreview(true)}>Xem brief</Button>}
           {brief && <Button size="small" type="primary" icon={copied ? <CheckOutlined /> : <CopyOutlined />} onClick={copy}>
             {copied ? "Đã sao chép" : "Sao chép"}
           </Button>}
+          <Button size="small" type="text" onClick={() => act(() => post(`/api/videos/${id}/claude-design`, { action: "builder", value: "agent" }))}>
+            Quay lại agent ở máy
+          </Button>
         </div>
       </header>
 
@@ -78,6 +91,21 @@ export function ClaudeDesignPanel({ detail, act }: { detail: VideoDetail; act: (
         description="Dựng theo số ước thì khi có giọng thật phải chỉnh lại nhịp. Sinh lại brief sau bước Giọng đọc để lấy số đo thật." />}
 
       {brief && <Typography.Text type="secondary" className="mono">{brief.file}</Typography.Text>}
+
+      <Modal
+        open={preview}
+        onCancel={() => setPreview(false)}
+        title={`Brief gửi Claude Design · ${brief?.cues ?? 0} câu`}
+        width={900}
+        footer={<>
+          <Button onClick={() => setPreview(false)}>Đóng</Button>
+          <Button type="primary" icon={copied ? <CheckOutlined /> : <CopyOutlined />} onClick={copy}>
+            {copied ? "Đã sao chép" : "Sao chép"}
+          </Button>
+        </>}
+      >
+        <pre className="vs-cd-preview">{brief?.text}</pre>
+      </Modal>
     </section>
   );
 }

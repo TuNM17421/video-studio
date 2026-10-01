@@ -90,3 +90,24 @@ describe("style guides", () => {
     expect(md).not.toContain("styles/lesson.md");
   });
 });
+
+describe("chỗ dựng cảnh", () => {
+  it("state cũ không có sceneBuilder thì hiểu là agent ở máy", () => {
+    const state = normalizeVideoState(storedState);
+    expect(state.request.sceneBuilder).toBe("agent");
+    expect(requestMarkdown("d2-01-lab", state.request, "Claude")).toContain("Dựng cảnh: agent chạy ở máy");
+  });
+
+  it("chọn Claude Design thì REQUEST.md nói rõ, vì đó là thứ agent đọc", () => {
+    const state = normalizeVideoState({ ...storedState, request: { ...storedState.request, sceneBuilder: "claude-design" } });
+    expect(state.request.sceneBuilder).toBe("claude-design");
+    const md = requestMarkdown("d3-02", state.request, "Claude");
+    expect(md).toContain("Dựng cảnh: Claude Design");
+    expect(md).toContain("mang kết quả về");
+  });
+
+  it("giá trị lạ không được lọt qua — rơi về agent chứ không giữ nguyên", () => {
+    const state = normalizeVideoState({ ...storedState, request: { ...storedState.request, sceneBuilder: "cursor" } });
+    expect(state.request.sceneBuilder).toBe("agent");
+  });
+});

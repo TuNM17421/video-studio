@@ -6207,3 +6207,20 @@ details.vs-flow-more[open] > summary {
 }
 .vs-cd .ant-alert { margin-bottom: 10px; }
 .vs-cd .mono { color: var(--vu-neutral-600); font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+.vs-cd-preview {
+  margin: 0;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+  color: var(--vu-neutral-800);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-xs);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vs-cd-switch { margin: 6px 0 0; }
+.vs-cd-switch .ant-btn { padding-inline: 0; font-size: var(--vu-text-xs); }

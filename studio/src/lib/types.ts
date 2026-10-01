@@ -50,8 +50,17 @@ export interface VideoRequest {
   feedbackDir: string;
   oldVideoDir: string;
   notes: string;
+  /**
+   * Ai dựng cảnh: agent chạy ở máy (mặc định), hay Claude Design. Chọn "claude-design" thì bước Dựng cảnh
+   * đổi mặt — Studio sinh brief để dán sang claude.ai/design thay vì chạy agent. Quyết ở bước Kế hoạch vì
+   * nó đổi cả cách làm việc của bước sau, không phải một nút bấm lúc đang dựng.
+   */
+  sceneBuilder: SceneBuilder;
   scope: Scope;
 }
+
+/** Nơi dựng cảnh. Thêm lựa chọn mới thì nhớ cả `requestMarkdown` — REQUEST.md là thứ agent đọc. */
+export type SceneBuilder = "agent" | "claude-design";
 
 /** Where a video's narration comes from: the ElevenLabs API, or audio recorded/generated elsewhere. */
 export type VoiceSource = "elevenlabs" | "kaggle" | "import" | "local";
