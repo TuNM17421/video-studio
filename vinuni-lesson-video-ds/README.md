@@ -330,10 +330,13 @@ Mọi component là React thuần: giá trị động (opacity, active, progress
 | structure | `LayerStack`, `Timeline`, `ConceptMap` | các lớp của một hệ thống (một lớp tiêu điểm), mốc thời gian tô dần, bản đồ khái niệm có quan hệ được đặt tên |
 | structure | `Matrix2x2`, `Iceberg` | lưới quyết định 2 × 2 có một ô được chọn, phần nổi / phần chìm |
 | data | `Gauge`, `RangeBand`, `UnitGrid` | đồng hồ bán nguyệt có ngưỡng, ước lượng kèm khoảng dao động, đếm bằng ô (18 trên 60) |
+| data | `LineChart`, `MetricRow` | một–hai chuỗi theo một trục (`sample(x)` cho đường sống, `rules` cho ngưỡng, `readout` cho số chạy ở đầu đường); 1–3 số lớn kèm nhãn, vạch nhấn và huy hiệu chênh lệch |
+| data | `WorkStrip`, `ParticleField` | chuỗi việc **theo thứ tự** (đã làm · bỏ qua · còn chờ — khác `UnitGrid` vốn là tỉ lệ); trường hạt chuyển động hỗn loạn **tất định**, có vùng nóng (nhanh hơn, nảy rộng hơn), vòng đối lưu theo `path`, đổi pha mượt theo `coolAt` |
+| teaching | `TwinPair`, `WipeSplit` | cùng một vật vẽ hai lần từ **một** hàm render nên hai bên không thể lệch nhau; một hình liên tục bị cắt dọc, thanh trượt mang tên **tác nhân** gây ra thay đổi |
 | marks | `Spotlight` | làm mờ cả khung trừ một vùng để dẫn mắt, không dịch chuyển gì |
 | whiteboard (lab) | `Whiteboard` | một tấm bảng cho cả video: bút dạ viết chữ tay và vẽ nét theo lời, lau bảng, camera lia / lùi ra — chỉ cho `styles/whiteboard.json` |
 
-Helpers mới: `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
+Helpers mới: `lib/noise.js` (`hash01` · `noise1` · `fbm` · `spread` — hỗn loạn tất định theo (hạt, frame) cho hoạt ảnh; khác `rng(seed)` vốn là một dòng số và không liên tục theo frame) · `lib/text.js` (gõ chữ an toàn dấu tiếng Việt, `rng(seed)`, `formatNumber`) · `lib/paths.js`
 (`@remotion/paths`, d3-shape/scale/interpolate, flubber, dagre: `curvePath`, `pointOnPath`, `drawOn`, `morphPath`, `layoutGraph`).
 
 ---

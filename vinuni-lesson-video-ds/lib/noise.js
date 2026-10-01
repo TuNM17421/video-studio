@@ -10,6 +10,12 @@
  *
  * Integer mixing only (Math.imul, >>>): those are exactly specified in JS, unlike the GLSL
  * `fract(sin(x) * 43758.5453)` trick, which drifts between platforms.
+ *
+ * Not a duplicate of `rng(seed)` in lib/text.js, which the whiteboard uses for sketchy strokes. That one
+ * is a *stream*: call next() repeatedly and take what comes. Animation needs the opposite — an
+ * addressable value for (particle i, frame f) that you can ask for in any order, and one that is
+ * **continuous in f**, or the particle teleports every frame instead of drifting. A stream gives neither.
+ * Use `rng` to draw a shape once; use this to move something.
  */
 
 /** Deterministic 0–1 from up to three integers. */

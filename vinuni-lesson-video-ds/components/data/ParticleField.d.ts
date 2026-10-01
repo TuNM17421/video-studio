@@ -27,14 +27,20 @@ export interface ParticleFieldProps {
   wander?: number;
   /** Vertical share of `wander`. Default 0.62; raise it to fill a shallow box. */
   wanderY?: number;
+  /** Per-particle offset from `path`, px — number, or { x, y }. Keeps a shared leg from stacking into
+   * a column. Default 0. */
+  lane?: number | { x?: number; y?: number };
   /** Dot radius. Default 5. */
   r?: number;
   /** Closed polyline: adds net transport (a convection loop) on top of the jiggle. */
   path?: readonly { x: number; y: number }[];
   /** Where the particles are hotter — faster and wider. */
   heat?: HeatZone;
-  /** [from, to] along `path` (0–1) where particles read as liquid: `cool`, smaller. */
+  /** [from, to] along `path` (0–1) where particles read as liquid: `cool`, calmer. */
   coolAt?: readonly [number, number];
+  /** Length of the phase change, as a fraction of the loop. Default 0.1; never 0 — a step teleports
+   * the particle at the hot spot. */
+  phaseFade?: number;
   /** Vapor color. Default C.red. */
   hot?: string;
   /** Liquid color. Default C.accent. */

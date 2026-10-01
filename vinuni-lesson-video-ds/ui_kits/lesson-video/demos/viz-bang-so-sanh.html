@@ -36,29 +36,31 @@ function Phone(s) {
 }
 
 /* ── buồng hơi: vỏ + bấc là hình tĩnh, phân tử là ParticleField ────────────────────────────── */
-var BOX = { x: 920, y: 336, w: 840, h: 108 };
-var WICK = 410, CHIP = 1340;
+/* Khoang phải đủ cao cho biên độ: một chân của đường đi cần
+   wander × wanderY × heat.boost + lane.y khoảng trống so với bấc, nếu không hơi sẽ lọt vào bấc. */
+var BOX = { x: 920, y: 320, w: 840, h: 146 };
+var WICK = 424, CHIP = 1340;
 /* Hai ô đối lưu, vì chip nằm giữa: hơi bốc lên ở chip rồi toả về cả hai phía.
    Mỗi vòng: lên ở chip → chạy ngang trong khoang hơi → nguội và chìm ở đầu → mao dẫn về theo bấc. */
-var CELL_L = [{x: CHIP, y: 424}, {x: CHIP, y: 372}, {x: 952, y: 372}, {x: 952, y: 424}];
-var CELL_R = [{x: CHIP, y: 424}, {x: CHIP, y: 372}, {x: 1728, y: 372}, {x: 1728, y: 424}];
-var HEAT = { x: CHIP, y: 412, r: 250, boost: 2.6 };
+var CELL_L = [{x: CHIP, y: WICK}, {x: CHIP, y: 364}, {x: 952, y: 364}, {x: 952, y: 448}];
+var CELL_R = [{x: CHIP, y: WICK}, {x: CHIP, y: 364}, {x: 1728, y: 364}, {x: 1728, y: 448}];
+var HEAT = { x: CHIP, y: 430, r: 150, boost: 2.2 };
 
 function Chamber(props) {
   var f = props.frame, hatch = [], i;
-  for (i = 0; i < 42; i++) hatch.push(h('line', { key: 'w' + i, x1: 926 + i * 20, y1: WICK, x2: 918 + i * 20, y2: WICK + 28, stroke: C.dotInactive, strokeWidth: 3 }));
+  for (i = 0; i < 42; i++) hatch.push(h('line', { key: 'w' + i, x1: 932 + i * 20, y1: WICK, x2: 920 + i * 20, y2: WICK + 42, stroke: C.dotInactive, strokeWidth: 3 }));
   return h('g', null,
     h('rect', { x: BOX.x, y: BOX.y, width: BOX.w, height: BOX.h, rx: 12, fill: C.bg, stroke: C.red, strokeWidth: 3 }),
-    h('rect', { x: BOX.x, y: WICK, width: BOX.w, height: 34, fill: C.bgAlt }),
+    h('rect', { x: BOX.x, y: WICK, width: BOX.w, height: 42, fill: C.bgAlt }),
     hatch,
     h('line', { x1: BOX.x, y1: WICK, x2: BOX.x + BOX.w, y2: WICK, stroke: C.dotInactive, strokeWidth: 3 }),
     h(VK.ParticleField, { x: BOX.x, y: BOX.y, w: BOX.w, h: BOX.h, frame: f, count: 54, seed: 3,
-      speed: 1.15, wander: 27, wanderY: 1, r: 5, path: CELL_L, coolAt: [0.55, 1], heat: HEAT }),
+      speed: 1.15, wander: 20, wanderY: 0.65, lane: { x: 95, y: 18 }, r: 5, path: CELL_L, coolAt: [0.49, 1], phaseFade: 0.07, heat: HEAT }),
     h(VK.ParticleField, { x: BOX.x, y: BOX.y, w: BOX.w, h: BOX.h, frame: f, count: 54, seed: 8,
-      speed: 1.15, wander: 27, wanderY: 1, r: 5, path: CELL_R, coolAt: [0.55, 1], heat: HEAT }),
-    h('rect', { x: CHIP - 44, y: 452, width: 88, height: 34, rx: 7, fill: C.bg, stroke: C.red, strokeWidth: 2.5 }),
-    h(T, { x: CHIP, y: 475, size: 17, weight: 700, color: C.red }, 'Chip'),
-    h('line', { x1: CHIP, y1: 444, x2: CHIP, y2: 452, stroke: C.red, strokeWidth: 3 }));
+      speed: 1.15, wander: 20, wanderY: 0.65, lane: { x: 95, y: 18 }, r: 5, path: CELL_R, coolAt: [0.49, 1], phaseFade: 0.07, heat: HEAT }),
+    h('rect', { x: CHIP - 44, y: 478, width: 88, height: 34, rx: 7, fill: C.bg, stroke: C.red, strokeWidth: 2.5 }),
+    h(T, { x: CHIP, y: 501, size: 17, weight: 700, color: C.red }, 'Chip'),
+    h('line', { x1: CHIP, y1: 466, x2: CHIP, y2: 478, stroke: C.red, strokeWidth: 3 }));
 }
 
 /* ── nhiệt độ theo thời gian. Không có buồng hơi thì chạm ngưỡng rồi dao động quanh đó ─────── */
@@ -73,10 +75,10 @@ function withVC(t, f) {
 var degC = function (v) { return v.toFixed(1).replace('.', ',') + ' °C'; };
 
 var STEPS = [
-  ['Chip nóng, chất lỏng bốc hơi', 944, 512],
-  ['Hơi lan khắp khoang', 1390, 512],
-  ['Vùng mát: hơi ngưng tụ', 944, 552],
-  ['Bấc hút lỏng về chỗ nóng', 1390, 552],
+  ['Chip nóng, chất lỏng bốc hơi', 944, 542],
+  ['Hơi lan khắp khoang', 1390, 542],
+  ['Vùng mát: hơi ngưng tụ', 944, 580],
+  ['Bấc hút lỏng về chỗ nóng', 1390, 580],
 ];
 
 function Scene(props) {
@@ -88,8 +90,8 @@ function Scene(props) {
     footer: { left: 'Ảnh 01:05 · TwinPair · MetricRow · LineChart · ParticleField', right: 'Mẫu A' },
     captions: [],
   },
-    h(VK.Card, { x: 880, y: 268, w: 920, h: 320, label: 'BÊN TRONG BUỒNG HƠI', accent: C.accent }),
-    h(VK.Card, { x: 880, y: 620, w: 920, h: 300, label: 'NHIỆT ĐỘ KHI CHƠI GAME LÂU', accent: C.accent }),
+    h(VK.Card, { x: 880, y: 268, w: 920, h: 332, label: 'BÊN TRONG BUỒNG HƠI', accent: C.accent }),
+    h(VK.Card, { x: 880, y: 628, w: 920, h: 300, label: 'NHIỆT ĐỘ KHI CHƠI GAME LÂU', accent: C.accent }),
     h(VK.Pill, { x: 126, y: 252, label: 'Tải game nặng', variant: 'muted' }),
 
     h(VK.TwinPair, {
@@ -101,7 +103,7 @@ function Scene(props) {
     h(VK.MetricRow, { x: 126, y: 828, w: 300, size: 32, items: [{ label: 'Nóng nhất', value: '47,2 °C' }, { label: 'FPS', value: '48' }] }),
     h(VK.MetricRow, { x: 486, y: 828, w: 300, size: 32, lead: true, items: [{ label: 'Nóng nhất', value: '39,0 °C' }, { label: 'FPS', value: '60', accent: true }] }),
 
-    h(T, { x: 1718, y: 312, size: 17, anchor: 'end', color: C.textMuted }, 'Mặt cắt minh hoạ'),
+    h(T, { x: 1718, y: 306, size: 17, anchor: 'end', color: C.textMuted }, 'Mặt cắt minh hoạ'),
     h(Chamber, { frame: f, key: 'ch' }),
     STEPS.map(function (s, i) {
       return h('g', { key: i },
@@ -110,7 +112,7 @@ function Scene(props) {
     }),
 
     h(VK.LineChart, {
-      x: 1010, y: 726, w: 600, h: 150,
+      x: 1010, y: 760, w: 600, h: 126,
       xRange: [0, 20], yRange: [28, 52], xTicks: [0, 5, 10, 15, 20], yTicks: [30, 35, 40, 45, 50], xTickLabel: 'phút',
       rules: [{ y: 46, label: 'NGƯỠNG HẠ XUNG' }],
       progress: VK.smooth(f, 12, 76),
