@@ -7,6 +7,7 @@ Ngày đo: 30/09/2026. Đo trên Studio chạy từ `main` (48f1331), bước **
 - Bảng chi phí bốn video của anh Tú cho thấy Dựng hình chiếm 47–78% tổng chi phí, và Bảng trắng rẻ hơn Lesson Lab khoảng 4 lần trên cùng kịch bản.
 - **Nguyên nhân tìm được và đã đo**: prompt của Studio cấm agent chạy `build`/`verify`, nên mọi lỗi chỉ lộ sau khi agent dừng và phải trả một **lượt agent mới** để sửa từng lỗi. Đo trên Bảng trắng: hai lượt liên tiếp vẫn chưa qua gate.
 - **Thay đổi đã áp dụng**: cho agent tự chạy `node tools/build.mjs && node tools/verify.mjs --video <id>` trước khi dừng (tối đa 3 lần). Bảng trắng từ "2 lượt, vẫn đỏ" thành "1 lượt, xanh".
+- **Cảnh báo chất lượng (xem mục "Chất lượng")**: ảnh QA của Lesson Lab sau thay đổi có nhiều lỗi bố cục (chữ tràn, chồng lên khung) mà bản trước không có. Một mẫu mỗi bên chưa đủ để nói thay đổi gây ra, nhưng cũng chưa đủ để nói không. **Chưa được kết luận là tiết kiệm mà không giảm chất lượng.**
 - **Phần chênh giữa hai style** đo được là khối lượng code agent phải viết và khám phá, chưa phải số lượt. Chưa tái hiện được mức 4 lần vì không đo được token đáng tin (xem Giới hạn).
 
 ## Cách đo
@@ -79,9 +80,19 @@ Phần lớn lần đọc của Lesson Lab là **video mẫu** (học ngôn ng�
 | Trước | Sau (cùng kịch bản) |
 |---|---|
 | Bảng trắng: 2 lượt agent, gate đỏ | Bảng trắng: 1 lượt agent, gate xanh (kể cả chụp ảnh) |
-| Lesson Lab: 1 lượt, 78 thao tác, 546s | Lesson Lab: 1 lượt, 55 thao tác, 493s |
+| Lesson Lab: 1 lượt, 78 thao tác, 546s, bố cục sạch | Lesson Lab: 1 lượt, 55 thao tác, 493s, **bố cục kém hơn (xem Chất lượng)** |
 
-Chất lượng: cả hai bản "sau" qua `build`, `verify` và chụp ảnh. Chưa có người xem lại ảnh QA nên chưa xác nhận chất lượng thị giác tương đương.
+### Chất lượng
+
+Cả hai bản "sau" qua `build`, `verify` và chụp ảnh, nhưng `verify` không bắt được lỗi bố cục. Xem ảnh QA 16 cảnh (30/10 so hai bản Lesson Lab):
+
+| | Quan sát |
+|---|---|
+| Lesson Lab, trước (`cost-lab-01`) | Bố cục sạch ở cả 16 cảnh: chữ nằm trong khung, sơ đồ cân đối |
+| Lesson Lab, sau (`cost-lab-02`) | Chữ tràn mép trái (cue 1, 4–12), chữ chồng lên khung (cue 9, 10, 14, 16), khung lớn trống (cue 3, 12) |
+| Bảng trắng, sau (`cost-wb-02`) | Chữ chồng lên nét vẽ ở vài cảnh (cue 3, 4, 5, 8, 12). Không có bản "trước" qua gate để so |
+
+**Chưa biết nguyên nhân.** Hai khả năng: (a) dao động giữa các lần chạy của agent (n = 1 mỗi bên), (b) agent tự kiểm xong thấy `verify` xanh nên dừng sớm hơn và đọc ít video mẫu hơn (12 so với 16 lần đọc video mẫu). `verify` xanh không có nghĩa bố cục đẹp, nên "tự kiểm" có thể làm agent tin gate quá mức. Cần chạy lặp (ít nhất 3 lần mỗi bên) và cho review chéo bật, rồi đếm số lỗi bố cục, trước khi bỏ chữ draft của PR.
 
 ## Hướng tối ưu còn lại (ước tính, chưa áp dụng)
 
@@ -106,4 +117,5 @@ Sau thay đổi, cùng kịch bản và cùng agent: Lesson Lab 55 thao tác, 66
 - **Mỗi cấu hình chỉ chạy một lần** (n = 1), nên chênh lệch nhỏ (ví dụ 78 so với 55 thao tác của Lesson Lab) có thể là nhiễu, chưa kết luận là tiết kiệm.
 - Agent là Cursor với model mini, không phải Claude Code như anh Tú đo. Chỉ kết luận được về **nguyên nhân**, chưa kết luận được **mức tiết kiệm bằng đô-la**. Nên lặp lại một lần với Claude Code trên cùng kịch bản để có con số USD từ `video-cost.ts`.
 - Giọng mock và review tắt: chưa đo chi phí chặng giọng và chặng review.
+- Không có phép đo lỗi bố cục tự động; nhận xét về chất lượng là xem bằng mắt ảnh QA.
 - Lần chạy Lesson Lab đầu tiên sau thay đổi bị nhiễm (agent chép cảnh của video thử trước). Đã loại và chạy lại riêng; bản ghi ở trên là bản sạch.
