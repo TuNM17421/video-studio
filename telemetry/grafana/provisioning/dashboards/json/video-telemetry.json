@@ -2,7 +2,7 @@
   "title": "Video Telemetry",
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 7,
+  "version": 9,
   "refresh": "30s",
   "time": {
     "from": "now-90d",
@@ -705,7 +705,7 @@
           "format": "table",
           "rawQuery": true,
           "editorMode": "code",
-          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT r.provider AS \"Nhà cung cấp\", coalesce(r.model, '(chưa rõ)') AS \"Model\",\n  count(DISTINCT r.video_ref) AS \"Số video\", count(*) AS \"Run\",\n  sum(r.cost_usd) AS \"Tổng chi phí\", count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS \"Run chưa đo giá\"\nFROM telemetry_runs r JOIN v USING (video_ref) WHERE r.has_billable GROUP BY 1, 2 ORDER BY 1, sum(r.cost_usd) DESC NULLS LAST",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT r.provider AS \"Nhà cung cấp\", coalesce(r.model, '(chưa rõ)') AS \"Model\",\n  count(DISTINCT r.video_ref) AS \"Số video\", count(*) AS \"Run\",\n  sum(r.cost_usd) AS \"Tổng chi phí\", sum(coalesce(r.fresh_input_tokens, 0) + coalesce(r.output_tokens, 0)) FILTER (WHERE r.has_usage) AS \"Token vào+ra (không cache)\",\n  sum(r.cached_input_tokens) AS \"Token cache\", sum(r.turns) AS \"Lượt agent\",\n  count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS \"Run chưa đo giá\"\nFROM telemetry_runs r JOIN v USING (video_ref) WHERE r.has_billable GROUP BY 1, 2 ORDER BY 1, sum(r.cost_usd) DESC NULLS LAST",
           "refId": "A"
         }
       ],
@@ -747,6 +747,30 @@
               {
                 "id": "decimals",
                 "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token vào+ra (không cache)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token cache"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
               }
             ]
           }
@@ -1006,7 +1030,7 @@
           "format": "table",
           "rawQuery": true,
           "editorMode": "code",
-          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.cost_usd) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.cost_usd) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.cost_usd) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.cost_usd) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.cost_usd) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.cost_usd) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.cost_usd) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.cost_usd) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.cost_usd) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.cost_usd) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.cost_usd) FILTER (WHERE p.phase = 'images') AS \"images\", sum(p.cost_usd) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.cost_usd) FILTER (WHERE p.phase = 'qa') AS \"qa\", sum(p.cost_usd) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.cost_usd) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.cost_usd) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
           "refId": "A"
         }
       ],
@@ -1107,6 +1131,21 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "images"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7c5cbf"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "scenes"
             },
             "properties": [
@@ -1115,6 +1154,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "qa"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2aa7b8"
                 }
               }
             ]
@@ -1179,7 +1233,7 @@
           "format": "table",
           "rawQuery": true,
           "editorMode": "code",
-          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.total_tokens) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.total_tokens) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.total_tokens) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.total_tokens) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.total_tokens) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.total_tokens) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.total_tokens) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.total_tokens) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.total_tokens) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.total_tokens) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.total_tokens) FILTER (WHERE p.phase = 'images') AS \"images\", sum(p.total_tokens) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.total_tokens) FILTER (WHERE p.phase = 'qa') AS \"qa\", sum(p.total_tokens) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.total_tokens) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.total_tokens) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
           "refId": "A"
         }
       ],
@@ -1279,6 +1333,21 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "images"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7c5cbf"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "scenes"
             },
             "properties": [
@@ -1287,6 +1356,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "qa"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2aa7b8"
                 }
               }
             ]
@@ -1351,7 +1435,7 @@
           "format": "table",
           "rawQuery": true,
           "editorMode": "code",
-          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.active_s) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.active_s) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.active_s) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.active_s) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.active_s) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.active_s) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.active_s) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT v.video_ref AS video, max(v.last_run_at) AS last, sum(p.active_s) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.active_s) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.active_s) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.active_s) FILTER (WHERE p.phase = 'images') AS \"images\", sum(p.active_s) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.active_s) FILTER (WHERE p.phase = 'qa') AS \"qa\", sum(p.active_s) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.active_s) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.active_s) FILTER (WHERE p.phase = 'other') AS \"other\" FROM v JOIN telemetry_video_phase_metrics p USING (video_ref) WHERE p.phase <> 'setup' GROUP BY v.video_ref ORDER BY last DESC",
           "refId": "A"
         }
       ],
@@ -1451,6 +1535,21 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "images"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7c5cbf"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "scenes"
             },
             "properties": [
@@ -1459,6 +1558,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "qa"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2aa7b8"
                 }
               }
             ]
@@ -1523,7 +1637,7 @@
           "format": "table",
           "rawQuery": true,
           "editorMode": "code",
-          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT date_trunc('day', coalesce(p.finished_at, p.started_at)) AS time, sum(p.cost_usd) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.cost_usd) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.cost_usd) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.cost_usd) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.cost_usd) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.cost_usd) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.cost_usd) FILTER (WHERE p.phase = 'other') AS \"other\" FROM telemetry_runs p JOIN v USING (video_ref) WHERE p.phase <> 'setup' GROUP BY 1 ORDER BY 1",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT date_trunc('day', coalesce(p.finished_at, p.started_at)) AS time, sum(p.cost_usd) FILTER (WHERE p.phase = 'script') AS \"script\", sum(p.cost_usd) FILTER (WHERE p.phase = 'cues') AS \"cues\", sum(p.cost_usd) FILTER (WHERE p.phase = 'voice') AS \"voice\", sum(p.cost_usd) FILTER (WHERE p.phase = 'images') AS \"images\", sum(p.cost_usd) FILTER (WHERE p.phase = 'scenes') AS \"scenes\", sum(p.cost_usd) FILTER (WHERE p.phase = 'qa') AS \"qa\", sum(p.cost_usd) FILTER (WHERE p.phase = 'render') AS \"render\", sum(p.cost_usd) FILTER (WHERE p.phase = 'deliver') AS \"deliver\", sum(p.cost_usd) FILTER (WHERE p.phase = 'other') AS \"other\" FROM telemetry_runs p JOIN v USING (video_ref) WHERE p.phase <> 'setup' GROUP BY 1 ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -1608,6 +1722,21 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "images"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7c5cbf"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "scenes"
             },
             "properties": [
@@ -1616,6 +1745,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "qa"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2aa7b8"
                 }
               }
             ]
@@ -2481,6 +2625,238 @@
         ]
       },
       "id": 28
+    },
+    {
+      "type": "table",
+      "title": "Token & chi phí theo phiên bản Studio",
+      "description": "Mỗi dòng là một commit của Studio đã chạy các run. Dùng để xem token/chi phí đổi theo phiên bản nào: cùng loại video mà 'Token / run' nhảy khi đổi commit thì nghi luồng chạy đã đổi. '(chưa ghi)' là run từ trước khi có metadata này. 'Có sửa chưa commit' = lúc chạy có thay đổi chưa commit nên commit không đủ để tái hiện.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT coalesce(r.studio_commit, '(chưa ghi)') AS \"Commit\", coalesce(max(r.studio_branch), '—') AS \"Branch\",\n  bool_or(coalesce(r.studio_dirty, false)) AS \"Có sửa chưa commit\",\n  count(DISTINCT r.video_ref) AS \"Số video\", count(*) AS \"Run\",\n  sum(r.total_tokens) AS \"Token\", sum(r.total_tokens) / nullif(count(*) FILTER (WHERE r.has_usage), 0) AS \"Token / run\",\n  sum(r.cost_usd) AS \"Chi phí\", sum(r.turns) AS \"Lượt agent\", sum(r.tool_calls) AS \"Tool call\",\n  count(*) FILTER (WHERE r.status = 'error') AS \"Run lỗi\",\n  min(r.started_at) AS \"Từ\", max(r.started_at) AS \"Đến\"\nFROM telemetry_runs r JOIN v USING (video_ref) GROUP BY r.studio_commit ORDER BY max(r.started_at) DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 110
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không đo"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token / run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Có sửa chưa commit"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "✓"
+                      },
+                      "false": {
+                        "text": "—"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Từ"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Đến"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              }
+            ]
+          }
+        ]
+      },
+      "id": 29
+    },
+    {
+      "type": "table",
+      "title": "So sánh theo style",
+      "description": "Cùng kịch bản mà khác style thường khác chi phí nhiều (issue #71). Chỉ so các dòng khi cùng agent/model và cùng commit Studio; tổng gộp nhiều video nên chia cho 'Số video' trước khi so. Run chạy trước khi có metadata này nằm ở '(chưa ghi)'.",
+      "datasource": "Video Telemetry Postgres",
+      "targets": [
+        {
+          "datasource": "Video Telemetry Postgres",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)) SELECT coalesce(r.style, '(chưa ghi)') AS \"Style\", count(DISTINCT r.video_ref) AS \"Số video\", count(*) AS \"Run\",\n  sum(r.turns) AS \"Lượt agent\", sum(r.tool_calls) AS \"Tool call\",\n  sum(coalesce(r.fresh_input_tokens, 0) + coalesce(r.output_tokens, 0)) FILTER (WHERE r.has_usage) AS \"Token vào+ra\", sum(r.cached_input_tokens) AS \"Token cache\",\n  sum(r.cost_usd) AS \"Chi phí\", sum(r.cost_usd) FILTER (WHERE r.phase = 'scenes') AS \"Chi phí dựng hình\",\n  count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS \"Run chưa đo giá\"\nFROM telemetry_runs r JOIN v USING (video_ref) GROUP BY r.style ORDER BY 2 DESC",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 118
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "không đo"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token vào+ra"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Token cache"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chi phí dựng hình"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "id": 30
     }
   ]
 }

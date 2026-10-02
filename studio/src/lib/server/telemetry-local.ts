@@ -7,14 +7,14 @@ import { readState, syncStateFile, unsafeReason } from "../../../../tools/teleme
  * The event schema `workflow-ledger.mjs#emitTelemetry` writes, as nested key whitelists. Only these values
  * are copied into the preview; anything else the raw line carries is reported by key name (`extraKeys`).
  */
-const MEASUREMENT = ["duration_ms", "input_tokens", "cached_input_tokens", "output_tokens", "tool_calls", "characters", "credits", "gpu_seconds", "video_duration_s"] as const;
+const MEASUREMENT = ["duration_ms", "input_tokens", "cached_input_tokens", "output_tokens", "tool_calls", "turns", "characters", "credits", "gpu_seconds", "video_duration_s"] as const;
 const WHITELIST: Record<string, true | Record<string, true | Record<string, true>>> = {
   event_id: true, schema_version: true, occurred_at: true, event_type: true, installation_id: true,
   project_ref: true, video_ref: true, run_id: true, stage: true, actor_kind: true, provider: true, model: true,
   outcome: { status: true, error_code: true },
   measurement: { ...Object.fromEntries(MEASUREMENT.map((k) => [k, true as const])), cost: { amount: true, currency: true, source: true } },
   privacy: { payload_class: true },
-  run_context: { attempt: true, version: true, trigger: true, feedback_ids: true, session_id: true, prompt_sha256: true, gateway_status: true },
+  run_context: { attempt: true, version: true, trigger: true, feedback_ids: true, session_id: true, prompt_sha256: true, gateway_status: true, studio: { version: true, commit: true, branch: true, dirty: true }, style: true },
   feedback: {
     feedback_id: true, stage: true, scope: true, code: true, severity: true, source: true, qa_provider: true,
     status: true, recurrence: true, found_by_run: true, resolved_by_run: true, verified_by_run: true, created_at: true,

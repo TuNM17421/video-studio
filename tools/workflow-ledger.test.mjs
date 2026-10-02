@@ -145,7 +145,11 @@ test("regeneration is numbered: attempt per stage, version per delivered render,
   assert.deepEqual([render.attempt, render.version], [1, 1]);
   assert.deepEqual([fix.attempt, fix.version, fix.trigger, fix.feedbackIds], [2, 2, "qa_fix", ["fb-1"]]);
   const started = readTelemetryOutbox(repo).filter((event) => event.event_type === "run_started").at(-1);
-  assert.deepEqual(started.run_context, { attempt: 2, version: 2, trigger: "qa_fix", feedback_ids: ["fb-1"] });
+  const { studio, style, ...context } = started.run_context;
+  assert.equal(style, null, "no state.json → style unknown, not guessed");
+  assert.deepEqual(context, { attempt: 2, version: 2, trigger: "qa_fix", feedback_ids: ["fb-1"] });
+  // Which Studio build ran it: keys always present (null outside a git checkout), never free text.
+  assert.deepEqual(Object.keys(studio).sort(), ["branch", "commit", "dirty", "version"]);
 });
 
 test("feedback reaches telemetry as metadata linked to the run that found it, never its text", () => {
@@ -270,4 +274,19 @@ test("telemetry names the fixing run as resolver and the QA run as verifier", ()
   assert.equal(last.verified_by_run, qa.runId);
   // Local field the review panel reads is unchanged.
   assert.equal(readFeedback(repo, id)[0].resolvedBy, qa.runId);
+});
+
+test("a run carries the video's style and agent turns, so cost can be compared per style", () => {
+  const { repo, id } = fixture();
+  fs.mkdirSync(path.join(repo, "projects", id, ".studio"), { recursive: true });
+  fs.writeFileSync(path.join(repo, "projects", id, ".studio", "state.json"), JSON.stringify({ request: { style: "whiteboard" } }));
+  const run = startRun(repo, id, { stage: "scenes", actor: "claude", mode: "agent" });
+  addRunMetrics(repo, id, run.runId, { inputTokens: 10, outputTokens: 5, toolCalls: 40, turns: 7 });
+  const events = readTelemetryOutbox(repo);
+  assert.equal(events.find((e) => e.event_type === "run_started").run_context.style, "whiteboard");
+  const usage = events.find((e) => e.event_type === "usage_recorded").measurement;
+  assert.deepEqual([usage.turns, usage.tool_calls], [7, 40]);
+  // A style that is not a plain slug never reaches the outbox.
+  fs.writeFileSync(path.join(repo, "projects", id, ".studio", "state.json"), JSON.stringify({ request: { style: "x y\nz" } }));
+  assert.equal(readTelemetryOutbox(startRun(repo, id, { stage: "cues", actor: "codex", mode: "agent" }) && repo).at(-1).run_context.style, null);
 });

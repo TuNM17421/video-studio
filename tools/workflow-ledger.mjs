@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { createCipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 
@@ -31,6 +32,35 @@ function readJsonl(filePath) {
   return fs.readFileSync(filePath, "utf8").split(/\r?\n/).filter(Boolean).flatMap((line) => {
     try { return [JSON.parse(line)]; } catch { return []; }
   });
+}
+
+// Which build of Studio produced a run. Different commits change the flow (prompts, gates, retries) and so the
+// tokens a video burns; without this a cost jump cannot be traced to a version. Read once per process; metadata
+// only. `dirty` = uncommitted edits on top of `commit`, so the commit alone may not reproduce the run.
+const studioBuildCache = new Map();
+export function studioBuild(repo) {
+  if (studioBuildCache.has(repo)) return studioBuildCache.get(repo);
+  const git = (...args) => { try { return execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 3000 }).trim(); } catch { return ""; } };
+  let version = null;
+  try { version = JSON.parse(fs.readFileSync(path.join(repo, "studio", "package.json"), "utf8")).version || null; } catch {}
+  const commit = git("rev-parse", "--short=10", "HEAD");
+  const build = {
+    version,
+    commit: commit || null,
+    branch: commit ? (git("rev-parse", "--abbrev-ref", "HEAD") || null) : null,
+    dirty: commit ? git("status", "--porcelain", "--untracked-files=no") !== "" : null,
+  };
+  studioBuildCache.set(repo, build);
+  return build;
+}
+
+// The style the video is built in (lesson-lab, whiteboard…): the axis cost is compared on, since the same
+// script costs very different amounts per style. Read from the video's own state; null when it has none.
+function videoStyle(repo, videoId) {
+  try {
+    const style = JSON.parse(fs.readFileSync(stateFile(repo, videoId, "state.json"), "utf8"))?.request?.style;
+    return typeof style === "string" && /^[\w.-]{1,64}$/.test(style) ? style : null;
+  } catch { return null; }
 }
 
 function installationId(repo) {
@@ -75,6 +105,8 @@ function emitTelemetry(repo, videoId, eventType, runId, payload = {}) {
       cached_input_tokens: finiteNonNegative(payload.cachedInputTokens),
       output_tokens: finiteNonNegative(payload.outputTokens),
       tool_calls: finiteNonNegative(payload.toolCalls),
+      // Agent turns (model round-trips): the unit that is actually billed, since each one re-reads the context.
+      turns: finiteNonNegative(payload.turns),
       // Voice: characters sent to ElevenLabs, credits it actually charged, GPU time used on Kaggle.
       characters: finiteNonNegative(payload.characters),
       credits: finiteNonNegative(payload.credits),
@@ -243,7 +275,7 @@ export function startRun(repo, videoId, input) {
   append(stateFile(repo, videoId, "runs.jsonl"), { event: "started", at: run.startedAt, run });
   emitTelemetry(repo, videoId, "run_started", run.runId, {
     ...run,
-    runContext: { attempt, version, trigger: run.trigger, feedback_ids: feedbackIds },
+    runContext: { attempt, version, trigger: run.trigger, feedback_ids: feedbackIds, studio: studioBuild(repo), style: videoStyle(repo, videoId) },
   });
   writeImprovementPlan(repo, videoId);
   return run;

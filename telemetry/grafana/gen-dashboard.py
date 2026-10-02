@@ -3,7 +3,7 @@ import json, sys
 DS = "Video Telemetry Postgres"
 SCOPE = "video_ref IN ($video) AND ('${scope}' = 'all' OR completed) AND $__timeFilter(last_run_at)"
 W = "WITH v AS (SELECT * FROM telemetry_video_metrics WHERE " + SCOPE + ") "
-PHASES = [("script", "#3987e5"), ("cues", "#d95926"), ("voice", "#199e70"), ("scenes", "#c98500"),
+PHASES = [("script", "#3987e5"), ("cues", "#d95926"), ("voice", "#199e70"), ("images", "#7c5cbf"), ("scenes", "#c98500"), ("qa", "#2aa7b8"),
           ("render", "#d55181"), ("deliver", "#008300"), ("other", "#8e8e8e")]
 PHASE_COLORS = [{"matcher": {"id": "byName", "options": n}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": c}}]} for n, c in PHASES]
 NULL_TEXT = [{"type": "special", "options": {"match": "null", "result": {"text": "không đo"}}}]
@@ -91,12 +91,14 @@ bar("Chi phí TB / video theo nhà cung cấp",
 
 table("Model theo nhà cung cấp", W + """SELECT r.provider AS "Nhà cung cấp", coalesce(r.model, '(chưa rõ)') AS "Model",
   count(DISTINCT r.video_ref) AS "Số video", count(*) AS "Run",
-  sum(r.cost_usd) AS "Tổng chi phí", count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS "Run chưa đo giá"
+  sum(r.cost_usd) AS "Tổng chi phí", sum(coalesce(r.fresh_input_tokens, 0) + coalesce(r.output_tokens, 0)) FILTER (WHERE r.has_usage) AS "Token vào+ra (không cache)",
+  sum(r.cached_input_tokens) AS "Token cache", sum(r.turns) AS "Lượt agent",
+  count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS "Run chưa đo giá"
 FROM telemetry_runs r JOIN v USING (video_ref) WHERE r.has_billable GROUP BY 1, 2 ORDER BY 1, sum(r.cost_usd) DESC NULLS LAST""",
       {"h": 8, "w": 24, "x": 0, "y": 25},
       "Mỗi model một dòng, kể cả khi cùng nhà cung cấp — model khác giá khác (ví dụ eleven_v3 đắt gấp đôi eleven_turbo_v2_5). "
       "'Run chưa đo giá' > 0 nghĩa là model đó chưa có trong bảng giá (pricing-catalog.ts với ElevenLabs) hoặc CLI chưa tự báo chi phí.",
-      [unit("Tổng chi phí", "currencyUSD", {"id": "decimals", "value": 3})])
+      [unit("Tổng chi phí", "currencyUSD", {"id": "decimals", "value": 3}), unit("Token vào+ra (không cache)", "short"), unit("Token cache", "short")])
 
 
 def vstat(title, sql, u, x, desc):
@@ -222,11 +224,40 @@ GROUP BY r.video_ref, r.stage ORDER BY r.video_ref, min(r.started_at)""",
       {"h": 10, "w": 24, "x": 0, "y": 100}, RESEARCH_NOTE + " 'Lượt research' là mã research (research-<rid>), không phải mã video.",
       [unit("Chi phí", "currencyUSD", {"id": "decimals", "value": 3}), unit("Bắt đầu", "dateTimeAsLocalNoDateIfToday")])
 
+# ── Theo phiên bản Studio ────────────────────────────────────────────────────────────────
+table("Token & chi phí theo phiên bản Studio", W + """SELECT coalesce(r.studio_commit, '(chưa ghi)') AS "Commit", coalesce(max(r.studio_branch), '—') AS "Branch",
+  bool_or(coalesce(r.studio_dirty, false)) AS "Có sửa chưa commit",
+  count(DISTINCT r.video_ref) AS "Số video", count(*) AS "Run",
+  sum(r.total_tokens) AS "Token", sum(r.total_tokens) / nullif(count(*) FILTER (WHERE r.has_usage), 0) AS "Token / run",
+  sum(r.cost_usd) AS "Chi phí", sum(r.turns) AS "Lượt agent", sum(r.tool_calls) AS "Tool call",
+  count(*) FILTER (WHERE r.status = 'error') AS "Run lỗi",
+  min(r.started_at) AS "Từ", max(r.started_at) AS "Đến"
+FROM telemetry_runs r JOIN v USING (video_ref) GROUP BY r.studio_commit ORDER BY max(r.started_at) DESC""",
+      {"h": 8, "w": 24, "x": 0, "y": 110},
+      "Mỗi dòng là một commit của Studio đã chạy các run. Dùng để xem token/chi phí đổi theo phiên bản nào: cùng loại video mà "
+      "'Token / run' nhảy khi đổi commit thì nghi luồng chạy đã đổi. '(chưa ghi)' là run từ trước khi có metadata này. "
+      "'Có sửa chưa commit' = lúc chạy có thay đổi chưa commit nên commit không đủ để tái hiện.",
+      [unit("Token", "short"), unit("Token / run", "short"), unit("Chi phí", "currencyUSD", {"id": "decimals", "value": 3}),
+       {"matcher": {"id": "byName", "options": "Có sửa chưa commit"}, "properties": CHECK},
+       unit("Từ", "dateTimeAsLocalNoDateIfToday"), unit("Đến", "dateTimeAsLocalNoDateIfToday")])
+
+
+table("So sánh theo style", W + """SELECT coalesce(r.style, '(chưa ghi)') AS "Style", count(DISTINCT r.video_ref) AS "Số video", count(*) AS "Run",
+  sum(r.turns) AS "Lượt agent", sum(r.tool_calls) AS "Tool call",
+  sum(coalesce(r.fresh_input_tokens, 0) + coalesce(r.output_tokens, 0)) FILTER (WHERE r.has_usage) AS "Token vào+ra", sum(r.cached_input_tokens) AS "Token cache",
+  sum(r.cost_usd) AS "Chi phí", sum(r.cost_usd) FILTER (WHERE r.phase = 'scenes') AS "Chi phí dựng hình",
+  count(*) FILTER (WHERE r.cost_state = 'unmeasured') AS "Run chưa đo giá"
+FROM telemetry_runs r JOIN v USING (video_ref) GROUP BY r.style ORDER BY 2 DESC""",
+      {"h": 7, "w": 24, "x": 0, "y": 118},
+      "Cùng kịch bản mà khác style thường khác chi phí nhiều (issue #71). Chỉ so các dòng khi cùng agent/model và cùng commit Studio; "
+      "tổng gộp nhiều video nên chia cho 'Số video' trước khi so. Run chạy trước khi có metadata này nằm ở '(chưa ghi)'.",
+      [unit("Token vào+ra", "short"), unit("Token cache", "short"), unit("Chi phí", "currencyUSD", {"id": "decimals", "value": 3}),
+       unit("Chi phí dựng hình", "currencyUSD", {"id": "decimals", "value": 3})])
 
 for i, p in enumerate(panels, 1):
     p["id"] = i
 
-dash = {"title": "Video Telemetry", "timezone": "browser", "schemaVersion": 39, "version": 7, "refresh": "30s",
+dash = {"title": "Video Telemetry", "timezone": "browser", "schemaVersion": 39, "version": 9, "refresh": "30s",
         "time": {"from": "now-90d", "to": "now"},
         "templating": {"list": [
             {"name": "scope", "label": "Phạm vi", "type": "custom", "query": "Video hoàn tất : completed,Tất cả video : all",

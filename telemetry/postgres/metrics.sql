@@ -31,7 +31,9 @@ LANGUAGE sql IMMUTABLE AS $$
     WHEN stage LIKE 'script%' THEN 'script'
     WHEN stage IN ('cues', 'dry-run') OR stage LIKE 'cues.%' THEN 'cues'
     WHEN stage IN ('voice', 'voice-script', 'omnivoice-generate', 'kaggle-generate', 'import-scan') OR stage LIKE 'voice.%' THEN 'voice'
-    WHEN stage IN ('scenes', 'review', 'images', 'build', 'verify') OR stage LIKE 'scenes.%' THEN 'scenes'
+    WHEN stage = 'images' THEN 'images'
+    WHEN stage IN ('review', 'scenes.qa') THEN 'qa'
+    WHEN stage IN ('scenes', 'build', 'verify') OR stage LIKE 'scenes.%' THEN 'scenes'
     WHEN stage IN ('render', 'shoot') OR stage LIKE 'render.%' THEN 'render'
     WHEN stage = 'deliver' OR stage LIKE 'deliver.%' THEN 'deliver'
     ELSE 'other'
@@ -40,7 +42,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION telemetry_phase_order(phase TEXT) RETURNS INT
 LANGUAGE sql IMMUTABLE AS $$
-  SELECT array_position(ARRAY['script', 'cues', 'voice', 'scenes', 'render', 'deliver', 'setup', 'other'], phase)
+  SELECT array_position(ARRAY['script', 'cues', 'voice', 'images', 'scenes', 'qa', 'render', 'deliver', 'setup', 'other'], phase)
 $$;
 
 -- Một dòng = một run: gộp run_started + usage_recorded + run_finished theo run_id.
@@ -72,6 +74,12 @@ WITH per_run AS (
     max((payload -> 'run_context' ->> 'attempt')::int) FILTER (WHERE event_type = 'run_started') AS attempt,
     max((payload -> 'run_context' ->> 'version')::int) FILTER (WHERE event_type = 'run_started') AS version,
     max(payload -> 'run_context' ->> 'trigger') FILTER (WHERE event_type = 'run_started') AS trigger,
+    max(payload -> 'run_context' ->> 'style') FILTER (WHERE event_type = 'run_started') AS style,
+    sum((measurement ->> 'turns')::numeric) FILTER (WHERE event_type = 'usage_recorded') AS turns,
+    sum((measurement ->> 'tool_calls')::numeric) FILTER (WHERE event_type = 'usage_recorded') AS tool_calls,
+    max(payload -> 'run_context' -> 'studio' ->> 'commit') FILTER (WHERE event_type = 'run_started') AS studio_commit,
+    max(payload -> 'run_context' -> 'studio' ->> 'branch') FILTER (WHERE event_type = 'run_started') AS studio_branch,
+    max(payload -> 'run_context' -> 'studio' ->> 'dirty') FILTER (WHERE event_type = 'run_started') AS studio_dirty,
     (array_agg(payload -> 'run_context' -> 'feedback_ids') FILTER (WHERE event_type = 'run_started'))[1] AS feedback_ids,
     max(payload -> 'run_context' ->> 'session_id') FILTER (WHERE event_type = 'usage_recorded') AS session_id,
     max(payload -> 'run_context' ->> 'prompt_sha256') FILTER (WHERE event_type = 'usage_recorded') AS prompt_sha256,
@@ -125,7 +133,13 @@ SELECT
   gpu_seconds,
   video_duration_s,
   paid_cost AS cost_usd,
-  cost_source
+  cost_source,
+  studio_commit,
+  studio_branch,
+  studio_dirty = 'true' AS studio_dirty,
+  style,
+  turns,
+  tool_calls
 FROM shaped;
 
 -- Hợp các khoảng [started_at, finished_at] chồng/lồng nhau thành các khoảng rời nhau ("islands"), rồi tổng độ
