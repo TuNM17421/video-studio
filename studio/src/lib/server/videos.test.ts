@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { normalizeVideoState, requestMarkdown } from "./videos";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { isLedgerOnlyProject, normalizeVideoState, requestMarkdown, styleUnsupportedModules } from "./videos";
 
 const storedState = {
   id: "d2-01-lab",
@@ -62,5 +65,64 @@ describe("mascot request contract", () => {
     const off = requestMarkdown("d2-plain", { ...state.request, modules: [] }, "Claude");
     expect(off).toContain("**không** có linh vật");
     expect(off).not.toContain("## Linh vật Griffin");
+  });
+});
+
+describe("style capabilities", () => {
+  it("reads the capabilities a style cannot build from styles/<id>.json", () => {
+    expect(styleUnsupportedModules("whiteboard")).toEqual(expect.arrayContaining(["dialogue", "quiz", "mascot"]));
+    expect(styleUnsupportedModules("lesson-lab")).toEqual([]);
+    expect(styleUnsupportedModules("no-such-style")).toEqual([]);
+  });
+});
+
+describe("style guides", () => {
+  it("chains a guide to the one it extends, parent first", async () => {
+    const { styleGuides, styleQaCriteria } = await import("./style-guides");
+    expect(styleGuides("lesson-lab")).toEqual(["styles/lesson.md", "styles/lesson-lab.md"]);
+    // the whiteboard borrows Lesson's palette (JSON extends) but none of its scene rules
+    expect(styleGuides("whiteboard")).toEqual(["styles/whiteboard.md"]);
+    expect(styleGuides("no-such-style")).toEqual([]);
+    expect(styleQaCriteria("lesson-lab").map((c) => c.name)).toEqual(["Style · lesson", "Style · lesson-lab"]);
+  });
+
+  it("names the guides in REQUEST.md", () => {
+    const state = normalizeVideoState(storedState);
+    const md = requestMarkdown("wb", { ...state.request, style: "whiteboard" }, "Claude");
+    expect(md).toContain("`styles/whiteboard.md`");
+    expect(md).not.toContain("styles/lesson.md");
+  });
+});
+
+describe("what counts as a video in projects/", () => {
+  const roots: string[] = [];
+  afterEach(() => { for (const d of roots.splice(0)) fs.rmSync(d, { recursive: true, force: true }); });
+
+  function fixture(entries: string[]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "list-videos-"));
+    roots.push(root);
+    const project = path.join(root, "projects", "x");
+    for (const entry of entries) {
+      fs.mkdirSync(path.join(project, entry), { recursive: true });
+    }
+    if (!entries.length) fs.mkdirSync(project, { recursive: true });
+    return { project, scenes: path.join(root, "ds", "x"), state: path.join(project, ".studio", "state.json") };
+  }
+
+  it("skips a directory the workflow ledger made for a non-video run (research-<rid>)", () => {
+    expect(isLedgerOnlyProject(fixture([".studio"]))).toBe(true);
+  });
+
+  it("keeps a video made outside Studio: no state.json, but a script or scenes of its own", () => {
+    expect(isLedgerOnlyProject(fixture([".studio", "render"]))).toBe(false);
+    const scenesOnly = fixture([".studio"]);
+    fs.mkdirSync(scenesOnly.scenes, { recursive: true });
+    expect(isLedgerOnlyProject(scenesOnly)).toBe(false);
+  });
+
+  it("keeps a Studio video whose only directory is .studio, because state.json is in it", () => {
+    const managed = fixture([".studio"]);
+    fs.writeFileSync(managed.state, "{}");
+    expect(isLedgerOnlyProject(managed)).toBe(false);
   });
 });

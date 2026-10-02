@@ -97,7 +97,11 @@ for key, ref in DATA["refs"].items():
         audio, rate = sf.read(packed)
         sf.write(target, audio, rate, subtype="PCM_16")
     else:
-        urllib.request.urlretrieve(ref["url"], target)
+        # Kho media đứng sau Cloudflare, và Cloudflare chặn User-Agent mặc định của urllib
+        # ("Python-urllib/3.12") bằng 403. Gửi một UA bình thường thì tải được.
+        req = urllib.request.Request(ref["url"], headers={"User-Agent": "video-studio/1.0"})
+        with urllib.request.urlopen(req) as src, open(target, "wb") as dst:
+            shutil.copyfileobj(src, dst)
     paths[key] = os.path.abspath(target)
     print("ref", key, os.path.getsize(target), "bytes", flush=True)
 

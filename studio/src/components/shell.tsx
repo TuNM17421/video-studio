@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { BookOutlined, FileSearchOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { BarChartOutlined, BookOutlined, FileSearchOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
 import { StudioTour } from "./tour";
 
-type Page = "new" | "library" | "videos" | "guide" | "scout";
+type Page = "new" | "library" | "videos" | "guide" | "scout" | "telemetry";
 export type LibrarySection = "styles" | "components" | "characters" | "mascot" | "videos";
 
 /** The library's sections are sidebar children, not tabs on the page. */
@@ -31,6 +31,7 @@ const PAGE_ROUTES: Record<string, string> = {
   videos: "/videos",
   library: librarySectionPath("styles"),
   guide: "/guide",
+  telemetry: "/telemetry",
   ...Object.fromEntries(LIBRARY_SECTIONS.map((s) => [sectionKey(s.id), librarySectionPath(s.id)])),
 };
 let sidebarCollapsedFallback = false;
@@ -84,9 +85,10 @@ export function Shell({ page, section, children }: { page: Page; section?: Libra
   const navigation = [
     // Beta: agent tự tìm tài liệu rồi viết kịch bản. Chưa nối vào luồng tạo video, nên ghi rõ "Beta" — đứng
     // đầu danh sách nhưng đừng để ai tưởng đây là đường chính thức.
-    { key: "scout", icon: <FileSearchOutlined />, label: <Link href="/research" title="Đóng gói kịch bản · beta">Đóng gói kịch bản <span className="vs-nav-beta">beta</span></Link> },
+    { key: "scout", icon: <FileSearchOutlined />, label: <Link href="/research" className="vs-nav-link" title="Đóng gói kịch bản · beta"><span className="vs-nav-label">Đóng gói kịch bản</span><span className="vs-nav-beta">beta</span></Link> },
     { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới" data-tour="nav.new">Video mới</Link> },
     { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video" data-tour="nav.videos">Các video</Link> },
+    { key: "telemetry", icon: <BarChartOutlined />, label: <Link href="/telemetry" title="Số liệu">Số liệu</Link> },
     { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn" data-tour="nav.guide">Hướng dẫn</Link> },
     {
       key: "library",

@@ -1,0 +1,28 @@
+{
+	admin off
+}
+
+{$TELEMETRY_DOMAIN}:{$EDGE_PORT} {
+	import tls-{$TLS_MODE}.caddy
+
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+
+	# Studio clients: ingest + health only.
+	@collector path /v1/events /v1/ai-logs /health
+	handle @collector {
+		request_body {
+			max_size 2MB
+		}
+		reverse_proxy vt-collector:4318
+	}
+
+	# Everything else: Grafana (login required, no anonymous access).
+	handle {
+		reverse_proxy vt-grafana:3000
+	}
+}

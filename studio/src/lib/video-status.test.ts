@@ -22,6 +22,7 @@ const video = (stageValues: Record<StageId, StageStatus>): VideoSummary => ({
   artifacts: { script: true, cues: true, voice: false, voiceWav: null, voiceScript: false, scenes: false, mp4: null, transcript: null, qaManifest: null, chapters: null, prompts: null },
   running: false,
   updatedAt: null,
+  cost: { agentUsd: 0, agentRuns: 0, pricedRuns: 0, tokenRuns: 0, tokens: 0, tokenProviders: [], silentRuns: 0, ttsCharacters: 0, ttsRuns: 0, ttsUnrecorded: 0 },
 });
 
 describe("video production status", () => {

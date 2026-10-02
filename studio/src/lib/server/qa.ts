@@ -3,16 +3,21 @@ import os from "node:os";
 import path from "node:path";
 import { agentProviderLabel } from "../agent-providers";
 import { resolveReviewer } from "../review";
-import { antigravityQaArgs, claudeQaArgs, codexQaArgs, sanitizedAgentEnv } from "./agent-cli";
+import { antigravityQaArgs, claudeQaArgs, codexQaArgs, IGNORE_PERSONA_LINE, sanitizedAgentEnv } from "./agent-cli";
+import { abandonGatewayRun, activeGateway, beginGatewayRun, endGatewayRun, gatewayRuntimeEnv, keepGatewayRunAlive, withGatewayArgs, withGatewayEnv } from "./gateway";
+import { safelyRecordAiLog } from "./ai-log";
 import { agentBin, installedAgents } from "./agent-config";
-import { finishJob, log, machineLabel, run, setProgress, startJob, wasStopped } from "./jobs";
+import { resolveAgentBin } from "./agent-step";
+import { finishJob, log, machineLabel, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginHarness, endHarness, HARNESS_STEPS, setHarnessReview, stepDone, stepError, stepSkip, stepStart } from "./harness";
 import { moduleQaCriteria } from "./modules";
+import { styleQaCriteria } from "./style-guides";
 import { projectDir, REPO, rel, stateDir, videoDir, voiceOut } from "./paths";
 import { cuesInfo, readState, setStage } from "./videos";
 import {
   addRunMetrics,
   finishRun,
+  recordAiLog,
   QA_CODES,
   reconcileQaFeedback,
   startRun,
@@ -127,7 +132,10 @@ export function usageFrom(raw: string) {
     if (!value || typeof value !== "object") continue;
     const usage = (value.usage || value.stats) as Record<string, unknown> | undefined;
     if (usage && typeof usage === "object") {
-      out.inputTokens = num(usage.input_tokens ?? usage.inputTokens) ?? out.inputTokens;
+      const input = num(usage.input_tokens ?? usage.inputTokens);
+      // Claude bills cache creation as input; fold it in like agent.ts and research.ts do.
+      const cacheWrite = num(usage.cache_creation_input_tokens);
+      out.inputTokens = input === undefined && cacheWrite === undefined ? out.inputTokens : (input ?? 0) + (cacheWrite ?? 0);
       out.cachedInputTokens = num(usage.cached_input_tokens ?? usage.cache_read_input_tokens ?? usage.cachedInputTokens) ?? out.cachedInputTokens;
       out.outputTokens = num(usage.output_tokens ?? usage.outputTokens) ?? out.outputTokens;
       out.costUsd = num(usage.cost_usd ?? usage.costUsd) ?? out.costUsd;
@@ -167,7 +175,9 @@ async function deterministicSceneGate(id: string, base: string) {
 
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Static verification", "npm", ["run", "verify"]);
+    // Chỉ video này (cộng các phép soát chung của design system): video khác trên máy có lỗi thì không được chặn
+    // cổng của video này — lỗi đó người dựng video này không sửa được, agent cũng không nên sửa.
+    const verify = await command(id, "Static verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));
@@ -204,15 +214,27 @@ async function deterministicSceneGate(id: string, base: string) {
   }
 }
 
-/** The lines verify flags as problems, for the step's detail — the whole output is in the log. */
-function problemLines(output: string) {
+/**
+ * The problems verify reports, for the step's detail — the whole output is in the log. The "- …" items under
+ * "N problem(s):" come first: the count line alone ("2 problem(s):") does not say which video is at fault.
+ */
+export function problemLines(output: string) {
+  const items = output.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).slice(0, 3).map((line) => line.slice(2));
+  if (items.length) return items.join(" · ");
   const lines = output.split("\n").filter((line) => /✗|problem|error/i.test(line)).slice(0, 3);
   return lines.join(" · ") || "xem nhật ký";
 }
 
-/** "all checks passed", or the warning count when there are some. */
-function verifySummary(output: string) {
-  const warnings = output.split("\n").filter((line) => /warn|⚠/i.test(line)).length;
+/**
+ * "all checks passed", or the warning count when there are some.
+ *
+ * Counted by the shape verify.mjs actually prints — `  ! <cảnh báo>` — not by the word "warning", which
+ * appears nowhere in its output. Matching on the word made every run report "không có lỗi", including a
+ * run with thirteen warnings, so the one line a member reads at the verify step said the opposite of the
+ * log right under it. Same reading as problemLines just above, which takes the `  - <lỗi>` lines.
+ */
+export function verifySummary(output: string) {
+  const warnings = output.split("\n").filter((line) => line.trim().startsWith("! ")).length;
   return warnings ? `${warnings} cảnh báo` : "không có lỗi";
 }
 
@@ -246,13 +268,19 @@ function qaPacket(id: string, verifyOutput: string, qaDir: string) {
   return { packet, stills: stills.map((name) => `stills/${name}`) };
 }
 
-function qaPrompt(id: string, modules: string[]) {
+function qaPrompt(id: string, modules: string[], style: string) {
+  const styleExtra = styleQaCriteria(style);
   const extra = moduleQaCriteria(modules);
   return [
+    IGNORE_PERSONA_LINE,
     `Bạn là QA lane độc lập cho video ${id}. Chỉ đọc nội dung trong thư mục hiện tại.`,
     "Mở REQUEST.md, kich-ban-goc.md, cues.js, IMPROVEMENT-PLAN.md nếu có, verify.txt và toàn bộ ảnh trong stills/. Ảnh cue-NN.png là câu `n: NN` trong cues.js.",
     "Chữ/số trên màn hình hợp lệ khi có trong lời đọc (`text`) HOẶC trong phần mô tả màn hình của đúng câu đó (`title`, `visual` trong cues.js; dòng **Trên màn hình** trong kich-ban-goc.md) — màn hình được phép khác lời đọc. Chỉ báo `off-script` khi không có ở cả hai nơi.",
     "Tiêu chí chung cho từng ảnh: chữ đọc được; chữ/khối không tràn, không bị xén, không chồng nhau; bố cục không trống hay dồn một góc; chữ/số trên màn hình không nằm ngoài kịch bản; cả chuỗi ảnh có nhịp và không lặp máy móc.",
+    ...(styleExtra.length ? [
+      "Tiêu chí riêng của style video này — soi thêm (vi phạm ghi code `style`):",
+      ...styleExtra.map((m) => `### ${m.name}\n${m.criteria}`),
+    ] : []),
     ...(extra.length ? [
       "Video bật thêm các năng lực dưới đây — soi thêm đúng những tiêu chí này, không tự đặt tiêu chí khác (vi phạm ghi code `module`):",
       ...extra.map((m) => `### ${m.name}\n${m.criteria}`),
@@ -275,67 +303,87 @@ async function visualQa(id: string, packet: { packet: string; stills: string[] }
   const label = agentProviderLabel(provider);
   const model = process.env.STUDIO_QA_MODEL?.trim() || undefined;
   const qaRun = startRun(REPO, id, { stage: "scenes.qa", actor: provider, mode: "agent", label: `visual QA · ${label}`, machine: machineLabel() });
-  const prompt = qaPrompt(id, state.request.modules);
-  const outDir = path.join(stateDir(id), "qa");
-  fs.mkdirSync(outDir, { recursive: true });
-
-  let args: string[];
-  let lastMessage: string | null = null;
-  if (provider === "claude") {
-    args = claudeQaArgs(QA_SCHEMA, model);
-  } else if (provider === "codex") {
-    const schemaFile = path.join(packet.packet, "qa-schema.json");
-    fs.writeFileSync(schemaFile, QA_SCHEMA);
-    lastMessage = path.join(outDir, "codex-last-message.json");
-    fs.rmSync(lastMessage, { force: true });
-    args = codexQaArgs(schemaFile, lastMessage, packet.stills, model);
-  } else {
-    args = antigravityQaArgs(QA_SCHEMA, model);
-  }
-
-  const lines: string[] = [];
-  let toolCalls = 0;
-  stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
-  setProgress(id, null, `${label} đang QA ảnh…`);
-  log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
-  const code = await run(id, agentBin(provider), args, {
-    cwd: packet.packet,
-    env: sanitizedAgentEnv(),
-    input: prompt,
-    onLine(line, stream) {
-      if (stream === "stderr") log(id, provider === "codex" ? "system" : "error", line.slice(0, 500));
-      else lines.push(line);
-      if (/tool/i.test(line)) toolCalls++;
-    },
-  });
-  const raw = lines.join("\n").trim();
-  const usage = usageFrom(raw);
-  addRunMetrics(REPO, id, qaRun.runId, { ...usage, toolCalls, model: usage.model || model });
+  let releaseLease = () => {};
   try {
+    const prompt = qaPrompt(id, state.request.modules, state.request.style);
+    const outDir = path.join(stateDir(id), "qa");
+    fs.mkdirSync(outDir, { recursive: true });
+
+    let args: string[];
+    let lastMessage: string | null = null;
+    if (provider === "claude") {
+      args = claudeQaArgs(QA_SCHEMA, model);
+    } else if (provider === "codex") {
+      const schemaFile = path.join(packet.packet, "qa-schema.json");
+      fs.writeFileSync(schemaFile, QA_SCHEMA);
+      lastMessage = path.join(outDir, "codex-last-message.json");
+      fs.rmSync(lastMessage, { force: true });
+      args = codexQaArgs(schemaFile, lastMessage, packet.stills, model);
+    } else {
+      args = antigravityQaArgs(QA_SCHEMA, model);
+    }
+
+    const lines: string[] = [];
+    let toolCalls = 0;
+    stepStart(id, "review", `${label} · ${packet.stills.length} ảnh`);
+    setProgress(id, null, `${label} đang QA ảnh…`);
+    log(id, "system", `Bắt đầu QA ảnh · ${label} · phiên riêng, chỉ đọc`);
+    // QA of a video the Studio UI is making: Codex goes through 9router like the stage agents do.
+    const { cfg: gateway, note } = provider === "codex" ? await activeGateway(gatewayRuntimeEnv()) : { cfg: null };
+    if (note) log(id, "error", note);
+    if (gateway) beginGatewayRun(qaRun.runId);
+    if (gateway) releaseLease = keepGatewayRunAlive(qaRun.runId);
+    let code = 1;
+    try {
+      code = await run(id, (await resolveAgentBin(provider)) ?? agentBin(provider), gateway ? withGatewayArgs(args, gateway) : args, {
+        cwd: packet.packet,
+        env: gateway ? withGatewayEnv(sanitizedAgentEnv(), gateway) : sanitizedAgentEnv(),
+        input: prompt,
+        onLine(line, stream) {
+          if (stream === "stderr") log(id, provider === "codex" ? "system" : "error", line.slice(0, 500));
+          else lines.push(line);
+          if (/tool/i.test(line)) toolCalls++;
+        },
+      });
+    } finally {
+      const raw = lines.join("\n").trim();
+      if (raw && process.env.STUDIO_TELEMETRY_AI_LOGS === "1") safelyRecordAiLog(raw,
+        (text) => recordAiLog(REPO, id, { source: "studio", runId: qaRun.runId, kind: "qa_stream", text }),
+        (message) => log(id, "error", message));
+      const usage = usageFrom(raw);
+      // Claude's `total_cost_usd` comes from its own CLI; Codex has a cost only through 9router; the rest stays unavailable.
+      const costSource = provider === "claude" && usage.costUsd !== undefined ? "provider_reported" : undefined;
+      let gatewayFields = {};
+      if (gateway) {
+        const { message, ...fields } = await endGatewayRun(qaRun.runId, gateway, usage);
+        log(id, fields.gatewayStatus === "ok" ? "system" : "error", message);
+        gatewayFields = fields;
+      }
+      addRunMetrics(REPO, id, qaRun.runId, { ...usage, costSource, toolCalls, model: usage.model || model, ...gatewayFields });
+    }
+    const raw = lines.join("\n").trim();
     if (code !== 0 || wasStopped(id)) {
-      finishRun(REPO, id, qaRun.runId, { status: wasStopped(id) ? "stopped" : "error", error: `${label} exit ${code}` });
-      stepError(id, "review", wasStopped(id) ? "Đã dừng" : `${label} thoát với mã ${code}`);
       throw new Error(`QA ảnh (${label}) thất bại (mã ${code}).`);
     }
-    try {
-      const report = parseQaReport(lastMessage && fs.existsSync(lastMessage) ? fs.readFileSync(lastMessage, "utf8") : raw);
-      fs.writeFileSync(path.join(outDir, "latest.json"), `${JSON.stringify({ ...report, provider, runId: qaRun.runId, createdAt: new Date().toISOString() }, null, 2)}\n`);
-      reconcileQaFeedback(REPO, id, "scenes", report.findings, qaRun.runId, provider);
-      finishRun(REPO, id, qaRun.runId, { status: "done", artifacts: [rel(path.join(outDir, "latest.json"))] });
-      log(id, report.findings.length ? "error" : "result", `QA ảnh (${label}): ${report.summary}`);
-      setHarnessReview(id, { provider, runId: qaRun.runId, verdict: report.verdict, summary: report.summary });
-      const count = (s: string) => report.findings.filter((f) => f.severity === s).length;
-      stepDone(id, "review", report.findings.length
-        ? `${label} · ${report.findings.length} lỗi (${["blocker", "major", "minor"].map((s) => `${count(s)} ${s}`).filter((t) => !t.startsWith("0 ")).join(", ")})`
-        : `${label} · đạt`);
-      return report;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      finishRun(REPO, id, qaRun.runId, { status: "error", error: message });
-      stepError(id, "review", message);
-      throw error;
-    }
+    const report = parseQaReport(lastMessage && fs.existsSync(lastMessage) ? fs.readFileSync(lastMessage, "utf8") : raw);
+    fs.writeFileSync(path.join(outDir, "latest.json"), `${JSON.stringify({ ...report, provider, runId: qaRun.runId, createdAt: new Date().toISOString() }, null, 2)}\n`);
+    reconcileQaFeedback(REPO, id, "scenes", report.findings, qaRun.runId, provider);
+    finishRun(REPO, id, qaRun.runId, { status: "done", artifacts: [rel(path.join(outDir, "latest.json"))] });
+    log(id, report.findings.length ? "error" : "result", `QA ảnh (${label}): ${report.summary}`);
+    setHarnessReview(id, { provider, runId: qaRun.runId, verdict: report.verdict, summary: report.summary });
+    const count = (s: string) => report.findings.filter((f) => f.severity === s).length;
+    stepDone(id, "review", report.findings.length
+      ? `${label} · ${report.findings.length} lỗi (${["blocker", "major", "minor"].map((s) => `${count(s)} ${s}`).filter((t) => !t.startsWith("0 ")).join(", ")})`
+      : `${label} · đạt`);
+    return report;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    finishRun(REPO, id, qaRun.runId, { status: wasStopped(id) ? "stopped" : "error", error: message });
+    stepError(id, "review", message);
+    throw error;
   } finally {
+    releaseLease();
+    abandonGatewayRun(qaRun.runId);
     fs.rmSync(packet.packet, { recursive: true, force: true });
   }
 }
@@ -358,7 +406,14 @@ export const REVIEW_MARKER = "Review lại dựng cảnh";
  * Gate + review without an agent turn: after switching review on, changing who grades, or fixing a scene
  * by hand. Runs as its own job so Dừng works and the ledger records it.
  */
-export async function runReviewJob(id: string, base: string) {
+export function runReviewJob(id: string, base: string) {
+  return ownJob(id, () => reviewJob(id, base), (error) => {
+    try { setStage(id, "scenes", "error", error); } catch {}
+    endHarness(id, "error", error);
+  });
+}
+
+async function reviewJob(id: string, base: string) {
   startJob(id, "review", { actor: "system", mode: "deterministic", label: "review lại" });
   setStage(id, "scenes", "running");
   beginHarness(id, "scenes", "review", HARNESS_STEPS.review);
@@ -422,7 +477,7 @@ export async function runFinalGate(id: string) {
     stepDone(id, "build");
     step = "verify";
     stepStart(id, "verify");
-    const verify = await command(id, "Final verification", "npm", ["run", "verify"]);
+    const verify = await command(id, "Final verification", "npm", ["run", "verify", "--", "--video", id]);
     if (!verify.ok) throw new Error(`Final verify thất bại: ${problemLines(verify.output)}`);
     checks.push("verify");
     stepDone(id, "verify", verifySummary(verify.output));

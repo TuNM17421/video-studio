@@ -47,6 +47,10 @@
  * tools/lib/voice-files.mjs, shared with tools/voice-export.mjs so the two cannot drift apart. The
  * report always shows which file went to which câu, because a folder that is silently off by one is
  * the one mistake that survives all the way to the MP4.
+ *
+ * For a file that is the right one, the report also lists what the recording seems to have lost or
+ * doubled (`issues`: a cut ending, a skipped run of words, a looped word — see speechIssues in
+ * tools/lib/voice-align.mjs). Each is a warning to listen to that câu, not a block.
  */
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
@@ -56,18 +60,13 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, FPS, sha256 } from './lib/voice-audio.mjs';
 import { cueKey, isAudioFile, matchAudioFolder } from './lib/voice-files.mjs';
-import { mapWords, runAlign, SETUP_HINT, venvPython } from './lib/voice-align.mjs';
+import { durationFlag, mapWords, MATCH_BLOCK, MATCH_WARN, runAlign, SETUP_HINT, speechIssues, venvPython } from './lib/voice-align.mjs';
 import { castSpeaker } from './lib/voices.mjs';
 import { backendFromRequest, DEFAULT_BACKEND, resolveBackend } from './lib/voice-backends.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SAMPLE_RATE = 24000;
-/** A câu whose transcript matches this little is almost certainly the wrong file. */
-const MATCH_BLOCK = 0.4;
-const MATCH_WARN = 0.65;
-/** Measured speech this far off the 3 syllables/s estimate is worth a second look. */
-const SHORT = 0.45;
-const LONG = 2.2;
+// MATCH_BLOCK / MATCH_WARN and durationFlag (SHORT / LONG) live in tools/lib/voice-align.mjs, shared with voice-retake.mjs.
 
 const fail = (m) => { console.error(`✗ ${m}`); process.exit(1); };
 const argv = process.argv.slice(2);
@@ -260,9 +259,10 @@ for (const c of CUES) {
     const pcm = decode(path.join(fromDir, file), row.hash, normalize.gainDb);
     c.pcm = pcm;
     row.seconds = +(pcm.length / 2 / SAMPLE_RATE).toFixed(2);
-    const ratio = row.seconds / Math.max(0.5, row.expectedSeconds);
-    if (ratio < SHORT) { row.level = 'warn'; row.notes.push(`ngắn bất thường (${secs(row.seconds)} so với ~${secs(row.expectedSeconds)})`); }
-    else if (ratio > LONG) { row.level = 'warn'; row.notes.push(`dài bất thường (${secs(row.seconds)} so với ~${secs(row.expectedSeconds)})`); }
+    // Same function the retake judges with — a take one passes, the other never flags.
+    const flagged = durationFlag(c.text, row.seconds);
+    if (flagged === 'short') { row.level = 'warn'; row.notes.push(`ngắn bất thường (${secs(row.seconds)} so với ~${secs(row.expectedSeconds)})`); }
+    else if (flagged === 'long') { row.level = 'warn'; row.notes.push(`dài bất thường (${secs(row.seconds)} so với ~${secs(row.expectedSeconds)})`); }
   } catch (e) {
     row.level = 'error';
     row.notes.push(`không giải mã được: ${e.message}`);
@@ -310,8 +310,25 @@ if (align) {
       row.level = row.level === 'error' ? 'error' : 'warn';
       row.notes.push('chỉ khớp một phần lời — nghe lại câu này trước khi nhập');
     }
+    // Right file, but maybe not the whole câu: a cut ending, a skipped run of words, a looped word.
+    // matchRatio passes all three (losing 2 of 10 words still scores 0.8), so they get their own line —
+    // a warning to listen, since Whisper's own mishearings can look the same.
+    if (matchRatio >= MATCH_BLOCK) {
+      const issues = speechIssues(row.text, heard.words);
+      if (issues.length) {
+        row.issues = issues;
+        row.level = row.level === 'error' ? 'error' : 'warn';
+      }
+    }
   }
 }
+
+/** One line per finding, for the CLI and the log; Studio draws them itself with a play button. */
+const ISSUE_LABEL = {
+  truncation: (w) => `có thể mất đuôi câu — không nghe thấy "${w}"`,
+  dropped: (w) => `có thể nuốt chữ — không nghe thấy "${w}"`,
+  repeat: (w) => `có thể lặp chữ — nghe "${w}" hai lần`,
+};
 
 const problems = rows.filter((r) => r.level === 'error');
 const warnings = rows.filter((r) => r.level === 'warn');
@@ -339,7 +356,8 @@ function print() {
   for (const r of rows) {
     const mark = r.level === 'error' ? '✗' : r.level === 'warn' ? '!' : '·';
     const match = r.matchRatio != null ? ` · khớp ${Math.round(r.matchRatio * 100)}%` : '';
-    console.log(`${mark} ${r.key} ← ${r.file || '—'}${r.seconds ? ` · ${secs(r.seconds)}` : ''}${match}${r.notes.length ? ` · ${r.notes.join('; ')}` : ''}`);
+    const notes = [...r.notes, ...(r.issues || []).map((i) => ISSUE_LABEL[i.code](i.words))];
+    console.log(`${mark} ${r.key} ← ${r.file || '—'}${r.seconds ? ` · ${secs(r.seconds)}` : ''}${match}${notes.length ? ` · ${notes.join('; ')}` : ''}`);
   }
   for (const e of extra) console.log(`! thừa: ${e.file} (${e.reason})`);
   for (const c of clashes) console.log(`! trùng số câu ${c.n}: dùng ${c.kept}, bỏ qua ${c.file}`);

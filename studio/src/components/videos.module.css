@@ -160,6 +160,56 @@
   line-height: var(--vu-leading-snug);
 }
 
+.cost {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vu-space-1);
+}
+
+.cost > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cost strong {
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.cost span,
+.costNone {
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-snug);
+}
+
+/* Mobile card: the same two cost lines, under a label shaped like the card's facts. */
+.cardCost {
+  margin-bottom: var(--vu-space-4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--vu-space-3);
+}
+
+.cardCost > span {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  letter-spacing: var(--vu-tracking-wide);
+  text-transform: uppercase;
+}
+
+.cardCost .cost,
+.cardCost .cost > div {
+  align-items: flex-end;
+  text-align: right;
+}
+
 .progress {
   min-width: 0;
   width: 100%;

@@ -13,9 +13,14 @@ export function guard(req: Request) {
   if (req.method !== "GET" && (!origin || new URL(origin).host !== host)) throw new HttpError(403, "Yêu cầu không đến từ Video Studio.");
 }
 
-/** Base URL of this server as the browser reached it (render + QA load frames from <base>/ds). */
+/** Base URL of this server as the browser reached it (render + QA load frames from <base>/ds).
+ * Always prefer 127.0.0.1 over localhost: headless Chrome may resolve localhost to ::1, and another
+ * process (e.g. Docker) can be listening on *:3100 while Studio only binds 127.0.0.1 — frames then
+ * never become ready and shoot reports NOT-READY / CDP timeouts. */
 export function baseUrl(req: Request) {
-  return new URL(req.url).origin;
+  const url = new URL(req.url);
+  if (url.hostname === "localhost") url.hostname = "127.0.0.1";
+  return url.origin;
 }
 
 export function handle<T extends unknown[]>(fn: (req: Request, ...rest: T) => Promise<Response> | Response) {
@@ -36,6 +41,9 @@ const TYPES: Record<string, string> = {
   ".jsx": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
   ".ttf": "font/ttf", ".woff2": "font/woff2", ".woff": "font/woff", ".mp4": "video/mp4", ".wav": "audio/wav",
+  // Every format an audio folder may hold (tools/lib/voice-files.mjs AUDIO_EXT), for the per-câu player.
+  ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".flac": "audio/flac", ".ogg": "audio/ogg",
+  ".opus": "audio/ogg", ".webm": "audio/webm",
   ".md": "text/markdown; charset=utf-8", ".txt": "text/plain; charset=utf-8",
 };
 

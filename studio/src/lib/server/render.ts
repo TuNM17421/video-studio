@@ -4,15 +4,27 @@ import { pickRenderAudio } from "../../../../tools/lib/render-audio.mjs";
 import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
-import { finishJob, log, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, REPO, rel, transcriptPath, voiceOut } from "./paths";
+import { finishJob, isRunning, jobHandled, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { HttpError, mp4Path, qaManifestPath, REPO, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
-/** Build → render MP4 (frames from this server's /ds) → transcript; then the agent writes chapters. */
-export async function renderVideo(id: string, base: string) {
+/** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
+export function renderPreflight(id: string) {
+  if (!fs.existsSync(path.join(voiceOut(id), "voice.wav"))) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
+}
+
+/**
+ * Build → render MP4 (frames from this server's /ds) → transcript; then the agent writes chapters. Starts
+ * the job before its first await, so a caller that checked `isRunning` just before cannot race a second one.
+ */
+export function renderVideo(id: string, base: string) {
+  return ownJob(id, () => renderSteps(id, base), (error) => setStage(id, "render", "error", error));
+}
+
+async function renderSteps(id: string, base: string) {
   const { state } = readState(id);
+  renderPreflight(id);
   const wav = path.join(voiceOut(id), "voice.wav");
-  if (!fs.existsSync(wav)) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
   // A layered-SFX mix (tools/sfx-mix.mjs → projects/<id>/voice-sfx.wav) replaces the raw narration when it is
   // newer; rendering the raw file after a mix silently drops every accent, and no gate would catch it.
   const pick = pickRenderAudio(id, REPO, { voiceRawRel: rel(wav) });
@@ -80,8 +92,27 @@ export async function renderVideo(id: string, base: string) {
     "--mp4", rel(mp4Path(id)),
   ]);
   if (!manifestOk) return fail("Không tạo được manifest.json cho platform QA, xem nhật ký.");
+  // manifest.json's duration is ffprobe'd off the MP4 itself and cross-checked against the voice — the
+  // one length in this whole pipeline that is actually verified, not estimated. USD/phút rides on it.
+  try {
+    const manifest = JSON.parse(fs.readFileSync(qaManifestPath(id), "utf8")) as { duration_sec?: number };
+    if (typeof manifest.duration_sec === "number") recordJobMetrics(id, { videoDurationSec: manifest.duration_sec });
+  } catch (error) {
+    log(id, "error", `Không đọc được thời lượng từ manifest.json cho telemetry: ${error instanceof Error ? error.message : String(error)}`);
+  }
   setStage(id, "render", "done");
   finishJob(id, "done");
-  // chapters + PROMPTS.md need judgement (chapter titles), so the agent finishes the delivery
-  return runAgent(id, "deliver", base);
+  // chapters + PROMPTS.md need judgement (chapter titles), so the agent finishes the delivery. The MP4 is
+  // done whatever happens there: a deliver that fails shows on its own stage, never as a failed render.
+  try {
+    return await runAgent(id, "deliver", base);
+  } catch (error) {
+    // After its job started, runAgent has already logged it and marked the deliver stage.
+    if (!jobHandled(error)) {
+      const message = error instanceof Error ? error.message : String(error);
+      log(id, "error", message);
+      if (!isRunning(id)) setStage(id, "deliver", "error", message);
+    }
+    return false;
+  }
 }

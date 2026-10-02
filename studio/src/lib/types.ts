@@ -5,7 +5,7 @@ export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 import type { ImagesView } from "./images";
 
-export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate";
+export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
@@ -13,6 +13,22 @@ export interface AgentConfig {
   selectionLocked: boolean;
   /** Cross-review defaults for new videos, and which CLIs this machine actually has. */
   review: { defaults: ReviewSettings; installed: AgentProvider[] };
+}
+
+/** `/api/gateway-settings` — the 9router cost-tracking toggle for Codex, plus a live diagnosis. */
+export interface GatewayStatus {
+  status: "disabled" | "unreachable" | "key_missing" | "ok";
+  message: string;
+  settings: { enabled: boolean; keyName: string; profile: string };
+}
+
+/** `/api/telemetry-settings` — where video metrics are sent; `hasToken` only, the token itself never round-trips. */
+export interface TelemetryStatus {
+  url: string;
+  hasToken: boolean;
+  autoSync: boolean;
+  ok: boolean;
+  message: string;
 }
 
 /** Cross-review of scene stills by a separate read-only session (lib/review.ts). Changeable any time. */
@@ -88,6 +104,11 @@ export interface KaggleStatus {
   username: string | null;
   /** Whisper của bước nhập (`voice/.venv`) — cần để soát từng câu tải về. */
   align: boolean;
+  /**
+   * Model local có trên máy này không: "Sinh lại câu này" chạy trên máy kể cả với giọng tải từ Kaggle, nên
+   * máy không có model thì panel không mời bấm.
+   */
+  localModel: boolean;
 }
 
 export interface VoiceSettings {
@@ -136,6 +157,70 @@ export interface LocalCast {
   problems: string[];
 }
 
+/**
+ * Something the recording of one câu seems to have lost or doubled (tools/lib/voice-align.mjs
+ * speechIssues). A reason to listen, not a verdict: Whisper mishears on its own. `start`/`end` are
+ * seconds in the câu's own file; `end: null` runs to the end of the file.
+ */
+export interface SpeechIssue {
+  code: "truncation" | "dropped" | "repeat";
+  words: string;
+  start: number;
+  end: number | null;
+}
+
+/** One take of a câu judged by tools/voice-retake.mjs — the same checks as a row of the import table. */
+export interface RetakeTake {
+  /**
+   * "t1", "t2"… for the takes of the last retake, "orig" for the take the folder had before any retake,
+   * "prev" for the take in use just before the last retake (when that was a take placed earlier).
+   */
+  name: string;
+  /** Repo-relative path of the take's file. */
+  file: string;
+  seconds: number | null;
+  matchRatio: number | null;
+  heardText: string | null;
+  issues: SpeechIssue[];
+  level: "ok" | "warn" | "error";
+  duration: "short" | "long" | "unmeasured" | null;
+  /** Passes every check the import table applies — the only kind of take ever picked automatically. */
+  pass: boolean;
+}
+
+/** The last retake of one câu (tools/voice-retake.mjs --json). */
+export interface RetakeResult {
+  n: number;
+  key: string;
+  /** Repo-relative folder the takes belong to. */
+  dir: string;
+  takes: RetakeTake[];
+  original: RetakeTake | null;
+  previous: RetakeTake | null;
+  /** The take placed — automatically (best passing) or by the user; null when nothing was placed. */
+  chosen: string | null;
+  replaced: boolean;
+  /**
+   * replaced = a failing take was swapped for the best passing one; kept-passing = the take in use passes, so
+   * the new ones are only listed; none-passed = nothing to swap in; picked = the user chose.
+   */
+  decision: "replaced" | "kept-passing" | "none-passed" | "picked";
+  /** Which take the folder holds for this câu now, by content: a take name, "orig", "prev", "other" or "none". */
+  inUse: string;
+  at: string;
+}
+
+/** What Studio keeps per câu of the folder on screen (.studio/retakes.json): the last result, and the run in flight. */
+export interface RetakeEntry extends Partial<RetakeResult> {
+  n: number;
+  /** A retake or a pick of this câu is running now. */
+  running?: "retake" | "pick" | null;
+  /** Why the last attempt failed; the takes of the run before it are still listed and usable. */
+  error?: string | null;
+  /** Which attempt `error` is about: generating takes, or putting a chosen take in place. */
+  failed?: "retake" | "pick" | null;
+}
+
 /** One câu in an import report: which file it got, and everything that looked wrong about it. */
 export interface ImportRow {
   n: number;
@@ -151,6 +236,7 @@ export interface ImportRow {
   heardText?: string;
   heardWords?: number;
   avgLogprob?: number | null;
+  issues?: SpeechIssue[];
 }
 
 export interface ImportReport {
@@ -323,8 +409,8 @@ export type HarnessStage = "cues" | "scenes" | "deliver";
 /** The latest run of the checks for one stage; persisted in .studio/harness/<stage>.json. */
 export interface HarnessRun {
   stage: HarnessStage;
-  /** `agent` = an agent turn then the gates; `review` = gates + review only (Chạy lại review). */
-  kind: "agent" | "review";
+  /** `agent` = an agent turn then the gates; `review` = gates + review only (Chạy lại review); `edit` = a câu edited by hand, then the dry-run. */
+  kind: "agent" | "review" | "edit";
   status: "running" | "done" | "error" | "stopped";
   startedAt: number;
   finishedAt?: number;
@@ -347,6 +433,8 @@ export interface QaFindingItem {
   runId?: string | null;
   /** The review run that no longer saw it (set when QA verifies it). */
   resolvedBy?: string;
+  /** The QA run that stopped seeing the finding; `resolvedBy` keeps the same value for the review panel. */
+  verifiedBy?: string;
   /** Why the user skipped it (status wontfix), and when. */
   skipReason?: string | null;
   decidedAt?: string;
@@ -363,6 +451,8 @@ export interface VideoDetail {
   logs: LogEntry[];
   dryRun: DryRun | null;
   importReport: ImportReport | null;
+  /** Câu regenerated with "Sinh lại câu này", by câu number — only for the folder being imported now. */
+  retakes: Record<string, RetakeEntry>;
   workflow: WorkflowReport;
   /** CLIs installed on this machine — who can be picked to cross-review. */
   installedAgents: AgentProvider[];
@@ -373,6 +463,39 @@ export interface VideoDetail {
   blocking: Record<"cues" | "scenes", number>;
   /** Image suggestions (capability `images`); null when the video does not use it. */
   images: ImagesView | null;
+  cost: VideoCost;
+}
+
+/** A câu edited by hand in the cues step (lib/server/cue-edit.ts, tools/cue-edit.mjs). */
+export type CueEditField = "text" | "title" | "visual";
+export interface CueEditResult {
+  n: number;
+  changed: Partial<Record<CueEditField, { before: string; after: string }>>;
+  /** The script's `- **Lời:**` line: rewritten, or why it was left alone. */
+  script: "updated" | "not-found" | "ambiguous" | "none";
+  /** The TTS dry-run the edited cues went through. */
+  gate: "ok" | "failed" | "skipped";
+  gateError?: string;
+}
+
+/** What a video has cost so far (lib/video-cost.ts): agent USD and ElevenLabs characters, each with what is missing. */
+export interface VideoCost {
+  /** USD reported by the agent runs that report one (Claude Code): API price, also on a subscription. */
+  agentUsd: number;
+  /** Every agent run that ran: authoring, visual QA and image suggestions, any CLI. */
+  agentRuns: number;
+  pricedRuns: number;
+  /** Runs that reported tokens but no price (Codex), their tokens in + out, and which CLIs they were. */
+  tokenRuns: number;
+  tokens: number;
+  tokenProviders: string[];
+  /** Runs that reported nothing (Antigravity, runs from before the ledger). */
+  silentRuns: number;
+  /** Characters ElevenLabs billed, summed over the voice runs that recorded it. */
+  ttsCharacters: number;
+  ttsRuns: number;
+  /** ElevenLabs runs from before the Studio recorded billed characters. */
+  ttsUnrecorded: number;
 }
 
 export interface VideoSummary {
@@ -386,6 +509,7 @@ export interface VideoSummary {
   artifacts: Artifacts;
   running: boolean;
   updatedAt: string | null;
+  cost: VideoCost;
 }
 
 export interface PaletteColor {
@@ -459,6 +583,13 @@ export interface StyleDef {
   /** Resolved from the media manifest; null when nothing has been pushed for this style. */
   sampleVideo: MediaAsset | null;
   rules: string[];
+  /**
+   * Content capabilities (templates/modules/<id>.md) this style cannot build yet — e.g. the whiteboard has no
+   * dialogue card or quiz timer. The plan step greys their cards out and REQUEST.md never asks for them.
+   */
+  unsupportedModules?: string[];
+  /** How this style builds scenes: `styles/<id>.md` and the guides it extends, parent first (style-guides.ts). */
+  guides?: string[];
   /** Resolved from `extends`: the parent's palette / showcase, shown before this style's additions. */
   base?: { name: string; palette: PaletteColor[]; showcase: Showcase[] };
 }
@@ -480,4 +611,57 @@ export interface LibraryGroup {
 export interface Library {
   groups: LibraryGroup[];
   videos: { id: string; player: string }[];
+}
+
+/**
+ * `/api/telemetry-local` — this machine's outbox as the "Số liệu" tab shows it. Built from a field whitelist:
+ * values never outside it reach the browser, and a key outside it is reported by name only.
+ * `acked` is only what sync-state.json receipts establish; there is no per-event "failed" state, because the
+ * uploader only records the last attempt's error for the whole run.
+ */
+export type TelemetryEventStatus = "acked" | "pending" | "blocked" | "rejected";
+
+export interface TelemetryPreviewEvent {
+  status: TelemetryEventStatus;
+  /** Why the uploader would refuse it (field path, never its value). */
+  blockedReason: string | null;
+  /** Why the collector refused it, from `outbox.rejected.jsonl`: the uploader will not try it again. */
+  rejectedReason: string | null;
+  /** Keys outside the preview whitelist that the raw event carries. */
+  extraKeys: string[];
+  event: Record<string, unknown>;
+}
+
+export interface TelemetryVideoMetrics {
+  video: string;
+  runs: number;
+  finished: number;
+  errors: number;
+  durationMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  /** Sum of measured costs only; null when no event carried a cost with a source. */
+  costUsd: number | null;
+  costMeasured: number;
+  costUnknown: number;
+  feedbackOpen: number;
+  lastAt: string | null;
+}
+
+export interface LocalTelemetry {
+  outbox: { total: number; unreadableLines: number; byType: Record<string, number> };
+  counts: { acked: number; pending: number; blocked: number; rejected: number };
+  receipts: {
+    found: boolean;
+    lastAttemptAt: string | null;
+    lastSuccessAt: string | null;
+    lastFailureAt: string | null;
+    lastError: string | null;
+  };
+  sending: { url: string; hasToken: boolean; autoSync: boolean; enabled: boolean; syncing: boolean };
+  /** Encrypted, opt-in AI logs: counted only — their content is never previewed. */
+  aiLogs: { count: number; enabled: boolean; rejected: number };
+  videos: TelemetryVideoMetrics[];
+  preview: TelemetryPreviewEvent[];
+  previewLimit: number;
 }

@@ -12,9 +12,17 @@
  *    every 3rd frame (plus each cue's first and last frame) that must not throw or write NaN / undefined
  *    into an attribute. A folder with cues.js but no video.jsx is a video before its scenes step: a
  *    warning, not a problem.
+ *  · whiteboard videos (meta.board): no mark drawn off screen (problem); late beats, board text too small
+ *    on screen, strokes past the end (warnings) — components/whiteboard/board.js checkBoard.
  *  · pictures in videos (PhotoCard): `src` is a design-system file given from its root (never http), every
  *    PhotoCard has a `credit`, and the slots it uses exist in the video's images.js as kind `use`.
  *    The smoke render needs esbuild + react-dom (same lookup as build.mjs); skipped if absent.
+ *
+ *   node tools/verify.mjs --video <id> [--video <id>…]   only those videos, plus every design-system check
+ *
+ * Studio's scene and final gates pass `--video`: without it, one local video with a problem (they live only on
+ * the member's machine) blocks every other video's gate with an error that is not about that video. The other
+ * videos' files are left out of every scan, the card, palette and determinism checks included.
  */
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -34,8 +42,16 @@ const walk = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
     d.isDirectory() ? (SKIP.has(d.name) ? [] : walk(path.join(dir, d.name))) : [path.join(dir, d.name)],
   );
-const files = walk(DS);
-const rel = (f) => path.relative(DS, f);
+const onlyVideos = process.argv.flatMap((a, i, all) => (all[i - 1] === '--video' ? [a] : []));
+// A file inside another video's folder: with --video, no scan below may fail this gate on it.
+const otherVideo = (f) => {
+  const r = path.relative(path.join(DS, 'ui_kits/lesson-video/videos'), f).split(path.sep);
+  return onlyVideos.length > 0 && r.length > 1 && r[0] !== '..' && !onlyVideos.includes(r[0]);
+};
+const files = walk(DS).filter((f) => !otherVideo(f));
+// Always with '/': on Windows path.relative gives '\', and every startsWith('components/') below then
+// matched nothing — three checks skipped in silence while the summary still said all passed.
+const rel = (f) => path.relative(DS, f).split(path.sep).join('/');
 const problems = [];
 
 // 0 · the built bundle
@@ -117,9 +133,11 @@ for (const f of files.filter((x) => rel(x).startsWith('ui_kits/lesson-video/scen
 
 // 5 · example videos
 const VIDEOS_DIR = path.join(DS, 'ui_kits/lesson-video/videos');
-const videoDirs = fs.existsSync(VIDEOS_DIR)
+const allVideoDirs = fs.existsSync(VIDEOS_DIR)
   ? fs.readdirSync(VIDEOS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
   : [];
+for (const id of onlyVideos) if (!allVideoDirs.includes(id)) problems.push(`--video ${id}: no such folder in ${path.relative(ROOT, VIDEOS_DIR)}`);
+const videoDirs = onlyVideos.length ? allVideoDirs.filter((d) => onlyVideos.includes(d)) : allVideoDirs;
 const NODE_MODULES = [
   process.env.VK_NODE_MODULES,
   path.join(ROOT, 'node_modules'),
@@ -201,7 +219,8 @@ for (const dir of videoDirs) {
     }
     import { cueCaptions } from ${JSON.stringify(path.join(DS, 'lib/captions.js'))};
     import { ConfigContext, FrameContext } from ${JSON.stringify(path.join(DS, 'lib/player.jsx'))};
-    export { meta, CUES, AUTHORED, cueCaptions };
+    import { checkBoard } from ${JSON.stringify(path.join(DS, 'components/whiteboard/board.js'))};
+    export { meta, CUES, AUTHORED, cueCaptions, checkBoard };
     export const renderAt = (frame) =>
       renderToStaticMarkup(
         React.createElement(ConfigContext.Provider, { value: { fps: 30, width: 1920, height: 1080, durationInFrames: meta.duration } },
@@ -228,9 +247,15 @@ for (const dir of videoDirs) {
     problems.push(`${where} does not build or load: ${String(e.message || e).split('\n')[0]}`);
     continue;
   }
-  const { meta, CUES, AUTHORED, cueCaptions, renderAt } = mod;
+  const { meta, CUES, AUTHORED, cueCaptions, checkBoard, renderAt } = mod;
   const last = CUES[CUES.length - 1];
   if (meta.duration !== last.end) problems.push(`${where}: meta.duration ${meta.duration} ≠ last cue end ${last.end}`);
+  // whiteboard style: the board is one timeline of marks, so check it as a whole (components/whiteboard/board.js)
+  if (meta.board) {
+    const board = checkBoard(meta.board, { duration: meta.duration });
+    for (const p of board.problems) problems.push(`${where}: board — ${p}`);
+    for (const w of board.warnings) warnings.push(`${where}: board — ${w}`);
+  }
   // captions
   const caps = cueCaptions(CUES.map((c) => ({ start: c.start, end: c.end, text: c.text, pause: c.pause })));
   let prev = 0;
@@ -242,7 +267,9 @@ for (const dir of videoDirs) {
   if (prev !== meta.duration) problems.push(`${where}: captions end at ${prev}, video at ${meta.duration}`);
   for (const cue of CUES) {
     const said = caps.filter((c) => c.start >= cue.start && c.end <= cue.end).map((c) => c.text).join(' ');
-    if (said !== cue.text.trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
+    // A silent cue authored as `{ silent: N }` has no `text` key at all — same shape tts.mjs's loadCues()
+    // used to crash on ("Cannot read properties of undefined (reading 'trim')").
+    if (said !== (cue.text ?? '').trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
   }
   // quiz flag — read from cues.js, not the timeline: `quiz` / `silent` are authored fields that retiming
   // drops. The quiz bed replaces the background music over every flagged cue, so a flag on a spoken câu
@@ -300,7 +327,7 @@ for (const c of cards) byGroup[c.group] = (byGroup[c.group] || 0) + 1;
 console.log(`cards: ${cards.length}  ${Object.entries(byGroup).map(([g, n]) => `${g} ${n}`).join(' · ')}`);
 console.log(`components: ${files.filter((x) => x.endsWith('.jsx') && rel(x).startsWith('components/')).length} files · scenes: ${scenes.length}`);
 for (const s of scenes.sort((a, b) => a.file.localeCompare(b.file))) console.log(`  ${s.id.padEnd(20)} ${String(s.duration).padStart(4)} f · ${s.captions} captions`);
-console.log(`videos: ${videoDirs.length}`);
+console.log(`videos: ${videoDirs.length}${onlyVideos.length ? ` (--video; ${allVideoDirs.length - videoDirs.length} other video(s) not checked)` : ''}`);
 for (const line of videoReports) console.log(line);
 console.log(`design system: ${path.relative(ROOT, DS)}`);
 for (const w of warnings) console.log(`  ! ${w}`);

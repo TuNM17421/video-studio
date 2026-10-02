@@ -1,0 +1,12 @@
+# Chỉ dùng trên VM có reverse proxy dùng chung (network `caddy` của minute_caddy): nối collector + Grafana vào đó
+# để proxy :443 gọi thẳng `vt-collector:4318` / `vt-grafana:3000`. deploy_vm.sh tự thêm file này khi network tồn tại.
+services:
+  vt-collector:
+    networks: [default, shared-proxy]
+  vt-grafana:
+    networks: [default, shared-proxy]
+
+networks:
+  shared-proxy:
+    external: true
+    name: ${SHARED_PROXY_NETWORK:-caddy}

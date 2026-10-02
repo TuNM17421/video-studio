@@ -48,7 +48,8 @@ if (manifest.fps !== 30) fail(`manifest fps ${manifest.fps} ≠ 30`);
 if (manifest.cues.length !== CUES.length) fail(`manifest has ${manifest.cues.length} cues, cues.js has ${CUES.length}`);
 manifest.cues.forEach((m, i) => {
   if (m.n !== CUES[i].n) fail(`cue order differs at index ${i}: ${m.n} vs ${CUES[i].n}`);
-  if (m.text !== CUES[i].text.trim()) fail(`câu ${m.n}: recorded text differs from cues.js — re-record it`);
+  // A silent cue (`{ silent: N }`) has no `text` key — same shape that used to crash tts.mjs's loadCues().
+  if (m.text !== (CUES[i].text ?? '').trim()) fail(`câu ${m.n}: recorded text differs from cues.js — re-record it`);
 });
 const wavPath = path.join(path.dirname(path.resolve(a)), 'voice.wav');
 const voice = {

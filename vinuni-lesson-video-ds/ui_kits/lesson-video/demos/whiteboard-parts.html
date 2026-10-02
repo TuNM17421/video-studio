@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>Whiteboard — component dựng sẵn</title>
+<link rel="stylesheet" href="../../../styles.css" />
+<style>
+  html, body { margin: 0; overflow: hidden; background: var(--color-bg); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../../dist/vk.js"></script>
+<script>
+  // Xem thử một component bảng trắng dựng sẵn (components/whiteboard/parts.js) với nội dung mẫu:
+  //   ?part=WbMindMap            bút vẽ lần lượt (tự chạy); ?frame=N để chụp một khung
+  //   ?part=WbDoodles            bảng mọi doodle kèm tên
+  //   &font=shantell|pangolin    đổi chữ tay (mặc định playpen)
+  // Studio → Thư viện · whiteboard dùng ảnh chụp trang này (styles/previews/whiteboard__<Tên>.png).
+  var q = new URLSearchParams(location.search);
+  var part = q.get('part') || 'WbMindMap';
+  var font = q.get('font') || undefined;
+  var C = VK.C;
+  var b = VK.createBoard({ timeline: [{ n: 1, start: 0 }], spokenAt: function () { return 0; }, font: font });
+  b.look(0, { x: 960, y: 540, w: 1920 });
+
+  var SAMPLES = {
+    WbAgentLoop: function () {
+      VK.WbAgentLoop(b, 'al', 6, {
+        cx: 760, cy: 540, r: 330, center: 'Mô hình', size: 52, centerSize: 64,
+        steps: [{ text: 'Suy nghĩ' }, { text: 'Hành động' }, { text: 'Quan sát' }],
+        tools: [{ text: 'Tìm kiếm', doodle: 'search' }, { text: 'Chạy mã', doodle: 'laptop' }]
+      });
+    },
+    WbPromptBox: function () {
+      VK.WbPromptBox(b, 'pb', 6, {
+        x: 140, y: 260, w: 1640, size: 52, boxW: 440, boxH: 260, model: 'Mô hình', output: 'Câu trả lời',
+        inputs: [{ text: 'Chỉ dẫn hệ thống' }, { text: 'Vài ví dụ' }, { text: 'Câu hỏi' }, { text: 'Tài liệu cũ', cut: true }]
+      });
+    },
+    WbRagFlow: function () {
+      VK.WbRagFlow(b, 'rg', 6, { x: 110, y: 420, w: 1700, size: 44, boxH: 200, question: 'Câu hỏi của học viên', answer: 'Trả lời kèm nguồn' });
+    },
+    WbChatWindow: function () {
+      VK.WbChatWindow(b, 'cw', 6, {
+        x: 300, y: 120, w: 1320, size: 46, title: 'Trợ lý học vụ', placeholder: 'Nhập câu hỏi…',
+        messages: [
+          { role: 'system', text: 'Hôm nay 24/09' },
+          { role: 'user', text: 'Tóm tắt giúp mình buổi học hôm qua' },
+          { role: 'assistant', text: 'Buổi hôm qua nói về cách chọn đúng vấn đề trước khi chọn công cụ.' },
+          { role: 'user', text: 'Ghi ra ba ý chính được không?' }
+        ],
+        typing: true
+      });
+    },
+    WbTerminal: function () {
+      VK.WbTerminal(b, 'tm', 6, {
+        x: 260, y: 240, w: 1400, size: 52, title: 'bash',
+        lines: [
+          { text: 'npm run verify', prompt: true },
+          { text: 'design system: vinuni-lesson-video-ds' },
+          { text: 'all checks passed', color: VK.C.accent }
+        ]
+      });
+    },
+    WbTitleCloud: function () { VK.WbTitleCloud(b, 'tc', 6, { x: 460, y: 250, w: 1000, h: 520, lines: ['Khởi', 'nghiệp'], size: 150 }); },
+    WbStickyNote: function () { VK.WbStickyNote(b, 'sn', 6, { x: 560, y: 250, w: 800, h: 560, title: 'Cần nhớ', lines: ['Hỏi người dùng trước', 'Đo trước khi làm', 'Ghi lại lý do'], size: 64 }); },
+    WbSpeech: function () {
+      VK.WbSpeech(b, 'sp', 6, { x: 260, y: 600, s: 60, lines: ['Bước nào làm bạn', 'mất thời gian?'], size: 60 });
+      VK.WbSpeech(b, 'th', null, { x: 1640, y: 700, s: 50, text: 'Mình cần AI?', thought: true, side: 'left', size: 56 });
+    },
+    WbFlow: function () { VK.WbFlow(b, 'fl', 6, { x: 130, y: 470, w: 440, h: 150, gap: 150, items: [{ text: 'Thu thập' }, { text: 'Xử lý' }, { text: 'Kiểm tra' }], size: 60 }); },
+    WbCycle: function () { VK.WbCycle(b, 'cy', 6, { cx: 960, cy: 560, r: 480, items: [{ text: 'Lên kế hoạch' }, { text: 'Làm thử' }, { text: 'Đo kết quả' }, { text: 'Điều chỉnh' }], size: 58 }); },
+    WbMindMap: function () { VK.WbMindMap(b, 'mm', 6, { cx: 960, cy: 540, center: 'Ngày 2', centerSize: 90, rx: 690, ry: 330, size: 54, branches: [{ text: 'Cần cải thiện gì?', doodle: 'search' }, { text: 'Làm thế nào?', doodle: 'gear' }, { text: 'Đã sẵn sàng?', doodle: 'clipboard-check' }, { text: 'Rủi ro', doodle: 'alert', color: C.red }] }); },
+    WbChecklist: function () { VK.WbChecklist(b, 'cl', 6, { x: 520, y: 260, size: 64, items: [{ text: 'Có dữ liệu', ok: true }, { text: 'Có người duyệt', ok: true }, { text: 'Chưa đo được lỗi', ok: false }, { text: 'Có kế hoạch dừng' }] }); },
+    WbCompare: function () { VK.WbCompare(b, 'cp', 6, { x: 160, y: 250, w: 1600, h: 620, size: 58, left: { title: 'AI làm thay', lines: ['Việc lặp lại', 'Sai ít hậu quả'] }, right: { title: 'AI hỗ trợ', lines: ['Người quyết định', 'Sai là tốn kém'] } }); },
+    WbTimeline: function () { VK.WbTimeline(b, 'tl', 6, { x: 120, y: 560, w: 1680, size: 50, items: [{ label: 'Tuần 1', sub: 'Quan sát' }, { label: 'Tuần 2', sub: 'Làm thử' }, { label: 'Tuần 3', sub: 'Đo lại' }, { label: 'Tuần 4', sub: 'Quyết định' }] }); },
+    WbBarChart: function () { VK.WbBarChart(b, 'bc', 6, { x: 400, y: 250, w: 1120, h: 560, size: 48, bars: [{ label: 'Tháng 1', value: 3 }, { label: 'Tháng 2', value: 5 }, { label: 'Tháng 3', value: 8, highlight: true }] }); },
+    WbIconLabel: function () {
+      ['rocket', 'target', 'trophy'].forEach(function (d, i) {
+        VK.WbIconLabel(b, 'il' + i, i ? null : 6, { x: 440 + i * 520, y: 470, doodle: d, size: 260, label: ['Khởi động', 'Mục tiêu', 'Kết quả'][i], labelSize: 60 });
+      });
+    },
+    WbIdea: function () { VK.WbIdea(b, 'id', 6, { x: 960, y: 480, size: 380, label: 'Ý tưởng mới', labelSize: 72 }); },
+    WbTable: function () { VK.WbTable(b, 'tb', 6, { x: 260, y: 260, colW: [520, 440, 440], rowH: 130, size: 52, rows: [['Việc', 'AI làm', 'Người làm'], ['Tóm tắt', 'Có', ''], ['Quyết định', '', 'Có'], ['Kiểm tra', 'Hỗ trợ', 'Có']] }); },
+    WbPhotoFrame: function () {
+      VK.WbPhotoFrame(b, 'pf', 6, { x: 300, y: 180, w: 620, h: 720, caption: 'Ảnh tư liệu', size: 60 });
+      VK.WbPhotoFrame(b, 'pd', null, { x: 1020, y: 180, w: 620, h: 720, caption: 'Có hình thay ảnh', doodle: 'camera', size: 56 });
+    },
+    WbFlight: function () { VK.WbFlight(b, 'fh', 6, { from: { x: 300, y: 800 }, to: { x: 1560, y: 360 }, bend: 280, size: 170 }); },
+    WbSteps: function () { VK.WbSteps(b, 'st', 6, { x: 200, y: 900, stepW: 460, stepH: 170, size: 56, items: [{ text: 'Hiểu vấn đề' }, { text: 'Làm thử' }, { text: 'Mở rộng' }] }); },
+    WbStickman: function () {
+      var names = VK.STICKMAN_NAMES;
+      var cols = 7;
+      names.forEach(function (n, i) {
+        var x = 150 + (i % cols) * 270, y = 130 + Math.floor(i / cols) * 250;
+        b.draw(null, { id: 'sm-' + n, kind: 'doodle', name: n, x: x, y: y, size: 175, dur: 6 });
+        b.draw(null, { id: 'sn-' + n, kind: 'text', x: x, y: y + 118, text: n.replace('nguoi-', ''), size: 26, anchor: 'middle', color: C.textMuted, dur: 2 });
+      });
+    },
+    WbDoodles: function () {
+      var names = Object.keys(VK.DOODLES).filter(function (n) { return n.indexOf('nguoi-') !== 0; });
+      var cols = 12;
+      names.forEach(function (n, i) {
+        var x = 85 + (i % cols) * 152, y = 65 + Math.floor(i / cols) * 148;
+        b.draw(null, { id: 'dd-' + n, kind: 'doodle', name: n, x: x, y: y, size: 74, dur: 4 });
+        b.draw(null, { id: 'dn-' + n, kind: 'text', x: x, y: y + 64, text: n, size: 20, anchor: 'middle', color: C.textMuted, dur: 2 });
+      });
+    },
+  };
+  (SAMPLES[part] || SAMPLES.WbMindMap)();
+  var end = b.marks.reduce(function (e, m) { return Math.max(e, b.endOf(m)); }, 0) + 45;
+  VK.mountCard('#root', {
+    width: 1920, height: 1080, duration: end,
+    render: function (f) { return VK.h(VK.Whiteboard, { frame: f, marks: b.marks, camera: b.camera, font: font }); }
+  });
+</script>
+</body>
+</html>

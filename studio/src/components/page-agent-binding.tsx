@@ -6,6 +6,7 @@ import { AGENT_PROVIDER_OPTIONS, EXPERIMENTAL_NOTE, agentProviderLabel, isExperi
 import type { AgentProvider } from "@/lib/types";
 import { AgentMark } from "./agent-mark";
 import { ProductionState } from "./production-state";
+import { SystemStatusPanel } from "./system-settings";
 
 export function PageAgentBinding({
   provider,
@@ -65,5 +66,8 @@ export function PageAgentBinding({
       title={chosen?.description || "Agent này đang ở giai đoạn thử nghiệm."}
       detail={null}
     />}
+    {/* Whether this Studio is sending its metrics anywhere, and — only when it matters, i.e. Codex is chosen —
+        whether 9router is picking up Codex's cost. Settings live one click away, right where the choice is made. */}
+    {!loading && <SystemStatusPanel provider={provider} />}
   </section>;
 }

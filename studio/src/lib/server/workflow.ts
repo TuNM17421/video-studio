@@ -9,6 +9,7 @@ export {
   finishRun,
   readFeedback,
   readRuns,
+  recordAiLog,
   recordFeedback,
   reconcileQaFeedback,
   startRun,
