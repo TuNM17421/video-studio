@@ -30,6 +30,16 @@ const ALLOWED = [
     "ls *", "mkdir *", "cp *", "mv *", "wc *", "head *", "sort *",
   ]),
 ];
+/**
+ * What the shell allowlist above actually lets through, told to the agent up front. Measured on a real run
+ * (d3-01-lab, issue #71): 35 of 104 Bash calls were refused and cost ~17% of the scene window in refusals and
+ * retries — 19 were `cd <dir> && …` (the allowlist matches the command AFTER `cd`, and a relative `../tools/…`
+ * path is not `tools/*`), 10 were `node -e`. Widening the list for `node -e` would allow arbitrary code (it could
+ * read `.env`, which `Read` denies), so the agent is told the rules instead.
+ */
+export const SHELL_RULES_LINE =
+  "Quy tắc shell (lệnh sai bị chặn và tốn thêm một lượt): thư mục làm việc đã là gốc repo nên KHÔNG `cd`; chỉ chạy `node tools/<script>` (đường dẫn bắt đầu bằng `tools/`), `ls`, `mkdir`, `cp`, `mv`, `wc`, `head`, `sort`. KHÔNG `node -e`, heredoc hay `python`: đọc file bằng Read/Grep, sửa bằng Edit/Write.";
+
 const DENIED = [
   "Read(**/.env)", "Read(**/.env.*)",
   ...shellPatterns(["*.env*", "git push*", "git commit*"]),
@@ -65,6 +75,7 @@ function stagePrompt(id: string, stage: AgentStage, base: string) {
     ...(stage === "scenes" ? [scenesImagesLine(id, r.modules)].filter((line): line is string => Boolean(line)) : []),
     `Preview server (dùng làm <base> khi chụp QA): ${base}/ds`,
     feedbackContext(id, stage),
+    SHELL_RULES_LINE,
     ...(stage === "scenes"
       ? [selfCheckLine(id), "Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync."]
       : ["Chỉ tạo/sửa nội dung của stage này rồi dừng. Không chạy build, verify, shoot, render, TTS, không đọc .env, không git commit/push, không /design-sync."]),
@@ -86,6 +97,7 @@ function feedbackPrompt(id: string, stage: AgentStage, message: string) {
     `Góp ý của người dùng cho stage "${stage}" (Video Studio):`,
     `"""${message.trim()}"""`,
     feedbackContext(id, stage),
+    SHELL_RULES_LINE,
     ...(stage === "scenes"
       ? ["Sửa theo góp ý, chỉ trong phạm vi stage này.", selfCheckLine(id), "Dừng và tóm tắt ngắn bằng tiếng Việt."]
       : ["Sửa theo góp ý, chỉ trong phạm vi stage này. Runner sẽ chạy mọi gate deterministic và QA ảnh; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt."]),
@@ -102,6 +114,7 @@ function focusPrompt(stage: AgentStage, items: FocusItem[], note?: string) {
   return [
     `Người dùng đã rà kết quả review chéo cho stage "${stage}" và chọn ${items.length} lỗi dưới đây để sửa.`,
     "Chỉ sửa đúng những lỗi này; đừng đổi các cảnh khác. Ảnh của mỗi cảnh ở `projects/<id>/qa/auto/cue-NN.png`.",
+    SHELL_RULES_LINE,
     ...items.map((item) => `- ${item.id} [${item.severity}] ${item.scope || ""}${item.code ? ` · ${item.code}` : ""}: ${item.message}${item.evidence ? ` | Bằng chứng: ${item.evidence}` : ""}${item.acceptance ? ` | Nghiệm thu: ${item.acceptance}` : ""}`),
     ...(note?.trim() ? ["Ghi chú thêm của người dùng:", `"""${note.trim()}"""`] : []),
     "Runner sẽ build, verify, chụp ảnh và review lại sau khi bạn dừng; bạn không chạy các bước đó. Dừng và tóm tắt ngắn bằng tiếng Việt: đã sửa gì ở từng lỗi.",

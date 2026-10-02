@@ -10,6 +10,31 @@ Ngày đo: 30/09/2026. Đo trên Studio chạy từ `main` (48f1331), bước **
 - **Cảnh báo chất lượng (xem mục "Chất lượng")**: ảnh QA của Lesson Lab sau thay đổi có nhiều lỗi bố cục (chữ tràn, chồng lên khung) mà bản trước không có. Một mẫu mỗi bên chưa đủ để nói thay đổi gây ra, nhưng cũng chưa đủ để nói không. **Chưa được kết luận là tiết kiệm mà không giảm chất lượng.**
 - **Phần chênh giữa hai style** đo được là khối lượng code agent phải viết và khám phá, chưa phải số lượt. Chưa tái hiện được mức 4 lần vì không đo được token đáng tin (xem Giới hạn).
 
+## Dữ liệu từ lượt thật của anh Tú (#64, `d3-01-lab`, Lesson Lab, 125 cue)
+
+Số này do anh Tú đếm từ `.studio/log.jsonl` (comment 01/10 trên #71); đây là bằng chứng mạnh hơn phép đo nhỏ của mình vì đo trên video thật bằng Claude.
+
+| Quan sát | Số đo |
+|---|---|
+| Chặng Dựng hình so với chặng Lời & cue | 568 lượt gọi công cụ, gấp 10 lần (57 lượt) |
+| Ghi file | 146 lượt `Write` cho 138 file, 30% thời gian |
+| Đọc lặp | 211 lượt `Read`, 59% là đọc lại, 23% thời gian |
+| Lệnh Bash bị allowlist từ chối | 35/104 lượt, 11% thời gian + 6% xử lý lỗi |
+| Độ dài cảnh | 126 file, 6.051 dòng, trung bình 48 dòng một cảnh (cảnh không phình) |
+
+Kết luận của anh Tú, mình đồng ý và số đo của mình khớp: **chi phí đến từ số lượt, không từ độ dài cảnh**, và quy ước một file `sNN.jsx` cho mỗi câu biến một ràng buộc nội dung thành ràng buộc số lượt ghi. Đối chứng ở #64: cùng kịch bản, Claude Design ra 13 file thay vì 125, vẫn một cảnh mỗi câu, chất lượng không giảm.
+
+## Kiểm tra allowlist của Studio (đo ngày 02/10, Claude Haiku + đúng `ALLOWED`/`DENIED` của `agent.ts`)
+
+| Lệnh | Kết quả |
+|---|---|
+| `node tools/a.mjs && node tools/b.mjs` | Được phép (nên bước tự `build && verify` chạy được với Claude) |
+| `node tools/a.mjs` | Được phép |
+| `cd studio && node ../tools/a.mjs` | **Bị chặn** (phần sau `cd` là `node ../tools/…`, không khớp `node tools/*`) |
+| `node -e "…"` | **Bị chặn** |
+
+Hai dạng bị chặn khớp đúng hai nhóm lệnh bị từ chối trong log của anh Tú (19 lệnh `cd X && …`, 10 lệnh `node -e`). Không mở rộng allowlist cho `node -e`, vì nó cho phép chạy code tùy ý (đọc được `.env`, trong khi `Read` đang chặn). Thay vào đó prompt dặn agent quy tắc shell (`SHELL_RULES_LINE`). **Chưa đo** mức giảm số lệnh bị chặn sau thay đổi này.
+
 ## Cách đo
 
 | | |
@@ -75,7 +100,9 @@ Phần lớn lần đọc của Lesson Lab là **video mẫu** (học ngôn ng�
 
 ## Thay đổi đã áp dụng
 
-`studio/src/lib/server/agent.ts`: với stage `scenes`, `stagePrompt` và `feedbackPrompt` dặn agent tự chạy `node tools/build.mjs && node tools/verify.mjs --video <id>` trước khi dừng, sửa nếu có "problem", tối đa 3 lần. Runner vẫn chạy lại gate và QA sau khi agent dừng, nên gate cuối không bị nới. Lệnh nằm trong `node tools/*` đã được allowlist.
+**1. Quy tắc shell trong prompt** (`SHELL_RULES_LINE`, mọi stage): thư mục làm việc đã là gốc repo nên không `cd`, chỉ `node tools/<script>` và vài lệnh đã allowlist, không `node -e`. Nhắm vào 17% thời gian mất vì lệnh bị chặn.
+
+**2. Tự kiểm trước khi dừng** (`studio/src/lib/server/agent.ts`): với stage `scenes`, `stagePrompt` và `feedbackPrompt` dặn agent tự chạy `node tools/build.mjs && node tools/verify.mjs --video <id>` trước khi dừng, sửa nếu có "problem", tối đa 3 lần. Runner vẫn chạy lại gate và QA sau khi agent dừng, nên gate cuối không bị nới. Lệnh nằm trong `node tools/*` đã được allowlist.
 
 | Trước | Sau (cùng kịch bản) |
 |---|---|
@@ -98,6 +125,9 @@ Cả hai bản "sau" qua `build`, `verify` và chụp ảnh, nhưng `verify` kh�
 
 | Hướng | Ước tính tiết kiệm | Rủi ro |
 |---|---|---|
+| **Gộp cảnh theo phần: 125 file `sNN.jsx` xuống khoảng 13** (một cảnh mỗi câu vẫn giữ, chỉ gộp file). Đề xuất của anh Tú, có đối chứng ở #64 | Cắt trực tiếp vào 30% thời gian ghi file và số lượt, tức vào tiền. Lớn nhất trong các hướng | Phải đổi quy ước `sNN.jsx` và bộ công cụ đọc nó; đi qua `lab` |
+| Đưa mỗi fork một bản brief đã tiêu hoá sẵn (8 subagent đọc lại `cues.js` ×11, `README.md` ×8…) | Giảm số lần nạp ngữ cảnh, tỉ lệ theo số fork | Cần thiết kế bản brief |
+| Ghi metrics theo từng chặng nhỏ thay vì lúc kết thúc (lượt bị dừng, thường đắt nhất, hiện không ghi token) | Không giảm chi phí, nhưng đo đúng lượt đắt nhất | Thấp |
 | Thêm "khuôn cảnh" vào `styles/lesson-lab.md` (một file mẫu, bảng component → khi nào dùng) để bớt đọc video mẫu | Giảm phần `read` của Lesson Lab (12–16 lần đọc mẫu, cỡ một nửa số thao tác) | Cảnh giống nhau hơn nếu khuôn quá chặt |
 | Áp cùng dòng tự kiểm cho lượt sửa theo review (`focusPrompt`) | Giảm lượt agent thêm khi review đòi sửa | Thấp |
 | Gom nhiều cue vào một file cảnh ở Lesson Lab (giống `board.js`) | Giảm số file và phần khởi tạo lặp | Phải sửa design system; cần qua `lab` |
