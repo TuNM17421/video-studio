@@ -592,7 +592,7 @@
     "sfx/chisel.wav": {
       "type": "audio/wav",
       "bytes": 96078,
-      "sha256": "ba51ea64cd571a428e31975f2548a77b7e797801193d50546e3b9b5d581e51fc",
+      "sha256": "860ca9c770a6ddd890cbb96c18daee3d240b101d399a28572219b0779312f181",
       "updated": "2026-10-02"
     },
     "sfx/conveyor.wav": {

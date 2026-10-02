@@ -2,7 +2,8 @@
 /**
  * Dựng lại `assets/sfx/` từ catalog `sfx.json`, và ĐO lại mỗi tiếng.
  *
- *   node tools/sfx-fetch.mjs              # tải cái còn thiếu + đo cái đang có
+ *   node tools/sfx-fetch.mjs              # tải cái còn thiếu từ R2 + đo cái đang có
+ *   node tools/sfx-fetch.mjs --prepare    # CHỦ BUCKET: dựng media/files/sfx/ từ nguồn gốc
  *   node tools/sfx-fetch.mjs --measure    # chỉ đo, không chạm mạng
  *   node tools/sfx-fetch.mjs --write      # ghi số đo ngược vào sfx.json
  *   node tools/sfx-fetch.mjs --only tick,snap --force
@@ -22,7 +23,9 @@
  *               có đỉnh ngay đầu (≈5ms). Căn cùng một lead cho cả hai thì một cái lệch.
  *
  * Chuẩn hoá theo `visual-assets.md §5`: cắt lặng đầu (không cắt thì mốc căn giờ lệch đúng bằng
- * khoảng lặng), 48 kHz stereo. KHÔNG `loudnorm` — `sfx-mix` tự bù theo `lufs` đo được, nên một bản
+ * khoảng lặng), 48 kHz stereo. `startSec` cắt TỪ đâu, `trimSec` cắt dài bao nhiêu kể từ đó: một bản thu
+ * dài có tiếng phòng ở đầu thì `silenceremove` không cứu được, vì tiếng phòng vẫn trên ngưỡng −50 dB
+ * (đo thật trên `chisel`: nhát đầu ở 430 ms, 420 ms trước đó là tiếng phòng ở ~−50 dBFS). KHÔNG `loudnorm` — `sfx-mix` tự bù theo `lufs` đo được, nên một bản
  * loudnorm hoá lại chỉ làm mất dynamic của chính tiếng đó. Tiếng nền (`layer: "ambience"`) KHÔNG cắt
  * lặng đầu: cắt là hỏng vòng lặp.
  *
@@ -39,6 +42,8 @@ import { createRequire } from 'node:module';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG = path.join(REPO, 'sfx.json');
 const DIR = path.join(REPO, 'assets/sfx');
+/** Nơi chủ bucket đặt bản đã chuẩn hoá cho `npm run media` đẩy lên R2. */
+const STAGE = path.join(REPO, 'media/files/sfx');
 const MANIFEST = path.join(REPO, 'media/manifest.json');
 
 /** Trả URL công khai của một asset key từ media/manifest.json, hoặc null nếu key chưa có. */
@@ -54,11 +59,13 @@ const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log(`Dựng lại assets/sfx/ từ sfx.json và đo lại mỗi tiếng.
 
-  node tools/sfx-fetch.mjs [--measure] [--write] [--only a,b] [--json]
+  node tools/sfx-fetch.mjs [--measure] [--write] [--only a,b] [--json] [--prepare [dir]]
 
   --measure  chỉ đo file đang có, không tải gì
   --write    ghi seconds/lufs/peak/peakAtMs ngược vào sfx.json
   --only     giới hạn theo danh sách id
+  --prepare  CHỦ BUCKET: nguồn gốc → chuẩn hoá → media/files/sfx/ (rồi 'npm run media').
+             'dir' là nơi giữ bản thô; không có thì tải theo link 'download' trong sfx.json
 
 exit 0 xanh · 1 có tiếng thiếu file và không tải được · 2 sai cách gọi`);
   process.exit(0);
@@ -116,36 +123,68 @@ function measure(file) {
   };
 }
 
-async function download(entry) {
-  // TODO: chốt với Thái — SFX pipeline hiện là CLI tool, chưa nối vào Studio render.
-
-  // Tải từ R2 bucket (entry.media = key trong media/manifest.json).
-  // File SFX chưa có trên R2: thêm "media" key vào sfx.json và upload lên R2 trước khi dùng.
-  const url = mediaUrl(entry.media);
-  if (!url) {
-    const hint = entry.media
-      ? `key "${entry.media}" chưa có trong media/manifest.json — cần upload lên R2 trước khi dùng`
-      : `thiếu trường "media" trong sfx.json cho id "${entry.id}" — cần upload lên R2 và thêm key`;
-    return hint;
+/**
+ * CHỦ BUCKET, một lần cho mỗi tiếng: nguồn gốc (`entry.download`, hoặc một file thô dưới `--prepare <dir>`)
+ * → chuẩn hoá → `media/files/sfx/<file>`, để `npm run media` đẩy lên R2.
+ *
+ * Chuẩn hoá nằm ở ĐÂY chứ không ở đường tải: R2 giữ đúng cái video dùng, nên (1) trình duyệt phát thẳng
+ * được để nghe thử, (2) số đo trong catalog mô tả đúng bytes trên bucket, và (3) không máy nào chạy lại
+ * chuỗi cắt một lần nữa. Chạy lại `startSec`/`trimSec` trên một file đã cắt là CẮT PHÁ: `chisel` khai
+ * `startSec: 0.42` mà clip chỉ còn 0,5 s thì lần hai lấy mất 420/500 ms.
+ */
+async function prepare(entry, rawDir) {
+  const local = rawDir ? [path.join(rawDir, `${entry.id}.src`), path.join(rawDir, entry.file), path.join(rawDir, `${entry.id}.mp3`)].find((f) => fs.existsSync(f)) : null;
+  let src = local;
+  let tmp = null;
+  if (!src) {
+    if (!entry.download) return `thiếu link \`download\` trong sfx.json và không có bản thô trong --prepare`;
+    tmp = path.join(os.tmpdir(), `sfx-${entry.id}-${process.pid}.src`);
+    try {
+      const res = await fetch(entry.download);
+      if (!res.ok) return `HTTP ${res.status} khi tải bản gốc`;
+      fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+    } catch (e) { return `không tải được bản gốc: ${e.message}`; }
+    src = tmp;
   }
-  const tmp = path.join(os.tmpdir(), `sfx-${entry.id}-${process.pid}.src`);
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return `HTTP ${res.status} khi tải từ R2 — kiểm tra media/manifest.json và bucket`;
-    fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
-  } catch (e) { return `không tải được từ R2: ${e.message}`; }
-  fs.mkdirSync(DIR, { recursive: true });
   // Tiếng nền phải giữ nguyên đầu file để vòng lặp không bị gãy; tiếng điểm thì cắt lặng đầu.
   const chain = [];
+  // `startSec` chạy TRƯỚC mọi thứ: nó định nghĩa đâu là đầu file, nên `trimSec` bên dưới vẫn là ĐỘ DÀI.
+  if (entry.startSec) chain.push(`atrim=start=${entry.startSec}`, 'asetpts=PTS-STARTPTS');
   if (entry.layer !== 'ambience') chain.push('silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0:detection=peak');
   // `trimSec`: nhiều bản thu Pixabay là MỘT FILE NHIỀU LẦN lấy (con dấu đóng 5 nhát, kéo cắt 12
   // giây). Giữ nguyên thì một cú nhấn hoá thành một tràng. Cắt về đúng lần đầu + fade 60ms chống
   // click. Số `trimSec` chọn từ đường bao RMS 50ms của chính file, không ước.
   if (entry.trimSec) chain.push(`atrim=0:${entry.trimSec}`, `afade=t=out:st=${Math.max(0, entry.trimSec - 0.06)}:d=0.06`);
-  const out = path.join(DIR, entry.file);
-  const r = ff(['-y', '-v', 'error', '-i', tmp, ...(chain.length ? ['-af', chain.join(',')] : []), '-ar', '48000', '-ac', '2', out]);
-  fs.rmSync(tmp, { force: true });
+  fs.mkdirSync(STAGE, { recursive: true });
+  const out = path.join(STAGE, entry.file);
+  const r = ff(['-y', '-v', 'error', '-i', src, ...(chain.length ? ['-af', chain.join(',')] : []), '-ar', '48000', '-ac', '2', out]);
+  if (tmp) fs.rmSync(tmp, { force: true });
   if (r.status !== 0) return `ffmpeg lỗi khi chuẩn hoá: ${(r.stderr || '').trim().slice(0, 200)}`;
+  // Dựng sẵn luôn bản dùng được dưới assets/sfx/ để không phải tải lại từ R2 ngay sau khi chuẩn hoá.
+  fs.mkdirSync(DIR, { recursive: true });
+  fs.copyFileSync(out, path.join(DIR, entry.file));
+  return null;
+}
+
+/**
+ * MỌI MÁY: tải bản đã chuẩn hoá từ R2 về `assets/sfx/`. Không xử lý gì thêm — bytes trên bucket là bản
+ * chốt, và `sfx.json` đo trên chính bytes đó.
+ */
+async function download(entry) {
+  const url = mediaUrl(entry.media);
+  if (!url) {
+    const hint = entry.media
+      ? `key "${entry.media}" chưa có trong media/manifest.json — chủ bucket chạy \`sfx-fetch --prepare\` rồi \`npm run media\``
+      : `thiếu trường "media" trong sfx.json cho id "${entry.id}" — cần upload lên R2 và thêm key`;
+    return hint;
+  }
+  fs.mkdirSync(DIR, { recursive: true });
+  const out = path.join(DIR, entry.file);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return `HTTP ${res.status} khi tải từ R2 — kiểm tra media/manifest.json và bucket`;
+    fs.writeFileSync(out, Buffer.from(await res.arrayBuffer()));
+  } catch (e) { return `không tải được từ R2: ${e.message}`; }
   return null;
 }
 
@@ -155,7 +194,11 @@ for (const entry of list) {
   const file = path.join(DIR, entry.file);
   let note = 'có sẵn';
   if (flags.force && !flags.measure) fs.rmSync(file, { force: true });
-  if (!fs.existsSync(file)) {
+  if (flags.prepare) {
+    const err = await prepare(entry, typeof flags.prepare === 'string' ? path.resolve(String(flags.prepare)) : null);
+    if (err) { problems.push(`${entry.id}: ${err}`); continue; }
+    note = 'đã chuẩn hoá';
+  } else if (!fs.existsSync(file)) {
     if (flags.measure) { problems.push(`${entry.id}: thiếu ${entry.file} (đang ở chế độ --measure, không tải)`); continue; }
     const err = await download(entry);
     if (err) { problems.push(`${entry.id}: ${err}`); continue; }
