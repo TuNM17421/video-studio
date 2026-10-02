@@ -31,6 +31,7 @@
     "gainDb": "bù riêng của tiếng này so với đích của lớp (âm = nhỏ hơn)",
     "seconds|lufs|peak|peakAtMs": "do `node tools/sfx-fetch.mjs --write` đo và ghi; đừng sửa tay",
     "peakAtMs": "đỉnh tiếng nằm ở mili-giây nào kể từ đầu file — sfx-mix căn ĐỈNH vào mốc hình, thay cho hằng LEAD_FRAMES=6 dùng chung cho mọi tiếng",
+    "startSec": "cắt TỪ giây nào — cho bản thu có tiếng phòng ở đầu mà silenceremove không cắt được (tiếng phòng vẫn trên −50 dB). Chạy trước trimSec, nên trimSec vẫn là độ dài kể từ đây",
     "trimSec": "cắt về đúng lần lấy ĐẦU TIÊN của một bản thu nhiều nhát (số chọn từ đường bao RMS 50ms), kèm fade out 60ms",
     "media": "key trong media/manifest.json (R2 bucket) — sfx-fetch.mjs tải từ đây; chưa có trên R2 thì để null hoặc thêm sau khi upload"
   },
@@ -255,17 +256,18 @@
       "id": "chisel",
       "file": "chisel.wav",
       "media": "sfx/chisel.wav",
+      "startSec": 0.42,
       "layer": "foley",
       "gainDb": 0,
       "use": "Đục khắc chữ lên bia đá — mỗi dòng bài học khắc xuống.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-slow-chisel-25174/",
       "download": "https://cdn.pixabay.com/download/audio/2022/03/09/audio_1da798dadf.mp3?filename=freesound_community-slow-chisel-25174.mp3",
-      "seconds": 0.49,
-      "lufs": -55.9,
-      "peak": -10.4,
-      "peakAtMs": 442,
+      "seconds": 0.5,
+      "lufs": -27.3,
+      "peak": -9.8,
+      "peakAtMs": 57,
       "trimSec": 0.5,
-      "rmsDb": -34.2
+      "rmsDb": -30.8
     },
     {
       "id": "wind",
