@@ -11,6 +11,11 @@
  * Addition over the repo version (length balance + punctuation only): Vietnamese writes every syllable
  * as a word, so a plain length balance splits compounds ("quan / sát", "đạt yêu / cầu").
  */
+/**
+ * Khổ ngang: 1920 − 2×180 px lề = 1560 px dùng được ở cỡ chữ phụ đề. Khổ dọc hẹp hơn hẳn, nên cảnh dựng
+ * cho 9x16 phải truyền `max` của khổ đó: `cueCaptions(CUES, { max: useLayout().captionMaxChars })`.
+ * Mỗi khổ giữ con số của mình ở `FORMATS[...].layout.captionMaxChars` (lib/tokens.js).
+ */
 export const CAPTION_MAX = 78;
 
 const PUNCTUATION_END = /[,;:!?–—.…]$/;
