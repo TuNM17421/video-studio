@@ -45,10 +45,10 @@
       "source": "https://pixabay.com/sound-effects/film-special-effects-clean-whoosh-382726/",
       "download": "https://cdn.pixabay.com/download/audio/2025/07/30/audio_343bfeb0ea.mp3?filename=dragon-studio-clean-whoosh-382726.mp3",
       "seconds": 0.49,
-      "lufs": -19.9,
-      "peak": -4.1,
+      "lufs": -16.8,
+      "peak": -1,
       "peakAtMs": 143,
-      "rmsDb": -23.3
+      "rmsDb": -20.2
     },
     {
       "id": "whoosh-long",
@@ -59,11 +59,11 @@
       "use": "Chỉ cho mở đầu video và cú chốt cuối. Dài 2 giây nên dùng giữa bài sẽ đè lời.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-whoosh-cinematic-376875/",
       "download": "https://cdn.pixabay.com/download/audio/2025/07/18/audio_f5a010a2d7.mp3?filename=dragon-studio-whoosh-cinematic-376875.mp3",
-      "seconds": 2,
-      "lufs": -20,
-      "peak": -4.4,
+      "seconds": 2.02,
+      "lufs": -17,
+      "peak": -1.4,
       "peakAtMs": 798,
-      "rmsDb": -25.5
+      "rmsDb": -22.5
     },
     {
       "id": "ding",
@@ -74,11 +74,11 @@
       "use": "Một ý chốt hiện ra (Callout, Spark, con số). Tính vào trần 4 accent/video.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-new-notification-09-352705/",
       "download": "https://cdn.pixabay.com/download/audio/2025/06/02/audio_f91dce208a.mp3?filename=universfield-new-notification-09-352705.mp3",
-      "seconds": 1.04,
-      "lufs": -20,
-      "peak": -8,
+      "seconds": 1.05,
+      "lufs": -14.8,
+      "peak": -2.8,
       "peakAtMs": 166,
-      "rmsDb": -24.5
+      "rmsDb": -19.3
     },
     {
       "id": "pop",
@@ -90,10 +90,10 @@
       "source": "https://pixabay.com/sound-effects/film-special-effects-pop-402324/",
       "download": "https://cdn.pixabay.com/download/audio/2025/09/09/audio_3023b9bde2.mp3?filename=dragon-studio-pop-402324.mp3",
       "seconds": 0.53,
-      "lufs": -20,
-      "peak": -4,
-      "peakAtMs": 20,
-      "rmsDb": -23.8
+      "lufs": -16,
+      "peak": 0,
+      "peakAtMs": 18,
+      "rmsDb": -19.8
     },
     {
       "id": "ting",
@@ -104,10 +104,10 @@
       "use": "Chuông ấm cho một kết quả ĐÚNG (\"MÈO ✓\"). Bản thu này đỉnh thấp (−16 dBFS) nên +2 dB để ngang các accent khác. Tính vào trần 4 accent.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-clear-bell-chime-487898/",
       "download": "https://cdn.pixabay.com/download/audio/2026/02/20/audio_547f040f5a.mp3?filename=universfield-clear-bell-chime-487898.mp3",
-      "seconds": 1.68,
-      "lufs": -27.4,
-      "peak": -16.2,
-      "peakAtMs": 105,
+      "seconds": 1.7,
+      "lufs": -27.3,
+      "peak": -16.1,
+      "peakAtMs": 107,
       "trimSec": 1.7,
       "rmsDb": -34.9
     },
@@ -120,10 +120,10 @@
       "use": "Cú mạnh nhất của cả phim, đúng MỘT lần (flash ChatGPT). Có đuôi ngân — chừa lặng sau nó.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-epic-spell-impact-478364/",
       "download": "https://cdn.pixabay.com/download/audio/2026/02/02/audio_bcd3b5a8b6.mp3?filename=dragon-studio-epic-spell-impact-478364.mp3",
-      "seconds": 2.09,
-      "lufs": -10.9,
+      "seconds": 2.1,
+      "lufs": -10.8,
       "peak": 0.1,
-      "peakAtMs": 204,
+      "peakAtMs": 213,
       "rmsDb": -15.5
     },
     {
@@ -135,10 +135,10 @@
       "use": "Căng dần vào một cú nhấn. Chỉ đặt NGAY TRƯỚC một accent, không đứng một mình.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-small-riser-351977/",
       "download": "https://cdn.pixabay.com/download/audio/2025/05/30/audio_11d1a8dd8d.mp3?filename=koiroylers-small-riser-351977.mp3",
-      "seconds": 1.98,
+      "seconds": 2,
       "lufs": -10.4,
       "peak": -0.4,
-      "peakAtMs": 935,
+      "peakAtMs": 936,
       "trimSec": 2,
       "rmsDb": -17.5
     },
@@ -151,10 +151,10 @@
       "use": "Con dấu đóng xuống — \"cạch\". Mốc năm (1973, 2006) đóng xuống như con dấu.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-office-stamp-14531/",
       "download": "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d37cc96dc1.mp3?filename=freesound_community-office-stamp-14531.mp3",
-      "seconds": 0.59,
-      "lufs": -25.5,
+      "seconds": 0.6,
+      "lufs": -25.4,
       "peak": -0.5,
-      "peakAtMs": 62,
+      "peakAtMs": 74,
       "trimSec": 0.6,
       "rmsDb": -28.6
     },
@@ -167,11 +167,11 @@
       "use": "Giấy/hồ sơ sột soạt — bìa báo cáo trượt vào, trang lật.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-paper-rustle-81855/",
       "download": "https://cdn.pixabay.com/download/audio/2022/03/15/audio_f530325b15.mp3?filename=freesound_community-paper-rustle-81855.mp3",
-      "seconds": 0.93,
-      "lufs": -27.2,
+      "seconds": 1.07,
+      "lufs": -27.6,
       "peak": -4.1,
-      "peakAtMs": 670,
-      "rmsDb": -33.9
+      "peakAtMs": 791,
+      "rmsDb": -34.4
     },
     {
       "id": "tick",
@@ -182,10 +182,10 @@
       "use": "\"Tách\" khô rất ngắn — mỗi lần một nhánh nở. Dùng thành CHUỖI dồn nhịp (`burst`), không dùng lẻ.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-tick-sound-effect-1-336779/",
       "download": "https://cdn.pixabay.com/download/audio/2025/05/04/audio_cc57ae8e1b.mp3?filename=u_a4gfvwagf1-tick-sound-effect-1-336779.mp3",
-      "seconds": 0.23,
+      "seconds": 0.25,
       "lufs": -70,
       "peak": -6.4,
-      "peakAtMs": 5,
+      "peakAtMs": 8,
       "trimSec": 0.25,
       "rmsDb": -30.7
     },
@@ -198,7 +198,7 @@
       "use": "\"Phựt\" cắt đứt — cắt tiền tài trợ, cắt một dòng đang chảy.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-scissors-small-sound-549793/",
       "download": "https://cdn.pixabay.com/download/audio/2026/06/10/audio_d7166aad57.mp3?filename=soundreality-scissors-small-sound-549793.mp3",
-      "seconds": 0.38,
+      "seconds": 0.4,
       "lufs": -23.1,
       "peak": 0.4,
       "peakAtMs": 42,
@@ -214,10 +214,10 @@
       "use": "Bộ đếm \"tạch\" một nhịp — số nhảy 10 → 10.000. Dùng thành chuỗi `burst`.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-ui-button-click-mechanical-515078/",
       "download": "https://cdn.pixabay.com/download/audio/2026/04/13/audio_0c11602b83.mp3?filename=soundshelfstudio-ui-button-click-mechanical-515078.mp3",
-      "seconds": 0.44,
+      "seconds": 0.45,
       "lufs": -24.9,
-      "peak": -19.1,
-      "peakAtMs": 11,
+      "peak": -19.2,
+      "peakAtMs": 14,
       "trimSec": 0.45,
       "rmsDb": -28
     },
@@ -230,10 +230,10 @@
       "use": "Pop mềm — mỗi đặc trưng (tai, chân, lông) nhảy ra. Nhẹ hơn `pop` và KHÔNG tính vào trần accent.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-soft-pop-538611/",
       "download": "https://cdn.pixabay.com/download/audio/2026/06/04/audio_0f8832a8fb.mp3?filename=mikeaveloo-soft_pop-538611.mp3",
-      "seconds": 0.51,
+      "seconds": 0.52,
       "lufs": -26.2,
       "peak": -13.5,
-      "peakAtMs": 0,
+      "peakAtMs": 1,
       "rmsDb": -27.4
     },
     {
@@ -245,10 +245,10 @@
       "use": "\"Khớp\" — một nhánh nhập vào trục, hai vật ăn vào nhau.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-snap-274158/",
       "download": "https://cdn.pixabay.com/download/audio/2024/12/08/audio_484cb26219.mp3?filename=pensieri_profondi_scuba-snap-274158.mp3",
-      "seconds": 0.74,
-      "lufs": -37.9,
+      "seconds": 0.77,
+      "lufs": -37.8,
       "peak": -14.8,
-      "peakAtMs": 277,
+      "peakAtMs": 291,
       "rmsDb": -46.4
     },
     {
@@ -261,11 +261,11 @@
       "source": "https://pixabay.com/sound-effects/film-special-effects-slow-chisel-25174/",
       "download": "https://cdn.pixabay.com/download/audio/2022/03/09/audio_1da798dadf.mp3?filename=freesound_community-slow-chisel-25174.mp3",
       "seconds": 0.49,
-      "lufs": -27.4,
-      "peak": -9.8,
-      "peakAtMs": 42,
+      "lufs": -55.9,
+      "peak": -10.4,
+      "peakAtMs": 442,
       "trimSec": 0.5,
-      "rmsDb": -30.8
+      "rmsDb": -34.2
     },
     {
       "id": "wind",
@@ -276,7 +276,7 @@
       "use": "Gió lạnh — bed cho cảnh mùa đông AI. Khai ở `ambience` của CẢNH, không khai theo beat.",
       "source": "https://pixabay.com/sound-effects/nature-smooth-cold-wind-looped-135538/",
       "download": "https://cdn.pixabay.com/download/audio/2023/01/17/audio_2d687f5cec.mp3?filename=shut_up_ghost-smooth-cold-wind-looped-135538.mp3",
-      "seconds": 29.99,
+      "seconds": 30,
       "lufs": -29.7,
       "peak": -17.6,
       "peakAtMs": 11997,
@@ -292,7 +292,7 @@
       "use": "Băng chuyền lạch cạch đều — bed cho cảnh ảnh chạy vào máy. Khai ở `ambience` của CẢNH.",
       "source": "https://pixabay.com/sound-effects/film-special-effects-conveyor-belt-584731/",
       "download": "https://cdn.pixabay.com/download/audio/2026/08/12/audio_d209cff091.mp3?filename=dragon-studio-conveyor-belt-584731.mp3",
-      "seconds": 19.98,
+      "seconds": 20,
       "lufs": -13.3,
       "peak": -0.5,
       "peakAtMs": 1752,

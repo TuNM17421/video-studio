@@ -589,6 +589,108 @@
       "sha256": "9f38bacc2541b95f2bbd8353cd97701a4b542bd85450c9031f51c308d84333f1",
       "updated": "2026-09-19"
     },
+    "sfx/chisel.wav": {
+      "type": "audio/wav",
+      "bytes": 96078,
+      "sha256": "ba51ea64cd571a428e31975f2548a77b7e797801193d50546e3b9b5d581e51fc",
+      "updated": "2026-10-02"
+    },
+    "sfx/conveyor.wav": {
+      "type": "audio/wav",
+      "bytes": 3840078,
+      "sha256": "e9634fc59102c6434213552e387d2f8f29e5d9b7836d4ee54622adb2077d0ab6",
+      "updated": "2026-10-02"
+    },
+    "sfx/counter.wav": {
+      "type": "audio/wav",
+      "bytes": 86478,
+      "sha256": "7d7dc9804ad264f461f3e3d5c564e40947a3fcba0434c034102e9d9cd4c02c33",
+      "updated": "2026-10-02"
+    },
+    "sfx/ding.wav": {
+      "type": "audio/wav",
+      "bytes": 202698,
+      "sha256": "b846a2c5bb7ff2a3d7376aa909030fa70eb93d310a6d926deba1928f80be5e41",
+      "updated": "2026-10-02"
+    },
+    "sfx/flash.wav": {
+      "type": "audio/wav",
+      "bytes": 404214,
+      "sha256": "748b48885bc28b03ee4e193b4241c8491a9a556183f9217abd7ed651af66b239",
+      "updated": "2026-10-02"
+    },
+    "sfx/paper.wav": {
+      "type": "audio/wav",
+      "bytes": 207022,
+      "sha256": "1f8aea4f391b39836729ef44ba9103d791a2fe3b490d4a1d5acf2b37ccdf2795",
+      "updated": "2026-10-02"
+    },
+    "sfx/pop.wav": {
+      "type": "audio/wav",
+      "bytes": 103102,
+      "sha256": "c7d53aed0c48b7d798fecb65d43ff10141db8d6aa34790dffba551148746481b",
+      "updated": "2026-10-02"
+    },
+    "sfx/riser.wav": {
+      "type": "audio/wav",
+      "bytes": 384078,
+      "sha256": "8433b3baf75e2c6780db698ca5014b2e83bec48304ef9ecb04d20e6ffe2a23d5",
+      "updated": "2026-10-02"
+    },
+    "sfx/snap.wav": {
+      "type": "audio/wav",
+      "bytes": 148150,
+      "sha256": "79269750cd3968a239d901806b9650ee6bd9258f0854680c03db93cfe0f7d9c3",
+      "updated": "2026-10-02"
+    },
+    "sfx/snip.wav": {
+      "type": "audio/wav",
+      "bytes": 76878,
+      "sha256": "5341a162db9fdf5c511881b4699cd832f734b4e266f815f979f8468b6923e352",
+      "updated": "2026-10-02"
+    },
+    "sfx/soft-pop.wav": {
+      "type": "audio/wav",
+      "bytes": 100590,
+      "sha256": "14c24543f49e1ad27d6b4b548d0cdd46d773dd093fdbbe041c36f89b349392a5",
+      "updated": "2026-10-02"
+    },
+    "sfx/stamp.wav": {
+      "type": "audio/wav",
+      "bytes": 115278,
+      "sha256": "75f7d33035076f885b3ae7039e1e9d05e1c363b69815ab2ce825ee29e2f96ce5",
+      "updated": "2026-10-02"
+    },
+    "sfx/tick.wav": {
+      "type": "audio/wav",
+      "bytes": 48078,
+      "sha256": "fff9b35b0ad7d3b15a3a612e6b9437670b845aba2f469762cfeb0cf1259bd3ce",
+      "updated": "2026-10-02"
+    },
+    "sfx/ting.wav": {
+      "type": "audio/wav",
+      "bytes": 326478,
+      "sha256": "206495d6e22c505b0a20efa4e14abd56b313a75b9fdafe58ced63878f3e3b09e",
+      "updated": "2026-10-02"
+    },
+    "sfx/whoosh-long.wav": {
+      "type": "audio/wav",
+      "bytes": 388130,
+      "sha256": "4ebd88dacf048c185670e4069553a78c51bffbafc2ea88fb8b0ade4bf193509f",
+      "updated": "2026-10-02"
+    },
+    "sfx/whoosh.wav": {
+      "type": "audio/wav",
+      "bytes": 94934,
+      "sha256": "e3f7575af95680a87a4b134017c9fd5c5c8af0404460cead20a0fbd153387779",
+      "updated": "2026-10-02"
+    },
+    "sfx/wind.wav": {
+      "type": "audio/wav",
+      "bytes": 5760078,
+      "sha256": "3a765671927176a20202524416f9ae870707819050fee0d14bcd5a8548264816",
+      "updated": "2026-10-02"
+    },
     "styles/lesson-lab/sample.mp4": {
       "type": "video/mp4",
       "bytes": 17607633,
