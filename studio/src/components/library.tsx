@@ -15,6 +15,7 @@ import { Shell, type LibrarySection } from "./shell";
 import { StyleShowcase } from "./style-showcase";
 import { CharacterLibrary } from "./character-library";
 import { MascotLibrary } from "./mascot-library";
+import { SfxLibrary } from "./sfx-library";
 import styles from "./library.module.css";
 
 const PAGE_SIZE = 30;
@@ -162,6 +163,7 @@ export default function Library({ section }: { section: LibrarySection }) {
     </section>,
     characters: <CharacterLibrary />,
     mascot: <MascotLibrary />,
+    sfx: <SfxLibrary />,
     videos: <section className={styles.videoPanel}>
       <header className={styles.catalogHeader}>
         <div><span className={styles.sectionEyebrow}>Reference cuts</span><h1>Bản dựng tham chiếu</h1><p>Đối chiếu nhịp cảnh, caption và chuyển động trước khi bắt đầu video mới.</p></div>
