@@ -4,7 +4,7 @@
 gây ra và sửa hết bao nhiêu. Số nào không đo được thì để trống, không ghi 0.*
 
 Ký hiệu: **[Click]** thao tác · **[Nói]** lời thoại gợi ý (đọc tự nhiên, không cần thuộc) · **[Nhấn]** điểm phải dừng lại.
-Mọi con số dưới đây khớp với dữ liệu demo đang có trên production (kiểm ngày 26/09/2026).
+Mọi con số dưới đây khớp với dữ liệu đang có trên production (đọc trực tiếp từ DB ngày 02/10/2026, phạm vi *Video hoàn tất*).
 
 ---
 
@@ -12,7 +12,7 @@ Mọi con số dưới đây khớp với dữ liệu demo đang có trên produ
 
 - [ ] Mở https://video-telemetry.duckdns.org, đăng nhập, mở dashboard **Video Telemetry**.
 - [ ] Đặt thời gian **Last 30 days**, *Phạm vi* = **Video hoàn tất**, *Video* = **All**. Nhấn F11 cho toàn màn hình.
-- [ ] Kiểm hàng KPI phải thấy **2 / 3** và **$2.000**. Không thấy thì dữ liệu demo chưa có: chạy `seed-demo.mjs`
+- [ ] Kiểm hàng KPI phải thấy **3 / 4** và **$1.882**. Không thấy thì dữ liệu demo chưa có: chạy `seed-demo.mjs`
       (RUNBOOK → "Dữ liệu demo").
 - [ ] (Tuỳ chọn, cho phần live) Studio chạy từ `baseline-upstream-2026-09-25` với `STUDIO_GATEWAY=9router`, 9router
       đang bật, và có sẵn một video để bấm gửi góp ý.
@@ -28,8 +28,8 @@ Kaggle làm giọng, rồi QA chấm, rồi sửa. Chỗ nào cũng tốn tiền
 tốn bao nhiêu?* thì cả team không ai trả lời được. Và khi QA chê một cảnh, ta cũng không biết lỗi đó do lượt AI nào sinh
 ra, hay sửa nó tốn bao nhiêu."
 
-**[Nói]** "Hôm nay mình demo hệ thống trả lời ba câu hỏi đó. Dữ liệu trên màn hình là **4 video mô phỏng**, nhưng đi qua
-đúng pipeline ghi log thật của Studio."
+**[Nói]** "Hôm nay mình demo hệ thống trả lời ba câu hỏi đó. Dữ liệu trên màn hình gồm **3 video mô phỏng** (`demo-d06-*`) và **1 video chạy thật** (`d2-01-lab`, 24 lượt agent), tất cả đi qua
+đúng pipeline ghi log thật của Studio. Nói rõ điều này ngay từ đầu để không ai nhầm số mô phỏng với số thật."
 
 ## 2. Cách nó hoạt động (1:00–2:00)
 
@@ -51,33 +51,36 @@ collector tắt thì dữ liệu nằm chờ trong outbox."
 
 **[Click]** chỉ lần lượt 6 ô trên cùng.
 
-**[Nói]** "Trung bình một video hoàn tất tốn **$2.00**, khoảng **1,8 giờ máy chạy**, và **3,2 triệu token**. Lead time,
-tức là từ lúc bắt đầu tới lúc xong kể cả chờ duyệt, khoảng **12 tiếng**."
+**[Nói]** "Trung bình một video hoàn tất tốn **$1.88**, khoảng **1,55 giờ máy chạy**, và **2,8 triệu token**. Lead time,
+tức là từ lúc bắt đầu tới lúc xong kể cả chờ duyệt, khoảng **9,6 tiếng**."
 
-**[Nhấn]** chỉ vào ô **Video đo đủ chi phí: 2 / 3**.
-**[Nói]** "Con số $2 chỉ tính trên **2 video đo đủ**. Video thứ ba, `v03`, có một lượt dựng cảnh không đo được chi phí.
+**[Nhấn]** chỉ vào ô **Video đo đủ chi phí: 3 / 4**.
+**[Nói]** "Con số $1.88 chỉ tính trên **3 video đo đủ**. Video thứ tư, `v03`, có một lượt dựng cảnh không đo được chi phí.
 Nếu tính lượt đó là $0 thì trung bình tụt xuống và ta tự lừa mình. Nên nguyên tắc là: **không đo thì để trống, và không
 đưa vào trung bình**."
 
 **[Click]** ô **Chi phí do làm lại**.
-**[Nói]** "Gần **1/5 số tiền** là để trả cho các vòng sửa sau feedback và QA. Đây là con số đáng giảm nhất, và giờ ta
+**[Nói]** "Khoảng **42% số tiền** (hơn 2/5) là để trả cho các vòng sửa sau feedback và QA, chủ yếu từ video chạy thật `d2-01-lab` (18 lượt làm lại, $1.61). Đây là con số đáng giảm nhất, và giờ ta
 đo được nó."
 
 ## 4. Tiền đi đâu: theo phase (4:00–6:00)
 
 **[Click]** 3 biểu đồ hàng thứ hai.
 
-**[Nói]** "Chia theo công đoạn: **dựng cảnh (scenes) đắt nhất, khoảng $1.17/video**, ngốn gần **2,7 triệu token** và gần
-**1 tiếng máy**. Viết kịch bản chỉ $0.31, làm cue $0.13."
+**[Nói]** "Chia theo công đoạn: **dựng cảnh (scenes) đắt nhất, khoảng $0.84/video**, ngốn gần **2,6 triệu token** và gần
+**1 tiếng máy** (47 phút). Soát hình bằng QA (`qa`) tốn thêm **$0.62/video**. Viết kịch bản chỉ $0.31, làm cue $0.13."
+
+**[Nhấn]** *Lưu ý khi nói:* phase `qa` mới được tách riêng khỏi `scenes` (trước đó QA bị tính lẫn vào dựng cảnh). Các trung bình theo phase
+tính trên số video khác nhau (scenes 2/4 đo giá, qa 4/4), nên **đừng cộng** hai cột này lại để ra "tổng dựng hình".
 
 **[Nhấn]** chỉ biểu đồ token, thanh màu xám.
 **[Nói]** "Thanh xám là token đọc lại từ cache, chiếm **khoảng 87%** ở phase scenes. Tức là agent đọc lại ngữ cảnh rất
 nhiều lần. Muốn giảm chi phí thì đây là chỗ tối ưu prompt và cache có lời nhất."
 
 **[Click]** bảng **Chi tiết theo phase**, cột "Video đo được chi phí".
-**[Nói]** "Voice ghi **1/3**. Không phải thiếu dữ liệu: video dùng ElevenLabs tốn $0.78, còn hai video dùng Kaggle và
-model local là **miễn phí**, nên để trống thay vì kéo trung bình voice về gần 0. Render và deliver ghi 0/3 vì chạy trên
-máy, không tốn tiền, nhưng thời gian vẫn đo đủ."
+**[Nói]** "Voice ghi **1/3**. Không phải thiếu dữ liệu: video dùng ElevenLabs tốn $0.26 (5.200 ký tự), còn hai video dùng Kaggle và
+model local là **miễn phí**, nên để trống thay vì kéo trung bình voice về gần 0. Render ghi 0/4 vì chạy trên máy,
+không tốn tiền; deliver 1/4. Thời gian vẫn đo đủ."
 
 ## 5. Ai tốn tiền: theo nhà cung cấp và giọng nói (6:00–7:00)
 
@@ -98,6 +101,8 @@ model, vì mỗi model giá khác nhau tới 2 lần. Chi phí Codex là giá **
 **[Nói]** "Mỗi thanh là một mã video, màu theo phase. Nhìn là thấy ngay video nào đắt bất thường, và đắt ở khâu nào."
 **[Nhấn]** cột **Đo chi phí** của `v03`: "thiếu 1 run". "Đây là cách hệ thống tự khai phần mình chưa đo được, thay vì
 giấu nó."
+
+**[Nhấn]** dòng `d2-01-lab`: "Đây là video **chạy thật**, $2.17, 24 lượt, 12 lượt lỗi. Nó đắt nhất bảng và là chỗ có nhiều để tối ưu."
 
 ## 7. Gen đi gen lại: phiên bản (8:00–10:00)
 
@@ -121,6 +126,17 @@ dùng prompt nào. Lượt sửa là **scenes #4**, tốn **$0.16**."
 đè hình). Dòng nào cũng biết lượt nào gây ra và lượt nào đã sửa. Nội dung góp ý không gửi lên đây; muốn đọc thì mở
 Studio theo mã feedback."
 
+## 8b. Phiên bản Studio và style (mới, 1 phút)
+
+**[Click]** cuộn xuống hai bảng cuối: **Token & chi phí theo phiên bản Studio** và **So sánh theo style**.
+
+**[Nói]** "Mỗi lượt chạy giờ ghi thêm **commit của Studio** và **style** của video. Lý do: đổi prompt hay đổi luồng thì số token
+đổi theo, và nếu không ghi phiên bản thì ta không biết token nhảy là do video khó hơn hay do Studio đổi. Hai bảng này cho
+phép so cùng style khác commit, hoặc cùng commit khác style, đúng câu hỏi của issue #71."
+
+**[Nhấn]** *Phải nói thật:* hiện cả hai bảng chỉ có dòng **"(chưa ghi)"**, vì mọi dữ liệu trên đây có trước khi thêm metadata. Bảng chỉ có nghĩa
+từ lúc team chạy Studio bản mới. Đừng hứa kết luận so sánh trong buổi này.
+
 ## 9. (Tuỳ chọn) Live (11:00–12:00)
 
 **[Click]** Studio → một video → gửi một góp ý ngắn cho stage đang làm bằng Codex.
@@ -133,7 +149,7 @@ Studio theo mã feedback."
 
 **[Click]** tab `JOIN.md`.
 **[Nói]** "Để dữ liệu thật của mọi người lên đây: thêm **4 dòng** vào `studio/.env` rồi khởi động lại Studio. Token mình
-gửi riêng từng người. 9router là tuỳ chọn. Từ tuần sau, con số $2 kia sẽ là **số thật của team**."
+gửi riêng từng người. 9router là tuỳ chọn. Từ tuần sau, con số $1.88 kia sẽ là **số thật của team**. Nhớ **cập nhật Studio lên bản mới** để có commit và style trong dữ liệu."
 
 ---
 
@@ -146,6 +162,8 @@ gửi riêng từng người. 9router là tuỳ chọn. Từ tuần sau, con s�
 | Sao không ghi 0 cho phần miễn phí? | Vì trung bình sẽ bị kéo xuống. Phần miễn phí vẫn ghi rõ trạng thái `free` ở bảng "Chi phí theo nguồn". |
 | Token có bị đếm trùng khi sửa nhiều vòng? | Từng bị: Codex `resume` báo token cộng dồn cả phiên. Đã sửa, và đối chiếu khớp tuyệt đối với 9router. |
 | Không bật 9router thì sao? | Vẫn có token và thời gian; riêng chi phí Codex hiện "không đo", và video đó không vào trung bình chi phí. |
+| Sao dashboard không có dữ liệu theo commit/style? | Vì chỉ có từ khi thêm metadata; dữ liệu cũ nằm ở "(chưa ghi)" và không điền lại được. Cần chạy video mới bằng Studio bản mới. |
+| Số có so được với số của issue #71 ($23–95/video) không? | Không trực tiếp: đó là video thật dài hơn, tiền do Claude Code báo; ở đây có video mô phỏng và Codex tính qua 9router. Định nghĩa phase cũng khác ("Dựng hình" của issue không gồm soát hình). |
 | Dữ liệu để ở đâu, giữ bao lâu? | Postgres trên VM của team, qua HTTPS; backup hằng ngày giữ 14 bản; event giữ 365 ngày. |
 
 ## Nếu có sự cố khi trình bày
