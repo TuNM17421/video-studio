@@ -1747,6 +1747,103 @@ details.vs-flow-more > summary:focus-visible {
   font-size: 18px;
 }
 
+/* ── panel tiếng động (bước Render) ──────────────────────────────────────
+   Một hàng là một CHỖ: duyệt · lúc nào · vì sao · tiếng nào · nghe thử. Cột "vì sao" co giãn vì nó là
+   thứ người dựng đọc để quyết, hai cột kia giữ nguyên bề ngang cho mắt dóng theo cột. */
+.vs-sfx { margin-bottom: 18px; }
+.vs-sfx-list {
+  margin: var(--vu-space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--vu-space-1);
+  list-style: none;
+}
+.vs-sfx-row {
+  padding: var(--vu-space-2) var(--vu-space-3);
+  display: grid;
+  /* Khung bước Render chỉ rộng ~440 px, nên "vì sao" KHÔNG tranh chỗ với mấy ô điều khiển: nó xuống
+     hàng riêng. Xếp bốn thứ trên một hàng thì chính câu người dựng cần đọc là thứ bị bóp mất. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "use sound play"
+    "why why why";
+  align-items: center;
+  gap: var(--vu-space-1) var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-sm);
+  background: var(--surface);
+}
+.vs-sfx-use { grid-area: use; }
+.vs-sfx-sound { grid-area: sound; }
+.vs-sfx-play { grid-area: play; }
+.vs-sfx-why { grid-area: why; }
+.vs-sfx-row.is-on { border-color: var(--vu-blue-300); background: var(--vu-lesson-surface); }
+.vs-sfx-when {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+}
+.vs-sfx-why em {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  font-style: normal;
+}
+.vs-sfx-why {
+  min-width: 0;
+  color: var(--vu-text-secondary);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-normal);
+}
+.vs-sfx-play { display: flex; align-items: center; gap: var(--vu-space-1); }
+.vs-sfx-play-btn {
+  padding: 2px var(--vu-space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-pill);
+  color: var(--vu-blue-700);
+  background: var(--vu-neutral-0);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.vs-sfx-play-btn.is-plain { color: var(--vu-text-muted); }
+.vs-sfx-play-btn:hover { border-color: var(--vu-blue-300); }
+.vs-sfx-beds { margin-top: 18px; }
+.vs-sfx-actions {
+  margin: var(--vu-space-2) 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vu-space-2) var(--vu-space-3);
+}
+.vs-sfx-actions > small {
+  flex: 1 1 14rem;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-sfx-dropped { margin-bottom: var(--vu-space-3); }
+.vs-sfx-dropped ul {
+  margin: 0;
+  padding-left: var(--vu-space-5);
+  color: var(--vu-text-secondary);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-relaxed);
+}
+.vs-sfx-tag.ant-tag {
+  margin-right: var(--vu-space-2);
+  border-color: var(--vu-amber-700);
+  color: var(--vu-amber-700);
+  background: var(--vu-amber-50);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+}
+
+
 /* ── scenes + render ────────────────────────────────────────────────────── */
 .vs-qa-section {
   margin: 0 0 18px;
@@ -4920,6 +5017,7 @@ button.vs-rs-sent-n:hover { color: var(--vu-text-link); text-decoration: underli
   color: var(--vu-blue-800);
   font-family: var(--vu-font-utility);
   font-size: var(--vu-text-2xs);
+  white-space: nowrap;
   cursor: pointer;
 }
 .vs-rs-ref:focus-visible { outline: 2px solid var(--vu-border-focus); outline-offset: 1px; }

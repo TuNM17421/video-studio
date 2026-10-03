@@ -9,6 +9,7 @@ import { DEFAULT_BUILD_NO, isBuildNo, itemIdFor } from "../qa-manifest";
 import { BASE_TEMPLATE_PATH } from "../modules";
 import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
+import { sfxCatalog } from "./sfx";
 import { styleGuideLine } from "./style-guides";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { videoCost } from "./cost";
@@ -344,6 +345,49 @@ function quizSection(enabled: boolean) {
  * Griffin is opt-in. The design system ships the component and the agent would otherwise be free to use it,
  * so the request says so either way — on: how to place it; off: not at all.
  */
+/**
+ * Danh mục tiếng phải nằm TRONG REQUEST.md, không chỉ trong file module: catalog đổi theo kho media (thêm
+ * một tiếng là thêm một mục trong `sfx.json`), và agent chỉ được gọi id có thật — bịa một id thì chỗ đó
+ * lặng lẽ rơi khỏi bản trộn. Cùng lý do với danh sách nhân vật của video hội thoại.
+ */
+function sfxSection(enabled: boolean) {
+  if (!enabled) {
+    return [
+      "## Tiếng động",
+      "",
+      "Video này **không** có tiếng động: không viết dòng `- **Tiếng:**` hay `- **Nền:**` trong kịch bản.",
+      "",
+    ];
+  }
+  const catalog = sfxCatalog();
+  const lines = [
+    "## Tiếng động",
+    "",
+    "Video này có tiếng động. Chỗ nào thấy rõ là phải có tiếng thì khai thẳng trong kịch bản bằng dòng",
+    "`- **Tiếng:** <id> @ \"<cụm từ trong lời>\"` của câu đó, hoặc `- **Nền:** <id>` ngay dưới tiêu đề một phần.",
+    "Không khai gì cũng được — Studio tự đề xuất sau khi có giọng, và người dựng duyệt từng chỗ ở bước Render.",
+    "",
+    "**Chỉ được dùng id có trong danh mục dưới đây.** Id khác sẽ bị bỏ khi dựng bản trộn.",
+    "",
+  ];
+  for (const layer of catalog.layers) {
+    const sounds = catalog.sounds.filter((s) => s.layer === layer.id);
+    if (!sounds.length) continue;
+    const limit = layer.max != null
+      ? ` · trần cứng ${layer.max} lần cả video`
+      : layer.maxPerMinute != null ? ` · ngân sách ${layer.maxPerMinute} sự kiện mỗi phút` : "";
+    lines.push(`**${layer.label}**${limit}`, "");
+    for (const sound of sounds) lines.push(`- \`${sound.id}\` — ${sound.use}`);
+    lines.push("");
+  }
+  lines.push(
+    "Không đặt tiếng vào khoảng chờ quiz, không đặt giữa một con số hay tên riêng đang đọc, và không đặt ở",
+    "chỗ trên hình không có gì thay đổi.",
+    "",
+  );
+  return lines;
+}
+
 function mascotSection(enabled: boolean) {
   if (!enabled) {
     return [
@@ -387,6 +431,7 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     ...moduleSections(r.modules),
     ...quizSection(r.modules.includes("quiz")),
     ...mascotSection(r.modules.includes("mascot")),
+    ...sfxSection(r.modules.includes("sfx")),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

@@ -48,6 +48,7 @@ export function listModules(): ModuleDef[] {
       icon: meta.icon ?? "",
       template: `templates/modules/${file}`,
       previewKey: meta.preview || undefined,
+      isDefault: meta.default === "true",
       order: Number.isFinite(Number(meta.order)) && meta.order !== "" ? Number(meta.order) : 100,
     });
   }
