@@ -251,9 +251,14 @@ const alreadyShot = (i) => {
  * --fps 60 and resumed at 30 would look complete (the first half is all there), and ffmpeg would then read
  * every file in the pattern and emit a video twice as long at half the rate — silently, with no missing
  * frame to catch it. The stamp makes that a refusal instead.
+ *
+ * `format` is in the stamp for the same reason: the frame size comes from the video (`meta.format`), so a
+ * directory shot at 16x9 and resumed after the video switched to 9x16 mixes two picture sizes, and ffmpeg
+ * stretches the odd ones into the first frame's size without a word — measured: exit 0, no warning even at
+ * -loglevel warning, and this render runs at -loglevel error.
  */
 const stampFile = path.join(framesDir, 'render.json');
-const stamp = { scene: args.scene, from, to, fps: OUT_FPS, shots };
+const stamp = { scene: args.scene, format: format.id, from, to, fps: OUT_FPS, shots };
 if (args['keep-frames']) {
   let previous = null;
   try {
