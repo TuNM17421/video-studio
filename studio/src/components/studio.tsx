@@ -6,7 +6,7 @@ import { Button, Collapse, Empty, Steps, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
 import { api, fileUrl, formatFrames, formatSize, scenePages, useKeyStatus, useVideo } from "@/lib/client";
 import { inferDay } from "@/lib/day";
-import type { AgentConfig, AgentProvider, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
+import type { AgentConfig, AgentProvider, JobKind, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { resolveReviewer } from "@/lib/review";
 import { costLabels } from "@/lib/video-cost";
@@ -27,6 +27,18 @@ import { VoiceStep } from "./steps/voice-step";
 
 
 /** Nhãn và tỉ lệ khung của từng khổ — bản xem trước phải khớp khổ video thật sự dựng. */
+/**
+ * Bước chứa thanh tiến độ và nút Dừng của từng loại job. Dùng để nói ra khi một job của bước KHÁC đang chạy:
+ * lúc đó mọi nút ở bước đang xem bị khoá, và trước đây không dòng nào trên màn hình cho biết vì sao.
+ */
+const JOB_STEP: Partial<Record<JobKind, Step>> = {
+  cues: "cues", "cue-edit": "cues",
+  voice: "voice", "dry-run": "voice", "voice-script": "voice", "import-scan": "voice", "omnivoice-setup": "voice", "omnivoice-generate": "voice",
+  "align-setup": "voice", "kaggle-setup": "voice", "kaggle-generate": "voice", "voice-retake": "voice", "voice-retake-pick": "voice",
+  scenes: "scenes", review: "scenes",
+  render: "render", deliver: "render",
+};
+
 const FORMAT_NAME: Record<string, string> = { "16x9": "Ngang 16:9", "9x16": "Dọc 9:16" };
 
 
@@ -343,6 +355,9 @@ export default function Studio() {
   }
   const stop = () => { if (id) void act(() => api(`/api/videos/${id}/stop`, { method: "POST", json: {} })); };
   const running = job?.status === "running";
+  // Job đang chạy thuộc bước khác với bước đang xem (ví dụ đang render mà mở Giọng đọc).
+  const jobStep = running && job ? JOB_STEP[job.kind] : undefined;
+  const elsewhere = jobStep && jobStep !== step ? STEPS.find((s) => s.id === jobStep) ?? null : null;
   const { previous, next } = neighbours(step);
   // Tiếp only appears once this step is complete — until then the step's own action is the primary one.
   const nav: StepNav = {
@@ -413,6 +428,10 @@ export default function Studio() {
     {detail && !detail.managed && (detail.state.sample
       ? <ProductionState className="vs-production-state" tour="studio.sample" status="idle" title="Video mẫu của chế độ tập" detail="Một video đã đi đủ năm bước, để bạn xem từng bước trông thế nào khi xong. Chỉ xem — không chạy lại được bước nào." />
       : <ProductionState className="vs-production-state" status="idle" title="Video được làm ngoài Video Studio" detail="Bạn chỉ có thể xem tệp và kết quả của video này." />)}
+    {elsewhere && <ProductionState className="vs-production-state" status="running"
+      title={`Đang chạy ở bước ${elsewhere.title}`}
+      detail={`${job?.progress?.message || "Một tác vụ của video này đang chạy"} — các nút ở bước này tạm khoá cho tới khi xong. Tiến độ và nút Dừng nằm ở bước ${elsewhere.title}.`}
+      action={<Button size="small" onClick={() => goToStep(elsewhere.id)}>Mở bước {elsewhere.title}</Button>} />}
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
         <div className="panel-heading vs-step-heading"><div><h2>{current.title}</h2></div>{detail && stepStatus(step, detail) && <StageBadge status={stepStatus(step, detail)!} />}</div>

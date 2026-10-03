@@ -386,7 +386,12 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
           </fieldset>
           <fieldset className="vs-scope">
             <legend className="vs-field-label">Phạm vi</legend>
-            <p className="vs-scope-note">Dựng cảnh và kiểm tra luôn được làm. Bỏ chọn phần bạn sẽ tự làm.</p>
+            {/* Nói đúng điều từng ô làm: Studio chỉ đọc ô Transcript; ba ô kia là lời dặn trong REQUEST.md. Câu cũ
+                ("Bỏ chọn phần bạn sẽ tự làm") hứa bỏ bước, trong khi không bước nào bị bỏ. */}
+            <p className="vs-scope-note">
+              Dựng cảnh và kiểm tra luôn được làm. Bỏ <strong>Transcript</strong> thì bước Render không sinh transcript.
+              Ba ô còn lại chỉ ghi vào REQUEST.md cho agent biết phần nào bạn tự lo — Studio không bỏ bước nào, bạn chỉ việc không chạy bước đó.
+            </p>
             <div className="vs-scope-options">
               {SCOPE_LABELS.map(([key, label]) => <Checkbox key={key} checked={draft.request.scope[key]} disabled={busy} onChange={(e) => set({ scope: { ...draft.request.scope, [key]: e.target.checked } })}>{label}</Checkbox>)}
             </div>
@@ -425,6 +430,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
       { key: "format", label: "Khổ hình", children: FORMAT_OPTIONS.find((f) => f.value === (r.format || "16x9"))?.label || r.format },
       { key: "day", label: "Ngày", children: r.day || "—" },
       { key: "item", label: "Mã item gửi QA", children: itemIdFor(r.itemId, state.id) },
+      { key: "scope", label: "Phạm vi", children: SCOPE_LABELS.filter(([key]) => r.scope[key]).map(([, label]) => label).join(", ") || "Chỉ dựng cảnh" },
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
       { key: "feedback", label: "Feedback bản cũ", children: r.feedbackDir || "—" },
       { key: "video", label: "Video cũ", children: r.oldVideoDir || "—" },

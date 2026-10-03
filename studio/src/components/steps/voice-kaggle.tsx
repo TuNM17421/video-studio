@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleFilled, CloudUploadOutlined, DeleteOutlined, DownloadOutlined, KeyOutlined } from "@ant-design/icons";
 import { Button, Input, Tag } from "antd";
+import { ConfirmDialog } from "../confirm-dialog";
 import { api } from "@/lib/client";
 import type { KaggleStatus, VideoDetail, VoiceSettings } from "@/lib/types";
 import { ProductionState } from "../production-state";
@@ -43,9 +44,17 @@ export function KagglePanel({ detail, settings, setSettings, busy, act }: {
   useEffect(() => { if (!installing && !aligning) void refresh(); }, [installing, aligning, refresh]);
 
   const { cast, castKey } = useLocalCast(id, settings);
+  // 0 = chưa đổi gì từ lúc mở panel. Effect này từng chạy cả lúc mount, nên chỉ cần đổi bước hay tải lại
+  // trang là mốc này vượt qua giờ bắt đầu của lượt vừa hỏng và khối báo lỗi biến mất — sau một lượt sinh
+  // mười, hai mươi phút, người dùng quay lại chỉ thấy một nút "Sinh giọng" bình thường.
   const [settingsChangedAt, setSettingsChangedAt] = useState(0);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setSettingsChangedAt(Date.now()); }, [castKey]);
+  const seenCast = useRef(castKey);
+  useEffect(() => {
+    if (seenCast.current === castKey) return;
+    seenCast.current = castKey;
+    setSettingsChangedAt(Date.now());
+  }, [castKey]);
+  const [confirmAgain, setConfirmAgain] = useState(false);
 
   const installed = status?.installed ?? false;
   const signedIn = status?.hasCreds ?? false;
@@ -121,9 +130,16 @@ export function KagglePanel({ detail, settings, setSettings, busy, act }: {
             icon={<CloudUploadOutlined />}
             loading={generating}
             disabled={busy || generating || !ready}
-            onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "kaggle-generate", settings }))}
+            onClick={() => (generated ? setConfirmAgain(true) : void act(() => post(`/api/videos/${id}/voice`, { action: "kaggle-generate", settings })))}
           >{generated ? "Sinh lại trên Kaggle" : "Sinh giọng trên Kaggle"}</Button>
-          {job?.kind === "kaggle-generate" && job.status === "error" && settingsChangedAt > 0 && job.startedAt >= settingsChangedAt && (() => {
+          {confirmAgain && <ConfirmDialog
+            title="Sinh lại giọng cho cả video?"
+            description={'Thư mục tải về lần trước bị xoá, kể cả những câu bạn đã nghe và chọn "Dùng bản này". Nếu mọi câu của lượt mới đều sạch, giọng mới được nhập thẳng vào video và thay giọng đang gắn.'}
+            confirmLabel="Sinh lại trên Kaggle"
+            onCancel={() => setConfirmAgain(false)}
+            onConfirm={() => { setConfirmAgain(false); void act(() => post(`/api/videos/${id}/voice`, { action: "kaggle-generate", settings })); }}
+          />}
+          {job?.kind === "kaggle-generate" && job.status === "error" && job.startedAt >= settingsChangedAt && (() => {
             const last = [...detail.logs].reverse().find((l) => l.kind === "error");
             return <ProductionState
               className="vs-production-state"
