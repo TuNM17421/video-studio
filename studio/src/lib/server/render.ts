@@ -102,6 +102,9 @@ async function renderSteps(id: string, base: string) {
     "--title", state.request.title || id,
     "--build", String(state.buildNo),
     "--captions", state.captions ? "yes" : "no",
+    // Nhịp hình của chính bản MP4 vừa render. Thiếu cờ này thì manifest lấy nhịp của bản thu (30) và khai
+    // sai cho một bản 60 fps; qa-manifest đối chiếu số này với file thật nên lệch là dừng, không ghi ra.
+    "--fps", String(state.fps),
     "--mp4", rel(mp4Path(id)),
   ]);
   if (!manifestOk) return fail("Không tạo được manifest.json cho platform QA, xem nhật ký.");

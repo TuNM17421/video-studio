@@ -242,10 +242,16 @@ tâm render ở nhịp nào.
   video làm **ngoài** Studio đều về `LEGACY_RENDER_FPS` — chúng đã QA xong ở 30, một lượt render lại không
   được âm thầm đổi nhịp của bản người ta đã duyệt. Cùng luật với năng lực chọn thêm: `default: true` chỉ
   tick sẵn cho video mới.
-- **`manifest.json` vẫn khai `fps: 30`** vì `qa-manifest.mjs` lấy số đó từ `voice.cues.json`, mà file đó là
-  bản đội QA giao nên không được sửa. Mọi mốc khác trong manifest tính bằng giây nên vẫn đúng. **Chưa hỏi
-  đội QA xem platform có đối chiếu trường đó với file thật không, nên bản gửi soát nên hạ về 30 fps** — ô
-  chọn ở bước Render có sẵn, và dòng gợi ý dưới ô nhắc đúng điều này.
+- **`manifest.json` khai đúng nhịp của MP4.** Trước đây nó luôn ghi 30 vì lấy số đó từ `voice.cues.json`.
+  Hai file QA giờ có **một chỗ sửa tại chỗ** (`meta.render_fps` trong lib, `--fps` ở CLI) — đánh dấu bằng
+  khối `── SỬA TẠI CHỖ ──` ở đầu cả hai file, **đội QA ra bản mới thì áp lại chỗ này**. `fps` của bản thu và
+  nhịp lúc render là hai số khác nhau: mọi mốc thời gian vẫn tính theo đồng hồ bản thu (frame trong
+  `voice.cues.json` là frame 30 fps, `endFrame / fps` phải giữ hệ ấy), chỉ trường `fps` khai nhịp của chính
+  file. Có ffprobe thì số khai được đối chiếu với MP4 và **lệch là dừng**, cùng cách file này đang đối chiếu
+  thời lượng — manifest không nói khác được với file nó đi kèm. Đã đo: cùng `test-harness`, manifest của bản
+  30 và bản 60 giống nhau từng trường trừ `fps`.
+- Vẫn **chưa hỏi đội QA** xem platform xử lý `fps: 60` thế nào. Manifest giờ nói đúng sự thật, nhưng nếu
+  platform chỉ nhận 30 thì hạ nhịp ở ô chọn bước Render rồi render lại.
 
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
