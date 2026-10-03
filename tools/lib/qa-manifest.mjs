@@ -9,6 +9,13 @@
  * `end_sec` is its `endFrame / fps`. A quiz is the three-cue pattern the platform already detects:
  * (tag CÂU HỎI, spoken) → (silent > 0, no text) → (plain spoken cue). `quiz: true` in cues.js is only the
  * music-bed flag and is ignored here.
+ *
+ * ── SỬA TẠI CHỖ so với bản đội QA giao (áp lại khi họ ra bản mới) ───────────────────────────────────────
+ * `meta.render_fps`: nhịp hình THẬT của bản MP4. Trước đây trường `fps` của manifest dùng chung một số với
+ * phép tính mốc thời gian, mà số đó đến từ `voice.cues.json` nên luôn là 30 — đúng cho phép tính (frame
+ * trong file đó là frame 30 fps, và `endFrame / fps` phải giữ nguyên hệ ấy) nhưng sai khi Studio render
+ * 60 fps. Giờ hai thứ tách ra: phép tính vẫn theo đồng hồ của bản thu, còn trường `fps` khai nhịp của
+ * chính file MP4. Không truyền thì mọi thứ y như trước.
  */
 
 export const QUIZ_TAG = 'CÂU HỎI';
@@ -33,14 +40,19 @@ export function detectQuestions(cues) {
  * @param {Array} o.cues        cues.js CUES: {n, text, section, tag, silent}
  * @param {string[]} o.sections cues.js SECTIONS (section k is SECTIONS[k - 1])
  * @param {object} o.timing     voice.cues.json: {fps, audioDurationSeconds?, durationInFrames?, cues: [{n, text, seconds, startFrame, endFrame}]}
- * @param {object} o.meta       {item_id, title, build_no, script_hash, cues_hash, captions_burned, keep_frames}
+ * @param {object} o.meta       {item_id, title, build_no, script_hash, cues_hash, captions_burned, keep_frames,
+ *                              render_fps?} — render_fps là nhịp của MP4; bỏ trống thì lấy fps của bản thu
  * @returns {{manifest: object, errors: string[], warnings: string[]}}
  */
 export function buildQaManifest({ cues, sections = [], timing, meta }) {
   const errors = [];
   const warnings = [];
+  // Đồng hồ của bản thu: MỌI phép tính mốc thời gian dưới đây theo số này, không theo nhịp lúc render.
   const fps = Number(timing?.fps);
   if (!(fps > 0)) errors.push('voice.cues.json thiếu `fps`');
+  // Nhịp hình của chính file MP4, chỉ để khai trong manifest. Bỏ trống = bằng nhịp bản thu (hành vi cũ).
+  const renderFps = meta.render_fps === undefined || meta.render_fps === null ? fps : Number(meta.render_fps);
+  if (!(renderFps > 0)) errors.push('`render_fps` phải là số frame/giây > 0');
   const voice = Array.isArray(timing?.cues) ? timing.cues : [];
   if (!voice.length) errors.push('voice.cues.json không có `cues`');
   if (voice.length && voice.length !== cues.length) {
@@ -112,7 +124,7 @@ export function buildQaManifest({ cues, sections = [], timing, meta }) {
     script_hash: meta.script_hash ?? null,
     cues_hash: meta.cues_hash ?? null,
     duration_sec: duration,
-    fps,
+    fps: renderFps,
     captions_burned: Boolean(meta.captions_burned),
     render: { keep_frames: Boolean(meta.keep_frames) },
     chapters,

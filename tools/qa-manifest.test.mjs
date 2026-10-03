@@ -21,6 +21,30 @@ const timing = {
 const meta = { item_id: '1.1', title: 'Thử', captions_burned: true };
 const sections = ['Mở', 'Thân', 'Kiểm tra'];
 
+test('khai nhịp hình của MP4, nhưng mốc thời gian vẫn tính theo đồng hồ bản thu', () => {
+  // voice.cues.json luôn là 30 fps — đó là đơn vị cảnh được dựng. Một bản render 60 fps không được làm lệch
+  // một mốc nào, nhưng cũng không được đi kèm manifest khai 30.
+  const at30 = buildQaManifest({ cues, sections, timing, meta }).manifest;
+  const at60 = buildQaManifest({ cues, sections, timing, meta: { ...meta, render_fps: 60 } }).manifest;
+  assert.equal(at30.fps, 30, 'không truyền render_fps thì giữ hành vi cũ');
+  assert.equal(at60.fps, 60);
+  assert.equal(at60.duration_sec, at30.duration_sec);
+  assert.deepEqual(at60.cues, at30.cues, 'nhịp render không được dịch một mốc câu nào');
+  assert.deepEqual(at60.chapters, at30.chapters, 'nhịp render không được dịch mốc chương');
+});
+
+test('render_fps sai thì không ghi manifest', () => {
+  for (const bad of [0, -60, 'sáu mươi']) {
+    const { manifest, errors } = buildQaManifest({ cues, sections, timing, meta: { ...meta, render_fps: bad } });
+    assert.equal(manifest, null, `render_fps = ${bad} phải bị từ chối`);
+    assert.ok(errors.some((e) => e.includes('render_fps')), `lỗi phải gọi tên render_fps, nhận: ${errors.join(' | ')}`);
+  }
+  // null/undefined là "không khai", không phải sai.
+  for (const empty of [null, undefined]) {
+    assert.equal(buildQaManifest({ cues, sections, timing, meta: { ...meta, render_fps: empty } }).manifest.fps, 30);
+  }
+});
+
 test('builds the manifest from the voice timing, not the script estimate', () => {
   const { manifest, errors } = buildQaManifest({ cues, sections, timing, meta });
   assert.deepEqual(errors, []);

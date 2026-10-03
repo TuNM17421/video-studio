@@ -4,6 +4,7 @@ import type { AgentProvider, VideoRequest, VideoState } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { SILENT } from "@/lib/music";
 import { DEFAULT_BUILD_NO, ITEM_ID_MAX } from "@/lib/qa-manifest";
+import { DEFAULT_RENDER_FPS } from "@/lib/render-spec";
 import { normalizeReview } from "@/lib/review";
 import { defaultBackground } from "@/lib/server/music";
 import { readAgentConfig, resolveAgentProvider, reviewDefaults } from "@/lib/server/agent-config";
@@ -59,6 +60,9 @@ export const POST = handle(async (req: Request) => {
     // Both tracks are chosen at render; the bed starts on the catalog's default, the quiz track on none.
     music: { ...SILENT, background: defaultBackground() },
     captions: true,
+    // Video mới render 60 fps; hạ về 30 được ở bước Render. Cảnh vẫn dựng ở 30 fps dù chọn gì — nhịp chỉ là
+    // mật độ lấy mẫu lúc render (lib/render-spec.ts).
+    fps: DEFAULT_RENDER_FPS,
     buildNo: DEFAULT_BUILD_NO,
     review: normalizeReview(body.review, reviewDefaults()),
     lastError: null,

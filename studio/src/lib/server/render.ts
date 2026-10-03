@@ -34,7 +34,7 @@ async function renderSteps(id: string, base: string) {
   startJob(id, "render");
   setStage(id, "render", "running");
   // Opens this run in the shared log — the scenes gate also starts with "Build design system".
-  log(id, "system", `Bắt đầu render · phụ đề ${state.captions ? "có" : "không"}`);
+  log(id, "system", `Bắt đầu render · ${state.fps} fps · phụ đề ${state.captions ? "có" : "không"}`);
   // Tiếng động được trộn lại NGAY TRƯỚC khi render, theo đúng những chỗ đang duyệt trong panel. Bắt người
   // dùng tự chạy `sfx-mix` rồi báo lỗi khi bản trộn cũ hơn giọng là một ngõ cụt: Studio không có nút nào
   // chạy lệnh đó. Chưa duyệt chỗ nào thì `mixApproved` xoá bản trộn cũ và render dùng lại giọng gốc.
@@ -76,6 +76,10 @@ async function renderSteps(id: string, base: string) {
     "--music-track", background,
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
     ...(state.captions ? [] : ["--no-captions"]),
+    // Always explicit, like the music track: `--fps 30` is the same sampling as no flag, and a render log
+    // that names the rate is the only place the choice shows up afterwards. The scenes are untouched either
+    // way — cues.js, voice.js and every beat stay whole frames at 30 fps.
+    "--fps", String(state.fps),
     ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
     const m = line.match(/(\d+)\/(\d+) frames/);
@@ -98,6 +102,9 @@ async function renderSteps(id: string, base: string) {
     "--title", state.request.title || id,
     "--build", String(state.buildNo),
     "--captions", state.captions ? "yes" : "no",
+    // Nhịp hình của chính bản MP4 vừa render. Thiếu cờ này thì manifest lấy nhịp của bản thu (30) và khai
+    // sai cho một bản 60 fps; qa-manifest đối chiếu số này với file thật nên lệch là dừng, không ghi ra.
+    "--fps", String(state.fps),
     "--mp4", rel(mp4Path(id)),
   ]);
   if (!manifestOk) return fail("Không tạo được manifest.json cho platform QA, xem nhật ký.");
