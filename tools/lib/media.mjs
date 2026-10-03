@@ -52,3 +52,16 @@ export function pruneGuard({ local, orphans }) {
   if (orphans > local) return `sẽ xoá ${orphans} object trên R2 trong khi máy này chỉ giữ ${local} file`;
   return null;
 }
+
+/**
+ * Chuẩn hoá một giá trị `--only` về dạng key R2 (dấu `/`, không `./`, không `/` đầu).
+ * `./evidence`, `/evidence`, `evidence\\new.png` (Windows) đều về cùng dạng với key trong manifest.
+ */
+export function normalizeOnly(value) {
+  return String(value).trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/^\/+/, '').replace(/\/{2,}/g, '/');
+}
+
+/** Key có nằm trong phạm vi `--only` không? Không khai phạm vi ⇒ cả cây. */
+export function inOnlyScope(key, only) {
+  return !only.length || only.some((p) => key === p || key.startsWith(p.endsWith('/') ? p : `${p}/`));
+}

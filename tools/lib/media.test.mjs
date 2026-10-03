@@ -7,7 +7,9 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pruneGuard } from './media.mjs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { pruneGuard, normalizeOnly, inOnlyScope } from './media.mjs';
 
 test('máy vừa clone (media/files/ rỗng) thì không cho prune', () => {
   // Đúng tình huống đã suýt xảy ra: khoá R2 được gửi cho cả nhóm, còn file nặng thì .gitignore chặn.
@@ -31,4 +33,37 @@ test('xoá bớt vài file khỏi bản gốc thì vẫn chạy bình thường'
 test('không có gì để xoá thì không có gì để chặn', () => {
   assert.equal(pruneGuard({ local: 0, orphans: 0 }), null, 'kho rỗng cả hai bên vẫn là một lượt chạy hợp lệ');
   assert.equal(pruneGuard({ local: 17, orphans: 0 }), null);
+});
+
+// --prune + --only bị cấm: --only lọc local/orphans trước khi vào pruneGuard, nên guard chỉ còn thấy phạm vi
+// con và (vd. local 2, orphans 0 trong scope) cho qua dù xoá được file của cả nhóm ngoài scope.
+// Test chạy CLI thật: cờ bị từ chối ngay khi parse, trước cả mạng/manifest nên chạy được ở mọi máy.
+test('media-push từ chối --prune đi cùng --only (kể cả --dry-run)', () => {
+  const cli = fileURLToPath(new URL('../media-push.mjs', import.meta.url));
+  for (const args of [['--only', 'voices', '--prune', '--dry-run'], ['--prune', '--only', 'voices/']]) {
+    const r = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
+    assert.notEqual(r.status, 0, `${args.join(' ')} phải thoát khác 0`);
+    assert.match(r.stdout + r.stderr, /--prune và --only không dùng được cùng nhau/);
+  }
+});
+
+test('normalizeOnly đưa ./x, /x, x\\y về đúng dạng key', () => {
+  assert.equal(normalizeOnly('./evidence'), 'evidence');
+  assert.equal(normalizeOnly('/evidence/'), 'evidence/');
+  assert.equal(normalizeOnly('evidence\\new.png'), 'evidence/new.png');
+  assert.equal(normalizeOnly('.\\evidence\\sub'), 'evidence/sub');
+});
+
+test('inOnlyScope khớp theo ranh giới thư mục, không khớp nửa tên', () => {
+  const only = [normalizeOnly('./evidence')];
+  assert.ok(inOnlyScope('evidence/a.png', only));
+  assert.ok(!inOnlyScope('evidence-old/a.png', only));
+  assert.ok(inOnlyScope('anything', []));
+});
+
+test('media-push báo lỗi khi --only không khớp file nào', () => {
+  const cli = fileURLToPath(new URL('../media-push.mjs', import.meta.url));
+  const r = spawnSync(process.execPath, [cli, '--only', './khong-co-thu-muc-nay', '--dry-run'], { encoding: 'utf8' });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stdout + r.stderr, /không khớp file nào/);
 });

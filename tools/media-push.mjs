@@ -3,7 +3,7 @@
  * Push the heavy media of `media/files/` to a public Cloudflare R2 bucket and record what is up there in
  * media/manifest.json.
  *
- *   node tools/media-push.mjs [--dry-run] [--force] [--prune] [--list]
+ *   node tools/media-push.mjs [--dry-run] [--force] [--prune] [--list] [--only <prefix>]
  *
  *   --list      only report what is local, what is on R2 and what changed; upload nothing
  *   --dry-run   same report, plus exactly what a real run would upload or delete
@@ -11,6 +11,15 @@
  *   --prune     delete objects the manifest knows but `media/files/` no longer has. Refused when this
  *               machine plainly does not hold the library (see pruneGuard in lib/media.mjs) — a fresh
  *               clone has an empty media/files/, and there it would wipe the whole bucket.
+ *               Cannot be combined with --only (see below).
+ *   --only <prefix>  restrict EVERYTHING (report, upload, prune) to keys under <prefix>; repeatable.
+ *               Cannot be combined with --prune: pruneGuard only protects when it can see the FULL tree.
+ *
+ * `--only` tồn tại vì mặc định lệnh này đẩy **cả cây** `media/files/`. Ca thật 21/09/2026: được
+ * duyệt đẩy ĐÚNG HAI asset, nhưng một lần chạy trần có thể đẩy cả cây cùng nhiều ảnh evidence chưa
+ * từng được duyệt. Đẩy thừa lên
+ * một bucket CÔNG KHAI thì không rút lại được bằng cách quên nó đi. `--only` là cách khai phạm vi
+ * ra thành chữ, để `--dry-run` in đúng danh sách sẽ lên và người duyệt đọc được.
  *
  * `media/files/<key>` maps one-to-one to the object `<key>` in the bucket, so the sample video of a style
  * lives at `media/files/styles/<style id>/sample.mp4` and is read back from `<R2_PUBLIC_BASE>/styles/…`.
@@ -27,17 +36,31 @@ import https from 'node:https';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { encodeSegment, EMPTY_SHA, objectUrl, signRequest } from './lib/r2.mjs';
-import { pruneGuard } from './lib/media.mjs';
+import { pruneGuard, normalizeOnly, inOnlyScope } from './lib/media.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEDIA = path.join(ROOT, 'media');
 const FILES = path.join(MEDIA, 'files');
 const MANIFEST = path.join(MEDIA, 'manifest.json');
 
-const flags = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const only = [];
+const flags = new Set();
+for (let i = 0; i < argv.length; i++) {
+  if (argv[i] === '--only') {
+    const v = argv[++i];
+    if (!v || v.startsWith('--')) fail('--only cần một prefix key, ví dụ: --only images/hero.png');
+    only.push(normalizeOnly(v));
+    continue;
+  }
+  flags.add(argv[i]);
+}
 for (const f of flags) if (!['--dry-run', '--force', '--prune', '--list'].includes(f)) fail(`Không hiểu tuỳ chọn ${f}. Xem phần chú thích đầu tools/media-push.mjs.`);
+if (flags.has('--prune') && only.length) fail('--prune và --only không dùng được cùng nhau.\n  pruneGuard chỉ bảo vệ được khi nhìn thấy TOÀN BỘ cây media, không phải một phạm vi con.\n  Xoá --prune và chạy riêng, hoặc xoá thẳng object trong bảng điều khiển Cloudflare R2.');
 const listOnly = flags.has('--list');
 const dryRun = listOnly || flags.has('--dry-run');
+/** Không khai `--only` ⇒ phạm vi là cả cây, y như trước. */
+const inScope = (key) => inOnlyScope(key, only);
 
 // ── config ────────────────────────────────────────────────────────────────────
 function loadEnv(file) {
@@ -64,6 +87,7 @@ const TYPES = {
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
   '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
   '.vtt': 'text/vtt', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
 };
 
 function fail(msg) {
@@ -130,7 +154,12 @@ const manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
 manifest.assets ||= {};
 
 if (!fs.existsSync(FILES)) fail(`Chưa có thư mục ${path.relative(ROOT, FILES)}. Tạo nó rồi bỏ video/audio vào theo đúng key muốn dùng.`);
-const local = walk(FILES);
+const local = walk(FILES).filter(inScope);
+if (only.length) {
+  console.log(`\nPhạm vi --only: ${only.join(' · ')} → ${local.length} file local lọt phạm vi`);
+  const stale = Object.keys(manifest.assets).some(inScope);
+  if (!local.length && !stale) fail(`--only ${only.join(' · ')} không khớp file nào trong media/files/ (cũng không có trong manifest).\n  Dùng key tính từ media/files/, ví dụ: --only evidence/ hoặc --only images/hero.png`);
+}
 const unknown = local.filter((k) => !TYPES[path.extname(k).toLowerCase()]);
 if (unknown.length) fail(`Không nhận ra định dạng: ${unknown.join(', ')}.\n  Định dạng hỗ trợ: ${Object.keys(TYPES).join(' ')}`);
 
@@ -143,7 +172,7 @@ for (const key of local) {
   const changed = !known || known.sha256 !== hash;
   entries.push({ key, file, size, hash, changed, type: TYPES[path.extname(key).toLowerCase()] });
 }
-const orphans = Object.keys(manifest.assets).filter((k) => !local.includes(k));
+const orphans = Object.keys(manifest.assets).filter((k) => inScope(k) && !local.includes(k));
 const todo = entries.filter((e) => e.changed || flags.has('--force'));
 
 console.log(`\nKho media  ${path.relative(ROOT, FILES)}/  →  ${cfg.bucket ? `R2 «${cfg.bucket}»` : 'R2 (chưa cấu hình)'}`);
