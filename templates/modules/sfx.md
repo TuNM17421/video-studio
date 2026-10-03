@@ -2,6 +2,7 @@
 name: Video có tiếng động
 summary: Studio đề xuất những chỗ đáng có tiếng nhấn, người dựng nghe thử từng chỗ rồi mới duyệt.
 icon: audio
+default: true
 order: 50
 ---
 

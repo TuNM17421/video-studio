@@ -99,6 +99,23 @@ export function useModules() {
 export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, unavailable, installedAgents }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean; installedAgents: AgentProvider[] }) {
   const modules = useModules();
   const style = styles.find((s) => s.id === draft.request.style);
+  /*
+   * Năng lực khai `default: true` được tick sẵn cho video MỚI (form này chỉ hiện khi chưa có video).
+   * Chạy ĐÚNG MỘT LẦN, ngay khi danh mục và style đã về, và chỉ khi người dùng chưa tick gì: bỏ tick xong
+   * mà vẫn bật lại thì cái tick thành ra không bỏ được.
+   */
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || !modules.length || !styles.length) return;
+    seeded.current = true;
+    const on = modules
+      .filter((m) => m.isDefault && !style?.unsupportedModules?.includes(m.id))
+      .map((m) => m.id);
+    if (!on.length) return;
+    setDraft((current) => (current.request.modules.length
+      ? current
+      : { ...current, request: { ...current.request, modules: on } }));
+  }, [modules, styles, style, setDraft]);
   const formRef = useRef<HTMLDivElement>(null);
   const idInput = useRef<InputRef>(null);
   const idCheckRun = useRef(0);

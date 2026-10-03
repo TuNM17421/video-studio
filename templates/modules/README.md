@@ -14,9 +14,14 @@ name: Video có hội thoại
 summary: Một câu cho card ở bước Kế hoạch — người chọn đọc xong phải biết bật nó thì kịch bản đổi gì.
 icon: dialogue
 preview: modules/hoi-thoai-mau-v2.mp4
+default: true
 order: 10
 ---
 ```
+
+`default: true` chỉ là **điểm xuất phát của form**, không phải luật: video mới mở ra đã tick sẵn, người
+dùng bỏ tick lúc nào cũng được, và video đã tạo không bao giờ bị bật thêm năng lực. Hiện `images` và
+`sfx` khai cờ này — hai năng lực chỉ **đề xuất** rồi chờ người dựng duyệt, nên bật sẵn không làm hỏng gì.
 
 | Trường | Bắt buộc | Ý nghĩa |
 |---|---|---|
@@ -24,6 +29,7 @@ order: 10
 | `summary` | có | một câu mô tả trên card |
 | `icon` | không | `dialogue` · `quiz` · `mascot` · `image` · `audio` có glyph riêng; giá trị khác dùng glyph chung |
 | `preview` | không | key video xem thử trên kho media (`media/manifest.json`); thiếu thì card không có nút xem thử |
+| `default` | không | `true` = video mới **tick sẵn** năng lực này (bỏ tick vẫn bỏ được) |
 | `order` | không | số nhỏ đứng trước; mặc định 100 |
 
 Tên file (bỏ `.md`) là **id** của module, ghi vào `REQUEST.md` và `state.json`. Chỉ dùng chữ thường, số và

@@ -64,3 +64,15 @@ describe("capability catalog read from templates/modules", () => {
     expect(listModules().some((m) => m.id === "zz-vitest-module")).toBe(false);
   });
 });
+
+describe("năng lực bật sẵn", () => {
+  it("chỉ images và sfx khai `default: true` — hai năng lực chỉ đề xuất rồi chờ duyệt", () => {
+    const on = listModules().filter((m) => m.isDefault).map((m) => m.id);
+    expect(on).toEqual(["images", "sfx"]);
+  });
+
+  it("năng lực đổi kịch bản (hội thoại, quiz, mascot) KHÔNG bật sẵn", () => {
+    const off = listModules().filter((m) => !m.isDefault).map((m) => m.id);
+    expect(off).toEqual(["dialogue", "quiz", "mascot"]);
+  });
+});
