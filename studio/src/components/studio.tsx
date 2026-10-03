@@ -16,7 +16,7 @@ import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, useModules, type PlanDraft } from "./plan-step";
 import { moduleNamesFrom } from "@/lib/modules";
-import { PageAgentBinding } from "./page-agent-binding";
+import { SystemStatusPanel } from "./system-settings";
 import { ProductionState } from "./production-state";
 import { StageBadge } from "./agent-panel";
 import { CuesStep } from "./steps/cues-step";
@@ -192,7 +192,7 @@ function Preview({ detail, styles, draft, hasKey, installed }: { detail: VideoDe
             <WorkflowHealth detail={detail} />
           </>,
         }]} />
-      : <PlanChecklist draft={draft} provider={provider} modules={moduleNamesFrom(modules, draft.request.modules)} installed={installed} />}
+      : <PlanChecklist draft={draft} provider={provider} modules={moduleNamesFrom(modules.map((m) => ({ id: m.id, name: m.short || m.name })), draft.request.modules)} installed={installed} />}
   </aside>;
 }
 
@@ -206,7 +206,7 @@ function PlanChecklist({ draft, provider, modules, installed }: { draft: PlanDra
     {/* Hai lựa chọn đổi cả cách dựng — khổ đổi cách bày cảnh, chỗ dựng đổi cả bước Dựng cảnh — nên phải đọc được trước khi bấm Tạo video. */}
     <div><dt>Khổ hình</dt><dd>{FORMAT_NAME[draft.request.format || "16x9"] || draft.request.format}</dd></div>
     <div><dt>Dựng cảnh</dt><dd>{draft.request.sceneBuilder === "claude-design" ? "Claude Design" : "Agent ở máy"}</dd></div>
-    <div><dt>Tính năng</dt><dd>{modules.length ? modules.join(", ") : "Clip một người dẫn"}</dd></div>
+    <div><dt>Có thêm</dt><dd>{modules.length ? modules.join(", ") : "Clip một người dẫn"}</dd></div>
     <div><dt>Agent</dt><dd><AgentName provider={provider} /></dd></div>
     <div><dt>Review chéo</dt><dd>{!draft.review.enabled ? "Tắt" : reviewer.ok ? agentProviderLabel(reviewer.provider) : "Chưa chọn được"}</dd></div>
   </dl>;
@@ -396,14 +396,9 @@ export default function Studio() {
         <h1>{detail?.state.request.title || id || "Video mới"}</h1>
         {detail && <AgentLine detail={detail} />}
       </div>
-      {!id && <PageAgentBinding
-        provider={pageProvider}
-        selectionLocked={agentConfig.selectionLocked}
-        immutable={Boolean(id)}
-        loading={setupLoading || Boolean(id && !detail && !loadError)}
-        disabled={busy || setupLoading || !setupReady}
-        onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
-      />}
+      {/* Cài đặt của máy (log, chi phí), không của video: một nút kín tiếng cạnh tiêu đề. Agent thì đã vào
+          mục "Ai làm" của form Kế hoạch. */}
+      {!id && <SystemStatusPanel provider={pageProvider} />}
     </div>
     <div className="vs-production-rail" data-tour="studio.rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
@@ -435,7 +430,7 @@ export default function Studio() {
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
         <div className="panel-heading vs-step-heading"><div><h2>{current.title}</h2></div>{detail && stepStatus(step, detail) && <StageBadge status={stepStatus(step, detail)!} />}</div>
-        {step === "plan" && (detail ? <><PlanSummary state={detail.state} styles={styles} /><StepBar nav={nav} tone="done" status="Kế hoạch đã chốt khi tạo video" /></> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} />)}
+        {step === "plan" && (detail ? <><PlanSummary state={detail.state} styles={styles} /><StepBar nav={nav} tone="done" status="Kế hoạch đã chốt khi tạo video" /></> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} selectionLocked={agentConfig.selectionLocked} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}

@@ -10,6 +10,11 @@
 export interface ModuleDef {
   id: string;
   name: string;
+  /**
+   * `short:` trong file module — tên trên hàng bật tắt của bước Kế hoạch, đứng dưới nhãn nhóm "Video có thêm"
+   * nên không lặp lại "Video có". Thiếu thì dùng `name`. REQUEST.md và bảng tóm tắt vẫn dùng `name`.
+   */
+  short?: string;
   summary: string;
   /** Glyph trên card: "dialogue" · "quiz" · "mascot" · "image" có glyph riêng, giá trị khác dùng glyph chung. */
   icon: string;

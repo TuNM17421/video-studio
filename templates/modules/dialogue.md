@@ -1,5 +1,6 @@
 ---
 name: Video có hội thoại
+short: Hội thoại
 summary: Nhiều nhân vật cùng nói, mỗi người một giọng. Kịch bản phải khai ai nói câu nào.
 icon: dialogue
 preview: modules/hoi-thoai-mau-v2.mp4

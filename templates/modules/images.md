@@ -1,5 +1,6 @@
 ---
 name: Video có ảnh tư liệu
+short: Ảnh tư liệu
 summary: Studio đề xuất vài ảnh thật (người, sự kiện lịch sử, hiện vật, hình kinh điển) dựa theo kịch bản để sử dụng trong video.
 icon: image
 preview: modules/anh-tu-lieu-mau.mp4

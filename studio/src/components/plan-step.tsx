@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { AppstoreOutlined, CaretRightFilled, CheckCircleFilled, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, MessageOutlined, PictureOutlined, PlayCircleFilled, QuestionOutlined, SmileOutlined, SoundOutlined, TeamOutlined, WarningFilled } from "@ant-design/icons";
-import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Radio, Select, Tooltip, Upload } from "antd";
+import { CaretRightFilled, CheckCircleFilled, FileTextOutlined, FolderOpenOutlined, InboxOutlined, LoadingOutlined, PlayCircleFilled, SmileOutlined, TeamOutlined, WarningFilled } from "@ant-design/icons";
+import { Button, Checkbox, Collapse, Descriptions, Form, Input, Modal, Segmented, Select, Upload } from "antd";
 import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { inferDay } from "@/lib/day";
 import { ITEM_ID_MAX, itemIdFor } from "@/lib/qa-manifest";
 import type { AgentProvider, ReviewSettings, SceneBuilder, Scope, StyleDef, VideoFormat, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
-import { agentProviderLabel } from "@/lib/agent-providers";
-import { DEFAULT_REVIEW, resolveReviewer } from "@/lib/review";
+import { AGENT_PROVIDER_OPTIONS, agentProviderLabel, isExperimentalProvider } from "@/lib/agent-providers";
+import { DEFAULT_REVIEW, describeReviewer, resolveReviewer } from "@/lib/review";
 import { AgentName } from "./agent-mark";
-import { ReviewControl } from "./review-control";
+import { AgentField } from "./page-agent-binding";
 import { SourcePickerField } from "./source-picker";
 import { moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
 import { StylePicker, StyleSampleButton } from "./style-showcase";
@@ -21,9 +21,15 @@ const DAYS = Array.from({ length: 30 }, (_, i) => `Day${String(i + 1).padStart(2
  * Khổ hình phải chọn ở đây, cùng chỗ với style, vì nó quyết định cách bày cảnh — không phải một tuỳ chọn
  * lúc render. Đổi khổ sau khi đã dựng cảnh thì phải dựng lại, nên bước Kế hoạch là chỗ duy nhất hỏi.
  */
-const FORMAT_OPTIONS: { value: VideoFormat; label: string; hint: string }[] = [
-  { value: "16x9", label: "Ngang 16:9 — 1920×1080", hint: "Máy tính, LMS. Cảnh bày theo hàng, trái sang phải." },
-  { value: "9x16", label: "Dọc 9:16 — 1080×1920", hint: "Điện thoại. Cảnh bày theo cột, trên xuống dưới; mỗi màn chứa ít khối hơn." },
+const FORMAT_OPTIONS: { value: VideoFormat; label: string; short: string; hint: string }[] = [
+  { value: "16x9", label: "Ngang 16:9 — 1920×1080", short: "Ngang 16:9", hint: "Máy tính, LMS. Cảnh bày theo hàng, trái sang phải." },
+  { value: "9x16", label: "Dọc 9:16 — 1080×1920", short: "Dọc 9:16", hint: "Điện thoại. Cảnh bày theo cột, trên xuống dưới; mỗi màn chứa ít khối hơn." },
+];
+
+/** Hệ quả của từng chỗ dựng cảnh, nói ngay dưới nút chọn: lựa chọn này đổi cả bước Dựng cảnh. */
+const BUILDER_OPTIONS: { value: SceneBuilder; label: string; hint: string }[] = [
+  { value: "agent", label: "Agent ở máy", hint: "Agent dựng cảnh ngay trên máy này; Studio build, soát và chụp ảnh QA." },
+  { value: "claude-design", label: "Claude Design", hint: "Bước Dựng cảnh sinh brief để bạn dán sang claude.ai/design rồi mang kết quả về render. Agent ở máy không dựng cảnh; các bước khác không đổi." },
 ];
 
 const SCOPE_LABELS: [keyof Scope, string][] = [["voice", "Giọng đọc"], ["render", "Render MP4"], ["transcript", "Transcript"], ["chapters", "File chương"]];
@@ -59,39 +65,28 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
   script: null,
 });
 
-/** "Bật cái này thì video trông thế nào?" — a question a checkbox cannot answer, so show the sample. */
-function ModulePreview({ module: m }: { module: ModuleInfo }) {
+/**
+ * "Bật cái này thì video trông thế nào?" — a question a checkbox cannot answer, so show the sample. The row
+ * itself keeps one line of summary; the full sentence, the sample video and the capability's own links
+ * (cast, mascot poses) live here, one click away.
+ */
+function ModuleDetails({ module: m }: { module: ModuleInfo }) {
   const [open, setOpen] = useState(false);
-  if (!m.preview) return null;
-  const label = `Xem thử video mẫu · ${m.name}`;
+  const title = m.short || m.name;
   return <>
-    <Tooltip title={label}>
-      <button
-        type="button"
-        className="vs-module-play"
-        aria-label={label}
-        onClick={() => setOpen(true)}
-      >
-        <CaretRightFilled /><span>Xem video mẫu</span>
-      </button>
-    </Tooltip>
-    <Modal
-      open={open}
-      onCancel={() => setOpen(false)}
-      footer={null}
-      width={900}
-      destroyOnHidden
-      title={`Video mẫu · ${m.name}`}
-    >
-      <video className="video-player" src={m.preview.url} controls autoPlay preload="metadata" />
+    <button type="button" className="vs-module-play vs-cap-more" aria-label={`${m.preview ? "Xem video mẫu" : "Xem chi tiết"} · ${title}`} onClick={() => setOpen(true)}>
+      {m.preview && <CaretRightFilled />}<span>{m.preview ? "Mẫu" : "Chi tiết"}</span>
+    </button>
+    <Modal open={open} onCancel={() => setOpen(false)} footer={null} width={900} destroyOnHidden title={m.name}>
+      <p className="vs-cap-summary">{m.summary}</p>
+      {m.preview && <video className="video-player" src={m.preview.url} controls autoPlay preload="metadata" />}
+      {/* A new tab, so the half-filled plan survives the look. */}
+      <p className="vs-cap-links">
+        {m.id === "dialogue" && <a className="vs-module-play" href="/library/characters" target="_blank" rel="noreferrer"><TeamOutlined /><span>Nhân vật hiện có</span></a>}
+        {m.id === "mascot" && <a className="vs-module-play" href="/library/mascot" target="_blank" rel="noreferrer"><SmileOutlined /><span>Dáng và biểu cảm</span></a>}
+      </p>
     </Modal>
   </>;
-}
-
-function ModuleGlyph({ icon }: { icon: ModuleInfo["icon"] }) {
-  // A capability added as a template file may name an icon the form has no glyph for; it gets the generic one.
-  const glyph = icon === "dialogue" ? <MessageOutlined /> : icon === "quiz" ? <QuestionOutlined /> : icon === "mascot" ? <SmileOutlined /> : icon === "image" ? <PictureOutlined /> : icon === "audio" ? <SoundOutlined /> : <AppstoreOutlined />;
-  return <span className="vs-module-glyph" aria-hidden="true">{glyph}</span>;
 }
 
 /** The capability catalog: one card per templates/modules/<id>.md, served by /api/modules. */
@@ -105,7 +100,7 @@ export function useModules() {
   return modules;
 }
 
-export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, unavailable, installedAgents }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean; installedAgents: AgentProvider[] }) {
+export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, unavailable, installedAgents, selectionLocked }: { styles: StyleDef[]; draft: PlanDraft; setDraft: Dispatch<SetStateAction<PlanDraft>>; onCreate: () => void; busy: boolean; loading: boolean; unavailable: boolean; installedAgents: AgentProvider[]; /** Cấu hình máy ấn định agent: hiện tên kèm khoá thay cho ô chọn. */ selectionLocked: boolean }) {
   const modules = useModules();
   const style = styles.find((s) => s.id === draft.request.style);
   /*
@@ -258,36 +253,52 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   };
   const scopeOff = SCOPE_LABELS.filter(([key]) => !draft.request.scope[key]).map(([, label]) => label.toLowerCase());
   const reviewer = resolveReviewer(draft.agentProvider, draft.review, installedAgents);
+  const reviewProblem = draft.review.enabled && !reviewer.ok;
+  const hasReferences = Boolean(draft.request.feedbackDir || draft.request.oldVideoDir || draft.request.notes.trim());
   // The folded section still has to say what it will do: a member who never opens it gets these defaults.
   const advancedSummary = [
-    `Mã item ${itemId || "theo mã video"}`,
-    `dựng cảnh bằng ${draft.request.sceneBuilder === "claude-design" ? "Claude Design" : "agent ở máy"}`,
+    `mã item ${draft.request.itemId.trim() ? itemId : "theo mã video"}`,
     scopeOff.length ? `bỏ ${scopeOff.join(", ")}` : "làm đủ các phần",
-    `review chéo ${!draft.review.enabled ? "tắt" : reviewer.ok ? agentProviderLabel(reviewer.provider) : "chưa chọn được"}`,
+    hasReferences ? "có nguồn tham chiếu" : "chưa có nguồn tham chiếu",
   ].join(" · ");
-  const advancedProblem = itemIdTooLong || (draft.review.enabled && !reviewer.ok);
+  const advancedProblem = itemIdTooLong;
+  const format = FORMAT_OPTIONS.find((f) => f.value === (draft.request.format || "16x9")) ?? FORMAT_OPTIONS[0];
+  const builder = BUILDER_OPTIONS.find((b) => b.value === draft.request.sceneBuilder) ?? BUILDER_OPTIONS[0];
+  const agentOption = AGENT_PROVIDER_OPTIONS.find((o) => o.value === draft.agentProvider);
+  const reviewOptions = [
+    { value: "auto", label: "Tự chọn" },
+    ...(["claude", "codex", "antigravity"] as AgentProvider[]).map((p) => ({
+      value: p as string,
+      // Không kèm "(agent đang dựng)" như ở bước Dựng cảnh: ô này hẹp, và dòng ghi chú bên dưới đã nói ai chấm ai.
+      label: `${agentProviderLabel(p)}${installedAgents.includes(p) ? "" : " · chưa cài"}`,
+      disabled: !installedAgents.includes(p),
+    })),
+    { value: "off", label: "Tắt" },
+  ];
   return <div ref={formRef}><Form className="vs-plan-form" layout="vertical" requiredMark={false} aria-busy={loading} onFinish={() => { void submit(); }}>
     <div className="vs-section">
-      <h3 className="vs-section-title vs-plan-heading"><span className="vs-plan-number" aria-hidden="true">1</span>Kịch bản và thông tin video</h3>
-      <Form.Item className="field vs-script-field" data-tour="plan.script" label={<span id={scriptLabelId} className="vs-field-label">Kịch bản<RequiredMark /></span>} validateStatus={shownScriptError ? "error" : undefined} help={shownScriptError ? <span id={scriptErrorId} className="vs-validation-message is-error" role="alert"><WarningFilled />{shownScriptError}</span> : undefined}>
+      <h3 className="vs-section-title vs-plan-heading"><span className="vs-plan-number" aria-hidden="true">1</span>Kịch bản</h3>
+      <Form.Item className="field vs-script-slim" data-tour="plan.script" label={<span id={scriptLabelId} className="vs-field-label">Tệp kịch bản<RequiredMark /></span>} validateStatus={shownScriptError ? "error" : undefined} help={shownScriptError ? <span id={scriptErrorId} className="vs-validation-message is-error" role="alert"><WarningFilled />{shownScriptError}</span> : undefined}>
         {draft.script
           ? <div className="vs-file"><FileTextOutlined /><span><strong>{draft.script.name}</strong><small>{draft.script.content.length.toLocaleString("vi-VN")} ký tự · {draft.script.content.split("\n")[0].slice(0, 90)}</small></span><Upload {...uploadProps}><Button type="link" disabled={busy}>Đổi tệp</Button></Upload></div>
-          : <Upload.Dragger {...uploadProps} className={`vs-drop ${shownScriptError ? "is-invalid" : ""}`}>
-              <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-              <p className="ant-upload-text">Thả tệp .md / .txt vào đây</p>
-              <p className="ant-upload-hint">Tối đa 300 KB. Ngày của bài học được điền theo kịch bản.</p>
-              <Button disabled={busy} data-validation-invalid={!!shownScriptError || undefined} aria-describedby={shownScriptError ? scriptErrorId : undefined} onBlur={() => setTouched((current) => ({ ...current, script: true }))}>Chọn tệp</Button>
+          // Một hàng thấp: thả tệp là việc làm một lần, không cần một vùng cao 140 px.
+          : <Upload.Dragger {...uploadProps} className={`vs-drop-slim ${shownScriptError ? "is-invalid" : ""}`}>
+              <span className="vs-drop-slim-row">
+                <InboxOutlined aria-hidden="true" />
+                <span className="vs-drop-slim-copy"><strong>Thả tệp .md / .txt vào đây</strong><small>Tối đa 300 KB · ngày của bài học tự điền theo kịch bản</small></span>
+                <Button disabled={busy} data-validation-invalid={!!shownScriptError || undefined} aria-describedby={shownScriptError ? scriptErrorId : undefined} onBlur={() => setTouched((current) => ({ ...current, script: true }))}>Chọn tệp</Button>
+              </span>
             </Upload.Dragger>}
       </Form.Item>
       <div className="field-grid vs-grid-3">
         <Form.Item className="field" data-tour="plan.id" label={<span className="vs-field-label">Mã video<RequiredMark /></span>} validateStatus={shownIdError ? "error" : checkingId ? "validating" : touched.id && idCheck?.value === draft.id ? "success" : undefined} help={(shownIdError || checkingId || (touched.id && idCheck?.value === draft.id && !idCheck.taken)) ? <span id={idErrorId} className={`vs-validation-message ${shownIdError ? "is-error" : checkingId ? "is-checking" : "is-ok"}`} role={shownIdError ? "alert" : "status"}>{shownIdError ? <WarningFilled /> : checkingId ? <LoadingOutlined spin /> : <CheckCircleFilled />}{shownIdError || (checkingId ? "Đang kiểm tra mã…" : "Mã này có thể sử dụng.")}</span> : undefined}>
-          <Input ref={idInput} status={shownIdError ? "error" : undefined} aria-invalid={!!shownIdError || undefined} aria-describedby={shownIdError || checkingId ? idErrorId : undefined} value={draft.id} disabled={busy} maxLength={61} onBlur={() => { setTouched((current) => ({ ...current, id: true })); void checkVideoId(draft.id); }} onChange={(e) => { setIdCheck(null); setDraft((current) => ({ ...current, id: e.target.value })); }} placeholder="vd. d2-01-lab-v3" spellCheck={false} autoComplete="off" />
+          <Input ref={idInput} status={shownIdError ? "error" : undefined} aria-label="Mã video" aria-invalid={!!shownIdError || undefined} aria-describedby={shownIdError || checkingId ? idErrorId : undefined} value={draft.id} disabled={busy} maxLength={61} onBlur={() => { setTouched((current) => ({ ...current, id: true })); void checkVideoId(draft.id); }} onChange={(e) => { setIdCheck(null); setDraft((current) => ({ ...current, id: e.target.value })); }} placeholder="vd. d2-01-lab-v3" spellCheck={false} autoComplete="off" />
         </Form.Item>
         <Form.Item className="field" label={<span className="vs-field-label">Ngày<RequiredMark /></span>} validateStatus={shownDayError ? "error" : dayMismatch ? "warning" : undefined} help={shownDayError || dayMismatch ? <span id={dayMessageId} className={`vs-validation-message ${shownDayError ? "is-error" : "is-warn"}`} role={shownDayError ? "alert" : "status"}><WarningFilled />{shownDayError || dayMismatch}</span> : undefined}>
-          <Select value={draft.request.day || undefined} placeholder="Chọn ngày" status={shownDayError ? "error" : dayMismatch ? "warning" : undefined} aria-invalid={!!shownDayError || undefined} aria-describedby={shownDayError || dayMismatch ? dayMessageId : undefined} disabled={busy} onBlur={() => setTouched((current) => ({ ...current, day: true }))} onChange={(day) => { dayPicked.current = true; setTouched((current) => ({ ...current, day: true })); set({ day }); }} options={DAYS.map((day) => ({ value: day, label: day }))} />
+          <Select value={draft.request.day || undefined} placeholder="Chọn ngày" aria-label="Ngày của bài học" status={shownDayError ? "error" : dayMismatch ? "warning" : undefined} aria-invalid={!!shownDayError || undefined} aria-describedby={shownDayError || dayMismatch ? dayMessageId : undefined} disabled={busy} onBlur={() => setTouched((current) => ({ ...current, day: true }))} onChange={(day) => { dayPicked.current = true; setTouched((current) => ({ ...current, day: true })); set({ day }); }} options={DAYS.map((day) => ({ value: day, label: day }))} />
         </Form.Item>
         <Form.Item className="field" label={<span className="vs-field-label">Tên video</span>}>
-          <Input value={draft.request.title} disabled={busy} maxLength={200} placeholder="Tuỳ chọn" onChange={(e) => set({ title: e.target.value })} />
+          <Input value={draft.request.title} disabled={busy} maxLength={200} placeholder="Tuỳ chọn" aria-label="Tên video" onChange={(e) => set({ title: e.target.value })} />
         </Form.Item>
       </div>
     </div>
@@ -300,63 +311,81 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
             ? <div className="vs-inline-state is-error" role="status"><WarningFilled /><span>Chưa thể tải cấu hình Studio.</span></div>
             : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s, modules: draft.request.modules.filter((id) => !styles.find((x) => x.id === s)?.unsupportedModules?.includes(id)) })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
-      <Form.Item
-        className="field"
-        data-tour="plan.format"
-        label={<span className="vs-field-label">Khổ hình<RequiredMark /></span>}
-        help={FORMAT_OPTIONS.find((f) => f.value === (draft.request.format || "16x9"))?.hint}
-      >
-        <Select
-          value={draft.request.format || "16x9"}
-          disabled={busy}
-          onChange={(v: VideoFormat) => set({ format: v })}
-          options={FORMAT_OPTIONS.map((f) => ({ value: f.value, label: f.label }))}
-        />
-      </Form.Item>
-      <section className="vs-capabilities" data-tour="plan.modules" aria-labelledby="vs-capabilities-title">
-        <div className="vs-capabilities-head">
-          <h4 id="vs-capabilities-title" className="vs-field-label">Tính năng nội dung</h4>
-          <p>Tuỳ chọn, chọn được nhiều. Không bật gì là clip một người dẫn.</p>
+      {/* Hai khổ thì bày cả hai ra: thấy ngay lựa chọn còn lại, không phải mở dropdown. */}
+      <Form.Item className="field vs-format" data-tour="plan.format" label={<span className="vs-field-label">Khổ hình<RequiredMark /></span>}>
+        <div className="vs-format-row">
+          <Segmented
+            aria-label="Khổ hình"
+            value={format.value}
+            disabled={busy}
+            onChange={(v) => set({ format: v as VideoFormat })}
+            options={FORMAT_OPTIONS.map((f) => ({ value: f.value, label: <span className="vs-format-option"><i className={`vs-format-glyph is-${f.value}`} aria-hidden="true" />{f.short}</span> }))}
+          />
+          <small>{format.hint}</small>
         </div>
-        <div className="vs-modules">
+      </Form.Item>
+      <section className="vs-cap" data-tour="plan.modules" aria-labelledby="vs-capabilities-title">
+        <div className="vs-cap-head">
+          <h4 id="vs-capabilities-title" className="vs-field-label">Video có thêm</h4>
+          <span>Tuỳ chọn. Không bật gì là clip một người dẫn.</span>
+        </div>
+        <div className="vs-cap-grid">
           {modules.map((m) => {
             const unsupported = style?.unsupportedModules?.includes(m.id) ?? false;
             const checked = !unsupported && draft.request.modules.includes(m.id);
-            return <article key={m.id} className={`vs-module ${checked ? "is-on" : ""} ${busy || unsupported ? "is-disabled" : ""}`}>
-            <Checkbox
-              className="vs-module-toggle"
-              checked={checked}
-              disabled={busy || unsupported}
-              onChange={(e) => setModule(m.id, e.target.checked)}
-            >
-              <span className="vs-module-identity">
-                <ModuleGlyph icon={m.icon} />
-                <span className="vs-module-copy">
-                  <strong>{m.name}{checked && <span className="vs-module-status">Đã bật</span>}</strong>
-                  <small>{unsupported ? `${style?.name} chưa hỗ trợ tính năng này.` : m.summary}</small>
-                </span>
-              </span>
-            </Checkbox>
-            <div className="vs-module-links">
-              <ModulePreview module={m} />
-              {/* A new tab, so the half-filled plan survives the look. */}
-              {m.id === "dialogue" && <a className="vs-module-play" href="/library/characters" target="_blank" rel="noreferrer">
-                <TeamOutlined /><span>Nhân vật hiện có</span>
-              </a>}
-              {m.id === "mascot" && <a className="vs-module-play" href="/library/mascot" target="_blank" rel="noreferrer">
-                <SmileOutlined /><span>Dáng và biểu cảm</span>
-              </a>}
-            </div>
-          </article>;
+            const summary = unsupported ? `${style?.name} chưa hỗ trợ tính năng này.` : m.summary;
+            return <div key={m.id} className={`vs-cap-row ${checked ? "is-on" : ""} ${busy || unsupported ? "is-disabled" : ""}`}>
+              <Checkbox className="vs-cap-toggle" checked={checked} disabled={busy || unsupported} onChange={(e) => setModule(m.id, e.target.checked)}>
+                <span className="vs-cap-copy"><strong>{m.short || m.name}</strong><small title={summary}>{summary}</small></span>
+              </Checkbox>
+              <ModuleDetails module={m} />
+            </div>;
           })}
         </div>
       </section>
+    </div>
+    <div className="vs-section" data-tour="plan.who">
+      <h3 className="vs-section-title vs-plan-heading"><span className="vs-plan-number" aria-hidden="true">3</span>Ai làm</h3>
+      {/* Ba lựa chọn cùng trả lời một câu hỏi nên đứng một hàng. "Dựng cảnh bằng" từng nằm trong mục nâng cao đang
+          gập, dù nó đổi cả bước Dựng cảnh — lựa chọn có hệ quả lớn không được giấu sau một lớp gập. */}
+      <div className="vs-who">
+        <Form.Item className="field" label={<span className="vs-field-label">Agent</span>}>
+          <AgentField provider={draft.agentProvider} selectionLocked={selectionLocked} loading={loading} disabled={busy} onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))} />
+        </Form.Item>
+        <Form.Item className="field" label={<span className="vs-field-label">Dựng cảnh bằng</span>}>
+          <Segmented
+            aria-label="Dựng cảnh bằng"
+            value={builder.value}
+            disabled={busy}
+            onChange={(v) => set({ sceneBuilder: v as SceneBuilder })}
+            options={BUILDER_OPTIONS.map((b) => ({ value: b.value, label: b.label }))}
+          />
+        </Form.Item>
+        <Form.Item className="field" label={<span className="vs-field-label">Review chéo</span>} validateStatus={reviewProblem ? "error" : undefined}>
+          <Select
+            aria-label="Review chéo ảnh cảnh"
+            value={draft.review.enabled ? draft.review.provider : "off"}
+            status={reviewProblem ? "error" : undefined}
+            disabled={busy}
+            popupMatchSelectWidth={false}
+            options={reviewOptions}
+            onChange={(v) => setDraft((current) => ({ ...current, review: v === "off" ? { ...current.review, enabled: false } : { enabled: true, provider: v as ReviewSettings["provider"] } }))}
+          />
+        </Form.Item>
+      </div>
+      <ul className="vs-who-notes">
+        {selectionLocked && <li>Agent được ấn định bởi cấu hình máy.</li>}
+        {isExperimentalProvider(draft.agentProvider) && <li className="is-warn"><WarningFilled />{agentOption?.description || "Agent này đang ở giai đoạn thử nghiệm."}</li>}
+        <li>{builder.hint}</li>
+        {builder.value === "agent" && <li className={reviewProblem ? "is-problem" : undefined} role={reviewProblem ? "alert" : undefined}>{reviewProblem && <WarningFilled />}{describeReviewer(draft.agentProvider, draft.review, installedAgents)}</li>}
+        {builder.value === "claude-design" && <li>Review chéo không chạy trên cảnh dựng bên Claude Design.</li>}
+      </ul>
     </div>
     <div className="vs-section">
       <Collapse className="vs-advanced" items={[{
         key: "advanced",
         forceRender: true,
-        label: <span className="vs-collapse-label"><strong><span className="vs-plan-number" aria-hidden="true">3</span>Tuỳ chọn nâng cao</strong><small className={advancedProblem ? "is-warn" : undefined}>{advancedProblem && <WarningFilled />}{advancedSummary}</small></span>,
+        label: <span className="vs-collapse-label"><strong>Tuỳ chọn khác</strong><small className={advancedProblem ? "is-warn" : undefined}>{advancedProblem && <WarningFilled />}{advancedSummary}</small></span>,
         children: <div className="vs-advanced-body">
           <Form.Item
             className="field vs-item-id"
@@ -366,24 +395,8 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
               {itemIdTooLong ? <><WarningFilled />{`Dài ${itemId.length} ký tự, platform QA chỉ nhận tối đa ${ITEM_ID_MAX}.`}</> : "Mã platform QA gắn lỗi soát vào. Để trống thì dùng mã video."}
             </span>}
           >
-            <Input value={draft.request.itemId} disabled={busy} maxLength={ITEM_ID_MAX * 2} placeholder={draft.id ? `Mặc định: ${draft.id}` : "Mặc định: mã video"} spellCheck={false} autoComplete="off" aria-describedby={itemIdMessageId} onChange={(e) => set({ itemId: e.target.value })} />
+            <Input value={draft.request.itemId} disabled={busy} maxLength={ITEM_ID_MAX * 2} placeholder={draft.id ? `Mặc định: ${draft.id}` : "Mặc định: mã video"} spellCheck={false} autoComplete="off" aria-label="Mã item gửi QA" aria-describedby={itemIdMessageId} onChange={(e) => set({ itemId: e.target.value })} />
           </Form.Item>
-          <fieldset className="vs-scope vs-builder">
-            <legend className="vs-field-label">Dựng cảnh bằng</legend>
-            <p className="vs-scope-note">
-              Chọn Claude Design thì bước Dựng cảnh không chạy agent ở máy: Studio sinh một bản brief để bạn
-              dán sang claude.ai/design, dựng xong mang kết quả về đây render. Các bước khác không đổi.
-            </p>
-            <Radio.Group
-              value={draft.request.sceneBuilder}
-              disabled={busy}
-              onChange={(e) => set({ sceneBuilder: e.target.value as SceneBuilder })}
-              options={[
-                { value: "agent", label: "Agent ở máy" },
-                { value: "claude-design", label: "Claude Design" },
-              ]}
-            />
-          </fieldset>
           <fieldset className="vs-scope">
             <legend className="vs-field-label">Phạm vi</legend>
             {/* Nói đúng điều từng ô làm: Studio chỉ đọc ô Transcript; ba ô kia là lời dặn trong REQUEST.md. Câu cũ
@@ -396,7 +409,6 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
               {SCOPE_LABELS.map(([key, label]) => <Checkbox key={key} checked={draft.request.scope[key]} disabled={busy} onChange={(e) => set({ scope: { ...draft.request.scope, [key]: e.target.checked } })}>{label}</Checkbox>)}
             </div>
           </fieldset>
-          <ReviewControl author={draft.agentProvider} value={draft.review} installed={installedAgents} disabled={busy} onChange={(review) => setDraft((current) => ({ ...current, review }))} />
           <div className="vs-advanced-group">
             <span className="vs-field-label"><FolderOpenOutlined /> Nguồn tham chiếu</span>
             <div className="field-grid">
@@ -404,7 +416,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
               <SourcePickerField label="Video cũ" purpose="video" value={draft.request.oldVideoDir} disabled={busy} onChange={(v) => set({ oldVideoDir: v })} />
             </div>
             <Form.Item className="field vs-counted-textarea" label={<span className="vs-field-label">Ghi chú cho agent</span>}>
-              <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount onChange={(e) => set({ notes: e.target.value })} />
+              <Input.TextArea rows={3} value={draft.request.notes} disabled={busy} maxLength={5000} showCount aria-label="Ghi chú cho agent" onChange={(e) => set({ notes: e.target.value })} />
             </Form.Item>
           </div>
         </div>,
