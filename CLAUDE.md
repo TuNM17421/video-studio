@@ -301,10 +301,39 @@ vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
   mà mang cờ thì `npm run verify` báo problem, còn `render.mjs` bỏ câu đó khỏi đoạn nhạc quiz.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
+## Tiếng động (SFX)
+Năng lực chọn thêm `sfx` (`templates/modules/sfx.md`, card "Video có tiếng động"): mặc định video **không
+có tiếng động nào**. Bật thì Studio **đề xuất** chỗ, người dựng nghe thử rồi mới duyệt — cùng nguyên tắc
+với ảnh tư liệu. Danh mục là `sfx.json` ở gốc repo, xem và nghe thử ở Studio → **Thư viện · Tiếng động**
+(`/library/sfx`); file nằm trên R2 (`sfx/<id>.wav`), tải về `assets/sfx/` bằng `tools/sfx-fetch.mjs`.
+- **Bốn lớp** (`sfx.json._layers`): `accent` kéo sự chú ý — **trần cứng 4 lần mỗi video**; `transition`
+  ranh giới phần; `foley` tiếng của chính chuyển động trên hình, ngân sách 12 sự kiện/phút (một chuỗi
+  `burst` là MỘT sự kiện); `ambience` bed theo cảnh. Mức khai bằng **đích** (`peakTargetDb`), không bằng
+  độ lợi, nên một master to hơn chỉ cần đo lại là xong — chuẩn theo ĐỈNH chứ không theo RMS.
+- **Chủ bucket** dựng file một lần: `node tools/sfx-fetch.mjs --prepare [thư mục bản thô]` chuẩn hoá từ
+  nguồn gốc vào `media/files/sfx/`, rồi `npm run media`, rồi `sfx-fetch --write` ghi số đo. Mọi máy khác
+  chỉ tải bản đã chuẩn hoá về, **không xử lý lại** — chạy lại chuỗi cắt trên file đã cắt là cắt phá
+  (`chisel` khai `startSec: 0.42` mà clip chỉ còn 0,5 giây). `startSec` cắt TỪ đâu, `trimSec` cắt dài bao
+  nhiêu kể từ đó; `silenceremove` không cứu được bản thu có tiếng phòng ở đầu.
+- **Luồng trong Studio**: chỗ đề xuất đến từ ba nguồn — Studio (mở màn, ranh giới mỗi phần), kịch bản
+  (dòng `- **Tiếng:** <id> @ "<cụm từ>"` của một câu → `sfx:` trong `cues.js`), và agent (nút "Đề xuất
+  bằng agent", skill `.claude/skills/sfx-suggest/`, job riêng `sfx:<id>`). Chỗ của agent được **code**
+  soát trước khi hiện ra (`agentSpots()` trong `studio/src/lib/sfx-plan.ts`): cụm từ phải có nguyên văn
+  trong lời đúng câu đó, tiếng phải có trong danh mục, câu lặng bị bỏ, trần 4 accent áp ngay ở đây.
+- **Duyệt ở bước Render**, cạnh nhạc nền — tiếng động cũng là quyết định lúc hoàn thiện, và chỉ đề xuất
+  được sau khi có giọng (tiếng căn theo mốc lời thật). Panel nghe thử **đúng đoạn đó của video**, có
+  tiếng và không tiếng, bằng chính `sfx-mix --window` nên mức/duck/limiter y hệt bản trộn thật.
+- **Trộn**: `tools/sfx-mix.mjs --plan <file>` nhận danh sách đã duyệt và **thay cho** cả ba nguồn tự động
+  của chính nó — cộng thêm thì tiếng người dùng vừa bỏ sẽ quay lại. Studio tự trộn ngay trước khi render
+  ra `projects/<id>/voice-sfx.wav`, và `tools/lib/render-audio.mjs` chọn file đó thay cho `voice.wav`.
+  Chưa duyệt chỗ nào thì bản trộn cũ bị xoá và render dùng lại giọng gốc.
+- Không đặt tiếng vào **khoảng chờ quiz** (cue `silent`): luật này cài trong code, không phải nhắc nhở.
+
 ## Media nặng (`media/`, Cloudflare R2)
 Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`
 (được commit) giữ base URL + danh sách asset, nên ai clone repo về cũng xem được mà không cần cấu hình gì.
-Chủ bucket bỏ file vào `media/files/<key>` (quy ước `styles/<mã style>/sample.mp4` = video mẫu của style),
+Chủ bucket bỏ file vào `media/files/<key>` (quy ước `styles/<mã style>/sample.mp4` = video mẫu của style,
+`sfx/<id>.wav` = một tiếng động đã chuẩn hoá),
 `npm run media -- --dry-run` rồi `npm run media`, và commit manifest. Khoá nằm ở `media/.env` (không bao giờ
 commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "không khả dụng", không vỡ giao diện.
 
