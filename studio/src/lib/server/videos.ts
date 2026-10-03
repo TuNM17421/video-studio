@@ -6,6 +6,7 @@ import type { Artifacts, CuesInfo, StageId, StageStatus, VideoFormat, VideoReque
 import { isAgentProvider } from "../agent-providers";
 import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
 import { DEFAULT_BUILD_NO, isBuildNo, ITEM_ID_MAX, itemIdFor } from "../qa-manifest";
+import { isRenderFps, LEGACY_RENDER_FPS } from "../render-spec";
 import { BASE_TEMPLATE_PATH } from "../modules";
 import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
@@ -23,7 +24,9 @@ export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model
 /** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
 export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
-type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions" | "review" | "buildNo"> & {
+type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions" | "review" | "buildNo" | "fps"> & {
+  /** Missing before the frame rate could be chosen — those videos were QA'd at 30 and keep it. */
+  fps?: unknown;
   /** Missing before the QA-platform manifest; every older video is a first submission. */
   buildNo?: unknown;
   /** Missing before cross-review became a per-video switch. */
@@ -64,6 +67,9 @@ export function normalizeVideoState(value: unknown): VideoState {
     music,
     captions: stored.captions !== false,
     buildNo: isBuildNo(stored.buildNo) ? stored.buildNo : DEFAULT_BUILD_NO,
+    // Not DEFAULT_RENDER_FPS: a video made before this choice existed was QA'd at 30 fps, and a re-render
+    // must not silently change the frame rate of a build somebody already approved.
+    fps: isRenderFps(stored.fps) ? stored.fps : LEGACY_RENDER_FPS,
     // Videos made before cross-review could be switched keep the behaviour they had: review on.
     review: normalizeReview(stored.review),
   } as VideoState;
@@ -146,10 +152,29 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
     style: "lesson-lab", modules: [], day, itemId: "", title: id, scriptName: "kich-ban-goc.md", feedbackDir: "", oldVideoDir: "", notes: "",
     scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true },
   };
+  return { state: unmanagedState(id, request, inferredStages(artifacts(id, day))), managed: false };
+}
+
+/**
+ * State dựng cho một video làm **ngoài** Video Studio: không có state.json, nên mọi thứ suy ra từ file trên
+ * đĩa. Tách ra khỏi `readState` để kiểm được bằng test — `readState` gắn với cây thư mục của repo.
+ *
+ * Nhịp hình là `LEGACY_RENDER_FPS`, **không** phải mặc định của video mới: những video này đã render xong ở
+ * 30 fps và Studio không render lại chúng được, nên khai 60 chỉ là nói sai về một file đã nằm trên đĩa.
+ */
+export function unmanagedState(id: string, request: VideoRequest, stages: Record<StageId, StageStatus>): VideoState {
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, captions: true, buildNo: DEFAULT_BUILD_NO, review: { ...DEFAULT_REVIEW }, lastError: null },
-    managed: false,
+    id, createdAt: now, updatedAt: now, request,
+    agent: { provider: "claude", sessionId: null },
+    stages,
+    voice: newVoice(),
+    music: { ...SILENT },
+    captions: true,
+    fps: LEGACY_RENDER_FPS,
+    buildNo: DEFAULT_BUILD_NO,
+    review: { ...DEFAULT_REVIEW },
+    lastError: null,
   };
 }
 

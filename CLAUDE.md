@@ -228,6 +228,31 @@ nguyên (đã kiểm: render trước/sau cho MP4 giống hệt từng pixel).
 - Thêm một khổ nữa = thêm một mục vào `FORMATS` (test `tools/lib/formats.test.mjs` bắt khổ nào khai thiếu
   token — thiếu một cái thì SVG nhận `y="NaN"` mà build vẫn xanh, đã vấp thật).
 
+## Nhịp hình: 60 fps mặc định, chọn ở bước Render
+Khác khổ hình: nhịp **không** đổi cách bày cảnh nên không phải chọn trước. Cảnh vẫn viết bằng frame nguyên ở
+30 fps — đơn vị của `cues.js`, `voice.js`, `timeline.js`, `spokenAt()` — còn `render.mjs --fps 60` chỉ lấy mẫu
+cùng cái đồng hồ đó dày gấp đôi: hỏi player frame 40, 40,5, 41 và nhận đúng hình ở giữa, vì `clampFrame`
+(`lib/player.jsx`) không làm tròn và mọi hàm motion đều liên tục theo frame. Nên đổi nhịp **không** phải viết
+lại cảnh, không chạy lại TTS, không tốn thêm credit; chỉ lượt render dài thêm (+82 % thời gian, +23 % cỡ file).
+Đã soát: không chỗ nào trong design system dùng frame làm chỉ số mảng hay `frame % n`, nên cảnh không quan
+tâm render ở nhịp nào.
+- Danh mục lựa chọn và mặc định ở `studio/src/lib/render-spec.ts`; `RenderFps` khai cạnh `VideoFormat` trong
+  `lib/types.ts`. Studio luôn truyền `--fps` tường minh và ghi nhịp vào dòng đầu nhật ký render.
+- **Video mới 60 fps; video đã có giữ 30.** Video tạo trước lựa chọn này (`state.json` không có `fps`) và
+  video làm **ngoài** Studio đều về `LEGACY_RENDER_FPS` — chúng đã QA xong ở 30, một lượt render lại không
+  được âm thầm đổi nhịp của bản người ta đã duyệt. Cùng luật với năng lực chọn thêm: `default: true` chỉ
+  tick sẵn cho video mới.
+- **`manifest.json` khai đúng nhịp của MP4.** Trước đây nó luôn ghi 30 vì lấy số đó từ `voice.cues.json`.
+  Hai file QA giờ có **một chỗ sửa tại chỗ** (`meta.render_fps` trong lib, `--fps` ở CLI) — đánh dấu bằng
+  khối `── SỬA TẠI CHỖ ──` ở đầu cả hai file, **đội QA ra bản mới thì áp lại chỗ này**. `fps` của bản thu và
+  nhịp lúc render là hai số khác nhau: mọi mốc thời gian vẫn tính theo đồng hồ bản thu (frame trong
+  `voice.cues.json` là frame 30 fps, `endFrame / fps` phải giữ hệ ấy), chỉ trường `fps` khai nhịp của chính
+  file. Có ffprobe thì số khai được đối chiếu với MP4 và **lệch là dừng**, cùng cách file này đang đối chiếu
+  thời lượng — manifest không nói khác được với file nó đi kèm. Đã đo: cùng `test-harness`, manifest của bản
+  30 và bản 60 giống nhau từng trường trừ `fps`.
+- Vẫn **chưa hỏi đội QA** xem platform xử lý `fps: 60` thế nào. Manifest giờ nói đúng sự thật, nhưng nếu
+  platform chỉ nhận 30 thì hạ nhịp ở ô chọn bước Render rồi render lại.
+
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
 Mỗi cue khai `speaker` (tên/id một **nhân vật** — hoặc một giọng, cho video một người dẫn) và `delivery` (kiểu đọc trong

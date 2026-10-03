@@ -53,7 +53,14 @@ export function urlParams() {
   };
 }
 
-const clampFrame = (f, duration) => Math.max(0, Math.min(duration - 1, Math.round(f)));
+/**
+ * Frames stay the authoring unit (30 fps), but a frame is not forced to be a whole number: a render that
+ * samples twice per frame asks for 40, 40.5, 41… and must get the picture in between, not frame 41 twice.
+ * Every motion helper already takes a continuous frame — `interpolate` is plain arithmetic and `spring`
+ * splits its input into whole + rest (lib/motion.js:141) — so the rounding here was the only thing
+ * quantising the clock. The interactive player still steps in whole frames (its rAF loop floors).
+ */
+const clampFrame = (f, duration) => Math.max(0, Math.min(duration - 1, f));
 
 /** Pictures give up after this long: a broken or missing file must not hang a render. */
 const PICTURE_TIMEOUT_MS = 5000;
