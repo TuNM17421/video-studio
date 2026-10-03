@@ -1,8 +1,8 @@
-import { importBundle, readBrief, writeBrief } from "@/lib/server/claude-design";
+import { byClaudeDesign, importBundle, readBrief, scenesStageFor, writeBrief } from "@/lib/server/claude-design";
 import { handle } from "@/lib/server/http";
-import { emit, log } from "@/lib/server/jobs";
+import { emit, isRunning, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
-import { readState, updateState } from "@/lib/server/videos";
+import { readState, setStage, updateState } from "@/lib/server/videos";
 
 /**
  * Bàn giao sang Claude Design. `GET` trả brief đã sinh lần trước (hoặc `null`); `POST { action: "prompt" }`
@@ -32,16 +32,30 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
     if (state.stages.scenes === "done") throw new HttpError(400, "Cảnh đã duyệt — đổi chỗ dựng thì phải mở lại bước Dựng cảnh.");
     if (state.stages.scenes === "running") throw new HttpError(409, "Đang dựng cảnh, dừng lại trước đã.");
-    updateState(id, (s) => { s.request.sceneBuilder = body.value as "agent" | "claude-design"; });
-    log(id, "system", `Dựng cảnh bằng: ${body.value === "claude-design" ? "Claude Design" : "agent ở máy"}.`);
+    const builder = body.value;
+    // Mỗi đường duyệt bản của riêng nó. Giữ nguyên "chờ duyệt" của đường cũ là mời người dùng duyệt cảnh
+    // agent dựng rồi render trang nhập về — hai bản khác nhau, không một lời báo.
+    const next = scenesStageFor(id, builder);
+    updateState(id, (s) => { s.request.sceneBuilder = builder; s.stages.scenes = next; s.lastError = null; });
+    log(id, "system", `Dựng cảnh bằng: ${builder === "claude-design" ? "Claude Design" : "agent ở máy"}.`);
     emit(id, { type: "state" });
     return Response.json({ sceneBuilder: body.value });
   }
 
   if (body.action === "scan" || body.action === "import") {
+    // Chép là xoá bản cũ trong ds-bundle/cd/<id>/ — đúng thư mục một lượt render đang chụp.
+    if (body.action === "import" && isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy. Đợi xong hoặc dừng rồi nhập lại.");
     const report = await importBundle(id, String(body.folder || ""), body.action === "scan");
     if (body.action === "import") {
       log(id, "system", `Nhập cảnh từ Claude Design: ${report.copied} file → ${report.dest}`);
+      // Nhập xong là có thứ để duyệt. Trước đây bước đứng yên ở "chưa chạy": không nút Duyệt, bước Render
+      // khoá — đường Claude Design không có lối ra. Nhập lại sau khi đã duyệt cũng mở lại, vì bản đã đổi.
+      const { state } = readState(id);
+      if (byClaudeDesign(state)) {
+        const reopened = state.stages.scenes === "done";
+        setStage(id, "scenes", "review");
+        if (reopened) log(id, "system", "Bản nhập mới thay bản đã duyệt — duyệt lại trước khi render.");
+      }
       emit(id, { type: "state" });
     }
     return Response.json({ report });

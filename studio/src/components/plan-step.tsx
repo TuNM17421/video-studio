@@ -261,6 +261,7 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
   // The folded section still has to say what it will do: a member who never opens it gets these defaults.
   const advancedSummary = [
     `Mã item ${itemId || "theo mã video"}`,
+    `dựng cảnh bằng ${draft.request.sceneBuilder === "claude-design" ? "Claude Design" : "agent ở máy"}`,
     scopeOff.length ? `bỏ ${scopeOff.join(", ")}` : "làm đủ các phần",
     `review chéo ${!draft.review.enabled ? "tắt" : reviewer.ok ? agentProviderLabel(reviewer.provider) : "chưa chọn được"}`,
   ].join(" · ");

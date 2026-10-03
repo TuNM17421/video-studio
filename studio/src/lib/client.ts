@@ -19,6 +19,33 @@ export async function api<T>(url: string, init?: RequestInit & { json?: unknown 
 export const fileUrl = (repoPath: string) => `/files/${repoPath.split("/").map(encodeURIComponent).join("/")}`;
 export const dsUrl = (dsPath: string) => `/ds/${dsPath}`;
 
+/** Cỡ khung của từng khổ — khớp `FORMATS` trong vinuni-lesson-video-ds/lib/tokens.js. */
+export const FORMAT_SIZE: Record<string, { width: number; height: number; aspect: string; ratio: string }> = {
+  "16x9": { width: 1920, height: 1080, aspect: "16:9", ratio: "16 / 9" },
+  "9x16": { width: 1080, height: 1920, aspect: "9:16", ratio: "9 / 16" },
+};
+export const formatSize = (format?: string) => FORMAT_SIZE[format || "16x9"] || FORMAT_SIZE["16x9"];
+
+/**
+ * Trang mà bước Render sẽ chụp — cũng phải là trang khung xem trước và nút "Mở trình phát" cho thấy. Video
+ * dựng bằng Claude Design render trang nhập về trong `ds-bundle/cd/<id>/`, không phải cảnh trong `videos/<id>/`:
+ * trỏ nhầm sang bên kia là cho người dùng xem (và duyệt) một bản khác với bản sẽ ra MP4. Null khi chưa có gì.
+ */
+export function scenePages(detail: Pick<VideoDetail, "state" | "artifacts" | "claudeDesign">): { frame: (n: number) => string; player: string } | null {
+  const id = detail.state.id;
+  if (detail.claudeDesign) {
+    const page = detail.claudeDesign.imported?.page;
+    if (!page) return null;
+    const url = `/ds-bundle/cd/${encodeURIComponent(id)}/${encodeURIComponent(page)}`;
+    return { frame: (n) => `${url}?frame=${n}`, player: url };
+  }
+  if (!detail.artifacts.scenes) return null;
+  return {
+    frame: (n) => dsUrl(`ui_kits/lesson-video/index.html?scene=${encodeURIComponent(id)}&frame=${n}`),
+    player: dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`),
+  };
+}
+
 export function formatFrames(frames: number | null | undefined) {
   if (!frames) return "—";
   const total = Math.round(frames / 30);

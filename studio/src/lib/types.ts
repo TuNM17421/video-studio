@@ -496,7 +496,24 @@ export interface VideoDetail {
   /** Image suggestions (capability `images`); null when the video does not use it. */
   images: ImagesView | null;
   cost: VideoCost;
+  /** Đường Claude Design (`request.sceneBuilder`): bản đã nhập về, hoặc `imported: null`. Null khi dựng bằng agent ở máy. */
+  claudeDesign: { imported: ImportedBundle | null } | null;
 }
+
+/** Một dòng của phép soát thư mục tải về từ Claude Design (tools/lib/claude-design.mjs → inspectBundle). */
+export interface BundleCheck { name: string; ok: boolean; detail: string; level: "ok" | "warning" | "problem" }
+export interface BundleReport {
+  ok: boolean;
+  /** File .html của trang, tính từ thư mục nhập. */
+  page: string | null;
+  files: number;
+  dest: string;
+  checks: BundleCheck[];
+  copied?: number;
+  images?: number;
+}
+/** Bản đã chép vào `ds-bundle/cd/<id>/` — thứ bước Render sẽ chụp. */
+export interface ImportedBundle extends BundleReport { at: string; folder: string }
 
 /** A câu edited by hand in the cues step (lib/server/cue-edit.ts, tools/cue-edit.mjs). */
 export type CueEditField = "text" | "title" | "visual";

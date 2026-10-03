@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Button, Collapse, Modal, Pagination, Segmented } from "antd";
 import { fileUrl } from "@/lib/client";
@@ -96,7 +96,8 @@ function Lightbox({ scenes, index, onClose, onMove }: { scenes: QaScene[]; index
  * Every scene's still, folded away: the cross-review has already looked at all of them, so the grid is for
  * when the user wants to look too. Opening it on "Có lỗi" is one click for a 50-scene video.
  */
-export function QaGallery({ paths, marks }: { paths: string[]; marks: Map<number, Severity> }) {
+/** `ratio` is the video format's CSS aspect ratio ("9 / 16" for a portrait video), so a tile shows the whole frame. */
+export function QaGallery({ paths, marks, ratio = "16 / 9" }: { paths: string[]; marks: Map<number, Severity>; ratio?: string }) {
   const [filter, setFilter] = useState<"all" | "flagged">("all");
   const [page, setPage] = useState(0);
   const [zoom, setZoom] = useState<number | null>(null);
@@ -117,7 +118,7 @@ export function QaGallery({ paths, marks }: { paths: string[]; marks: Map<number
           options={[{ value: "all", label: "Tất cả" }, { value: "flagged", label: `Có lỗi (${flagged.length})`, disabled: !flagged.length }]} />
         <span className="vs-qa-count">Bấm một ảnh để xem lớn · ← → chuyển cảnh</span>
       </div>
-      <ul className="vs-qa">{visible.map((item) => {
+      <ul className="vs-qa" style={{ "--vs-qa-ratio": ratio } as CSSProperties}>{visible.map((item) => {
         const index = shown.indexOf(item);
         const mark = item.scene === null ? undefined : marks.get(item.scene);
         return <li key={item.main}><Button type="text" title={fileOf(item.main)} aria-label={`Mở ${sceneLabel(item.scene)}`} onClick={() => setZoom(index)}>

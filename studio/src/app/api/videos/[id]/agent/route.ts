@@ -2,6 +2,7 @@ import { runAgent, type AgentStage } from "@/lib/server/agent";
 import { baseUrl, handle } from "@/lib/server/http";
 import { isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
+import { assertLocalScenes } from "@/lib/server/claude-design";
 import { readState, setStage } from "@/lib/server/videos";
 
 const PREREQ: Record<AgentStage, (s: ReturnType<typeof readState>["state"]) => string | null> = {
@@ -19,6 +20,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   if (!["cues", "scenes", "deliver"].includes(stage)) throw new HttpError(400, "Stage không hợp lệ.");
   const { state, managed } = readState(id);
   if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
+  if (stage === "scenes") assertLocalScenes(state);
   const blocked = PREREQ[stage](state);
   if (blocked) throw new HttpError(400, blocked);
   if (message !== undefined && !message.trim()) throw new HttpError(400, "Góp ý đang trống.");

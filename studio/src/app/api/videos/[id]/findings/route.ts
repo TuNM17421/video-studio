@@ -2,6 +2,7 @@ import { runAgent } from "@/lib/server/agent";
 import { baseUrl, handle } from "@/lib/server/http";
 import { emit, isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError, REPO } from "@/lib/server/paths";
+import { assertLocalScenes } from "@/lib/server/claude-design";
 import { readState, setStage } from "@/lib/server/videos";
 import { qaFindings, updateFeedback } from "@/lib/server/workflow";
 
@@ -21,6 +22,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   const body = (await req.json()) as { fix?: unknown; skip?: unknown; reopen?: unknown; note?: unknown };
   const { state, managed } = readState(id);
   if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
+  assertLocalScenes(state);
   if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy.");
 
   const known = new Map(qaFindings(id).map((item) => [item.id, item]));

@@ -25,6 +25,10 @@ export {
  * switched off, its findings are informational and only the user's own feedback blocks.
  */
 export function blockersFor(id: string, stage: "cues" | "scenes", state: VideoState): { source: string; severity: string; scope?: string; code?: string; message: string }[] {
+  // Finding của bước Dựng cảnh là về cảnh agent ở máy dựng trong `videos/<id>/`. Video dựng bằng Claude Design
+  // render một trang khác hẳn, nên chúng không chặn được việc duyệt trang đó — và người dùng cũng không có nút
+  // nào để xử lý chúng ở đường này.
+  if (stage === "scenes" && state.request.sceneBuilder === "claude-design") return [];
   return ledgerBlocking(REPO, id, stage).filter((item: { source: string }) => state.review.enabled || item.source !== "qa");
 }
 

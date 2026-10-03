@@ -1953,7 +1953,8 @@ details.vs-flow-more > summary:focus-visible {
 }
 .vs-qa img {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  /* the frame's own shape: a 9:16 still cropped into a 16:9 tile shows only its middle third */
+  aspect-ratio: var(--vs-qa-ratio, 16 / 9);
   object-fit: cover;
   border-radius: 3px;
 }
@@ -2173,8 +2174,7 @@ details.vs-flow-more > summary:focus-visible {
   overflow: hidden;
 }
 .vs-frame-box iframe {
-  width: 1920px;
-  height: 1080px;
+  /* width/height come from the video's format (FramePreview) */
   border: 0;
   transform-origin: 0 0;
   pointer-events: none;

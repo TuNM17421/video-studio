@@ -2,19 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CheckOutlined, CloseCircleFilled, CheckCircleFilled, CopyOutlined, DownloadOutlined, ExportOutlined, EyeOutlined, FileTextOutlined, RedoOutlined, WarningFilled } from "@ant-design/icons";
-import { Alert, Button, Modal, Popconfirm, Tag, Typography } from "antd";
+import { Alert, Button, Modal, Popconfirm, Tag, Tooltip, Typography } from "antd";
 import { api } from "@/lib/client";
-import type { VideoDetail } from "@/lib/types";
+import { scenePages } from "@/lib/client";
+import type { BundleCheck, BundleReport, VideoDetail } from "@/lib/types";
 import { SourcePickerField } from "../source-picker";
 import { post } from "./shared";
 
-interface BundleCheck { name: string; ok: boolean; detail: string; level: "ok" | "warning" | "problem" }
-interface ImportReport { ok: boolean; page: string | null; files: number; dest: string; checks: BundleCheck[]; copied?: number }
+type ImportReport = BundleReport;
 
 /** Bảng kiểm của phép soát: một thư mục lệch vẫn render ra đủ frame, chỉ là cảnh trắng hoặc trôi so với lời. */
 function CheckList({ report }: { report: ImportReport }) {
   return <ul className="vs-cd-checks">
-    {report.checks.map((c) => <li key={c.name} className={`is-${c.level}`}>
+    {report.checks.map((c: BundleCheck) => <li key={c.name} className={`is-${c.level}`}>
       {c.ok ? <CheckCircleFilled /> : c.level === "warning" ? <WarningFilled /> : <CloseCircleFilled />}
       <b>{c.name}</b>
       <span>{c.detail}</span>
@@ -28,7 +28,13 @@ interface Brief {
   measured: boolean;
   cues: number;
   frames: number;
+  format?: string;
+  styleMissing?: boolean;
+  images?: number;
 }
+
+const FORMAT_NAME: Record<string, string> = { "16x9": "ngang 16:9", "9x16": "dọc 9:16" };
+const when = (iso: string) => new Date(iso).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 /**
  * Dựng cảnh bằng Claude Design thay vì agent ở máy: Studio sinh bản brief, người dùng dán sang
@@ -39,21 +45,33 @@ interface Brief {
  * giả vờ gửi được — thứ Studio làm được là gom brief cho đúng, và đó mới là phần tốn công: lời đọc, thời
  * lượng **đo thật** của từng câu, và phần riêng của style, không lẫn đường dẫn của repo.
  */
-export function ClaudeDesignPanel({ detail, act, busy }: { detail: VideoDetail; act: (fn: () => Promise<unknown>) => Promise<boolean>; busy: boolean }) {
+export function ClaudeDesignPanel({ detail, act, busy, approved }: { detail: VideoDetail; act: (fn: () => Promise<unknown>) => Promise<boolean>; busy: boolean; approved: boolean }) {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState(false);
   const [folder, setFolder] = useState("");
   const [report, setReport] = useState<ImportReport | null>(null);
   const id = detail.state.id;
+  // Bản đang nằm trong Studio đến từ server, không phải từ state của panel: đổi bước hay tải lại trang vẫn còn.
+  const imported = detail.claudeDesign?.imported ?? null;
+  const pages = scenePages(detail);
+  const format = detail.state.request.format || "16x9";
+  const briefFormat = brief ? brief.format || "16x9" : null;
+  const useImages = detail.images?.slots.filter((slot) => slot.decision?.action === "use").length ?? 0;
 
-  const load = useCallback(async () => {
-    const data = await api(`/api/videos/${id}/claude-design`) as { brief: Brief | null };
-    setBrief(data.brief);
-  }, [id]);
+  const load = useCallback(() => api(`/api/videos/${id}/claude-design`) as Promise<{ brief: Brief | null }>, [id]);
 
-  useEffect(() => { void load().catch(() => undefined).finally(() => setReady(true)); }, [load]);
+  // Không tải được thì nói ra: im lặng ở đây làm panel hiện "Sinh brief" như chưa từng có brief nào.
+  useEffect(() => {
+    let alive = true;
+    load()
+      .then((data) => { if (alive) { setBrief(data.brief); setLoadError(null); } })
+      .catch((e: unknown) => { if (alive) setLoadError(e instanceof Error ? e.message : String(e)); })
+      .finally(() => { if (alive) setReady(true); });
+    return () => { alive = false; };
+  }, [load]);
 
   const generate = () => act(async () => {
     const data = await post(`/api/videos/${id}/claude-design`, { action: "prompt" }) as { brief: Brief };
@@ -94,16 +112,20 @@ export function ClaudeDesignPanel({ detail, act, busy }: { detail: VideoDetail; 
                 description="Bản hiện tại bị ghi đè. Làm vậy khi cues hoặc giọng vừa đổi; brief đã dán sang bên kia thì không đổi theo."
                 okText="Sinh lại" cancelText="Thôi" onConfirm={generate}
               >
-                <Button size="small" icon={<RedoOutlined />}>Sinh lại</Button>
+                <Button size="small" disabled={busy} icon={<RedoOutlined />}>Sinh lại</Button>
               </Popconfirm>
-            : <Button size="small" icon={<RedoOutlined />} onClick={generate}>Sinh brief</Button>}
+            : <Button size="small" type="primary" disabled={busy || Boolean(loadError)} icon={<RedoOutlined />} onClick={generate}>Sinh brief</Button>}
           {brief && <Button size="small" icon={<EyeOutlined />} onClick={() => setPreview(true)}>Xem brief</Button>}
-          {brief && <Button size="small" type="primary" icon={copied ? <CheckOutlined /> : <CopyOutlined />} onClick={copy}>
+          {/* Một nút chính mỗi lúc: sao chép brief cho tới khi có bản nhập, sau đó nút chính là Duyệt ở thanh dưới. */}
+          {brief && <Button size="small" type={imported ? "default" : "primary"} icon={copied ? <CheckOutlined /> : <CopyOutlined />} onClick={copy}>
             {copied ? "Đã sao chép" : "Sao chép"}
           </Button>}
-          <Button size="small" type="text" onClick={() => act(() => post(`/api/videos/${id}/claude-design`, { action: "builder", value: "agent" }))}>
-            Quay lại agent ở máy
-          </Button>
+          {/* Server từ chối đổi chỗ dựng khi cảnh đã duyệt; nút bật mà bấm là lỗi thì thà đóng và nói vì sao. */}
+          <Tooltip title={approved ? "Cảnh đã duyệt. Nhập lại một bản khác để mở lại bước này rồi mới đổi chỗ dựng." : undefined}>
+            <Button size="small" type="text" disabled={busy || approved} onClick={() => act(() => post(`/api/videos/${id}/claude-design`, { action: "builder", value: "agent" }))}>
+              Quay lại agent ở máy
+            </Button>
+          </Tooltip>
         </div>
       </header>
 
@@ -112,6 +134,24 @@ export function ClaudeDesignPanel({ detail, act, busy }: { detail: VideoDetail; 
         <a href="https://claude.ai/design" target="_blank" rel="noreferrer">claude.ai/design <ExportOutlined /></a>{" "}
         rồi mang kết quả về đây render. Studio không gửi hộ được: bên đó không có đường nhận prompt từ ngoài.
       </p>
+
+      {loadError && <Alert type="error" showIcon title="Không tải được brief đã sinh" description={loadError} />}
+
+      {brief && briefFormat !== format && <Alert type="error" showIcon
+        title={`Brief này viết cho khổ ${FORMAT_NAME[briefFormat || "16x9"] || briefFormat}, còn video là khổ ${FORMAT_NAME[format] || format}.`}
+        description="Dán bản này sang thì bên kia dựng sai cỡ khung. Bấm Sinh lại để brief nói đúng khổ và cách bày của video." />}
+
+      {brief?.styleMissing && <Alert type="warning" showIcon
+        title={`Style ${detail.state.request.style} chưa có phần hướng dẫn cho Claude Design.`}
+        description={`Brief vẫn dùng được nhưng thiếu phần riêng của style (thiếu file styles/${detail.state.request.style}.claude-design.md), nên bên kia sẽ tự chọn cách bày.`} />}
+
+      {brief && (brief.images ?? 0) > 0 && <Alert type="info" showIcon
+        title={`Brief nhắc tới ${brief.images} ảnh tư liệu đã duyệt.`}
+        description={`Tải các file trong vinuni-lesson-video-ds/ui_kits/lesson-video/videos/${id}/img/ vào thư mục img/ của project bên đó trước khi dán brief. Lúc nhập về Studio tự chép lại đúng những file này.`} />}
+
+      {brief && useImages !== (brief.images ?? 0) && <Alert type="warning" showIcon
+        title="Ảnh tư liệu đã đổi sau khi sinh brief."
+        description={`Đang duyệt dùng ${useImages} ảnh, brief ghi ${brief.images ?? 0}. Bấm Sinh lại trước khi dán sang.`} />}
 
       {brief && !brief.measured && <Alert type="warning" showIcon
         title="Thời lượng trong brief là ước lượng vì chưa thu giọng."
@@ -125,15 +165,29 @@ export function ClaudeDesignPanel({ detail, act, busy }: { detail: VideoDetail; 
           Dựng xong bên kia thì tải thư mục project về máy, chọn ở đây. Studio soát trước khi chép:
           thư mục thiếu file hay lệch tổng frame vẫn render ra đủ frame, chỉ là cảnh trắng hoặc trôi so với lời.
         </p>
-        <SourcePickerField label="Thư mục tải về" purpose="scenes" value={folder} disabled={busy} onChange={(v) => { setFolder(v); setReport(null); }} />
+        {imported && <Alert type="success" showIcon
+          title={`Đang dùng bản nhập lúc ${when(imported.at)} · ${imported.files} file · ${imported.page}`}
+          description={<>
+            {approved ? "Bản này đã duyệt — bước Render sẽ chụp nó." : "Mở trình phát xem qua, rồi bấm Duyệt dựng cảnh ở thanh dưới để mở bước Render."}{" "}
+            Kiểm tra tự động và review chéo của Studio không chạy trên bản dựng bên Claude Design.
+            {pages && <>{" "}<a href={pages.player} target="_blank" rel="noreferrer">Mở trình phát <ExportOutlined /></a></>}
+          </>} />}
+        {imported && imported.checks.length > 0 && !report && <CheckList report={imported} />}
+        <SourcePickerField label={imported ? "Nhập bản khác" : "Thư mục tải về"} purpose="scenes" value={folder} disabled={busy} onChange={(v) => { setFolder(v); setReport(null); }} />
         <div className="vs-cd-tools">
           <Button size="small" disabled={!folder || busy} onClick={scan}>Soát thư mục</Button>
-          <Button size="small" type="primary" disabled={!folder || busy || !report?.ok} onClick={bringIn}>Chép vào Studio</Button>
+          {/* Nhập lại là xoá bản đang dùng, và nếu bản ấy đã duyệt thì bước mở lại — hỏi trước. */}
+          {imported
+            ? <Popconfirm
+                title="Thay bản đang dùng?"
+                description={approved ? "Bản đã duyệt bị thay, bước Dựng cảnh mở lại và phải duyệt lần nữa trước khi render." : "Bản đang nằm trong Studio bị thay bằng thư mục này."}
+                okText="Thay" cancelText="Thôi" disabled={!folder || busy || !report?.ok} onConfirm={bringIn}
+              >
+                <Button size="small" disabled={!folder || busy || !report?.ok}>Chép vào Studio</Button>
+              </Popconfirm>
+            : <Button size="small" type={brief && copied ? "primary" : "default"} disabled={!folder || busy || !report?.ok} onClick={bringIn}>Chép vào Studio</Button>}
         </div>
         {report && <CheckList report={report} />}
-        {report?.copied !== undefined && <Alert type="success" showIcon
-          title={`Đã chép ${report.copied} file vào ${report.dest}`}
-          description="Sang bước Render để xuất MP4 với đúng giọng và nhạc nền của video này." />}
       </div>
 
       <Modal

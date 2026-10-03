@@ -2,6 +2,7 @@ import { handle } from "@/lib/server/http";
 import { emit, log } from "@/lib/server/jobs";
 import { assertId, HttpError, REPO } from "@/lib/server/paths";
 import { imagesEnabled, startImages } from "@/lib/server/images";
+import { byClaudeDesign, importedBundle } from "@/lib/server/claude-design";
 import { readState, setStage } from "@/lib/server/videos";
 import { blockersFor, updateFeedbackWhere } from "@/lib/server/workflow";
 
@@ -18,6 +19,9 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     return Response.json({ ok: true, alreadyApproved: true });
   }
   if (state.stages[stage] !== "review") throw new HttpError(400, "Stage này chưa sẵn sàng để duyệt.");
+  if (stage === "scenes" && byClaudeDesign(state) && !importedBundle(id)) {
+    throw new HttpError(400, "Chưa có bản nhập từ Claude Design để duyệt. Chọn thư mục tải về rồi bấm Chép vào Studio.");
+  }
   const blockers = blockersFor(id, stage, state);
   if (blockers.length) {
     // Say which ones: a bare count leaves the user nothing to act on.

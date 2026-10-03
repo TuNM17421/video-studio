@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircleFilled, ExportOutlined, PlayCircleFilled, RedoOutlined } from "@ant-design/icons";
 import { Button, Collapse, Empty, Segmented, Select } from "antd";
-import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
+import { api, fileUrl, formatFrames, scenePages } from "@/lib/client";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
 import { BUILD_OPTIONS, buildLabel, DEFAULT_BUILD_NO, type BuildNo } from "@/lib/qa-manifest";
 import { FPS_OPTIONS, fpsHint, LEGACY_RENDER_FPS, renderSpecLabel } from "@/lib/render-spec";
@@ -23,6 +23,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
   const a = detail.artifacts;
   const runLogs = stageLogs(logs, ["render", "deliver"]);
   const ready = detail.state.stages.scenes === "done";
+  const pages = scenePages(detail);
   const [confirmRender, setConfirmRender] = useState(false);
   // both tracks are finishing decisions: they are chosen only here and sent with the render request
   const [music, setMusic] = useState(detail.state.music.background);
@@ -131,7 +132,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
         : ready ? "Chưa render" : "Chờ duyệt dựng cảnh"}
     >
       {status === "done" && ["idle", "error"].includes(deliver) && <Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "deliver" }))}>Chạy bàn giao</Button>}
-      {a.mp4 && <Button icon={<ExportOutlined />} href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank">Mở trình phát</Button>}
+      {a.mp4 && pages && <Button icon={<ExportOutlined />} href={pages.player} target="_blank">Mở trình phát</Button>}
       {ready && (a.mp4
         ? <Button disabled={busy} icon={<RedoOutlined />} onClick={() => setConfirmRender(true)}>Render lại</Button>
         : <Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => { void startRender(); }}>Render video</Button>)}
