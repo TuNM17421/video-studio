@@ -618,7 +618,7 @@ export interface LibraryGroup {
 
 export interface Library {
   groups: LibraryGroup[];
-  videos: { id: string; player: string }[];
+  videos: { id: string; player: string; format?: string }[];
 }
 
 /**

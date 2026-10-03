@@ -25,6 +25,12 @@ import { ScenesStep } from "./steps/scenes-step";
 import { StepBar, type StepNav } from "./steps/shared";
 import { VoiceStep } from "./steps/voice-step";
 
+
+/** Nhãn và tỉ lệ khung của từng khổ — bản xem trước phải khớp khổ video thật sự dựng. */
+const FORMAT_ASPECT: Record<string, string> = { "16x9": "16:9", "9x16": "9:16" };
+const FORMAT_RATIO: Record<string, string> = { "16x9": "16 / 9", "9x16": "9 / 16" };
+
+
 /** Bốn nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả bốn là sai với ba cái kia. */
 const VOICE_SOURCE_LABEL: Record<VoiceSource, string> = {
   elevenlabs: "ElevenLabs",
@@ -138,9 +144,10 @@ function Preview({ detail, styles, draft, hasKey, installed }: { detail: VideoDe
   return <aside className="preview-panel">
     <div className="panel-heading">
       <h2>Video preview</h2>
-      <span className="quiet-label">16:9</span>
+      <span className="quiet-label">{FORMAT_ASPECT[request.format || "16x9"] || "16:9"}</span>
     </div>
-    <div className="slide-visual vs-preview-frame">
+    {/* Khung xem trước phải đúng tỉ lệ của khổ: ép một cảnh dọc vào hộp 16:9 thì bản xem trước nói dối. */}
+    <div className="slide-visual vs-preview-frame" style={{ aspectRatio: FORMAT_RATIO[request.format || "16x9"] || "16 / 9" }}>
       {scenes && id
         ? <FramePreview src={dsUrl(`ui_kits/lesson-video/index.html?scene=${encodeURIComponent(id)}&frame=${previewFrame}`)} />
         : cover ? <img src={fileUrl(`styles/previews/${cover.image}`)} alt="" /> : <Empty className="preview-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có bản xem trước" />}
