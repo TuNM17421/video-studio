@@ -78,9 +78,22 @@ export function getLibrary(): Library {
   const videos = exists(videosDir)
     ? fs.readdirSync(videosDir, { withFileTypes: true })
         .filter((d) => d.isDirectory() && exists(path.join(videosDir, d.name, "player.html")))
-        .map((d) => ({ id: d.name, player: `ui_kits/lesson-video/videos/${d.name}/player.html` }))
+        .map((d) => ({
+          id: d.name,
+          player: `ui_kits/lesson-video/videos/${d.name}/player.html`,
+          // Khổ đọc thẳng từ `meta.format` trong video.jsx — Thư viện từng in cứng "16:9 · 1920×1080"
+          // cho mọi video, nên một video dọc hiện ra kèm một dòng sai.
+          format: videoFormat(path.join(videosDir, d.name, "video.jsx")),
+        }))
     : [];
   return { groups: [...groups.values()].filter((g) => g.components.length).sort((a, b) => a.id.localeCompare(b.id)), videos };
+}
+
+/** `meta.format` của một video.jsx; không khai thì là khổ ngang. */
+function videoFormat(file: string): string {
+  if (!exists(file)) return "16x9";
+  const m = fs.readFileSync(file, "utf8").match(/format:\s*['"]([^'"]+)['"]/);
+  return m ? m[1] : "16x9";
 }
 
 export function componentDoc(doc: string) {

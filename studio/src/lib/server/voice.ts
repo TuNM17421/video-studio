@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, RetakeEntry, RetakeResult, VoiceBound, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, gpuJobElsewhere, isRunning, log, ownJob, recordJobMetrics, registry, run, setProgress, startJob, wasStopped } from "./jobs";
+import { beginCreditRun, billedCharacters, elevenCreditsUsed, elevenLabsCost, endCreditRun, freeVoiceCost } from "./voice-cost";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
 import { HttpError, projectDir, REPO, rel, stateDir, videoDir, voiceOut, voiceScriptDir } from "./paths";
 import { readState, setStage, updateState } from "./videos";
@@ -121,26 +123,48 @@ async function generateEleven(id: string) {
   setStage(id, "voice", "running");
   log(id, "system", `Tạo giọng · ${v.model} · nghỉ ${v.pause} s`);
   const total = lastDryRun(id)?.toGenerate || 0;
+  // Cost telemetry: the account's credit counter on both sides of the run; the characters come from the run
+  // itself, once it has said what it was billed for (`billedCharacters`) — a forecast must never price it.
+  const mock = process.env.STUDIO_TTS_MOCK === "1";
+  const creditToken = randomUUID();
+  if (!mock) beginCreditRun(creditToken);
+  const creditsBefore = mock ? null : await elevenCreditsUsed(key);
+  const recordCost = async (characters: number | null) => {
+    // A mock run synthesizes nothing: it has no cost to report, measured or zero.
+    // A run that shared the account counter with another voice job cannot tell its credits from theirs: it keeps
+    // the character-priced cost but reports no credit delta.
+    const creditsAfter = mock ? null : await elevenCreditsUsed(key);
+    const overlapped = mock ? false : endCreditRun(creditToken);
+    const cost = mock ? { provider: "elevenlabs-mock" } : elevenLabsCost(v.model, characters, overlapped ? null : creditsBefore, overlapped ? null : creditsAfter);
+    recordJobMetrics(id, { ...cost, ...(characters !== null ? { characters } : {}), model: v.model });
+  };
   let done = 0;
   let billed = 0;
   let billedCues = 0;
-  const code = await run(id, process.execPath, ttsArgs(id, v), {
-    env: ttsEnv(v, key),
-    onLine(line, stream) {
-      // never echo anything that could contain the key (tts.mjs does not print it; this is belt and braces)
-      const safe = line.split(key).join("•••");
-      log(id, stream === "stderr" ? "error" : "output", safe);
-      if (/→ ElevenLabs/.test(line)) {
-        done++;
-        setProgress(id, total ? Math.min(99, (done / total) * 100) : null, `Đang tạo câu ${done}${total ? `/${total}` : ""}…`);
-      }
-      const chars = stream === "stdout" ? billedFromLine(line) : null;
-      if (chars !== null) {
-        billed += chars;
-        billedCues++;
-      }
-    },
-  });
+  let code: number;
+  // Always leave the credit window, even when the process dies: an orphaned one would mark every later run overlapped.
+  try {
+    code = await run(id, process.execPath, ttsArgs(id, v), {
+      env: ttsEnv(v, key),
+      onLine(line, stream) {
+        // never echo anything that could contain the key (tts.mjs does not print it; this is belt and braces)
+        const safe = line.split(key).join("•••");
+        log(id, stream === "stderr" ? "error" : "output", safe);
+        if (/→ ElevenLabs/.test(line)) {
+          done++;
+          setProgress(id, total ? Math.min(99, (done / total) * 100) : null, `Đang tạo câu ${done}${total ? `/${total}` : ""}…`);
+        }
+        const chars = stream === "stdout" ? billedFromLine(line) : null;
+        if (chars !== null) {
+          billed += chars;
+          billedCues++;
+        }
+      },
+    });
+    await recordCost(billedCharacters(done, billed, billedCues));
+  } finally {
+    endCreditRun(creditToken);
+  }
   // Recorded whatever the outcome: câu synthesized before a failure or a Dừng were billed all the same.
   recordJobMetrics(id, { ttsCharacters: billed, ttsCues: billedCues, model: v.model });
   if (billedCues) log(id, "system", `ElevenLabs tính phí ${billed.toLocaleString("vi-VN")} ký tự cho ${billedCues} câu ở lượt này.`);
@@ -368,6 +392,7 @@ export async function generateLocal(id: string, v: VoiceSettings) {
     forgetRetakes(id, out, "omnivoice");
     rememberCast(id, out, v);
     log(id, "system", `Model local đã sinh ${result.files}/${result.cues} câu · giọng ${result.voice} → ${result.dir}`);
+    recordJobMetrics(id, freeVoiceCost("omnivoice-local"));
     finishJob(id, "done");
     // Thư mục vừa sinh là của chính Studio, không phải thư mục người dùng dán vào — nên tự kiểm luôn.
     // Không có bước này thì sinh xong phải sang tab khác, dán lại đúng đường dẫn ấy rồi mới bấm kiểm tra.
@@ -478,6 +503,8 @@ export async function generateKaggle(id: string, v: VoiceSettings) {
     }
 
     const started = Date.now();
+    // Kaggle's GPU quota is free but weekly-limited, so its time is the cost worth watching.
+    const recordGpu = () => recordJobMetrics(id, freeVoiceCost("kaggle", (Date.now() - started) / 1000));
     let state: string | null = null;
     while (!wasStopped(id) && Date.now() - started < (KAGGLE_RUN_SECONDS + 15 * 60) * 1000) {
       await pause(id, KAGGLE_POLL_MS);
@@ -489,6 +516,7 @@ export async function generateKaggle(id: string, v: VoiceSettings) {
       if (res.code !== 0) log(id, "error", res.out.split("\n").slice(-3).join("\n"));
       if (state && TERMINAL_STATES.has(state)) break;
     }
+    recordGpu();
     if (wasStopped(id)) {
       log(id, "system", `Đã dừng theo dõi. Kernel vẫn chạy trên Kaggle tới khi xong (tối đa ${KAGGLE_RUN_SECONDS / 3600} giờ) — huỷ tại https://www.kaggle.com/code/${ref} nếu không cần nữa.`);
       throw new HttpError(500, "Đã dừng.");
@@ -845,6 +873,8 @@ async function importFolder(id: string, force: boolean) {
   setProgress(id, null, "Gắn giọng vào video…");
   const bind = await bindVoice(id);
   // The folder a local model writes to is the only thing telling its import apart from a recorded one.
+  // Assembling audio that already exists costs nothing; the generate step before it carried any cost.
+  recordJobMetrics(id, freeVoiceCost("import"));
   if (bind) recordBound(id, isKaggleDir(target) ? "kaggle" : target.replace(/\\/g, "/").endsWith("/voice-script/omnivoice") ? "local" : "import", v);
   setStage(id, "voice", bind ? "done" : "error", bind ? null : "Không gắn được giọng vào video.");
   finishJob(id, bind ? "done" : "error");

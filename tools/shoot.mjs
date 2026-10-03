@@ -35,7 +35,18 @@ async function shootAll(jobs) {
     try {
       await s('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
       await s('Page.navigate', { url: job.url });
-      const ready = await waitReady(s, 'true', 100);
+      const ready = await waitReady(s, 'true', 200);
+
+      // A lesson scene declares its own canvas (window.vkFormat). Without this a QA still of a vertical
+      // video would come back as a 1920×1080 crop of a 1080×1920 scene — the exact failure #62 measured.
+      // An explicit width/height in the job always wins, so component cards are unaffected.
+      if (!job.width && !job.height) {
+        const fmt = (await s('Runtime.evaluate', { expression: 'window.vkFormat || null', returnByValue: true })).result.value;
+        if (fmt && (fmt.width !== width || fmt.height !== height)) {
+          await s('Emulation.setDeviceMetricsOverride', { width: fmt.width, height: fmt.height, deviceScaleFactor: 1, mobile: false });
+        }
+      }
+
       await sleep(job.settle ?? 150);
       const shot = await s('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       fs.mkdirSync(path.dirname(job.out), { recursive: true });
@@ -57,6 +68,8 @@ const argv = process.argv.slice(2);
 const jobs =
   argv[0] === '--batch'
     ? JSON.parse(fs.readFileSync(argv[1], 'utf8'))
-    : [{ url: argv[0], out: argv[1], width: Number(argv[2] || 1920), height: Number(argv[3] || 1080) }];
+    // Cỡ để trống = để trang tự khai khổ của nó (window.vkFormat); không điền sẵn 1920×1080 ở đây,
+    // nếu không thì nhánh tự dò bên dưới không bao giờ chạy và ảnh QA khổ dọc bị cắt.
+    : [{ url: argv[0], out: argv[1], width: argv[2] ? Number(argv[2]) : undefined, height: argv[3] ? Number(argv[3]) : undefined }];
 const failed = await shootAll(jobs);
 process.exit(failed ? 1 : 0);

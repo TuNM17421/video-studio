@@ -6,7 +6,13 @@
  *   node tools/render.mjs --scene n2-00-gioi-thieu-ngay-2 --out video.mp4 [--audio voice.wav]
  *        [--music-track bg-02] [--quiz-track quiz-timer] [--workers 4] [--from 0] [--to N] [--crf 18]
  *        [--base http://127.0.0.1:8765 | --url http://…/index.html] [--keep-frames dir] [--frame-timeout 15000]
- *        [--music-db -3] [--quiz-db -2] [--no-captions] [--loudness -16] [--no-loudnorm]
+ *        [--music-db -3] [--quiz-db -2] [--no-captions] [--loudness -16] [--no-loudnorm] [--fps 60]
+ *
+ * --fps raises the output frame rate without touching the authoring unit: scenes stay written in whole
+ * frames at 30 fps (the unit of cues.js, voice.js, timeline.js, spokenAt()), and --fps 60 only samples
+ * that same clock twice as densely — the player paints the picture at 40.5, it does not repeat frame 41.
+ * Measured on mau-huong-dan: 1.67× as many distinct pictures for 1.82× the render time. Most lesson
+ * content holds still 79–89 % of the time and gains little; see docs/decisions/render-60fps.md.
  *
  * --no-captions leaves the navy subtitle bar out of every frame (the player's ?captions=0); the
  * captions are still in cues.js and in the transcript.
@@ -51,6 +57,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launch, waitReady } from './cdp.mjs';
+import { frameSampling } from './lib/frame-sampling.mjs';
 import { defaultBackground, NO_MUSIC, trackFile, trackGain } from './lib/music.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -67,7 +74,7 @@ const fail = (msg) => {
   console.error(`✗ ${msg}`);
   process.exit(1);
 };
-if (!args.scene || !args.out) fail('usage: node tools/render.mjs --scene <id> --out <file.mp4> [--audio voice.wav] [--workers 4]');
+if (!args.scene || !args.out) fail('usage: node tools/render.mjs --scene <id> --out <file.mp4> [--audio voice.wav] [--workers 4] [--fps 60]');
 
 // ── ffmpeg ────────────────────────────────────────────────────────────────────
 const require = createRequire(import.meta.url);
@@ -197,9 +204,35 @@ const probe = await b.page();
 await probe('Page.navigate', { url });
 if (!(await waitReady(probe, 'typeof window.vkSetFrame === "function"'))) fail(`page not ready: ${url}`);
 const duration = (await probe('Runtime.evaluate', { expression: 'window.vkDuration', returnByValue: true })).result.value;
+/**
+ * Khổ hình do chính video khai (`meta.format` → `window.vkFormat`), không phải một cờ của lệnh này: chọn
+ * khổ là việc của bước Kế hoạch, và cảnh đã được dựng cho đúng khổ đó. Render chỉ việc mở cửa sổ đúng cỡ.
+ * Video cũ không khai gì thì về 1920×1080 như trước.
+ */
+const format = (await probe('Runtime.evaluate', { expression: 'window.vkFormat || null', returnByValue: true })).result.value || {
+  id: '16x9',
+  width: 1920,
+  height: 1080,
+};
+await probe('Emulation.setDeviceMetricsOverride', { width: format.width, height: format.height, deviceScaleFactor: 1, mobile: false });
 const from = Number(args.from || 0);
 const to = Math.min(duration, Number(args.to || duration));
-console.log(`▶ ${args.scene} · ${duration} f (${(duration / FPS).toFixed(2)} s) · rendering ${from}–${to - 1} with ${workers} tabs → ${framesDir}`);
+/**
+ * Output frame rate. The scenes keep their authoring unit — FPS = 30, the unit of cues.js, voice.js,
+ * timeline.js and spokenAt() — and --fps only changes how densely the render samples that clock:
+ * --fps 60 asks the player for 40, 40.5, 41… The player paints the picture in between because
+ * clampFrame no longer rounds (lib/player.jsx), so this is real motion, not each frame written twice.
+ * Nothing downstream moves: audio, music windows and chapters are all computed in seconds.
+ */
+const OUT_FPS = Number(args.fps || FPS);
+if (!Number.isFinite(OUT_FPS) || OUT_FPS < 1 || OUT_FPS > 240) fail('--fps: cần một số frame/giây trong khoảng 1…240, ví dụ --fps 60');
+// Output frames are indexed 0..shots-1; index i paints source frame sourceFrame(i).
+const { step, shots, sourceFrame } = frameSampling(from, to, OUT_FPS, FPS);
+const sizeNote = format.id === '16x9' ? '' : ` · khổ ${format.id} (${format.width}×${format.height})`;
+const fpsNote = OUT_FPS === FPS ? '' : ` · ${OUT_FPS} fps (bước ${step} frame, ${shots} ảnh)`;
+console.log(
+  `▶ ${args.scene} · ${duration} f (${(duration / FPS).toFixed(2)} s)${sizeNote} · rendering ${from}–${to - 1} with ${workers} tabs${fpsNote} → ${framesDir}`,
+);
 
 if (args.audio) {
   const secs = wavSeconds(path.resolve(args.audio));
@@ -209,10 +242,10 @@ if (args.audio) {
   }
 }
 
-const frameFile = (f) => path.join(framesDir, `f${String(f - from).padStart(6, '0')}.png`);
-const alreadyShot = (f) => {
+const frameFile = (i) => path.join(framesDir, `f${String(i).padStart(6, '0')}.png`);
+const alreadyShot = (i) => {
   try {
-    return fs.statSync(frameFile(f)).size > 0;
+    return fs.statSync(frameFile(i)).size > 0;
   } catch {
     return false;
   }
@@ -223,11 +256,43 @@ const alreadyShot = (f) => {
  * the others drain what is left, instead of the whole run waiting on its slice. With --keep-frames the
  * frames already on disk are skipped, so a re-run after a failure costs only what is missing.
  */
+/**
+ * A resume must be the same render. Frame files are numbered by output frame, so a directory filled at
+ * --fps 60 and resumed at 30 would look complete (the first half is all there), and ffmpeg would then read
+ * every file in the pattern and emit a video twice as long at half the rate — silently, with no missing
+ * frame to catch it. The stamp makes that a refusal instead.
+ *
+ * `format` is in the stamp for the same reason: the frame size comes from the video (`meta.format`), so a
+ * directory shot at 16x9 and resumed after the video switched to 9x16 mixes two picture sizes, and ffmpeg
+ * stretches the odd ones into the first frame's size without a word — measured: exit 0, no warning even at
+ * -loglevel warning, and this render runs at -loglevel error.
+ */
+const stampFile = path.join(framesDir, 'render.json');
+const stamp = { scene: args.scene, format: format.id, from, to, fps: OUT_FPS, shots };
+if (args['keep-frames']) {
+  let previous = null;
+  try {
+    previous = JSON.parse(fs.readFileSync(stampFile, 'utf8'));
+  } catch {
+    /* no stamp: either a fresh directory or one from an older build — the frame count check below still runs */
+  }
+  if (previous) {
+    const differs = Object.keys(stamp).filter((k) => previous[k] !== stamp[k]);
+    if (differs.length) {
+      fail(
+        `${framesDir} là frame của một lượt render khác (${differs.map((k) => `${k}: ${previous[k]} ≠ ${stamp[k]}`).join(', ')}) — ` +
+          'xoá thư mục đó hoặc chạy lại đúng cờ cũ, đừng trộn hai lượt vào một thư mục',
+      );
+    }
+  }
+  fs.writeFileSync(stampFile, JSON.stringify(stamp));
+}
+
 const queue = [];
 let reused = 0;
-for (let f = from; f < to; f++) {
-  if (args['keep-frames'] && alreadyShot(f)) reused++;
-  else queue.push(f);
+for (let i = 0; i < shots; i++) {
+  if (args['keep-frames'] && alreadyShot(i)) reused++;
+  else queue.push(i);
 }
 const total = queue.length;
 if (reused) console.log(`  ${reused} frame đã có sẵn trong ${framesDir} — chỉ chụp ${total} frame còn thiếu`);
@@ -244,7 +309,7 @@ const errors = [];
 const attempts = new Map();
 
 const newTab = async () => {
-  const s = await b.page();
+  const s = await b.page(format.width, format.height);
   await s('Page.navigate', { url });
   if (!(await waitReady(s, 'typeof window.vkSetFrame === "function"'))) fail('capture tab not ready');
   return s;
@@ -262,11 +327,12 @@ async function work(seat, first) {
   let s = first;
   let strikes = 0;
   while (queue.length) {
-    const f = queue.shift();
+    const i = queue.shift();
+    const f = sourceFrame(i);
     try {
       await s('Runtime.evaluate', { expression: `window.vkSetFrame(${f})`, awaitPromise: true }, { timeout: FRAME_TIMEOUT });
       const shot = await s('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, { timeout: FRAME_TIMEOUT });
-      fs.writeFileSync(frameFile(f), Buffer.from(shot.data, 'base64'));
+      fs.writeFileSync(frameFile(i), Buffer.from(shot.data, 'base64'));
       strikes = 0;
       done++;
       if (done % 150 === 0 || done === total) {
@@ -274,11 +340,11 @@ async function work(seat, first) {
         process.stdout.write(`  ${done}/${total} frames · ${el.toFixed(0)} s · ~${((el / done) * (total - done)).toFixed(0)} s left\n`);
       }
     } catch (error) {
-      const tries = (attempts.get(f) || 0) + 1;
-      attempts.set(f, tries);
+      const tries = (attempts.get(i) || 0) + 1;
+      attempts.set(i, tries);
       const why = error instanceof Error ? error.message : String(error);
       if (tries >= MAX_ATTEMPTS) throw new Error(`frame ${f} hỏng sau ${tries} lần thử: ${why}`);
-      queue.push(f); // back of the queue: a fresh tab will get to it
+      queue.push(i); // back of the queue: a fresh tab will get to it
       strikes++;
       console.warn(`  ⚠ tab ${seat} nghẹn ở frame ${f} (${why}) — chụp lại ở tab khác`);
       if (strikes >= 2) {
@@ -306,7 +372,7 @@ try {
 await b.close();
 if (errors.length) fail(`page threw during capture: ${errors[0]}`);
 const missing = [];
-for (let f = from; f < to; f++) if (!alreadyShot(f)) missing.push(f);
+for (let i = 0; i < shots; i++) if (!alreadyShot(i)) missing.push(sourceFrame(i));
 if (missing.length) fail(`thiếu ${missing.length} frame (từ ${missing[0]}) sau khi chụp xong — không mã hoá bản thiếu frame`);
 console.log(`✓ ${total} frames in ${((Date.now() - t0) / 1000).toFixed(0)} s`);
 
@@ -407,11 +473,11 @@ if (hasAudio || hasMusic) {
 
 const ff = [
   '-hide_banner', '-loglevel', 'error', '-y',
-  '-framerate', String(FPS), '-i', path.join(framesDir, 'f%06d.png'),
+  '-framerate', String(OUT_FPS), '-i', path.join(framesDir, 'f%06d.png'),
   ...(hasAudio || hasMusic ? ['-i', mixWav] : []),
   '-map', '0:v',
   ...(hasAudio || hasMusic ? ['-map', '1:a', ...(gainFilter ? ['-af', gainFilter] : []), '-c:a', 'aac', '-b:a', '192k', '-ar', '48000'] : []),
-  '-c:v', 'libx264', '-preset', 'medium', '-crf', String(args.crf || 18), '-pix_fmt', 'yuv420p', '-r', String(FPS),
+  '-c:v', 'libx264', '-preset', 'medium', '-crf', String(args.crf || 18), '-pix_fmt', 'yuv420p', '-r', String(OUT_FPS),
   '-movflags', '+faststart',
   ...(hasAudio || hasMusic ? ['-shortest'] : []),
   out,

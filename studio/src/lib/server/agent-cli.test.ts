@@ -70,9 +70,9 @@ describe("Claude CLI adapter", () => {
 describe("Antigravity QA adapter", () => {
   it("uses read-only plan mode and schema-bound output", () => {
     expect(antigravityQaArgs('{"type":"object"}')).toEqual([
-      "--print", "--input-format", "text", "--output-format", "json",
+      "--input-format", "text", "--output-format", "json",
       "--mode", "plan", "--sandbox", "--json-schema", '{"type":"object"}',
-      "--print-timeout", "10m",
+      "--print-timeout", "10m", "--print", "-",
     ]);
   });
 });

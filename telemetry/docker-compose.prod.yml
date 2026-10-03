@@ -1,0 +1,103 @@
+# Production telemetry stack — separate compose project (`-p video-telemetry`) for a shared VM.
+# Only the edge publishes a port; Postgres, collector and Grafana stay on the private network.
+# Runbook: deploy/RUNBOOK.md. Secrets live only in the VM's .env (generated there by deploy/init-env.sh).
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: telemetry
+      POSTGRES_USER: telemetry
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - telemetry-postgres:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./postgres/metrics.sql:/docker-entrypoint-initdb.d/002-metrics.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telemetry -d telemetry"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+    logging: *logging
+
+  # Service names are prefixed: on a shared proxy network, a plain `grafana`/`collector` would collide with
+  # other stacks' containers (P-004 already answers to `grafana` there).
+  vt-collector:
+    build: ./collector
+    restart: unless-stopped
+    environment:
+      PORT: 4318
+      DATABASE_URL: postgresql://telemetry:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/telemetry
+      COLLECTOR_TOKEN: ${COLLECTOR_TOKEN:?set COLLECTOR_TOKEN in .env}
+      AI_LOGS_ENABLED: ${AI_LOGS_ENABLED:-false}
+      AI_LOG_ENCRYPTION_KEY: ${AI_LOG_ENCRYPTION_KEY:-}
+      # Production must choose a retention; 0 (keep forever) is refused here on purpose.
+      EVENT_RETENTION_DAYS: ${EVENT_RETENTION_DAYS:?set EVENT_RETENTION_DAYS in .env}
+      AI_LOG_RETENTION_DAYS: ${AI_LOG_RETENTION_DAYS:?set AI_LOG_RETENTION_DAYS in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4318/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 10
+    mem_limit: 256m
+    logging: *logging
+
+  vt-grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://${TELEMETRY_DOMAIN}:${EDGE_PORT}/}
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - telemetry-grafana:/var/lib/grafana
+    mem_limit: 384m
+    logging: *logging
+
+  edge:
+    build: ./deploy/edge
+    restart: unless-stopped
+    environment:
+      TELEMETRY_DOMAIN: ${TELEMETRY_DOMAIN:?set TELEMETRY_DOMAIN in .env}
+      EDGE_PORT: ${EDGE_PORT:-8444}
+      TLS_MODE: ${TLS_MODE:-duckdns}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:-}
+    ports:
+      - "${EDGE_PORT:-8444}:${EDGE_PORT:-8444}"
+    volumes:
+      - ./deploy/edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/edge/tls-duckdns.caddy:/etc/caddy/tls-duckdns.caddy:ro
+      - ./deploy/edge/tls-internal.caddy:/etc/caddy/tls-internal.caddy:ro
+      - telemetry-caddy:/data
+    depends_on:
+      vt-collector:
+        condition: service_healthy
+    mem_limit: 128m
+    logging: *logging
+
+volumes:
+  telemetry-postgres:
+  telemetry-grafana:
+  telemetry-caddy:

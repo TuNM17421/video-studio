@@ -4,7 +4,9 @@
   "updatedAt": "2026-09-19T06:26:11.000Z",
   "request": {
     "style": "lesson-lab",
-    "modules": ["mascot"],
+    "modules": [
+      "mascot"
+    ],
     "day": "Day01",
     "title": "Mẫu · Griffin kể năm bước làm video",
     "scriptName": "kich-ban-goc.md",
@@ -26,7 +28,7 @@
   "stages": {
     "cues": "done",
     "voice": "done",
-    "scenes": "done",
+    "scenes": "review",
     "render": "done",
     "deliver": "done"
   },
@@ -45,5 +47,9 @@
   },
   "captions": true,
   "lastError": null,
-  "sample": true
+  "sample": true,
+  "review": {
+    "enabled": true,
+    "provider": "auto"
+  }
 }

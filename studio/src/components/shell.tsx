@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { BookOutlined, FileSearchOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { BarChartOutlined, BookOutlined, FileSearchOutlined, PlusOutlined, ReadOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { Button, Layout, Menu } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
 import { StudioTour } from "./tour";
 
-type Page = "new" | "library" | "videos" | "guide" | "scout";
-export type LibrarySection = "styles" | "components" | "characters" | "mascot" | "videos";
+type Page = "new" | "library" | "videos" | "guide" | "scout" | "telemetry";
+export type LibrarySection = "styles" | "components" | "characters" | "mascot" | "sfx" | "videos";
 
 /** The library's sections are sidebar children, not tabs on the page. */
 export const LIBRARY_SECTIONS: { id: LibrarySection; label: string }[] = [
@@ -17,6 +17,7 @@ export const LIBRARY_SECTIONS: { id: LibrarySection; label: string }[] = [
   { id: "components", label: "Component" },
   { id: "characters", label: "Nhân vật" },
   { id: "mascot", label: "Mascot" },
+  { id: "sfx", label: "Tiếng động" },
   { id: "videos", label: "Video mẫu" },
 ];
 export const librarySectionPath = (section: LibrarySection) => `/library/${section}`;
@@ -31,6 +32,7 @@ const PAGE_ROUTES: Record<string, string> = {
   videos: "/videos",
   library: librarySectionPath("styles"),
   guide: "/guide",
+  telemetry: "/telemetry",
   ...Object.fromEntries(LIBRARY_SECTIONS.map((s) => [sectionKey(s.id), librarySectionPath(s.id)])),
 };
 let sidebarCollapsedFallback = false;
@@ -87,6 +89,7 @@ export function Shell({ page, section, children }: { page: Page; section?: Libra
     { key: "scout", icon: <FileSearchOutlined />, label: <Link href="/research" className="vs-nav-link" title="Đóng gói kịch bản · beta"><span className="vs-nav-label">Đóng gói kịch bản</span><span className="vs-nav-beta">beta</span></Link> },
     { key: "new", icon: <PlusOutlined />, label: <Link href="/" title="Video mới" data-tour="nav.new">Video mới</Link> },
     { key: "videos", icon: <UnorderedListOutlined />, label: <Link href="/videos" title="Các video" data-tour="nav.videos">Các video</Link> },
+    { key: "telemetry", icon: <BarChartOutlined />, label: <Link href="/telemetry" title="Số liệu">Số liệu</Link> },
     { key: "guide", icon: <ReadOutlined />, label: <Link href="/guide" title="Hướng dẫn" data-tour="nav.guide">Hướng dẫn</Link> },
     {
       key: "library",

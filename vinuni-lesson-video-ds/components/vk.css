@@ -1,6 +1,7 @@
 /* ==========================================================================
    VinUni Lesson Video — HTML chrome, beats, player and kit (imported by /styles.css).
-   Scene geometry is fixed px on a 1920×1080 stage; the player scales the whole stage.
+   Scene geometry is fixed px on the stage of the video's FORMAT (16x9 = 1920×1080, 9x16 = 1080×1920);
+   the player sets --stage-w/--stage-h plus the chrome offsets and scales the whole stage.
    ========================================================================== */
 
 /* ------------------------------------------------------------------ scene */
@@ -42,7 +43,7 @@
 }
 .vk-subtitle {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
-  height: var(--caption-h); padding: 14px 180px 15px;
+  height: var(--caption-h); padding: 14px var(--caption-pad-x, 180px) 15px;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
   background: var(--color-text); border-top: 2px solid var(--color-accent); box-shadow: var(--shadow-caption);
   color: var(--color-bg); font-size: var(--fs-caption); font-weight: 600; line-height: 1.3;
@@ -165,7 +166,8 @@
 }
 .vk-viewport { position: relative; flex: 1; min-height: 0; overflow: hidden; }
 .vk-stage {
-  position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+  position: absolute; left: 50%; top: 50%;
+  width: var(--stage-w, 1920px); height: var(--stage-h, 1080px);
   transform-origin: 50% 50%; overflow: hidden; background: var(--color-bg);
 }
 .vk-controls {

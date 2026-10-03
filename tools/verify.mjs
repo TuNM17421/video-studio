@@ -30,6 +30,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { detectQuestions, QUIZ_TAG } from './lib/qa-manifest.mjs';
+import { formatOf } from '../vinuni-lesson-video-ds/lib/tokens.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -112,6 +113,7 @@ for (const f of files.filter((x) => rel(x).startsWith('ui_kits/lesson-video/scen
   const src = fs.readFileSync(f, 'utf8');
   const id = (src.match(/id:\s*['"]([^'"]+)['"]/) || [])[1];
   const duration = Number((src.match(/duration:\s*(\d+)/) || [])[1]);
+  const sceneMax = formatOf((src.match(/format:\s*['"]([^'"]+)['"]/) || [])[1]).layout.captionMaxChars;
   const caps = [...src.matchAll(/\{\s*start:\s*(\d+),\s*end:\s*(\d+),\s*text:\s*(['"])((?:\\.|(?!\3).)*)\3/g)].map((m) => ({
     start: Number(m[1]),
     end: Number(m[2]),
@@ -120,7 +122,7 @@ for (const f of files.filter((x) => rel(x).startsWith('ui_kits/lesson-video/scen
   scenes.push({ id, duration, captions: caps.length, file: rel(f) });
   let prev = 0;
   for (const c of caps) {
-    if ([...c.text].length > 78) problems.push(`caption ${[...c.text].length} chars in ${rel(f)}: ${c.text}`);
+    if ([...c.text].length > sceneMax) problems.push(`caption ${[...c.text].length} chars in ${rel(f)} (tối đa ${sceneMax}): ${c.text}`);
     if (c.start !== prev) problems.push(`caption gap/overlap at frame ${c.start} in ${rel(f)}`);
     prev = c.end;
   }
@@ -214,13 +216,18 @@ for (const dir of videoDirs) {
         : 'const CUES = AUTHORED;'
     }
     import { cueCaptions } from ${JSON.stringify(path.join(DS, 'lib/captions.js'))};
-    import { ConfigContext, FrameContext } from ${JSON.stringify(path.join(DS, 'lib/player.jsx'))};
+    import { ConfigContext, FormatContext, FrameContext } from ${JSON.stringify(path.join(DS, 'lib/player.jsx'))};
+    import { formatOf } from ${JSON.stringify(path.join(DS, 'lib/tokens.js'))};
     import { checkBoard } from ${JSON.stringify(path.join(DS, 'components/whiteboard/board.js'))};
+    export const FORMAT = formatOf(meta.format);
     export { meta, CUES, AUTHORED, cueCaptions, checkBoard };
+    // Phải cấp FormatContext đúng khổ của video: thiếu nó thì cảnh khổ dọc được soát bằng toạ độ khổ
+    // ngang — vẫn render ra, vẫn "all checks passed", nhưng số đo là của một khung khác.
     export const renderAt = (frame) =>
       renderToStaticMarkup(
-        React.createElement(ConfigContext.Provider, { value: { fps: 30, width: 1920, height: 1080, durationInFrames: meta.duration } },
-          React.createElement(FrameContext.Provider, { value: frame }, React.createElement(Video))));
+        React.createElement(FormatContext.Provider, { value: FORMAT },
+          React.createElement(ConfigContext.Provider, { value: { fps: 30, width: FORMAT.width, height: FORMAT.height, durationInFrames: meta.duration } },
+            React.createElement(FrameContext.Provider, { value: frame }, React.createElement(Video)))));
   `;
   let mod;
   try {
@@ -253,17 +260,21 @@ for (const dir of videoDirs) {
     for (const w of board.warnings) warnings.push(`${where}: board — ${w}`);
   }
   // captions
-  const caps = cueCaptions(CUES.map((c) => ({ start: c.start, end: c.end, text: c.text, pause: c.pause })));
+  // Bề rộng phụ đề là của KHỔ, không phải một con số chung: 78 ký tự ở khổ ngang, 46 ở khổ dọc.
+  const capMax = mod.FORMAT.layout.captionMaxChars;
+  const caps = cueCaptions(CUES.map((c) => ({ start: c.start, end: c.end, text: c.text, pause: c.pause })), { max: capMax });
   let prev = 0;
   for (const c of caps) {
-    if ([...c.text].length > 78) problems.push(`${where}: caption ${[...c.text].length} chars: ${c.text}`);
+    if ([...c.text].length > capMax) problems.push(`${where}: caption ${[...c.text].length} chars (khổ ${mod.FORMAT.id} cho tối đa ${capMax}): ${c.text}`);
     if (c.start !== prev) problems.push(`${where}: caption gap/overlap at frame ${c.start}`);
     prev = c.end;
   }
   if (prev !== meta.duration) problems.push(`${where}: captions end at ${prev}, video at ${meta.duration}`);
   for (const cue of CUES) {
     const said = caps.filter((c) => c.start >= cue.start && c.end <= cue.end).map((c) => c.text).join(' ');
-    if (said !== cue.text.trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
+    // A silent cue authored as `{ silent: N }` has no `text` key at all — same shape tts.mjs's loadCues()
+    // used to crash on ("Cannot read properties of undefined (reading 'trim')").
+    if (said !== (cue.text ?? '').trim().replace(/\s+/g, ' ')) problems.push(`${where}: câu ${cue.n} captions do not match its narration`);
   }
   // quiz flag — read from cues.js, not the timeline: `quiz` / `silent` are authored fields that retiming
   // drops. The quiz bed replaces the background music over every flagged cue, so a flag on a spoken câu

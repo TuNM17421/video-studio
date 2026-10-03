@@ -160,7 +160,11 @@ async function loadCues(file) {
   // `pauseAfter` = seconds of silence after this cue (overrides --pause).
   return cues.map((c, i) => ({
     n: c.n ?? i + 1,
-    text: c.text.trim(),
+    // The validation above accepts a cue with only `silent` set (no `text` key at all — the documented
+    // shape below the map, and how the rest of this file already treats it: `spoken()` and the `items`
+    // builder both guard `c.text` before touching it). This line did not, and crashed every dry-run/generate
+    // the moment a cues.js added a text-less silent cue: "Cannot read properties of undefined (reading 'trim')".
+    text: (c.text ?? '').trim(),
     speaker: c.speaker || '',
     delivery: c.delivery || '',
     model: c.model || '',

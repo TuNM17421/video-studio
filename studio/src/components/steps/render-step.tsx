@@ -6,11 +6,14 @@ import { Button, Collapse, Empty, Segmented, Select } from "antd";
 import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
 import { BUILD_OPTIONS, buildLabel, DEFAULT_BUILD_NO, type BuildNo } from "@/lib/qa-manifest";
+import { FPS_OPTIONS, fpsHint, LEGACY_RENDER_FPS, renderSpecLabel } from "@/lib/render-spec";
+import type { RenderFps } from "@/lib/types";
 import { AgentLog, JobProgress, stageLogs } from "../agent-panel";
 import { ConfirmDialog } from "../confirm-dialog";
 import { HarnessPanel } from "../harness-panel";
 import { MusicPicker } from "../music-picker";
 import { ProductionState } from "../production-state";
+import { SfxPanel } from "./sfx-panel";
 import { post, StepBar, type StepProps } from "./shared";
 
 export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProps) {
@@ -28,10 +31,14 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
   // Which round of review this MP4 is. Not derivable from how many renders ran — a render repeated after
   // a crash is still the same round — so the person sending it says.
   const [buildNo, setBuildNo] = useState<BuildNo>(detail.state.buildNo ?? DEFAULT_BUILD_NO);
+  // Nhịp hình là quyết định lúc hoàn thiện như nhạc và phụ đề: cảnh đã dựng ở 30 fps dùng được cho cả hai
+  // mức, nên đổi ở đây không bắt dựng lại gì. Video làm trước lựa chọn này giữ 30.
+  const [fps, setFps] = useState<RenderFps>(detail.state.fps ?? LEGACY_RENDER_FPS);
   const [catalog, setCatalog] = useState<MusicCatalog>({ background: [], quiz: [] });
   const quizCues = detail.cues?.cues.filter((c) => c.quiz).length ?? 0;
+  const hasSfx = detail.state.request.modules.includes("sfx");
   useEffect(() => { api<MusicCatalog>("/api/music").then(setCatalog).catch(() => {}); }, []);
-  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic, captions, buildNo }));
+  const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic, captions, buildNo, fps }));
   const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["Manifest QA", a.qaManifest], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
   const complete = status === "done" && deliver === "done";
   const running = status === "running" || deliver === "running";
@@ -47,6 +54,17 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
         options={[{ value: "on", label: "Có" }, { value: "off", label: "Không" }]}
       />
       <small>{captions ? "Thanh phụ đề xanh, chữ trắng ở cuối khung hình." : "Video không có phụ đề."}</small>
+    </div>
+    <div className="vs-section-title">Nhịp hình</div>
+    <div className="vs-captions-picker">
+      <Segmented
+        aria-label="Nhịp hình của bản MP4"
+        value={fps}
+        disabled={busy}
+        onChange={(v) => setFps(v as RenderFps)}
+        options={FPS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+      />
+      <small>{fpsHint(fps)}</small>
     </div>
     <div className="vs-section-title">Bản dựng gửi QA</div>
     <div className="vs-captions-picker">
@@ -71,6 +89,11 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
     {quizCues === 0 && quizMusic !== NO_MUSIC && <p className="vs-music-note">
       Đã chọn nhạc quiz nhưng <code>cues.js</code> chưa câu nào đánh dấu <code>quiz: true</code> — nhạc quiz sẽ bị bỏ qua.
     </p>}
+    {/* Tiếng động quyết ở đây cùng nhạc: cả ba đều là quyết định lúc hoàn thiện, và đều cần giọng đã xong. */}
+    {hasSfx && <>
+      <div className="vs-section-title">Tiếng động</div>
+      <SfxPanel id={id} enabled={hasSfx} />
+    </>}
   </div>;
 
   return <>
@@ -80,7 +103,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
       {a.mp4 && <video className="video-player" src={fileUrl(a.mp4)} controls preload="metadata" />}
       {ready && <div className="render-specs">
-        <div><span>Định dạng</span><strong>MP4 · 1920×1080 · 30 fps</strong></div>
+        <div><span>Định dạng</span><strong>{renderSpecLabel(detail.state.request.format, fps)}</strong></div>
         <div><span>Phụ đề</span><strong>{detail.state.captions ? "Có" : "Không"}</strong></div>
         <div><span>Bản dựng</span><strong>{buildLabel(detail.state.buildNo ?? DEFAULT_BUILD_NO)}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
@@ -93,7 +116,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
       <HarnessPanel run={detail.harness.deliver} />
       {/* Before the first render the settings are the task; afterwards they only matter for a re-render. */}
       {ready && (a.mp4
-        ? <Collapse className="vs-render-settings" items={[{ key: "settings", label: "Cài đặt cho lần render lại", extra: <span className="quiet-label">phụ đề · bản dựng · nhạc</span>, children: settings }]} />
+        ? <Collapse className="vs-render-settings" items={[{ key: "settings", label: "Cài đặt cho lần render lại", extra: <span className="quiet-label">nhịp · phụ đề · bản dựng · nhạc</span>, children: settings }]} />
         : settings)}
       <AgentLog logs={runLogs} open={running} />
     </div>

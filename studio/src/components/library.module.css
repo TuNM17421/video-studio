@@ -839,3 +839,115 @@
   .mascotStage { border-right: 0; border-bottom: 1px solid var(--vu-border-subtle); }
   .mascotExtras { grid-template-columns: 1fr; }
 }
+
+/* ── Thư viện · Tiếng động ─────────────────────────────────────────────────────
+   Một lớp là một khối: tên lớp + trần của nó ở trên, rồi danh sách tiếng. Đọc theo chiều dọc được, vì
+   câu "khi nào dùng" mới là thứ giữ cho người sau không rải bừa — không phải cái nút nghe thử. */
+.sfxLayer {
+  padding: var(--vu-space-5) var(--vu-space-6);
+  display: grid;
+  gap: var(--vu-space-3);
+  border-top: 1px solid var(--vu-border-subtle);
+}
+
+.sfxLayerHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-3);
+}
+
+.sfxLayerHead h2 {
+  margin: 0;
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-lg);
+  line-height: var(--vu-leading-tight);
+}
+
+.sfxLayerHead code {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+}
+
+.sfxLayerCount {
+  margin-left: auto;
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+}
+
+.sfxLayerWhy {
+  margin: 0;
+  max-width: 78ch;
+  color: var(--vu-text-secondary);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-relaxed);
+}
+
+.sfxList {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--vu-space-1);
+  list-style: none;
+}
+
+.sfxRow {
+  padding: var(--vu-space-2) var(--vu-space-3);
+  display: grid;
+  grid-template-columns: var(--vu-control-md) minmax(0, 14rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--vu-space-3);
+  border: 1px solid var(--vu-border-subtle);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-surface-card);
+}
+
+.sfxIdentity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+
+.sfxIdentity :global(code) { font-family: var(--vu-font-utility); }
+
+.sfxSeconds {
+  color: var(--vu-text-muted);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+}
+
+.sfxUse {
+  margin: 0;
+  color: var(--vu-text-secondary);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-relaxed);
+}
+
+.sfxSource:global(.ant-btn) {
+  padding: 0;
+  height: auto;
+  font-size: var(--vu-text-2xs);
+}
+
+.sfxLicense {
+  margin: 0;
+  padding: var(--vu-space-4) var(--vu-space-6) var(--vu-space-6);
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-relaxed);
+}
+
+/* Hẹp thì nút nghe thử và id ở hàng trên, câu "khi nào dùng" xuống hàng dưới — không bóp chữ. */
+@media (max-width: 860px) {
+  .sfxRow {
+    grid-template-columns: var(--vu-control-md) minmax(0, 1fr) auto;
+  }
+
+  .sfxUse {
+    grid-column: 2 / -1;
+  }
+}

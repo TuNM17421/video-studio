@@ -1,24 +1,39 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { FPS, HEIGHT, WIDTH } from './tokens.js';
+import { DEFAULT_FORMAT, FORMATS, FPS, formatOf } from './tokens.js';
 
 /**
- * Frame clock + player for 1920×1080 · 30 fps scenes.
+ * Frame clock + player for a lesson scene · 30 fps.
  * A scene is a React component that renders a pure function of the frame. It reads the
  * frame with useFrame() (the Remotion equivalent is useCurrentFrame()).
  *
- * URL params: ?frame=120 (freeze + 1:1 capture) · ?t=4.2 · ?controls=0 · ?captions=0 · ?autoplay=0 · ?scene=id
+ * The canvas is whichever FORMAT the video was authored for — 16x9 (1920×1080, mặc định) or 9x16
+ * (1080×1920). A scene reads its canvas with useFormat() / useLayout() rather than the module-level
+ * WIDTH/HEIGHT/LAYOUT, so the same component tree works in either.
+ *
+ * URL params: ?frame=120 (freeze + 1:1 capture) · ?t=4.2 · ?controls=0 · ?captions=0 · ?autoplay=0
+ *             · ?scene=id · ?format=9x16
  */
 
 export const FrameContext = createContext(0);
-export const ConfigContext = createContext({ fps: FPS, width: WIDTH, height: HEIGHT, durationInFrames: 1 });
+export const FormatContext = createContext(FORMATS[DEFAULT_FORMAT]);
+export const ConfigContext = createContext({
+  fps: FPS,
+  width: FORMATS[DEFAULT_FORMAT].width,
+  height: FORMATS[DEFAULT_FORMAT].height,
+  durationInFrames: 1,
+});
 export const CaptionsContext = createContext(true);
 
 /** Scene-local frame (Remotion: useCurrentFrame). */
 export const useFrame = () => useContext(FrameContext);
 /** { fps, width, height, durationInFrames } (Remotion: useVideoConfig). */
 export const useVideoConfig = () => useContext(ConfigContext);
+/** The whole format record: { id, label, aspect, width, height, flow, layout }. */
+export const useFormat = () => useContext(FormatContext);
+/** Canvas geometry of the format being authored — use this, not the LAYOUT constant. */
+export const useLayout = () => useContext(FormatContext).layout;
 /** False when captions were switched off (?captions=0). */
 export const useCaptionsEnabled = () => useContext(CaptionsContext);
 
@@ -34,10 +49,18 @@ export function urlParams() {
     controls: q.get('controls') !== '0',
     captions: q.get('captions') !== '0',
     autoplay: q.get('autoplay') !== '0',
+    format: q.get('format'),
   };
 }
 
-const clampFrame = (f, duration) => Math.max(0, Math.min(duration - 1, Math.round(f)));
+/**
+ * Frames stay the authoring unit (30 fps), but a frame is not forced to be a whole number: a render that
+ * samples twice per frame asks for 40, 40.5, 41… and must get the picture in between, not frame 41 twice.
+ * Every motion helper already takes a continuous frame — `interpolate` is plain arithmetic and `spring`
+ * splits its input into whole + rest (lib/motion.js:141) — so the rounding here was the only thing
+ * quantising the clock. The interactive player still steps in whole frames (its rAF loop floors).
+ */
+const clampFrame = (f, duration) => Math.max(0, Math.min(duration - 1, f));
 
 /** Pictures give up after this long: a broken or missing file must not hang a render. */
 const PICTURE_TIMEOUT_MS = 5000;
@@ -74,21 +97,41 @@ const markerIndex = (markers, f) => {
   return k;
 };
 
-function useFit(ref, enabled) {
+function useFit(ref, enabled, width, height) {
   const [scale, setScale] = useState(0.5);
   useEffect(() => {
     if (!enabled || !ref.current) return undefined;
     const el = ref.current;
     const update = () => {
       const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) setScale(Math.min(r.width / WIDTH, r.height / HEIGHT));
+      if (r.width > 0 && r.height > 0) setScale(Math.min(r.width / width, r.height / height));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [enabled, ref]);
+  }, [enabled, ref, width, height]);
   return scale;
+}
+
+/**
+ * The format's geometry as CSS custom properties on the stage. The HTML chrome (eyebrow, watermark,
+ * footer, subtitle bar) is positioned in CSS, so it has to read the same numbers the SVG does — otherwise
+ * a vertical scene would draw its diagram in the right place and its subtitle bar in the horizontal one.
+ */
+function stageVars(format) {
+  const L = format.layout;
+  return {
+    '--stage-w': `${format.width}px`,
+    '--stage-h': `${format.height}px`,
+    '--safe-x': `${L.safeX}px`,
+    '--eyebrow-top': `${L.eyebrowTop}px`,
+    '--caption-h': `${L.captionHeight}px`,
+    '--caption-pad-x': `${L.captionPadX}px`,
+    '--footer-bottom': `${L.footerBottom}px`,
+    '--watermark-top': `${L.watermarkTop}px`,
+    '--watermark-right': `${L.watermarkRight}px`,
+  };
 }
 
 /** Mark the document ready once Montserrat is loaded and the first frame's pictures are decoded (headless capture). */
@@ -126,13 +169,15 @@ export function Player({
   capture = false,
   label,
   markers,
+  format: formatId,
 }) {
+  const format = formatOf(formatId);
   const [frame, setFrame] = useState(() => clampFrame(fixedFrame ?? 0, duration));
   const [playing, setPlaying] = useState(fixedFrame == null && autoplay);
   const frameRef = useRef(frame);
   frameRef.current = frame;
   const viewport = useRef(null);
-  const scale = useFit(viewport, !capture);
+  const scale = useFit(viewport, !capture, format.width, format.height);
 
   useEffect(() => {
     if (fixedFrame != null) {
@@ -146,6 +191,9 @@ export function Player({
   useEffect(() => {
     if (!capture || typeof window === 'undefined') return undefined;
     window.vkDuration = duration;
+    // The tools size their viewport from this instead of assuming 1920×1080: the video declares its
+    // format, render.mjs and shoot.mjs follow it. A vertical video needs no extra flag anywhere.
+    window.vkFormat = { id: format.id, width: format.width, height: format.height };
     window.vkSetFrame = async (f) => {
       // Commit synchronously (background capture tabs may not get animation frames), then give the
       // compositor one frame — or 50 ms if rAF is throttled — before the screenshot.
@@ -168,8 +216,9 @@ export function Player({
     return () => {
       delete window.vkSetFrame;
       delete window.vkDuration;
+      delete window.vkFormat;
     };
-  }, [capture, duration]);
+  }, [capture, duration, format]);
 
   useEffect(() => {
     if (!playing) return undefined;
@@ -219,14 +268,19 @@ export function Player({
   return (
     <div className={`vk-player${capture ? ' vk-player--capture' : ''}`}>
       <div className="vk-viewport" ref={viewport} onClick={controls ? () => setPlaying((p) => !p) : undefined}>
-        <div className="vk-stage" style={capture ? undefined : { transform: `translate(-50%, -50%) scale(${scale})` }}>
-          <ConfigContext.Provider value={{ fps, width: WIDTH, height: HEIGHT, durationInFrames: duration }}>
-            <CaptionsContext.Provider value={captions}>
-              <FrameContext.Provider value={frame}>
-                <Scene frame={frame} />
-              </FrameContext.Provider>
-            </CaptionsContext.Provider>
-          </ConfigContext.Provider>
+        <div
+          className="vk-stage"
+          style={{ ...stageVars(format), ...(capture ? null : { transform: `translate(-50%, -50%) scale(${scale})` }) }}
+        >
+          <FormatContext.Provider value={format}>
+            <ConfigContext.Provider value={{ fps, width: format.width, height: format.height, durationInFrames: duration }}>
+              <CaptionsContext.Provider value={captions}>
+                <FrameContext.Provider value={frame}>
+                  <Scene frame={frame} />
+                </FrameContext.Provider>
+              </CaptionsContext.Provider>
+            </ConfigContext.Provider>
+          </FormatContext.Provider>
         </div>
       </div>
       {controls ? (

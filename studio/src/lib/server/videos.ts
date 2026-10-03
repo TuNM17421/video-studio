@@ -2,13 +2,15 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
+import type { Artifacts, CuesInfo, StageId, StageStatus, VideoFormat, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isAgentProvider } from "../agent-providers";
 import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
-import { DEFAULT_BUILD_NO, isBuildNo, itemIdFor } from "../qa-manifest";
+import { DEFAULT_BUILD_NO, isBuildNo, ITEM_ID_MAX, itemIdFor } from "../qa-manifest";
+import { isRenderFps, LEGACY_RENDER_FPS } from "../render-spec";
 import { BASE_TEMPLATE_PATH } from "../modules";
 import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
+import { sfxCatalog } from "./sfx";
 import { styleGuideLine } from "./style-guides";
 import { defaultVoiceId, listVoices } from "./catalog";
 import { videoCost } from "./cost";
@@ -22,7 +24,9 @@ export const DEFAULT_VOICE = { source: "elevenlabs" as const, voiceId: "", model
 /** A brand-new video starts on the catalog's default narrator; an existing one keeps whatever it stored. */
 export const newVoice = () => ({ ...DEFAULT_VOICE, voiceId: defaultVoiceId() });
 
-type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions" | "review" | "buildNo"> & {
+type LegacyVideoState = Omit<VideoState, "agent" | "music" | "captions" | "review" | "buildNo" | "fps"> & {
+  /** Missing before the frame rate could be chosen — those videos were QA'd at 30 and keep it. */
+  fps?: unknown;
   /** Missing before the QA-platform manifest; every older video is a first submission. */
   buildNo?: unknown;
   /** Missing before cross-review became a per-video switch. */
@@ -68,6 +72,9 @@ export function normalizeVideoState(value: unknown): VideoState {
     music,
     captions: stored.captions !== false,
     buildNo: isBuildNo(stored.buildNo) ? stored.buildNo : DEFAULT_BUILD_NO,
+    // Not DEFAULT_RENDER_FPS: a video made before this choice existed was QA'd at 30 fps, and a re-render
+    // must not silently change the frame rate of a build somebody already approved.
+    fps: isRenderFps(stored.fps) ? stored.fps : LEGACY_RENDER_FPS,
     // Videos made before cross-review could be switched keep the behaviour they had: review on.
     review: normalizeReview(stored.review),
   } as VideoState;
@@ -151,10 +158,29 @@ export function readState(id: string): { state: VideoState; managed: boolean } {
     sceneBuilder: "agent",
     scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true },
   };
+  return { state: unmanagedState(id, request, inferredStages(artifacts(id, day))), managed: false };
+}
+
+/**
+ * State dựng cho một video làm **ngoài** Video Studio: không có state.json, nên mọi thứ suy ra từ file trên
+ * đĩa. Tách ra khỏi `readState` để kiểm được bằng test — `readState` gắn với cây thư mục của repo.
+ *
+ * Nhịp hình là `LEGACY_RENDER_FPS`, **không** phải mặc định của video mới: những video này đã render xong ở
+ * 30 fps và Studio không render lại chúng được, nên khai 60 chỉ là nói sai về một file đã nằm trên đĩa.
+ */
+export function unmanagedState(id: string, request: VideoRequest, stages: Record<StageId, StageStatus>): VideoState {
   const now = new Date().toISOString();
   return {
-    state: { id, createdAt: now, updatedAt: now, request, agent: { provider: "claude", sessionId: null }, stages: inferredStages(artifacts(id, day)), voice: newVoice(), music: { ...SILENT }, captions: true, buildNo: DEFAULT_BUILD_NO, review: { ...DEFAULT_REVIEW }, lastError: null },
-    managed: false,
+    id, createdAt: now, updatedAt: now, request,
+    agent: { provider: "claude", sessionId: null },
+    stages,
+    voice: newVoice(),
+    music: { ...SILENT },
+    captions: true,
+    fps: LEGACY_RENDER_FPS,
+    buildNo: DEFAULT_BUILD_NO,
+    review: { ...DEFAULT_REVIEW },
+    lastError: null,
   };
 }
 
@@ -226,10 +252,28 @@ export function qaImages(id: string) {
     : []);
 }
 
+/**
+ * A `projects/<id>/` holding nothing but `.studio/` is bookkeeping, not a video. The workflow ledger writes
+ * `projects/<videoId>/.studio/runs.jsonl` for every run, and a run's `videoId` is not always a video: the
+ * research pipeline passes `research-<rid>` as its telemetry ref (`research/agent.ts`), so one directory
+ * appeared in this list per research turn. A video made outside Studio always has more than that — its
+ * script and renders in `projects/<id>/`, or its scenes in the design system.
+ */
+export function isLedgerOnlyProject(roots: { project: string; scenes: string; state: string }) {
+  if (exists(roots.state) || exists(roots.scenes)) return false;
+  return exists(roots.project) && fs.readdirSync(roots.project).every((entry) => entry === ".studio");
+}
+
 export function listVideos(): VideoSummary[] {
   const ids = new Set<string>();
   const projects = path.join(REPO, "projects");
-  if (exists(projects)) for (const d of fs.readdirSync(projects, { withFileTypes: true })) if (d.isDirectory()) ids.add(d.name);
+  if (exists(projects)) {
+    for (const d of fs.readdirSync(projects, { withFileTypes: true })) {
+      if (!d.isDirectory()) continue;
+      if (isLedgerOnlyProject({ project: projectDir(d.name), scenes: videoDir(d.name), state: stateFile(d.name) })) continue;
+      ids.add(d.name);
+    }
+  }
   return [...ids].sort().flatMap((id) => {
     let read: ReturnType<typeof readState>;
     // One video whose state.json cannot be read must not take the list of every other video down with it;
@@ -332,6 +376,49 @@ function quizSection(enabled: boolean) {
  * Griffin is opt-in. The design system ships the component and the agent would otherwise be free to use it,
  * so the request says so either way — on: how to place it; off: not at all.
  */
+/**
+ * Danh mục tiếng phải nằm TRONG REQUEST.md, không chỉ trong file module: catalog đổi theo kho media (thêm
+ * một tiếng là thêm một mục trong `sfx.json`), và agent chỉ được gọi id có thật — bịa một id thì chỗ đó
+ * lặng lẽ rơi khỏi bản trộn. Cùng lý do với danh sách nhân vật của video hội thoại.
+ */
+function sfxSection(enabled: boolean) {
+  if (!enabled) {
+    return [
+      "## Tiếng động",
+      "",
+      "Video này **không** có tiếng động: không viết dòng `- **Tiếng:**` hay `- **Nền:**` trong kịch bản.",
+      "",
+    ];
+  }
+  const catalog = sfxCatalog();
+  const lines = [
+    "## Tiếng động",
+    "",
+    "Video này có tiếng động. Chỗ nào thấy rõ là phải có tiếng thì khai thẳng trong kịch bản bằng dòng",
+    "`- **Tiếng:** <id> @ \"<cụm từ trong lời>\"` của câu đó, hoặc `- **Nền:** <id>` ngay dưới tiêu đề một phần.",
+    "Không khai gì cũng được — Studio tự đề xuất sau khi có giọng, và người dựng duyệt từng chỗ ở bước Render.",
+    "",
+    "**Chỉ được dùng id có trong danh mục dưới đây.** Id khác sẽ bị bỏ khi dựng bản trộn.",
+    "",
+  ];
+  for (const layer of catalog.layers) {
+    const sounds = catalog.sounds.filter((s) => s.layer === layer.id);
+    if (!sounds.length) continue;
+    const limit = layer.max != null
+      ? ` · trần cứng ${layer.max} lần cả video`
+      : layer.maxPerMinute != null ? ` · ngân sách ${layer.maxPerMinute} sự kiện mỗi phút` : "";
+    lines.push(`**${layer.label}**${limit}`, "");
+    for (const sound of sounds) lines.push(`- \`${sound.id}\` — ${sound.use}`);
+    lines.push("");
+  }
+  lines.push(
+    "Không đặt tiếng vào khoảng chờ quiz, không đặt giữa một con số hay tên riêng đang đọc, và không đặt ở",
+    "chỗ trên hình không có gì thay đổi.",
+    "",
+  );
+  return lines;
+}
+
 function mascotSection(enabled: boolean) {
   if (!enabled) {
     return [
@@ -356,13 +443,94 @@ function mascotSection(enabled: boolean) {
   ];
 }
 
+
+/** Nhãn người đọc của khổ hình. */
+export const FORMAT_LABEL: Record<string, string> = {
+  "16x9": "Ngang 16:9 · 1920×1080 (máy tính, LMS)",
+  "9x16": "Dọc 9:16 · 1080×1920 (điện thoại)",
+};
+
+/**
+ * Khổ hình phải được soát như `isModuleId` soát năng lực, vì cùng một lý do: một giá trị lạ lọt qua thành
+ * "không khai" rồi im lặng về 16:9, mà REQUEST.md là thứ agent tuân theo khi đặt toạ độ đầu tiên.
+ */
+export const isVideoFormat = (value: unknown): value is VideoFormat => value === "16x9" || value === "9x16";
+
+/**
+ * `VideoRequest` của một video mới, dựng từ thân request của bước Kế hoạch — cắt độ dài, bỏ trường lạ, soát
+ * khổ hình. Tách khỏi route API vì chỗ này **đã** đánh rơi một trường: nó liệt kê từng trường một, nên
+ * `format` không bao giờ vào `state.json` và REQUEST.md luôn dặn agent dựng ngang dù người dùng chọn dọc.
+ * Là hàm thuần thì test giữ được đủ trường, và lần sau thêm trường mới mà quên ở đây thì test đỏ.
+ */
+export function videoRequestFromBody(
+  r: VideoRequest,
+  { modules, scriptName }: { modules: string[]; scriptName: string },
+): VideoRequest {
+  // Soát như `isModuleId` soát năng lực: một khổ lạ không được im lặng thành "không khai" rồi về 16:9, vì
+  // khung là luật dựng cảnh trong REQUEST.md chứ không phải một dòng ghi chú.
+  if (r.format !== undefined && !isVideoFormat(r.format)) throw new HttpError(400, `Không có khổ hình: ${String(r.format)}`);
+  if (r.sceneBuilder !== undefined && !["agent", "claude-design"].includes(String(r.sceneBuilder))) {
+    throw new HttpError(400, "Chỗ dựng cảnh không hợp lệ.");
+  }
+  return {
+    sceneBuilder: r.sceneBuilder === "claude-design" ? "claude-design" : "agent",
+    style: r.style,
+    format: r.format ?? "16x9",
+    modules,
+    day: r.day,
+    itemId: String(r.itemId || "").trim().slice(0, ITEM_ID_MAX),
+    title: String(r.title || "").slice(0, 200),
+    scriptName: String(scriptName || "").slice(0, 200),
+    feedbackDir: r.feedbackDir || "",
+    oldVideoDir: r.oldVideoDir || "",
+    notes: String(r.notes || "").slice(0, 5000),
+    scope: { scenes: true, voice: !!r.scope.voice, render: !!r.scope.render, transcript: !!r.scope.transcript, chapters: !!r.scope.chapters },
+  };
+}
+
+/**
+ * Khổ hình đi vào REQUEST.md như một **luật dựng cảnh**, không phải một dòng ghi chú: agent phải biết nó
+ * đang bày nội dung trên khung nào trước khi đặt toạ độ đầu tiên. #62 đã đo cái giá của việc biết sau —
+ * render khung dọc từ cảnh ngang chỉ cắt mất góc phải, 44 % khung còn lại là khoảng trắng.
+ */
+function formatSection(format: string) {
+  if (format !== "9x16") {
+    return [
+      "## Khổ hình",
+      "",
+      "Khổ **ngang 16:9** (1920×1080) — mặc định. `video.jsx` không cần khai `format` trong `meta`.",
+      "",
+    ];
+  }
+  return [
+    "## Khổ hình — DỌC 9:16",
+    "",
+    "Video này dựng cho **khung dọc 1080×1920** (điện thoại). Đây không phải bản cắt của khổ ngang:",
+    "cảnh phải được bày lại theo cột ngay từ đầu.",
+    "",
+    "- `video.jsx` khai `format: '9x16'` trong `meta`. Thiếu dòng này thì player, ảnh QA và render đều",
+    "  chạy ở khổ ngang và cảnh bị cắt mất bên phải.",
+    "- Toạ độ lấy từ `useLayout()` (`lib/player.jsx`), **không** dùng hằng số `LAYOUT`: hằng số đó là khổ ngang.",
+    "- Vùng nội dung: x 48–1032, y 360–1740. Mọi thứ nằm ngoài khoảng đó bị cắt hoặc chui xuống thanh phụ đề.",
+    "- **Bày theo cột, không theo hàng.** Khổ ngang kể chuyện trái → phải (nhân vật hai bên, sơ đồ nằm ngang);",
+    "  khổ dọc kể trên → xuống (nhân vật xếp chồng, mũi tên đi xuống, so sánh A/B là hai thẻ chồng lên nhau",
+    "  chứ không phải cạnh nhau). Mẫu: `ui_kits/lesson-video/scenes/11-doc-cot-9x16.jsx`.",
+    "- Mỗi màn chỉ chứa được **ít khối hơn** khổ ngang: bề ngang chỉ còn 56 %. Thà tách thêm cảnh còn hơn nhồi.",
+    "- Phụ đề chỉ **46 ký tự** một dòng (khổ ngang là 78). Gọi `cueCaptions(CUES, { max: L.captionMaxChars })`.",
+    "- Chrome đã tự xếp lại: watermark ở trên, eyebrow xuống dưới nó — đừng tự đặt lại hai thứ đó.",
+    "",
+  ];
+}
+
 export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string) {
+  const format = r.format || "16x9";
   const lines = [
     `# Yêu cầu dựng video ${id}`,
     "",
     `- Tên video: ${r.title || id}`,
     `- Mã item gửi QA: ${itemIdFor(r.itemId, id)}`,
     `- Style: ${styleName(r.style)} (\`styles/${r.style}.json\`)`,
+    `- Khổ hình: ${FORMAT_LABEL[format] || format}`,
     ...(styleGuideLine(r.style) ? [`- ${styleGuideLine(r.style)}`] : []),
     `- Ngày: ${r.day}`,
     `- Kịch bản: \`projects/${id}/kich-ban-goc.md\`${r.scriptName ? ` (tệp gốc: ${r.scriptName})` : ""}`,
@@ -373,9 +541,11 @@ export function requestMarkdown(id: string, r: VideoRequest, agentLabel?: string
     `- Dựng cảnh: ${r.sceneBuilder === "claude-design" ? "Claude Design (người dựng dán brief sang claude.ai/design rồi mang kết quả về)" : "agent chạy ở máy"}`,
     `- Bổ sung: ${r.modules.length ? r.modules.map((m) => moduleById(m)?.name || m).join(", ") : "không có"}`,
     "",
+    ...formatSection(format),
     ...moduleSections(r.modules),
     ...quizSection(r.modules.includes("quiz")),
     ...mascotSection(r.modules.includes("mascot")),
+    ...sfxSection(r.modules.includes("sfx")),
     "## Ghi chú",
     "",
     r.notes.trim() || "Không có.",

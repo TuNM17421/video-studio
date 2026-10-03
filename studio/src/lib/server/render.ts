@@ -1,10 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import { pickRenderAudio } from "../../../../tools/lib/render-audio.mjs";
 import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
-import { finishJob, isRunning, jobHandled, log, ownJob, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, importedPage, mp4Path, rel, transcriptPath, voiceOut } from "./paths";
+import { mixApproved } from "./sfx-plan";
+import { finishJob, isRunning, jobHandled, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
+import { HttpError, importedPage, mp4Path, qaManifestPath, REPO, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
 /** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
@@ -38,7 +40,21 @@ async function renderSteps(id: string, base: string) {
   startJob(id, "render");
   setStage(id, "render", "running");
   // Opens this run in the shared log — the scenes gate also starts with "Build design system".
-  log(id, "system", `Bắt đầu render · phụ đề ${state.captions ? "có" : "không"}`);
+  log(id, "system", `Bắt đầu render · ${state.fps} fps · phụ đề ${state.captions ? "có" : "không"}`);
+  // Tiếng động được trộn lại NGAY TRƯỚC khi render, theo đúng những chỗ đang duyệt trong panel. Bắt người
+  // dùng tự chạy `sfx-mix` rồi báo lỗi khi bản trộn cũ hơn giọng là một ngõ cụt: Studio không có nút nào
+  // chạy lệnh đó. Chưa duyệt chỗ nào thì `mixApproved` xoá bản trộn cũ và render dùng lại giọng gốc.
+  if (state.request.modules.includes("sfx")) {
+    log(id, "system", "Trộn tiếng động đã duyệt");
+    const mixed = await mixApproved(id, (line) => log(id, "output", line));
+    if (!mixed) log(id, "system", "Chưa duyệt chỗ nào — render không có tiếng động.");
+  }
+  // A layered-SFX mix (tools/sfx-mix.mjs → projects/<id>/voice-sfx.wav) replaces the raw narration when it is
+  // newer; rendering the raw file after a mix silently drops every accent, and no gate would catch it.
+  const pick = pickRenderAudio(id, REPO, { voiceRawRel: rel(wav) });
+  if (pick.stale) throw new HttpError(409, pick.note);
+  const audio = pick.audio ?? rel(wav);
+  log(id, "system", `Âm thanh: ${pick.note}`);
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
     log(id, "system", label);
     setProgress(id, null, label);
@@ -64,7 +80,7 @@ async function renderSteps(id: string, base: string) {
   // dựng bằng agent ở máy rồi nhập thêm bản của Claude Design để so sẽ bị render nhầm bản, không một lời báo.
   const imported = state.request.sceneBuilder === "claude-design" ? importedPage(id) : null;
   const renderOk = await step("Render MP4", process.execPath, [
-    "tools/render.mjs", "--scene", id, "--audio", rel(wav), "--out", rel(mp4Path(id)),
+    "tools/render.mjs", "--scene", id, "--audio", audio, "--out", rel(mp4Path(id)),
     // Cảnh dựng bên Claude Design không nằm trong khuôn videos/<id>/ của repo, nên chụp thẳng trang của nó.
     // `--scene` vẫn giữ: render.mjs đọc cues.js của video để lấy mốc nhạc quiz và đối chiếu độ dài giọng.
     ...(imported ? ["--url", `${base}/ds-bundle/cd/${id}/${imported}`] : ["--base", `${base}/ds`]),
@@ -72,6 +88,10 @@ async function renderSteps(id: string, base: string) {
     "--music-track", background,
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
     ...(state.captions ? [] : ["--no-captions"]),
+    // Always explicit, like the music track: `--fps 30` is the same sampling as no flag, and a render log
+    // that names the rate is the only place the choice shows up afterwards. The scenes are untouched either
+    // way — cues.js, voice.js and every beat stay whole frames at 30 fps.
+    "--fps", String(state.fps),
     ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
     const m = line.match(/(\d+)\/(\d+) frames/);
@@ -94,9 +114,20 @@ async function renderSteps(id: string, base: string) {
     "--title", state.request.title || id,
     "--build", String(state.buildNo),
     "--captions", state.captions ? "yes" : "no",
+    // Nhịp hình của chính bản MP4 vừa render. Thiếu cờ này thì manifest lấy nhịp của bản thu (30) và khai
+    // sai cho một bản 60 fps; qa-manifest đối chiếu số này với file thật nên lệch là dừng, không ghi ra.
+    "--fps", String(state.fps),
     "--mp4", rel(mp4Path(id)),
   ]);
   if (!manifestOk) return fail("Không tạo được manifest.json cho platform QA, xem nhật ký.");
+  // manifest.json's duration is ffprobe'd off the MP4 itself and cross-checked against the voice — the
+  // one length in this whole pipeline that is actually verified, not estimated. USD/phút rides on it.
+  try {
+    const manifest = JSON.parse(fs.readFileSync(qaManifestPath(id), "utf8")) as { duration_sec?: number };
+    if (typeof manifest.duration_sec === "number") recordJobMetrics(id, { videoDurationSec: manifest.duration_sec });
+  } catch (error) {
+    log(id, "error", `Không đọc được thời lượng từ manifest.json cho telemetry: ${error instanceof Error ? error.message : String(error)}`);
+  }
   setStage(id, "render", "done");
   finishJob(id, "done");
   // chapters + PROMPTS.md need judgement (chapter titles), so the agent finishes the delivery. The MP4 is

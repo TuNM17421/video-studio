@@ -48,10 +48,14 @@ export function listModules(): ModuleDef[] {
       icon: meta.icon ?? "",
       template: `templates/modules/${file}`,
       previewKey: meta.preview || undefined,
+      isDefault: meta.default === "true",
       order: Number.isFinite(Number(meta.order)) && meta.order !== "" ? Number(meta.order) : 100,
     });
   }
-  return list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)).map(({ order: _order, ...m }) => m);
+  return list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)).map(({ order, ...m }) => {
+    void order;
+    return m;
+  });
 }
 
 /** The catalog with sample videos resolved to URLs — the form cannot reach the media manifest itself. */

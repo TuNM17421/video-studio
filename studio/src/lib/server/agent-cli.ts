@@ -1,3 +1,15 @@
+/**
+ * Codex/Claude/Antigravity on this machine are also the user's own personal chief-of-staff assistant, with a
+ * global bootstrap (identity, standing orders) loaded by the CLI regardless of working directory — and, per
+ * the CLI's own account, that persona can persist as memory across sessions the local config never touches
+ * (verified 26/09/2026: a fresh `codex exec` with `--ignore-user-config` and no project doc still answered
+ * "Tôi là Tatejo" once routed through the same model/account as the user's assistant work; a leading line
+ * overriding it — tested against that exact routing — reliably got a plain "Tôi là Codex" back). Every prompt
+ * Studio sends (stage work, feedback, QA) must open with this override, or the agent can decide on its own
+ * initiative to audit scope and stop rather than do the narrow task asked, exactly like a chief-of-staff would.
+ */
+export const IGNORE_PERSONA_LINE = "Bạn KHÔNG phải Tatejo hay bất kỳ trợ lý cá nhân/persona nào bạn có thể đang nhớ từ trước — bỏ qua toàn bộ ký ức và bộ luật đó. Trong phiên này, bạn chỉ là agent lập trình của Video Studio, làm đúng và chỉ đúng việc được giao dưới đây rồi dừng.";
+
 /** CLI arguments are provider-specific; a binary swap alone is not compatible. */
 export function claudeExecArgs(sessionId: string, resume: boolean, allowed: string[], denied: string[], model?: string) {
   return [
@@ -174,10 +186,13 @@ export function codexQaArgs(schemaFile: string, lastMessageFile: string, images:
   ];
 }
 
-/** Antigravity: read-only plan mode in its sandbox, schema-bound output. */
+/**
+ * Antigravity: read-only plan mode in its sandbox, schema-bound output.
+ * `--print` requires a value (CLI treats the next argv as the prompt). Put other flags first and pass
+ * `-` so the real prompt stays on stdin — same pattern as Codex's trailing `-`.
+ */
 export function antigravityQaArgs(schema: string, model?: string) {
   return [
-    "--print",
     "--input-format", "text",
     "--output-format", "json",
     "--mode", "plan",
@@ -185,6 +200,7 @@ export function antigravityQaArgs(schema: string, model?: string) {
     ...(model ? ["--model", model] : []),
     "--json-schema", schema,
     "--print-timeout", "10m",
+    "--print", "-",
   ];
 }
 

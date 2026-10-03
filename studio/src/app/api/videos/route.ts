@@ -3,14 +3,15 @@ import path from "node:path";
 import type { AgentProvider, VideoRequest, VideoState } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { SILENT } from "@/lib/music";
-import { DEFAULT_BUILD_NO, ITEM_ID_MAX } from "@/lib/qa-manifest";
+import { DEFAULT_BUILD_NO } from "@/lib/qa-manifest";
+import { DEFAULT_RENDER_FPS } from "@/lib/render-spec";
 import { normalizeReview } from "@/lib/review";
 import { defaultBackground } from "@/lib/server/music";
 import { readAgentConfig, resolveAgentProvider, reviewDefaults } from "@/lib/server/agent-config";
 import { handle } from "@/lib/server/http";
 import { assertId, DAY_RE, exists, HttpError, projectDir, STYLES, videoDir } from "@/lib/server/paths";
 import { cleanModules, isModuleId, moduleById } from "@/lib/server/modules";
-import { listVideos, newVoice, requestMarkdown, styleName, styleUnsupportedModules, writeState } from "@/lib/server/videos";
+import { listVideos, newVoice, requestMarkdown, styleName, styleUnsupportedModules, videoRequestFromBody, writeState } from "@/lib/server/videos";
 
 export const GET = handle(() => Response.json(listVideos()));
 
@@ -41,16 +42,7 @@ export const POST = handle(async (req: Request) => {
   if (unknown.length) throw new HttpError(400, `Không có năng lực bổ sung: ${unknown.join(", ")}`);
   const blocked = modules.filter((m) => styleUnsupportedModules(r.style).includes(m));
   if (blocked.length) throw new HttpError(400, `${styleName(r.style)} chưa hỗ trợ: ${blocked.map((m) => moduleById(m)?.name || m).join(", ")}`);
-  if (r.sceneBuilder !== undefined && !["agent", "claude-design"].includes(String(r.sceneBuilder))) {
-    throw new HttpError(400, "Chỗ dựng cảnh không hợp lệ.");
-  }
-  const request: VideoRequest = {
-    sceneBuilder: r.sceneBuilder === "claude-design" ? "claude-design" : "agent",
-    style: r.style, modules, day: r.day, itemId: String(r.itemId || "").trim().slice(0, ITEM_ID_MAX),
-    title: String(r.title || "").slice(0, 200), scriptName: String(body.script.name || "").slice(0, 200),
-    feedbackDir: r.feedbackDir || "", oldVideoDir: r.oldVideoDir || "", notes: String(r.notes || "").slice(0, 5000),
-    scope: { scenes: true, voice: !!r.scope.voice, render: !!r.scope.render, transcript: !!r.scope.transcript, chapters: !!r.scope.chapters },
-  };
+  const request = videoRequestFromBody(r, { modules, scriptName: body.script.name });
   fs.mkdirSync(path.join(projectDir(id), "render"), { recursive: true });
   fs.writeFileSync(path.join(projectDir(id), "render", ".gitkeep"), "");
   fs.writeFileSync(path.join(projectDir(id), "kich-ban-goc.md"), content.endsWith("\n") ? content : `${content}\n`);
@@ -63,6 +55,9 @@ export const POST = handle(async (req: Request) => {
     // Both tracks are chosen at render; the bed starts on the catalog's default, the quiz track on none.
     music: { ...SILENT, background: defaultBackground() },
     captions: true,
+    // Video mới render 60 fps; hạ về 30 được ở bước Render. Cảnh vẫn dựng ở 30 fps dù chọn gì — nhịp chỉ là
+    // mật độ lấy mẫu lúc render (lib/render-spec.ts).
+    fps: DEFAULT_RENDER_FPS,
     buildNo: DEFAULT_BUILD_NO,
     review: normalizeReview(body.review, reviewDefaults()),
     lastError: null,

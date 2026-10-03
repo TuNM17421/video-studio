@@ -4,7 +4,10 @@ import { Player, markReady, urlParams } from '../../lib/player.jsx';
 
 /**
  * Scene kit browser: scene templates and complete example videos on the left, a player on the right.
- * Entries: [{ id, title, pattern, duration, component, markers? }]. ?scene=<id> selects an entry;
+ * Entries: [{ id, title, pattern, duration, component, markers?, format? }]. ?scene=<id> selects an entry;
+ * an entry's `format` ('16x9' mặc định · '9x16') comes straight from its video.jsx `meta`, so the kit, the
+ * QA stills and the render all use the canvas the video was authored for. ?format=<id> overrides it for a
+ * quick look — it does NOT re-lay-out the scene, so use it to inspect, not to publish.
  * ?scene=<id>&frame=<n> renders that frame alone at 1:1 (for capture / QA). Videos expose their cue
  * starts as `markers` (the "jump to" menu in the player).
  */
@@ -23,7 +26,18 @@ export function KitApp({ scenes, videos = [] }) {
 
   if (!scene) return null;
   if (params.frame != null) {
-    return <Player key={scene.id} scene={scene.component} duration={scene.duration} frame={params.frame} controls={false} captions={params.captions} capture />;
+    return (
+      <Player
+        key={scene.id}
+        scene={scene.component}
+        duration={scene.duration}
+        frame={params.frame}
+        controls={false}
+        captions={params.captions}
+        format={params.format || scene.format}
+        capture
+      />
+    );
   }
   const item = (s, i) => (
     <button type="button" key={s.id} className={`vk-kit__item${i === index ? ' is-active' : ''}`} onClick={() => setIndex(i)}>
@@ -58,6 +72,7 @@ export function KitApp({ scenes, videos = [] }) {
           autoplay={params.autoplay}
           label={scene.id}
           markers={scene.markers}
+          format={params.format || scene.format}
         />
       </main>
     </div>

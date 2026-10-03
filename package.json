@@ -17,6 +17,7 @@
     "build": "node tools/build.mjs",
     "verify": "node tools/verify.mjs",
     "workflow": "node tools/video-workflow.mjs",
+    "telemetry:sync": "node tools/telemetry-sync.mjs",
     "serve": "python3 -m http.server 8765 --bind 127.0.0.1 --directory vinuni-lesson-video-ds",
     "voices": "node tools/voices-list.mjs",
     "media": "node tools/media-push.mjs",

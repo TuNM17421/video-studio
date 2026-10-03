@@ -5,7 +5,7 @@ export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 import type { ImagesView } from "./images";
 
-export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
+export type JobKind = StageId | "research" | "images" | "sfx" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
@@ -13,6 +13,22 @@ export interface AgentConfig {
   selectionLocked: boolean;
   /** Cross-review defaults for new videos, and which CLIs this machine actually has. */
   review: { defaults: ReviewSettings; installed: AgentProvider[] };
+}
+
+/** `/api/gateway-settings` — the 9router cost-tracking toggle for Codex, plus a live diagnosis. */
+export interface GatewayStatus {
+  status: "disabled" | "unreachable" | "key_missing" | "ok";
+  message: string;
+  settings: { enabled: boolean; keyName: string; profile: string };
+}
+
+/** `/api/telemetry-settings` — where video metrics are sent; `hasToken` only, the token itself never round-trips. */
+export interface TelemetryStatus {
+  url: string;
+  hasToken: boolean;
+  autoSync: boolean;
+  ok: boolean;
+  message: string;
 }
 
 /** Cross-review of scene stills by a separate read-only session (lib/review.ts). Changeable any time. */
@@ -35,8 +51,23 @@ export interface Scope {
   chapters: boolean;
 }
 
+/**
+ * Khổ hình của video — chọn ở bước Kế hoạch, TRƯỚC khi dựng cảnh, vì nó đổi cách bày nội dung chứ không
+ * chỉ đổi cỡ khung. Xem `vinuni-lesson-video-ds/lib/tokens.js` → FORMATS.
+ */
+export type VideoFormat = "16x9" | "9x16";
+
+/**
+ * Nhịp hình của bản MP4 (`render.mjs --fps`) — chọn ở bước Render, KHÁC với khổ hình ở trên: khổ đổi cách
+ * bày cảnh nên phải chọn trước khi dựng, còn nhịp chỉ là mật độ lấy mẫu lúc render. Danh mục lựa chọn và
+ * mặc định ở `lib/render-spec.ts`.
+ */
+export type RenderFps = 30 | 60;
+
 export interface VideoRequest {
   style: string;
+  /** Khổ hình; bỏ trống = "16x9" (video làm trước khi có lựa chọn này). */
+  format?: VideoFormat;
   /** Tính năng nội dung chọn thêm (lib/modules.ts), ví dụ "dialogue" hoặc "quiz". */
   modules: string[];
   day: string;
@@ -288,6 +319,12 @@ export interface VideoState {
   /** Burn the navy subtitle bar into the MP4 (render step; off = render.mjs --no-captions). */
   captions: boolean;
   /**
+   * Nhịp hình của bản MP4 (`render.mjs --fps`), chọn ở bước Render. Đây là đơn vị lúc *render*, không phải
+   * lúc dựng cảnh: cảnh vẫn viết bằng frame nguyên ở 30 fps, nên đổi nhịp không đụng cue, giọng hay cảnh.
+   * Video mới mặc định 60; video tạo trước khi có lựa chọn này giữ 30 (lib/render-spec.ts).
+   */
+  fps: RenderFps;
+  /**
    * Bản dựng thứ mấy của video này, gửi cho platform QA (`build_no`): 1 gửi soát lần đầu, 2 sau sửa,
    * 3 bản phát hành. Người dựng chọn ở bước Render — số lần render không suy ra được điều này.
    */
@@ -324,6 +361,8 @@ export interface Cue {
   silent: boolean;
   /** Part of a question the viewer is meant to answer — the quiz track plays over these cues. */
   quiz: boolean;
+  /** Tiếng động kịch bản đã khai cho câu này (dòng `- **Tiếng:**`), nếu có. */
+  sfx: { id: string; word: string | null } | null;
   start: number;
   end: number;
 }
@@ -426,6 +465,8 @@ export interface QaFindingItem {
   runId?: string | null;
   /** The review run that no longer saw it (set when QA verifies it). */
   resolvedBy?: string;
+  /** The QA run that stopped seeing the finding; `resolvedBy` keeps the same value for the review panel. */
+  verifiedBy?: string;
   /** Why the user skipped it (status wontfix), and when. */
   skipReason?: string | null;
   decidedAt?: string;
@@ -601,5 +642,58 @@ export interface LibraryGroup {
 
 export interface Library {
   groups: LibraryGroup[];
-  videos: { id: string; player: string }[];
+  videos: { id: string; player: string; format?: string }[];
+}
+
+/**
+ * `/api/telemetry-local` — this machine's outbox as the "Số liệu" tab shows it. Built from a field whitelist:
+ * values never outside it reach the browser, and a key outside it is reported by name only.
+ * `acked` is only what sync-state.json receipts establish; there is no per-event "failed" state, because the
+ * uploader only records the last attempt's error for the whole run.
+ */
+export type TelemetryEventStatus = "acked" | "pending" | "blocked" | "rejected";
+
+export interface TelemetryPreviewEvent {
+  status: TelemetryEventStatus;
+  /** Why the uploader would refuse it (field path, never its value). */
+  blockedReason: string | null;
+  /** Why the collector refused it, from `outbox.rejected.jsonl`: the uploader will not try it again. */
+  rejectedReason: string | null;
+  /** Keys outside the preview whitelist that the raw event carries. */
+  extraKeys: string[];
+  event: Record<string, unknown>;
+}
+
+export interface TelemetryVideoMetrics {
+  video: string;
+  runs: number;
+  finished: number;
+  errors: number;
+  durationMs: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  /** Sum of measured costs only; null when no event carried a cost with a source. */
+  costUsd: number | null;
+  costMeasured: number;
+  costUnknown: number;
+  feedbackOpen: number;
+  lastAt: string | null;
+}
+
+export interface LocalTelemetry {
+  outbox: { total: number; unreadableLines: number; byType: Record<string, number> };
+  counts: { acked: number; pending: number; blocked: number; rejected: number };
+  receipts: {
+    found: boolean;
+    lastAttemptAt: string | null;
+    lastSuccessAt: string | null;
+    lastFailureAt: string | null;
+    lastError: string | null;
+  };
+  sending: { url: string; hasToken: boolean; autoSync: boolean; enabled: boolean; syncing: boolean };
+  /** Encrypted, opt-in AI logs: counted only — their content is never previewed. */
+  aiLogs: { count: number; enabled: boolean; rejected: number };
+  videos: TelemetryVideoMetrics[];
+  preview: TelemetryPreviewEvent[];
+  previewLimit: number;
 }

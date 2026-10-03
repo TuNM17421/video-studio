@@ -1,0 +1,2 @@
+# Local verification only: Caddy's own CA, not trusted by browsers.
+tls internal

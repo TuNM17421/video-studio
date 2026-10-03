@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { normalizeVideoState, requestMarkdown, styleUnsupportedModules } from "./videos";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { DEFAULT_RENDER_FPS, LEGACY_RENDER_FPS, renderSpecLabel } from "../render-spec";
+import type { VideoRequest } from "../types";
+import { isLedgerOnlyProject, normalizeVideoState, requestMarkdown, styleUnsupportedModules, unmanagedState, videoRequestFromBody } from "./videos";
 
 const storedState = {
   id: "d2-01-lab",
@@ -35,6 +40,92 @@ describe("video agent binding migration", () => {
   it("keeps captions on for states saved before captions were optional", () => {
     expect(normalizeVideoState(storedState).captions).toBe(true);
     expect(normalizeVideoState({ ...storedState, captions: false }).captions).toBe(false);
+  });
+
+  // 60 fps is the default for a NEW video only. An older one was QA'd at 30, and a re-render must not
+  // quietly hand the QA team a different frame rate than the build they approved.
+  it("leaves a video made before the frame-rate choice at 30 fps, not the new default", () => {
+    expect(normalizeVideoState(storedState).fps).toBe(LEGACY_RENDER_FPS);
+    expect(normalizeVideoState(storedState).fps).toBe(30);
+    expect(DEFAULT_RENDER_FPS).toBe(60);
+  });
+
+  it("keeps a stored frame rate and refuses a value render.mjs would not take", () => {
+    expect(normalizeVideoState({ ...storedState, fps: 60 }).fps).toBe(60);
+    expect(normalizeVideoState({ ...storedState, fps: 30 }).fps).toBe(30);
+    for (const bad of [0, 24, 59, 120, "60", null, true]) {
+      expect(normalizeVideoState({ ...storedState, fps: bad }).fps).toBe(LEGACY_RENDER_FPS);
+    }
+  });
+});
+
+describe("frame rate of a video made outside Studio", () => {
+  // These have no state.json, so readState synthesises one from the files on disk. They were rendered at 30
+  // long ago and Studio refuses to render them at all, so the new default would only misreport an MP4 that
+  // already exists. Caught by creating a video through the running API, not by the migration test above:
+  // the first version of this change put DEFAULT_RENDER_FPS here and d2-01-lab then reported 60 fps.
+  const stages = { cues: "done", voice: "done", scenes: "done", render: "done", deliver: "done" } as const;
+  it("reports 30 fps, not the default for new videos", () => {
+    const state = unmanagedState("d2-01-lab", { ...storedState.request } as VideoRequest, { ...stages });
+    expect(state.fps).toBe(LEGACY_RENDER_FPS);
+    expect(state.fps).not.toBe(DEFAULT_RENDER_FPS);
+  });
+});
+
+describe("render spec line", () => {
+  // The line was hardcoded "MP4 · 1920×1080 · 30 fps", which is two lies at once once a video can be
+  // vertical and rendered at 60.
+  it("names this video's own frame size and the rate about to be rendered", () => {
+    expect(renderSpecLabel("16x9", 60)).toBe("MP4 · 1920×1080 · 60 fps");
+    expect(renderSpecLabel("9x16", 30)).toBe("MP4 · 1080×1920 · 30 fps");
+    expect(renderSpecLabel(undefined, 30)).toBe("MP4 · 1920×1080 · 30 fps");
+  });
+});
+
+describe("VideoRequest của video mới", () => {
+  // Lỗi thật: route dựng lại `request` theo từng trường và bỏ sót `format`, nên chọn "Dọc 9:16" ở bước Kế
+  // hoạch không có tác dụng gì — state.json không lưu khổ, REQUEST.md dặn agent dựng ngang. requestMarkdown
+  // vốn đã xử lý đúng, nên chỉ test nó thì không bắt được gì; phải test chính chỗ dựng lại.
+  const body = {
+    style: "lesson", format: "9x16", modules: ["quiz"], day: "Day03", itemId: "  10.1  ", title: "Tên",
+    scriptName: "bị bỏ qua.md", feedbackDir: "/tmp/fb", oldVideoDir: "/tmp/old", notes: "ghi chú",
+    sceneBuilder: "claude-design",
+    scope: { scenes: true, voice: true, render: true, transcript: false, chapters: true },
+  } as VideoRequest;
+  const opts = { modules: ["quiz"], scriptName: "that.md" };
+
+  it("giữ khổ hình người dùng chọn", () => {
+    expect(videoRequestFromBody(body, opts).format).toBe("9x16");
+    expect(videoRequestFromBody({ ...body, format: "16x9" }, opts).format).toBe("16x9");
+    expect(videoRequestFromBody({ ...body, format: undefined }, opts).format).toBe("16x9");
+  });
+
+  it("khổ lạ bị từ chối, không im lặng về 16:9", () => {
+    for (const bad of ["16:9", "9X16", "4x3", "", 0, null]) {
+      expect(() => videoRequestFromBody({ ...body, format: bad as never }, opts)).toThrow(/khổ hình/i);
+    }
+  });
+
+  // Chốt ngược lại cái lỗi gốc: liệt kê từng trường là dễ quên một trường, nên test đòi ĐỦ khoá của
+  // VideoRequest. Thêm trường mới vào type mà quên ở đây thì test này đỏ.
+  it("không đánh rơi trường nào của VideoRequest", () => {
+    const out = videoRequestFromBody(body, opts);
+    expect(Object.keys(out).sort()).toEqual(Object.keys(body).sort());
+    expect(out).toEqual({
+      style: "lesson", format: "9x16", modules: ["quiz"], day: "Day03", itemId: "10.1", title: "Tên",
+      scriptName: "that.md", feedbackDir: "/tmp/fb", oldVideoDir: "/tmp/old", notes: "ghi chú",
+      sceneBuilder: "claude-design",
+      scope: { scenes: true, voice: true, render: true, transcript: false, chapters: true },
+    });
+  });
+
+  it("khổ dọc thành luật dựng cảnh trong REQUEST.md, khổ ngang thì không", () => {
+    const doc = requestMarkdown("zz-doc", videoRequestFromBody(body, opts), "Claude");
+    expect(doc).toContain("Dọc 9:16");
+    expect(doc).toContain("9x16");
+    const ngang = requestMarkdown("zz-ngang", videoRequestFromBody({ ...body, format: "16x9" }, opts), "Claude");
+    expect(ngang).toContain("Ngang 16:9");
+    expect(ngang).not.toContain("theo cột");
   });
 });
 
@@ -109,5 +200,66 @@ describe("chỗ dựng cảnh", () => {
   it("giá trị lạ không được lọt qua — rơi về agent chứ không giữ nguyên", () => {
     const state = normalizeVideoState({ ...storedState, request: { ...storedState.request, sceneBuilder: "cursor" } });
     expect(state.request.sceneBuilder).toBe("agent");
+  });
+});
+
+describe("what counts as a video in projects/", () => {
+  const roots: string[] = [];
+  afterEach(() => { for (const d of roots.splice(0)) fs.rmSync(d, { recursive: true, force: true }); });
+
+  function fixture(entries: string[]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "list-videos-"));
+    roots.push(root);
+    const project = path.join(root, "projects", "x");
+    for (const entry of entries) {
+      fs.mkdirSync(path.join(project, entry), { recursive: true });
+    }
+    if (!entries.length) fs.mkdirSync(project, { recursive: true });
+    return { project, scenes: path.join(root, "ds", "x"), state: path.join(project, ".studio", "state.json") };
+  }
+
+  it("skips a directory the workflow ledger made for a non-video run (research-<rid>)", () => {
+    expect(isLedgerOnlyProject(fixture([".studio"]))).toBe(true);
+  });
+
+  it("keeps a video made outside Studio: no state.json, but a script or scenes of its own", () => {
+    expect(isLedgerOnlyProject(fixture([".studio", "render"]))).toBe(false);
+    const scenesOnly = fixture([".studio"]);
+    fs.mkdirSync(scenesOnly.scenes, { recursive: true });
+    expect(isLedgerOnlyProject(scenesOnly)).toBe(false);
+  });
+
+  it("keeps a Studio video whose only directory is .studio, because state.json is in it", () => {
+    const managed = fixture([".studio"]);
+    fs.writeFileSync(managed.state, "{}");
+    expect(isLedgerOnlyProject(managed)).toBe(false);
+  });
+});
+
+describe("khổ hình trong REQUEST.md", () => {
+  const base = { ...storedState.request, modules: [] as string[], itemId: "" };
+
+  it("khổ ngang là mặc định và không bắt agent khai gì thêm", () => {
+    const md = requestMarkdown("d2-01-lab", { ...base } as never);
+    expect(md).toContain("- Khổ hình: Ngang 16:9");
+    expect(md).toContain("không cần khai `format`");
+    expect(md).not.toContain("DỌC 9:16");
+  });
+
+  it("khổ dọc nói rõ ba thứ agent không thể tự đoán: meta.format, vùng nội dung, số ký tự phụ đề", () => {
+    const md = requestMarkdown("d2-01-lab", { ...base, format: "9x16" } as never);
+    expect(md).toContain("- Khổ hình: Dọc 9:16");
+    expect(md).toContain("## Khổ hình — DỌC 9:16");
+    expect(md).toContain("format: '9x16'");
+    // Vùng nội dung và bề rộng phụ đề là hai con số agent sẽ đặt sai nếu không được bảo.
+    expect(md).toContain("x 48–1032, y 360–1740");
+    expect(md).toContain("46 ký tự");
+    // Và lý do, để agent không chỉ đổi số mà bày lại thật.
+    expect(md).toContain("Bày theo cột, không theo hàng");
+  });
+
+  it("video cũ không có trường format thì vẫn ra khổ ngang, không vỡ", () => {
+    const md = requestMarkdown("cu", { ...base, format: undefined } as never);
+    expect(md).toContain("- Khổ hình: Ngang 16:9");
   });
 });
