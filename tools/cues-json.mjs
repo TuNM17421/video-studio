@@ -27,6 +27,9 @@ const cues = (mod.CUES || []).map((c) => ({
   visual: c.visual || '',
   silent: Boolean(c.silent),
   quiz: Boolean(c.quiz),
+  // `sfx` của câu: Studio đọc để biết kịch bản đã tự khai tiếng nào (dòng `- **Tiếng:**` của mẫu), và
+  // hiện nó trong panel duyệt như một đề xuất đã có sẵn. Chuẩn hoá về một dạng: { id, word }.
+  sfx: c.sfx ? (typeof c.sfx === 'string' ? { id: c.sfx, word: null } : { id: c.sfx.id, word: c.sfx.word ?? null }) : null,
   start: c.start,
   end: c.end,
 }));

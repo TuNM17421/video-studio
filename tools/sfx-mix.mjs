@@ -33,6 +33,8 @@
  *   4. `storyboard.json` beat nào khai `sfx: { id, gainDb?, pan?, burst? }` — cách MỚI, và là chỗ
  *      đúng: beat ở đó đã khai `anchor` (cụm từ) + `cue`, tức là cùng một mốc mà HÌNH đang neo vào.
  *   5. `storyboard.json` cảnh nào khai `ambience: { id, gainDb?, fadeSec? }` — bed của cả cảnh.
+ *   6. `--plan <file.json>` — danh sách ĐÃ ĐƯỢC NGƯỜI DỰNG DUYỆT trong Studio. Thay cho 1–4 (xem
+ *      chỗ đọc `--plan` bên dưới), và luôn chạy chế độ phân lớp.
  *
  * Frame của một beat = `cue.startFrame + spokenAt(cue, anchor)` — ĐÚNG phép tính mà `beatT()` của
  * `lib/poster/stage.jsx` làm lúc render (nó cộng thêm một bước đổi sang giây authored, nhưng mốc
@@ -88,8 +90,12 @@ const fail = (m) => { console.error(`✗ ${m}`); process.exit(1); };
 const usage = `Trộn SFX vào track lời theo LỚP (accent · transition · foley · ambience).
 
   node tools/sfx-mix.mjs --video <id> --out <file.wav> [--db -6] [--dry] [--json]
-                         [--cuesheet <file.md>] [--stem <file.wav>] [--no-duck] [--legacy]
+                         [--plan <file.json>] [--cuesheet <file.md>] [--stem <file.wav>]
+                         [--no-duck] [--legacy]
 
+  --plan      danh sách tiếng ĐÃ DUYỆT (Studio ghi ra từ panel "Tiếng động"); thay cho cả ba
+              nguồn tự động, nên tiếng người dùng vừa bỏ không quay lại bản trộn
+  --window    <frameĐầu>:<frameCuối> — chỉ xuất một đoạn, để nghe thử một chỗ
   --dry       chỉ in danh sách tiếng + gain, không gọi ffmpeg
   --db        mức nền chung, mặc định -6 (âm = nhỏ hơn)
   --legacy    ép chạy luật cũ kể cả khi storyboard có khai lớp
@@ -134,7 +140,41 @@ const spokenAt = mod.spokenAt;
 const sbFile = path.join(REPO, 'projects', videoId, 'storyboard.json');
 const storyboard = fs.existsSync(sbFile) ? JSON.parse(fs.readFileSync(sbFile, 'utf8')) : null;
 const declaresLayers = Boolean(storyboard?.scenes?.some((s) => s.ambience || (s.beats || []).some((b) => b.sfx)));
-const layered = declaresLayers && !args.legacy;
+
+/**
+ * `--plan <file>`: danh sách tiếng ĐÃ ĐƯỢC NGƯỜI DỰNG DUYỆT, do Studio ghi ra từ panel "Tiếng động".
+ *
+ * Plan thay cho CẢ BA nguồn tự động (whoosh mở màn, whoosh mỗi section, `sfx:` trong cues.js) chứ không
+ * cộng thêm vào chúng — vì panel đã hiện cả ba thứ đó ra để duyệt hoặc bỏ. Cộng thêm thì một tiếng người
+ * dùng vừa bỏ sẽ quay lại trong bản trộn, đúng kiểu lỗi âm thầm mà cả file này đang tránh.
+ *
+ * Mỗi mục `hits[]`: `{ id, cue, anchor }` (mốc = lúc đọc tới cụm từ) hoặc `{ id, frame }` (mốc tuyệt đối,
+ * cho tiếng mở màn), kèm `offsetMs` · `gainDb` · `pan` · `burst` như beat của storyboard.
+ * Mỗi mục `beds[]`: `{ id, fromCue, toCue }` hoặc `{ id, frame, frames }`, kèm `gainDb` · `fadeSec`.
+ */
+/**
+ * `--window <frameĐầu>:<frameCuối>` — chỉ xuất ĐÚNG một đoạn, để nghe thử một chỗ mà không phải trộn cả
+ * phim. Mức, mốc và duck tính y hệt bản đầy đủ (cùng đoạn mã bên dưới); chỉ khác chỗ cắt và chỗ dời
+ * `adelay` về đầu đoạn. Nhờ vậy cái tai nghe thử đúng là cái sẽ nằm trong bản giao.
+ */
+let win = null;
+if (args.window && args.window !== true) {
+  const m = String(args.window).match(/^(\d+):(\d+)$/);
+  if (!m) fail('--window phải là <frameĐầu>:<frameCuối>');
+  win = { from: Number(m[1]), to: Number(m[2]) };
+  if (!(win.to > win.from)) fail('--window: frame cuối phải lớn hơn frame đầu');
+}
+
+const planFile = args.plan && args.plan !== true ? path.resolve(String(args.plan)) : null;
+if (planFile && !fs.existsSync(planFile)) fail(`không thấy ${path.relative(REPO, planFile)}`);
+let plan = null;
+if (planFile) {
+  try { plan = JSON.parse(fs.readFileSync(planFile, 'utf8')); } catch (e) { fail(`${path.relative(REPO, planFile)} không đọc được: ${e.message}`); }
+  if (!Array.isArray(plan.hits) && !Array.isArray(plan.beds)) fail(`${path.relative(REPO, planFile)} không có \`hits\` hay \`beds\``);
+  // Plan rỗng chỉ hợp lệ khi đang cắt một đoạn để nghe thử bản KHÔNG tiếng (so A/B).
+  if (!win && !(plan.hits || []).length && !(plan.beds || []).length) fail('plan không có tiếng nào');
+}
+const layered = plan ? true : (declaresLayers && !args.legacy);
 
 // ── chọn vị trí ───────────────────────────────────────────────────────────────
 // Ba nguồn đầu giống hệt chế độ cổ điển, để một video đang chạy luật cũ không đổi một tiếng nào khi
@@ -164,33 +204,120 @@ if (declaresLayers) {
   }
 }
 
-const hits = [{ frame: 0, id: 'whoosh-long', why: 'mở màn' }];
-let lastSection = null;
-for (const t of timing) {
-  const c = sceneById.get(t.n) || {};
-  // Fix double-subtract: chế độ cổ điển trừ LEAD_FRAMES ở đây rồi dùng h.frame trực tiếp làm
-  // startFrame. Chế độ phân lớp dùng h.frame là MỐC ĐÍCH (đỉnh tiếng phải rơi đúng chỗ này) và
-  // tính startFrame = h.frame - peakAtMs_frames ở dưới — không trừ LEAD_FRAMES ở đây nữa.
-  const frame = Math.max(0, layered ? t.startFrame : t.startFrame - LEAD_FRAMES);
-  if (layered && c.sfx && typeof c.sfx === 'object' && overridden.has(`${t.n}\u0000${c.sfx.word}`)) {
-    // storyboard đã khai cho đúng mốc này — bỏ bản cũ, không để hai tiếng chồng lên nhau.
-  } else if (c.sfx) {
-    // Dạng { id, word }: căn theo lúc ĐỌC TỚI chữ đó, không phải đầu cue — hiệu ứng trên hình cũng
-    // bám spokenAt nên tiếng và hình mới rơi cùng chỗ.
-    const id = typeof c.sfx === 'string' ? c.sfx : c.sfx.id;
-    const at = typeof c.sfx === 'string' || !c.sfx.word
-      ? frame
-      : Math.max(0, t.startFrame + spokenAt(t.n, c.sfx.word) - (layered ? 0 : LEAD_FRAMES));
-    hits.push({ frame: at, id, why: `cue ${t.n}${c.sfx.word ? ` · "${c.sfx.word}"` : ''}` });
-  } else if (c.section && c.section !== lastSection && lastSection !== null) {
-    hits.push({ frame, id: 'whoosh', why: `vào section "${c.section}"` });
+/** Cue mang cụm từ này: tìm đúng cách `beatT()` tìm lúc render — cue ĐẦU TIÊN của cảnh đó chứa cụm. */
+function cueForAnchor(anchor, sceneId) {
+  if (sceneId == null) {
+    return [...timingByN.values()].find((x) => String(x.text || '').includes(String(anchor)))
+      || sceneCueList.filter((c) => String(c.text || '').includes(String(anchor))).map((c) => timingByN.get(c.n)).find(Boolean);
   }
-  if (c.section) lastSection = c.section;
+  return [...timingByN.values()].find((x) => x.scene === sceneId && String(x.text || '').includes(String(anchor)))
+    || sceneCueList.filter((c) => c.scene === sceneId && String(c.text || '').includes(String(anchor)))
+      .map((c) => timingByN.get(c.n)).find(Boolean);
+}
+
+/** Một khai báo → một hoặc nhiều hit (`burst` là một chuỗi, nhưng vẫn là MỘT sự kiện khi tính ngân sách). */
+function expand(decl, at, why, extra = {}) {
+  const out = [];
+  const n = Math.max(1, Number(decl.burst?.count ?? 1));
+  const spacing = Number(decl.burst?.spacingMs ?? 0);
+  // `burst.ramp`: hệ số nhân khoảng cách giữa hai tiếng liên tiếp. <1 là dồn nhanh dần, >1 là thưa dần.
+  const ramp = Number(decl.burst?.ramp ?? 1);
+  let offMs = 0;
+  let gap = spacing;
+  for (let k = 0; k < n; k += 1) {
+    out.push({
+      frame: Math.max(0, at + Math.round((offMs / 1000) * FPS)),
+      id: decl.id,
+      why: `${why}${n > 1 ? ` (${k + 1}/${n})` : ''}`,
+      gainDb: decl.gainDb,
+      pan: decl.pan,
+      burst: n > 1,
+      burstIndex: n > 1 ? k : null,
+      ...extra,
+    });
+    offMs += gap;
+    gap *= ramp;
+  }
+  return out;
+}
+
+const hits = [];
+let lastSection = null;
+if (plan) {
+  for (const h of plan.hits || []) {
+    if (!h || !h.id) fail('plan: một mục `hits` thiếu `id`');
+    let at;
+    let anchorKey = null;
+    if (h.anchor != null) {
+      const t = h.cue != null ? timingByN.get(Number(h.cue)) : cueForAnchor(h.anchor, h.scene);
+      if (!t) fail(`plan: không cue nào chứa cụm "${h.anchor}"${h.cue != null ? ` (khai cue ${h.cue})` : ''}`);
+      try { at = t.startFrame + spokenAt(t.n, String(h.anchor)); } catch (e) { fail(`plan · "${h.anchor}": ${e.message}`); }
+      anchorKey = { scene: h.scene ?? t.scene ?? null, anchor: h.anchor };
+    } else if (Number.isFinite(Number(h.frame))) {
+      at = Math.max(0, Number(h.frame));
+    } else if (h.cue != null) {
+      const t = timingByN.get(Number(h.cue));
+      if (!t) fail(`plan: voice.cues.json không có cue ${h.cue}`);
+      at = t.startFrame;
+    } else {
+      fail(`plan · "${h.id}": phải khai \`anchor\`, \`cue\` hoặc \`frame\``);
+    }
+    at += Math.round(((Number(h.offsetMs) || 0) / 1000) * FPS);
+    hits.push(...expand(h, Math.max(0, at), h.why || (h.anchor ? `"${h.anchor}"` : `frame ${at}`), anchorKey || {}));
+  }
+}
+if (!plan) {
+  // Hai tiếng tự đặt: whoosh mở màn và whoosh ở đầu mỗi section. Với `--plan` chúng KHÔNG tự thêm —
+  // panel của Studio hiện chúng ra như mọi chỗ khác để người dựng bỏ được.
+  hits.push({ frame: 0, id: 'whoosh-long', why: 'mở màn' });
+  for (const t of timing) {
+    const c = sceneById.get(t.n) || {};
+    // Fix double-subtract: chế độ cổ điển trừ LEAD_FRAMES ở đây rồi dùng h.frame trực tiếp làm
+    // startFrame. Chế độ phân lớp dùng h.frame là MỐC ĐÍCH (đỉnh tiếng phải rơi đúng chỗ này) và
+    // tính startFrame = h.frame - peakAtMs_frames ở dưới — không trừ LEAD_FRAMES ở đây nữa.
+    const frame = Math.max(0, layered ? t.startFrame : t.startFrame - LEAD_FRAMES);
+    if (layered && c.sfx && typeof c.sfx === 'object' && overridden.has(`${t.n}\u0000${c.sfx.word}`)) {
+      // storyboard đã khai cho đúng mốc này — bỏ bản cũ, không để hai tiếng chồng lên nhau.
+    } else if (c.sfx) {
+      // Dạng { id, word }: căn theo lúc ĐỌC TỚI chữ đó, không phải đầu cue — hiệu ứng trên hình cũng
+      // bám spokenAt nên tiếng và hình mới rơi cùng chỗ.
+      const id = typeof c.sfx === 'string' ? c.sfx : c.sfx.id;
+      const at = typeof c.sfx === 'string' || !c.sfx.word
+        ? frame
+        : Math.max(0, t.startFrame + spokenAt(t.n, c.sfx.word) - (layered ? 0 : LEAD_FRAMES));
+      hits.push({ frame: at, id, why: `cue ${t.n}${c.sfx.word ? ` · "${c.sfx.word}"` : ''}` });
+    } else if (c.section && c.section !== lastSection && lastSection !== null) {
+      hits.push({ frame, id: 'whoosh', why: `vào section "${c.section}"` });
+    }
+    if (c.section) lastSection = c.section;
+  }
+
 }
 
 /** Bed của một cảnh: từ frame đầu cue đầu tới hết cue cuối của cảnh đó. */
 const beds = [];
-if (layered) {
+if (plan) {
+  for (const b of plan.beds || []) {
+    if (!b || !b.id) fail('plan: một mục `beds` thiếu `id`');
+    let from;
+    let frames;
+    if (b.fromCue != null) {
+      const a = timingByN.get(Number(b.fromCue));
+      const z = timingByN.get(Number(b.toCue ?? b.fromCue));
+      if (!a || !z) fail(`plan · bed "${b.id}": voice.cues.json không có cue ${b.fromCue}–${b.toCue}`);
+      from = a.startFrame;
+      frames = z.endFrame - a.startFrame;
+    } else {
+      from = Math.max(0, Number(b.frame) || 0);
+      frames = Number(b.frames) || 0;
+    }
+    if (!(frames > 0)) fail(`plan · bed "${b.id}": khoảng phủ rỗng`);
+    beds.push({
+      id: b.id, scene: b.scene || null, frame: from, frames, gainDb: b.gainDb, fadeSec: Number(b.fadeSec ?? 1.2),
+      why: b.why || (b.fromCue != null ? `bed câu ${b.fromCue}–${b.toCue ?? b.fromCue}` : `bed từ frame ${from}`),
+    });
+  }
+} else if (layered) {
   for (const sc of storyboard.scenes) {
     for (const b of sc.beats || []) {
       if (!b.sfx) continue;
@@ -213,28 +340,7 @@ if (layered) {
       // `offsetMs`: dịch so với mốc lời. Âm = trước. Dùng cho riser (phải căng dần TỚI cú nhấn) và
       // cho tiếng đi kèm một chuyển động bắt đầu sau khi câu đã đọc xong.
       at += Math.round(((Number(decl.offsetMs) || 0) / 1000) * FPS);
-      const n = Math.max(1, Number(decl.burst?.count ?? 1));
-      const spacing = Number(decl.burst?.spacingMs ?? 0);
-      // `burst.ramp`: hệ số nhân khoảng cách giữa hai tiếng liên tiếp. <1 là dồn nhanh dần (chuỗi
-      // "tách" của cảnh bùng nổ tổ hợp), >1 là thưa dần.
-      const ramp = Number(decl.burst?.ramp ?? 1);
-      let offMs = 0;
-      let gap = spacing;
-      for (let k = 0; k < n; k += 1) {
-        hits.push({
-          frame: Math.max(0, at + Math.round((offMs / 1000) * FPS)),
-          id: decl.id,
-          why: `${sc.id} · "${b.anchor}"${n > 1 ? ` (${k + 1}/${n})` : ''}`,
-          scene: sc.id,
-          anchor: b.anchor,
-          gainDb: decl.gainDb,
-          pan: decl.pan,
-          burst: n > 1,
-          burstIndex: n > 1 ? k : null,
-        });
-        offMs += gap;
-        gap *= ramp;
-      }
+      hits.push(...expand(decl, at, `${sc.id} · "${b.anchor}"`, { scene: sc.id, anchor: b.anchor }));
     }
     if (sc.ambience) {
       const decl = typeof sc.ambience === 'string' ? { id: sc.ambience } : sc.ambience;
@@ -249,7 +355,7 @@ if (layered) {
       const to = cues[cues.length - 1].endFrame;
       beds.push({
         id: decl.id, scene: sc.id, frame: from, frames: to - from,
-        gainDb: decl.gainDb, fadeSec: Number(decl.fadeSec ?? 1.2),
+        gainDb: decl.gainDb, fadeSec: Number(decl.fadeSec ?? 1.2), why: `bed cảnh "${sc.id}"`,
       });
     }
   }
@@ -335,7 +441,19 @@ if (!ffmpeg) { try { ffmpeg = require('ffmpeg-static'); } catch { ffmpeg = 'ffmp
 const gainOf = (db) => (10 ** (db / 20)).toFixed(4);
 /** `asplit` chỉ được tách khi có người lấy nhánh thứ hai — ffmpeg từ chối một output không ai nối. */
 const wantStem = Boolean(args.stem && args.stem !== true);
-const inputs = ['-i', voiceWav];
+// Nghe thử một đoạn: cắt giọng ngay ở đầu vào, và chỉ giữ những tiếng rơi vào đoạn đó. Mọi mức đã tính
+// xong ở trên nên đoạn nghe thử mang đúng gain, đúng duck của bản đầy đủ.
+const winFrom = win ? win.from / FPS : 0;
+const inputs = win
+  ? ['-ss', winFrom.toFixed(3), '-t', ((win.to - win.from) / FPS).toFixed(3), '-i', voiceWav]
+  : ['-i', voiceWav];
+/** ms của `adelay`: trong chế độ `--window` tính từ đầu đoạn, ngoài ra tính từ đầu phim. */
+const delayMs = (startFrame) => Math.max(0, Math.round((startFrame / FPS - winFrom) * 1000));
+if (win) {
+  const inWindow = (f) => f >= win.from && f < win.to;
+  for (let i = hits.length - 1; i >= 0; i -= 1) if (!inWindow(hits[i].startFrame)) hits.splice(i, 1);
+  for (let i = beds.length - 1; i >= 0; i -= 1) if (beds[i].frame + beds[i].frames <= win.from || beds[i].frame >= win.to) beds.splice(i, 1);
+}
 const chains = [];
 const labels = ['[0:a]'];
 
@@ -344,18 +462,26 @@ if (!layered) {
   const gain = gainOf(baseDb);
   hits.forEach((h, i) => {
     inputs.push('-i', fileOf(h.id));
-    const ms = Math.round((h.startFrame / FPS) * 1000);
+    const ms = delayMs(h.startFrame);
     chains.push(`[${i + 1}:a]adelay=${ms}|${ms},volume=${gain}[s${i}]`);
     labels.push(`[s${i}]`);
   });
   chains.push(`${labels.join('')}amix=inputs=${labels.length}:duration=first:dropout_transition=0:normalize=0[aout]`);
+} else if (!hits.length && !beds.length) {
+  // Đoạn nghe thử bản KHÔNG tiếng: không có bus SFX nào để trộn (`amix=inputs=0` là lỗi của ffmpeg),
+  // nhưng vẫn phải đi qua ĐÚNG limiter cuối của chế độ phân lớp. Bỏ nó thì hai bản A/B khác nhau cả ở
+  // phần giọng, và tai nghe ra "bản không tiếng nghe khác" trong khi đáng lẽ chỉ thiếu mỗi tiếng.
+  // `aformat` trước limiter là bắt buộc, không phải cho đẹp: giọng là MONO, mà nhánh có tiếng đã thành
+  // stereo lúc qua `amix`. Mono nóng hơn mỗi kênh stereo 3 dB nên limiter chạm ở nhánh này mà không chạm
+  // ở nhánh kia — đo thật: chênh lệch A/B trải đều cả đoạn thay vì chỉ còn mỗi tiếng.
+  chains.push('[0:a]aformat=channel_layouts=stereo,alimiter=limit=0.966:attack=2:release=40:level=disabled[aout]');
 } else {
   const sfxLabels = [];
   let idx = 0;
   for (const h of hits) {
     idx += 1;
     inputs.push('-i', fileOf(h.id));
-    const ms = Math.round((h.startFrame / FPS) * 1000);
+    const ms = delayMs(h.startFrame);
     const steps = [`volume=${gainOf(h.db)}`];
     if (h.panPos) {
       // Pan công suất không đổi: lệch sang một bên không làm tiếng to/nhỏ đi.
@@ -370,7 +496,7 @@ if (!layered) {
     idx += 1;
     // `-stream_loop -1` để một bed 20–30 giây phủ được một cảnh dài hơn nó; `atrim` cắt về đúng cảnh.
     inputs.push('-stream_loop', '-1', '-i', fileOf(b.id));
-    const ms = Math.round((b.frame / FPS) * 1000);
+    const ms = delayMs(b.frame);
     const sec = b.frames / FPS;
     const fade = Math.min(b.fadeSec, sec / 3);
     chains.push(`[${idx}:a]atrim=0:${sec.toFixed(3)},asetpts=PTS-STARTPTS,volume=${gainOf(b.db)},afade=t=in:st=0:d=${fade.toFixed(2)},afade=t=out:st=${(sec - fade).toFixed(2)}:d=${fade.toFixed(2)},adelay=${ms}|${ms}[s${idx}]`);
@@ -396,7 +522,8 @@ console.log(`→ ${path.relative(REPO, out)}`);
 if (stem.length) console.log(`→ ${path.relative(REPO, path.resolve(String(args.stem)))} (chỉ bus SFX)`);
 
 // ── cuesheet ──────────────────────────────────────────────────────────────────
-if (layered || args.cuesheet) {
+// Đoạn nghe thử không sinh cuesheet: nó không phải bản giao, và ghi ra chỉ làm bẩn thư mục project.
+if ((layered && !win) || (args.cuesheet && args.cuesheet !== true)) {
   const sheet = args.cuesheet && args.cuesheet !== true ? path.resolve(String(args.cuesheet)) : `${out.replace(/\.wav$/, '')}.cuesheet.md`;
   const rows = all.map((h) => `| ${tc(h.frame)} | ${h.scene || '—'} | ${h.anchor || h.why || '—'} | ${h.id} | ${h.layer} | ${h.db.toFixed(1)} | ${h.onSpeech ? 'có' : '—'} | ${h.frames ? `${(h.frames / FPS).toFixed(1)}s` : '—'} |`);
   const perLayer = {};

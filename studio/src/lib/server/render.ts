@@ -4,6 +4,7 @@ import { pickRenderAudio } from "../../../../tools/lib/render-audio.mjs";
 import { NO_MUSIC } from "../music";
 import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
+import { mixApproved } from "./sfx-plan";
 import { finishJob, isRunning, jobHandled, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
 import { HttpError, mp4Path, qaManifestPath, REPO, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
@@ -25,11 +26,6 @@ async function renderSteps(id: string, base: string) {
   const { state } = readState(id);
   renderPreflight(id);
   const wav = path.join(voiceOut(id), "voice.wav");
-  // A layered-SFX mix (tools/sfx-mix.mjs → projects/<id>/voice-sfx.wav) replaces the raw narration when it is
-  // newer; rendering the raw file after a mix silently drops every accent, and no gate would catch it.
-  const pick = pickRenderAudio(id, REPO, { voiceRawRel: rel(wav) });
-  if (pick.stale) throw new HttpError(409, pick.note);
-  const audio = pick.audio ?? rel(wav);
   const day = state.request.day;
   // render.mjs resolves both tracks against music.json: it caches the audio from the media bucket into
   // assets/music/ and reads the gain from the track's measured loudness. A track it cannot fetch is
@@ -39,6 +35,19 @@ async function renderSteps(id: string, base: string) {
   setStage(id, "render", "running");
   // Opens this run in the shared log — the scenes gate also starts with "Build design system".
   log(id, "system", `Bắt đầu render · phụ đề ${state.captions ? "có" : "không"}`);
+  // Tiếng động được trộn lại NGAY TRƯỚC khi render, theo đúng những chỗ đang duyệt trong panel. Bắt người
+  // dùng tự chạy `sfx-mix` rồi báo lỗi khi bản trộn cũ hơn giọng là một ngõ cụt: Studio không có nút nào
+  // chạy lệnh đó. Chưa duyệt chỗ nào thì `mixApproved` xoá bản trộn cũ và render dùng lại giọng gốc.
+  if (state.request.modules.includes("sfx")) {
+    log(id, "system", "Trộn tiếng động đã duyệt");
+    const mixed = await mixApproved(id, (line) => log(id, "output", line));
+    if (!mixed) log(id, "system", "Chưa duyệt chỗ nào — render không có tiếng động.");
+  }
+  // A layered-SFX mix (tools/sfx-mix.mjs → projects/<id>/voice-sfx.wav) replaces the raw narration when it is
+  // newer; rendering the raw file after a mix silently drops every accent, and no gate would catch it.
+  const pick = pickRenderAudio(id, REPO, { voiceRawRel: rel(wav) });
+  if (pick.stale) throw new HttpError(409, pick.note);
+  const audio = pick.audio ?? rel(wav);
   log(id, "system", `Âm thanh: ${pick.note}`);
   const step = async (label: string, cmd: string, args: string[], onLine?: (line: string) => boolean) => {
     log(id, "system", label);

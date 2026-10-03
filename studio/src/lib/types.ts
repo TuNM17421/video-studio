@@ -331,6 +331,8 @@ export interface Cue {
   silent: boolean;
   /** Part of a question the viewer is meant to answer — the quiz track plays over these cues. */
   quiz: boolean;
+  /** Tiếng động kịch bản đã khai cho câu này (dòng `- **Tiếng:**`), nếu có. */
+  sfx: { id: string; word: string | null } | null;
   start: number;
   end: number;
 }
