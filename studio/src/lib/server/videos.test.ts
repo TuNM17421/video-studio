@@ -126,3 +126,31 @@ describe("what counts as a video in projects/", () => {
     expect(isLedgerOnlyProject(managed)).toBe(false);
   });
 });
+
+describe("khổ hình trong REQUEST.md", () => {
+  const base = { ...storedState.request, modules: [] as string[], itemId: "" };
+
+  it("khổ ngang là mặc định và không bắt agent khai gì thêm", () => {
+    const md = requestMarkdown("d2-01-lab", { ...base } as never);
+    expect(md).toContain("- Khổ hình: Ngang 16:9");
+    expect(md).toContain("không cần khai `format`");
+    expect(md).not.toContain("DỌC 9:16");
+  });
+
+  it("khổ dọc nói rõ ba thứ agent không thể tự đoán: meta.format, vùng nội dung, số ký tự phụ đề", () => {
+    const md = requestMarkdown("d2-01-lab", { ...base, format: "9x16" } as never);
+    expect(md).toContain("- Khổ hình: Dọc 9:16");
+    expect(md).toContain("## Khổ hình — DỌC 9:16");
+    expect(md).toContain("format: '9x16'");
+    // Vùng nội dung và bề rộng phụ đề là hai con số agent sẽ đặt sai nếu không được bảo.
+    expect(md).toContain("x 48–1032, y 360–1740");
+    expect(md).toContain("46 ký tự");
+    // Và lý do, để agent không chỉ đổi số mà bày lại thật.
+    expect(md).toContain("Bày theo cột, không theo hàng");
+  });
+
+  it("video cũ không có trường format thì vẫn ra khổ ngang, không vỡ", () => {
+    const md = requestMarkdown("cu", { ...base, format: undefined } as never);
+    expect(md).toContain("- Khổ hình: Ngang 16:9");
+  });
+});

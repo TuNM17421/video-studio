@@ -188,7 +188,7 @@ export default function Library({ section }: { section: LibrarySection }) {
           </Button>)}
         </aside>
         {activeVideo && <div className={styles.videoStage}>
-          <div className={styles.stageHeader}><div><span>Đang xem</span><strong>{activeVideo.id}</strong></div><code>16:9 · 1920×1080</code></div>
+          <div className={styles.stageHeader}><div><span>Đang xem</span><strong>{activeVideo.id}</strong></div><code>{activeVideo.format === "9x16" ? "9:16 · 1080×1920" : "16:9 · 1920×1080"}</code></div>
           <div className={styles.frame}><iframe title={activeVideo.id} src={dsUrl(activeVideo.player)} /></div>
         </div>}
       </div>}

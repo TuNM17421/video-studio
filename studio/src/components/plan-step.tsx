@@ -7,7 +7,7 @@ import type { InputRef, UploadProps } from "antd";
 import { api } from "@/lib/client";
 import { inferDay } from "@/lib/day";
 import { ITEM_ID_MAX, itemIdFor } from "@/lib/qa-manifest";
-import type { AgentProvider, ReviewSettings, Scope, StyleDef, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
+import type { AgentProvider, ReviewSettings, Scope, StyleDef, VideoFormat, VideoRequest, VideoState, VideoSummary } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { DEFAULT_REVIEW, resolveReviewer } from "@/lib/review";
 import { AgentName } from "./agent-mark";
@@ -17,6 +17,15 @@ import { moduleNamesFrom, type ModuleInfo } from "@/lib/modules";
 import { StylePicker, StyleSampleButton } from "./style-showcase";
 
 const DAYS = Array.from({ length: 30 }, (_, i) => `Day${String(i + 1).padStart(2, "0")}`);
+/**
+ * Khổ hình phải chọn ở đây, cùng chỗ với style, vì nó quyết định cách bày cảnh — không phải một tuỳ chọn
+ * lúc render. Đổi khổ sau khi đã dựng cảnh thì phải dựng lại, nên bước Kế hoạch là chỗ duy nhất hỏi.
+ */
+const FORMAT_OPTIONS: { value: VideoFormat; label: string; hint: string }[] = [
+  { value: "16x9", label: "Ngang 16:9 — 1920×1080", hint: "Máy tính, LMS. Cảnh bày theo hàng, trái sang phải." },
+  { value: "9x16", label: "Dọc 9:16 — 1080×1920", hint: "Điện thoại. Cảnh bày theo cột, trên xuống dưới; mỗi màn chứa ít khối hơn." },
+];
+
 const SCOPE_LABELS: [keyof Scope, string][] = [["voice", "Giọng đọc"], ["render", "Render MP4"], ["transcript", "Transcript"], ["chapters", "File chương"]];
 const VIDEO_ID_RE = /^[a-z0-9][a-z0-9-]{1,60}$/;
 
@@ -46,7 +55,7 @@ export const emptyDraft = (style: string, agentProvider: AgentProvider = "claude
   id: "",
   agentProvider,
   review: { ...DEFAULT_REVIEW },
-  request: { style, modules: [], day: "", itemId: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
+  request: { style, format: "16x9", modules: [], day: "", itemId: "", title: "", scriptName: "", feedbackDir: "", oldVideoDir: "", notes: "", scope: { scenes: true, voice: true, render: true, transcript: true, chapters: true } },
   script: null,
 });
 
@@ -290,6 +299,19 @@ export function PlanForm({ styles, draft, setDraft, onCreate, busy, loading, una
             ? <div className="vs-inline-state is-error" role="status"><WarningFilled /><span>Chưa thể tải cấu hình Studio.</span></div>
             : <StylePicker styles={styles} value={draft.request.style} onChange={(s) => set({ style: s, modules: draft.request.modules.filter((id) => !styles.find((x) => x.id === s)?.unsupportedModules?.includes(id)) })} disabled={busy} labelledBy={styleLabelId} />}
       </Form.Item>
+      <Form.Item
+        className="field"
+        data-tour="plan.format"
+        label={<span className="vs-field-label">Khổ hình<RequiredMark /></span>}
+        help={FORMAT_OPTIONS.find((f) => f.value === (draft.request.format || "16x9"))?.hint}
+      >
+        <Select
+          value={draft.request.format || "16x9"}
+          disabled={busy}
+          onChange={(v: VideoFormat) => set({ format: v })}
+          options={FORMAT_OPTIONS.map((f) => ({ value: f.value, label: f.label }))}
+        />
+      </Form.Item>
       <section className="vs-capabilities" data-tour="plan.modules" aria-labelledby="vs-capabilities-title">
         <div className="vs-capabilities-head">
           <h4 id="vs-capabilities-title" className="vs-field-label">Tính năng nội dung</h4>
@@ -382,6 +404,7 @@ export function PlanSummary({ state, styles }: { state: VideoState; styles: Styl
     <Descriptions className="vs-facts" bordered column={1} size="small" items={[
       { key: "agent", label: "Agent", children: <AgentName provider={state.agent.provider} /> },
       { key: "style", label: "Style", children: <span className="vs-summary-style">{style?.name || r.style}{style && <StyleSampleButton style={style} />}</span> },
+      { key: "format", label: "Khổ hình", children: FORMAT_OPTIONS.find((f) => f.value === (r.format || "16x9"))?.label || r.format },
       { key: "day", label: "Ngày", children: r.day || "—" },
       { key: "item", label: "Mã item gửi QA", children: itemIdFor(r.itemId, state.id) },
       { key: "script", label: "Kịch bản", children: `projects/${state.id}/kich-ban-goc.md${r.scriptName ? ` (${r.scriptName})` : ""}` },
