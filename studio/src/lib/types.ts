@@ -51,8 +51,16 @@ export interface Scope {
   chapters: boolean;
 }
 
+/**
+ * Khổ hình của video — chọn ở bước Kế hoạch, TRƯỚC khi dựng cảnh, vì nó đổi cách bày nội dung chứ không
+ * chỉ đổi cỡ khung. Xem `vinuni-lesson-video-ds/lib/tokens.js` → FORMATS.
+ */
+export type VideoFormat = "16x9" | "9x16";
+
 export interface VideoRequest {
   style: string;
+  /** Khổ hình; bỏ trống = "16x9" (video làm trước khi có lựa chọn này). */
+  format?: VideoFormat;
   /** Tính năng nội dung chọn thêm (lib/modules.ts), ví dụ "dialogue" hoặc "quiz". */
   modules: string[];
   day: string;

@@ -210,6 +210,22 @@ hợp lệ của mẫu: bên dựng video **giữ nguyên, không đọc thành 
 đời trước (khối `**Lời đọc nguyên văn:**` kèm mốc giờ, như bộ Day 2) bị báo bằng **đúng một** dòng "không
 theo mẫu hiện tại" — chuyển cả file, đừng vá từng câu.
 
+## Khổ hình: ngang cho máy tính, dọc cho điện thoại
+Khổ là **cấu hình của video, chọn ở bước Kế hoạch**, không phải một cờ lúc render — vì nó đổi *cách bày
+cảnh*, không chỉ đổi cỡ khung. `vinuni-lesson-video-ds/lib/tokens.js` → `FORMATS` giữ hai khổ: `16x9`
+(1920×1080, mặc định) và `9x16` (1080×1920), mỗi khổ một bộ toạ độ đầy đủ trong `layout`. Cảnh đọc bằng
+`useLayout()` / `useFormat()`; hằng số `LAYOUT` **chính là** layout của khổ ngang nên mọi video cũ chạy y
+nguyên (đã kiểm: render trước/sau cho MP4 giống hệt từng pixel).
+- Video khai khổ ở `meta.format` trong `video.jsx`. Player phát ra `window.vkFormat`, `render.mjs` và
+  `shoot.mjs` tự mở cửa sổ đúng cỡ — **không có cờ `--format` nào**, và đó là chủ ý.
+- Khổ dọc **bày theo cột**: mũi tên đi xuống, so sánh A/B là hai thẻ chồng nhau, mỗi màn ít khối hơn vì bề
+  ngang chỉ còn 56 %. Phụ đề 46 ký tự một dòng thay vì 78. Vùng nội dung x 48–1032, y 360–1740. Chrome tự
+  xếp lại (watermark lên trên, eyebrow xuống dưới nó). Mẫu: `ui_kits/lesson-video/scenes/11-doc-cot-9x16.jsx`.
+- **Đừng cắt cảnh ngang vào khung dọc.** #62 đã đo: khung dọc chỉ lấy góc trái 1080×1080, mất một nhân vật,
+  nửa tiêu đề, 44 % khung trống. Đó là lý do khổ phải chọn trước khi dựng.
+- Thêm một khổ nữa = thêm một mục vào `FORMATS` (test `tools/lib/formats.test.mjs` bắt khổ nào khai thiếu
+  token — thiếu một cái thì SVG nhận `y="NaN"` mà build vẫn xanh, đã vấp thật).
+
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
 Mỗi cue khai `speaker` (tên/id một **nhân vật** — hoặc một giọng, cho video một người dẫn) và `delivery` (kiểu đọc trong
