@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>LEXCE slide-size QA</title>
+<style>html,body{margin:0;background:#f3f8ff}</style></head>
+<body><div id="root"></div><script src="../../../dist/vk.js"></script><script>
+const h=VK.h;
+const samples=[['wave','Vẫy trái'],['pointUp','Gậy chỉ'],['read','Đọc sách'],['sketch','Bản vẽ'],
+  ['armsSlightDown','Tay hạ nhẹ'],['waveReal','Vẫy tay thật'],['pointRealR','Chỉ tay phải'],['headTiltReal','Nghiêng đầu'],
+  ['shrugRealR','Nhún vai phải'],['explainTiltReal','Giải thích nghiêng'],['headTiltRealR','Nghiêng đầu phải'],['armsEaseReal','Tay thả lỏng'],
+  ['pointRealL','Chỉ tay trái'],['shrugRealL','Nhún vai trái'],['waveRealR','Vẫy tay phải thật'],['explainBothReal','Giải thích hai tay'],['calmGestureReal','Cử chỉ nhẹ nhàng']];
+const cols=4;
+const rows=Math.ceil(samples.length/cols);
+const W=1200, H=61+rows*373+40;
+document.getElementById('root').style.width=W+'px';
+document.getElementById('root').style.height=H+'px';
+document.body.style.width=W+'px';
+document.body.style.height=H+'px';
+VK.mountCard('#root',{width:W,height:H,duration:1,render:function(){return h(VK.Fragment,null,
+  h('rect',{width:W,height:H,fill:'#f3f8ff'}),
+  h('text',{x:30,y:39,fontSize:23,fontWeight:800,fontFamily:'Arial,sans-serif',fill:'#194585'},'LEXCE · cỡ slide 300 px'),
+  samples.map(function(sample,i){const col=i%cols,row=Math.floor(i/cols),x=20+col*295,y=61+row*373;return h(VK.Fragment,{key:sample[0]},
+    h('rect',{x:x,y:y,width:280,height:373,rx:22,fill:'#fff',stroke:'#d5e5fa',strokeWidth:2}),
+    h(VK.MascotRevamp,{x:x+20,y:y+13,size:300,frame:5,pose:sample[0],emotion:'idle'}),
+    h('text',{x:x+140,y:y+351,textAnchor:'middle',fontSize:20,fontWeight:700,fontFamily:'Arial,sans-serif',fill:'#194585'},sample[1]));
+  })
+);}});
+</script></body></html>

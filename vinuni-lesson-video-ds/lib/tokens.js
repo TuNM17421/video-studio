@@ -46,6 +46,37 @@ export const ROLE_OF = Object.freeze({
   memory: [ROLE.amber, ROLE.amberSoft],
 });
 
+/** Palette for the approved LEXCE mascot artwork. */
+export const MASCOT = Object.freeze({
+  outline: '#1B2E5A',
+  shadow: '#0B2E4A',
+  fur: '#F7EFDD',
+  cheek: '#F4A4B4',
+  ear: '#4457C9',
+  earInner: '#7FA6E4',
+  eye: '#1E2B7A',
+  beak: '#FA8842',
+  mouth: '#E23A2E',
+  suit: '#3C50C4',
+  patch: '#F0D9AC',
+  logoNavy: '#1F3573',
+  logoRed: '#E8322A',
+  wing: '#F3E3C4',
+  hand: '#F9D374',
+  foot: '#A6CBEF',
+  revampSuit: '#2B58B4',
+  revampFoot: '#8CC1FC',
+  revampFootHighlight: '#C2DFFF',
+  revampGround: '#D8E8F8',
+  revampBrow: '#6994E3',
+  revampEye: '#102352',
+  revampMouth: '#D31F1F',
+  revampPointer: '#B97839',
+  tail: '#EE3B33',
+  tear: '#6FB6E8',
+  motion: '#F2C14E',
+});
+
 export const FONT = "'Montserrat', 'Segoe UI', system-ui, sans-serif";
 /**
  * Whiteboard style only: the default handwriting the marker writes on the board (Playpen Sans, OFL,

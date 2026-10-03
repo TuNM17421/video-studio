@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+  <ellipse cx="100" cy="205" rx="46" ry="8" fill="#0B2E4A" opacity="0.10"/>
+  <path d="M84 178q-4 14-2 20" stroke="#E8862B" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path d="M116 178q4 14 2 20" stroke="#E8862B" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <ellipse cx="38" cy="118" rx="18" ry="30" fill="#1F6FA8" stroke="#0B3A57" stroke-width="4" transform="rotate(35 38 118)"/>
+  <ellipse cx="100" cy="115" rx="66" ry="72" fill="#3AA6DE" stroke="#0B3A57" stroke-width="5"/>
+  <ellipse cx="162" cy="118" rx="18" ry="30" fill="#1F6FA8" stroke="#0B3A57" stroke-width="4" transform="rotate(-35 162 118)"/>
+  <ellipse cx="100" cy="142" rx="37" ry="44" fill="#FCF3DE"/>
+  <path d="M84 47q4-16 10-8q2-14 10-4q4-12 10 0" fill="none" stroke="#0B3A57" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="62" cy="104" r="10" fill="#F5A9A0" opacity="0.8"/>
+  <circle cx="138" cy="104" r="10" fill="#F5A9A0" opacity="0.8"/>
+  <!-- mắt cười cong lên -->
+  <path d="M70 90q10-10 20 0" stroke="#12283A" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M110 90q10-10 20 0" stroke="#12283A" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M88 104q12 14 24 0q-12-10-24 0z" fill="#F2994A" stroke="#0B3A57" stroke-width="3"/>
+</svg>

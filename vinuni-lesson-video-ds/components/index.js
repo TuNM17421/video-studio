@@ -71,6 +71,8 @@ export * from './data/Gauge.jsx';
 export * from './data/RangeBand.jsx';
 export * from './data/UnitGrid.jsx';
 export * from './marks/Spotlight.jsx';
+export * from './mascot/Mascot.jsx';
+export * from './mascot/MascotRevamp.jsx';
 export * from './whiteboard/Whiteboard.jsx';
 export * from './whiteboard/board.js';
 export * from './whiteboard/doodles.js';

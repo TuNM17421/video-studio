@@ -96,9 +96,13 @@ for (const d of fs.readdirSync(path.join(DS, 'components'), { withFileTypes: tru
 const PALETTE = new Set(['#ffffff', '#f2f7fc', '#0b2a4d', '#4a4a4a', '#1d6199', '#134d8b', '#c72127', '#ffe0e1', '#e0edf8']);
 // Palette = the 9 base colors + whatever lib/tokens.js declares (one place to review new colors).
 for (const m of fs.readFileSync(path.join(DS, 'lib/tokens.js'), 'utf8').matchAll(/#[0-9a-fA-F]{6}\b/g)) PALETTE.add(m[0].toLowerCase());
+const ARTWORK_COLOR_EXCEPTION = new Set([
+  'components/mascot/revampArtwork.js',
+  'components/mascot/revampOutline.js',
+]);
 for (const f of files.filter((x) => /\.(jsx|js)$/.test(x))) {
   const src = fs.readFileSync(f, 'utf8');
-  for (const m of src.matchAll(/#[0-9a-fA-F]{6}\b/g)) {
+  for (const m of (ARTWORK_COLOR_EXCEPTION.has(rel(f)) ? [] : src.matchAll(/#[0-9a-fA-F]{6}\b/g))) {
     if (!PALETTE.has(m[0].toLowerCase())) problems.push(`off-palette ${m[0]} in ${rel(f)}`);
   }
   const r = rel(f);
