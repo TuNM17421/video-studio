@@ -17,6 +17,11 @@ export interface ModuleDef {
   template: string;
   /** Key trên kho media của video xem thử; server đổi thành URL, thiếu thì nút xem thử không hiện. */
   previewKey?: string;
+  /**
+   * `default: true` trong file module: video MỚI tick sẵn năng lực này. Bỏ tick vẫn bỏ được — đây là
+   * điểm xuất phát, không phải luật. Cùng quy ước với `"default": true` của một bản nhạc trong music.json.
+   */
+  isDefault?: boolean;
 }
 
 /** Một năng lực kèm video xem thử đã dựng sẵn URL (trả qua /api/modules). */

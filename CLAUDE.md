@@ -196,10 +196,12 @@ cho phán đoán. `.claude/skills/research-script/SKILL.md` là nguồn chuẩn;
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
 quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ
 bản — hiện có `dialogue.md`, `quiz.md`, `mascot.md` và `images.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
-`order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
+`default`, `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
 code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
-id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem `templates/modules/README.md`.
+id lưu trong `state.json` — đừng đổi tên file đã có video dùng. `default: true` = **video mới tick sẵn**
+năng lực đó (hiện là `images` và `sfx` — hai năng lực chỉ *đề xuất* rồi chờ người dựng duyệt); bỏ tick vẫn
+bỏ được, và video đã tạo không bao giờ bị bật thêm. Xem `templates/modules/README.md`.
 
 Mẫu này là **chỗ bàn giao** giữa hai pipeline (đóng gói kịch bản sinh ra, dựng video nhận vào), nên nó được
 soát bằng code, **một lệnh cho cả hai bên**: `node tools/script-check.mjs <kịch bản .md>` (thêm
@@ -248,7 +250,7 @@ bước Kế hoạch): bật thì kịch bản chọn vai *Đi cùng* hoặc *D�
 ghi rõ không dùng `Griffin` / `GriffinBadge` — agent không tự thêm linh vật.
 
 ## Ảnh tư liệu (đề xuất ảnh)
-Năng lực chọn thêm `images` (`templates/modules/images.md`, card "Video có ảnh tư liệu"): animation vẫn là mặc
+Năng lực `images` (`templates/modules/images.md`, card "Video có ảnh tư liệu") — **bật sẵn cho video mới**: animation vẫn là mặc
 định, Studio chỉ **đề xuất** vài ảnh thật (người/sự kiện lịch sử, hiện vật, hình kinh điển) cho đúng những câu cần,
 **người dựng video duyệt**. Duyệt Lời & cue là tự chạy, song song với Giọng đọc, dưới job riêng `images:<id>`
 (`studio/src/lib/server/images.ts`) — không chặn bước nào; chỗ chưa quyết = animation. Luồng và định dạng file là
@@ -302,8 +304,8 @@ vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
 ## Tiếng động (SFX)
-Năng lực chọn thêm `sfx` (`templates/modules/sfx.md`, card "Video có tiếng động"): mặc định video **không
-có tiếng động nào**. Bật thì Studio **đề xuất** chỗ, người dựng nghe thử rồi mới duyệt — cùng nguyên tắc
+Năng lực `sfx` (`templates/modules/sfx.md`, card "Video có tiếng động") — **bật sẵn cho video mới**.
+Bật năng lực không có nghĩa là có tiếng: chưa duyệt chỗ nào thì video vẫn **không có tiếng động nào**. Bật thì Studio **đề xuất** chỗ, người dựng nghe thử rồi mới duyệt — cùng nguyên tắc
 với ảnh tư liệu. Danh mục là `sfx.json` ở gốc repo, xem và nghe thử ở Studio → **Thư viện · Tiếng động**
 (`/library/sfx`); file nằm trên R2 (`sfx/<id>.wav`), tải về `assets/sfx/` bằng `tools/sfx-fetch.mjs`.
 - **Bốn lớp** (`sfx.json._layers`): `accent` kéo sự chú ý — **trần cứng 4 lần mỗi video**; `transition`
