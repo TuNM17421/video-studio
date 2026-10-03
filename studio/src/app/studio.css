@@ -1813,6 +1813,27 @@ details.vs-flow-more > summary:focus-visible {
 .vs-sfx-play-btn.is-plain { color: var(--vu-text-muted); }
 .vs-sfx-play-btn:hover { border-color: var(--vu-blue-300); }
 .vs-sfx-beds { margin-top: 18px; }
+.vs-sfx-actions {
+  margin: var(--vu-space-2) 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vu-space-2) var(--vu-space-3);
+}
+.vs-sfx-actions > small {
+  flex: 1 1 14rem;
+  color: var(--vu-text-muted);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-normal);
+}
+.vs-sfx-dropped { margin-bottom: var(--vu-space-3); }
+.vs-sfx-dropped ul {
+  margin: 0;
+  padding-left: var(--vu-space-5);
+  color: var(--vu-text-secondary);
+  font-size: var(--vu-text-2xs);
+  line-height: var(--vu-leading-relaxed);
+}
 .vs-sfx-tag.ant-tag {
   margin-right: var(--vu-space-2);
   border-color: var(--vu-amber-700);

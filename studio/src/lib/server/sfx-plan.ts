@@ -4,9 +4,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type { Cue } from "../types";
 import type { SfxPlan, SfxSpot, SfxState } from "../sfx-plan";
-import { EMPTY_SFX_STATE, planFrom, planHasSound, pruneDecisions, SFX_FPS, suggestSpots } from "../sfx-plan";
+import { agentSpots, EMPTY_SFX_STATE, planFrom, planHasSound, pruneDecisions, SFX_FPS, suggestSpots } from "../sfx-plan";
 import type { SfxCatalog } from "../sfx";
 import { sfxCatalog } from "./sfx";
+import { readTriage, sfxKey } from "./sfx-agent";
+import { isRunning } from "./jobs";
 import { exists, HttpError, projectDir, REPO, rel, voiceOut } from "./paths";
 import { cuesInfo } from "./videos";
 
@@ -45,6 +47,11 @@ export interface SfxView {
   sections: string[];
   /** Bản trộn hiện có cũ hơn giọng hay không — render sẽ tự trộn lại. */
   mixStale: boolean;
+  /** Chỗ agent đề xuất mà không qua soát, kèm lý do. */
+  dropped: string[];
+  hasAgentRun: boolean;
+  /** Lượt agent đang chạy — panel tự hỏi lại cho tới khi xong. */
+  suggesting: boolean;
 }
 
 async function cuesOf(id: string): Promise<{ cues: Cue[]; sections: string[] }> {
@@ -52,23 +59,35 @@ async function cuesOf(id: string): Promise<{ cues: Cue[]; sections: string[] }> 
   return { cues: info?.cues ?? [], sections: info?.sections ?? [] };
 }
 
+/**
+ * Toàn bộ chỗ đề xuất: của Studio (mở màn, ranh giới phần, chỗ kịch bản khai) cộng của agent sau khi đã
+ * soát. `dropped` là những chỗ agent đề xuất mà không qua soát — panel hiện ra, vì im lặng bỏ đi thì
+ * người dựng tưởng agent chẳng tìm được gì.
+ */
+async function allSpots(id: string): Promise<{ cues: Cue[]; sections: string[]; spots: SfxSpot[]; dropped: string[] }> {
+  const { cues, sections } = await cuesOf(id);
+  if (!cues.length) return { cues, sections, spots: [], dropped: [] };
+  const catalog = sfxCatalog();
+  const { spots: fromAgent, dropped } = agentSpots(readTriage(id), cues, catalog.sounds);
+  return { cues, sections, spots: suggestSpots(cues, sections, fromAgent), dropped };
+}
+
 export const readSfxState = (id: string): SfxState => ({ ...EMPTY_SFX_STATE, ...readJson<Partial<SfxState>>(decisionsFile(id), {}) });
 
 export async function sfxView(id: string): Promise<SfxView> {
-  const { cues, sections } = await cuesOf(id);
+  const { cues, sections, spots: all, dropped } = await allSpots(id);
   const ready = exists(voiceWav(id)) && cues.length > 0;
-  const spots = ready ? suggestSpots(cues, sections) : [];
+  const spots = ready ? all : [];
   const state = pruneDecisions(readSfxState(id), spots);
   const mix = mixPath(id);
   const mixStale = exists(mix) && exists(voiceWav(id))
     && fs.statSync(mix).mtimeMs < fs.statSync(voiceWav(id)).mtimeMs;
-  return { ready, spots, state, catalog: sfxCatalog(), sections, mixStale };
+  return { ready, spots, state, catalog: sfxCatalog(), sections, mixStale, dropped, hasAgentRun: spots.some((s) => s.kind === "agent"), suggesting: isRunning(sfxKey(id)) };
 }
 
 /** Lưu quyết định của người dựng. Chỗ không còn tồn tại bị bỏ ngay lúc ghi, không để rác lại. */
 export async function saveSfxState(id: string, next: SfxState): Promise<SfxView> {
-  const { cues, sections } = await cuesOf(id);
-  const spots = suggestSpots(cues, sections);
+  const { spots } = await allSpots(id);
   const known = new Set(spots.map((s) => s.id));
   const decisions: SfxState["decisions"] = {};
   for (const [spotId, decision] of Object.entries(next.decisions ?? {})) {
@@ -89,8 +108,7 @@ export async function saveSfxState(id: string, next: SfxState): Promise<SfxView>
 
 /** Plan hiện tại của một video, dựng lại từ quyết định đã lưu. */
 export async function currentPlan(id: string): Promise<SfxPlan> {
-  const { cues, sections } = await cuesOf(id);
-  const spots = suggestSpots(cues, sections);
+  const { cues, sections, spots } = await allSpots(id);
   return planFrom(id, spots, readSfxState(id), cues, sections);
 }
 
@@ -139,8 +157,7 @@ const PREVIEW_TAIL = Math.round(2.5 * SFX_FPS);
  * nghe khác" trong khi đáng lẽ chỉ thiếu mỗi tiếng.
  */
 export async function previewSpot(id: string, spotId: string, withSfx: boolean): Promise<Buffer> {
-  const { cues, sections } = await cuesOf(id);
-  const spots = suggestSpots(cues, sections);
+  const { cues, sections, spots } = await allSpots(id);
   const spot = spots.find((s) => s.id === spotId);
   const bedSection = spotId.startsWith("bed:") ? Number(spotId.slice(4)) : null;
   if (!spot && bedSection === null) throw new HttpError(404, "Không có chỗ này trong danh sách đề xuất.");

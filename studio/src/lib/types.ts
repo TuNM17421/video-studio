@@ -5,7 +5,7 @@ export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 import type { ImagesView } from "./images";
 
-export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
+export type JobKind = StageId | "research" | "images" | "sfx" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {

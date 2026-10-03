@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_SFX_STATE, planFrom, planHasSound, pruneDecisions, sectionRange, suggestSpots, timecode } from "./sfx-plan";
+import { agentSpots, EMPTY_SFX_STATE, planFrom, planHasSound, pruneDecisions, sectionRange, suggestSpots, timecode } from "./sfx-plan";
 import type { Cue } from "./types";
 
 const cue = (n: number, over: Partial<Cue> = {}): Cue => ({
@@ -83,5 +83,61 @@ describe("tiện ích", () => {
   it("sectionRange trả null cho phần không có câu nào", () => {
     expect(sectionRange(CUES, 9)).toBeNull();
     expect(sectionRange(CUES, 3)).toEqual({ from: 6, to: 6 });
+  });
+});
+
+describe("agentSpots — soát bằng code, không tin chữ agent viết", () => {
+  const SOUNDS = [
+    { id: "ding", layer: "accent" }, { id: "pop", layer: "accent" }, { id: "ting", layer: "accent" },
+    { id: "flash", layer: "accent" }, { id: "tick", layer: "foley" }, { id: "whoosh", layer: "transition" },
+  ];
+  const spot = (cue: number, anchor: string, sound = "tick") => ({ cue, anchor, sound, why: "vì hình đang diễn" });
+
+  it("nhận chỗ hợp lệ và neo đúng câu", () => {
+    const { spots, dropped } = agentSpots({ spots: [spot(1, "câu 1")] }, CUES, SOUNDS);
+    expect(dropped).toEqual([]);
+    expect(spots[0]).toMatchObject({ id: "agent:1:câu 1", kind: "agent", soundId: "tick", cue: 1, anchor: "câu 1" });
+  });
+
+  it("bỏ cụm từ không có nguyên văn trong lời — nếu không `spokenAt` sẽ ném lúc trộn", () => {
+    const { spots, dropped } = agentSpots({ spots: [spot(1, "không có trong lời")] }, CUES, SOUNDS);
+    expect(spots).toEqual([]);
+    expect(dropped[0]).toContain("không có nguyên văn");
+  });
+
+  it("bỏ câu lặng (khoảng chờ quiz) và câu không tồn tại", () => {
+    const { dropped } = agentSpots({ spots: [spot(4, "câu 4"), spot(99, "gì đó")] }, CUES, SOUNDS);
+    expect(dropped[0]).toContain("câu lặng");
+    expect(dropped[1]).toContain("không có câu này");
+  });
+
+  it("bỏ tiếng không có trong danh mục", () => {
+    const { dropped } = agentSpots({ spots: [spot(1, "câu 1", "tieng-bia")] }, CUES, SOUNDS);
+    expect(dropped[0]).toContain('danh mục không có tiếng "tieng-bia"');
+  });
+
+  it("áp trần 4 tiếng nhấn ngay ở đây, không để agent tự hứa đã đếm", () => {
+    const many = [1, 2, 3, 5, 6].map((n, i) => spot(n, `câu ${n}`, ["ding", "pop", "ting", "flash", "ding"][i]));
+    const { spots, dropped } = agentSpots({ spots: many }, CUES, SOUNDS);
+    expect(spots).toHaveLength(4);
+    expect(dropped[0]).toContain("quá trần 4");
+  });
+
+  it("đề xuất trùng cue+cụm với chỗ kịch bản đã khai thì bản của kịch bản thắng", () => {
+    const { spots } = agentSpots({ spots: [spot(2, "thả kịch bản", "ding")] }, CUES, SOUNDS);
+    const merged = suggestSpots(CUES, SECTIONS, spots);
+    expect(merged.filter((s) => s.cue === 2)).toHaveLength(1);
+    expect(merged.find((s) => s.cue === 2)?.kind).toBe("script");
+  });
+
+  it("chỗ của agent xếp theo mốc thời gian cùng những chỗ khác", () => {
+    const { spots } = agentSpots({ spots: [spot(5, "câu 5")] }, CUES, SOUNDS);
+    const merged = suggestSpots(CUES, SECTIONS, spots);
+    expect(merged.map((s) => s.frame)).toEqual([...merged.map((s) => s.frame)].sort((a, b) => a - b));
+  });
+
+  it("triage.json rỗng hay sai dạng thì không có chỗ nào, không ném", () => {
+    expect(agentSpots(null, CUES, SOUNDS).spots).toEqual([]);
+    expect(agentSpots({ spots: "xin chào" }, CUES, SOUNDS).spots).toEqual([]);
   });
 });
