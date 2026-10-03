@@ -57,6 +57,13 @@ export interface Scope {
  */
 export type VideoFormat = "16x9" | "9x16";
 
+/**
+ * Nhịp hình của bản MP4 (`render.mjs --fps`) — chọn ở bước Render, KHÁC với khổ hình ở trên: khổ đổi cách
+ * bày cảnh nên phải chọn trước khi dựng, còn nhịp chỉ là mật độ lấy mẫu lúc render. Danh mục lựa chọn và
+ * mặc định ở `lib/render-spec.ts`.
+ */
+export type RenderFps = 30 | 60;
+
 export interface VideoRequest {
   style: string;
   /** Khổ hình; bỏ trống = "16x9" (video làm trước khi có lựa chọn này). */
@@ -302,6 +309,12 @@ export interface VideoState {
   music: MusicChoice;
   /** Burn the navy subtitle bar into the MP4 (render step; off = render.mjs --no-captions). */
   captions: boolean;
+  /**
+   * Nhịp hình của bản MP4 (`render.mjs --fps`), chọn ở bước Render. Đây là đơn vị lúc *render*, không phải
+   * lúc dựng cảnh: cảnh vẫn viết bằng frame nguyên ở 30 fps, nên đổi nhịp không đụng cue, giọng hay cảnh.
+   * Video mới mặc định 60; video tạo trước khi có lựa chọn này giữ 30 (lib/render-spec.ts).
+   */
+  fps: RenderFps;
   /**
    * Bản dựng thứ mấy của video này, gửi cho platform QA (`build_no`): 1 gửi soát lần đầu, 2 sau sửa,
    * 3 bản phát hành. Người dựng chọn ở bước Render — số lần render không suy ra được điều này.

@@ -2,6 +2,7 @@ import { baseUrl, handle } from "@/lib/server/http";
 import { isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { isTrackId } from "@/lib/server/music";
 import { isBuildNo } from "@/lib/qa-manifest";
+import { isRenderFps } from "@/lib/render-spec";
 import { assertId, HttpError } from "@/lib/server/paths";
 import { renderPreflight, renderVideo } from "@/lib/server/render";
 import { readState, setStage, updateState } from "@/lib/server/videos";
@@ -16,7 +17,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   renderPreflight(id);
   // Both tracks are finishing decisions and are only chosen here. What had to be settled early is *which
   // câu* the question covers — the plan's "Video có quiz" tick — and cues.js already carries that.
-  const body = await req.json().catch(() => ({}) as { music?: unknown; quizMusic?: unknown; captions?: unknown; buildNo?: unknown });
+  const body = await req.json().catch(() => ({}) as { music?: unknown; quizMusic?: unknown; captions?: unknown; buildNo?: unknown; fps?: unknown });
   // Checked again after the body was read, and before anything is written: a second click passed the first
   // check while this request awaited. Refused after writing, it left its captions/music/build in state.json
   // while the MP4 being made used the first click's (measured). From here to renderVideo's startJob nothing awaits.
@@ -27,6 +28,8 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
     if (typeof body.captions === "boolean") s.captions = body.captions;
     // Which round of QA this MP4 is: the manifest beside it carries the number to the platform.
     if (isBuildNo(body.buildNo)) s.buildNo = body.buildNo;
+    // Nhịp hình: chỉ đổi lượt render này, không đụng cue/giọng/cảnh — cảnh vẫn là frame nguyên ở 30 fps.
+    if (isRenderFps(body.fps)) s.fps = body.fps;
   });
   const base = baseUrl(req);
   // A failure after the job started is ended and shown inside renderVideo; ending the job here instead ended

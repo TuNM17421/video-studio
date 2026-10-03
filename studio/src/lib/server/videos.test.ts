@@ -2,7 +2,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { isLedgerOnlyProject, normalizeVideoState, requestMarkdown, styleUnsupportedModules } from "./videos";
+import { DEFAULT_RENDER_FPS, LEGACY_RENDER_FPS, renderSpecLabel } from "../render-spec";
+import type { VideoRequest } from "../types";
+import { isLedgerOnlyProject, normalizeVideoState, requestMarkdown, styleUnsupportedModules, unmanagedState } from "./videos";
 
 const storedState = {
   id: "d2-01-lab",
@@ -38,6 +40,45 @@ describe("video agent binding migration", () => {
   it("keeps captions on for states saved before captions were optional", () => {
     expect(normalizeVideoState(storedState).captions).toBe(true);
     expect(normalizeVideoState({ ...storedState, captions: false }).captions).toBe(false);
+  });
+
+  // 60 fps is the default for a NEW video only. An older one was QA'd at 30, and a re-render must not
+  // quietly hand the QA team a different frame rate than the build they approved.
+  it("leaves a video made before the frame-rate choice at 30 fps, not the new default", () => {
+    expect(normalizeVideoState(storedState).fps).toBe(LEGACY_RENDER_FPS);
+    expect(normalizeVideoState(storedState).fps).toBe(30);
+    expect(DEFAULT_RENDER_FPS).toBe(60);
+  });
+
+  it("keeps a stored frame rate and refuses a value render.mjs would not take", () => {
+    expect(normalizeVideoState({ ...storedState, fps: 60 }).fps).toBe(60);
+    expect(normalizeVideoState({ ...storedState, fps: 30 }).fps).toBe(30);
+    for (const bad of [0, 24, 59, 120, "60", null, true]) {
+      expect(normalizeVideoState({ ...storedState, fps: bad }).fps).toBe(LEGACY_RENDER_FPS);
+    }
+  });
+});
+
+describe("frame rate of a video made outside Studio", () => {
+  // These have no state.json, so readState synthesises one from the files on disk. They were rendered at 30
+  // long ago and Studio refuses to render them at all, so the new default would only misreport an MP4 that
+  // already exists. Caught by creating a video through the running API, not by the migration test above:
+  // the first version of this change put DEFAULT_RENDER_FPS here and d2-01-lab then reported 60 fps.
+  const stages = { cues: "done", voice: "done", scenes: "done", render: "done", deliver: "done" } as const;
+  it("reports 30 fps, not the default for new videos", () => {
+    const state = unmanagedState("d2-01-lab", { ...storedState.request } as VideoRequest, { ...stages });
+    expect(state.fps).toBe(LEGACY_RENDER_FPS);
+    expect(state.fps).not.toBe(DEFAULT_RENDER_FPS);
+  });
+});
+
+describe("render spec line", () => {
+  // The line was hardcoded "MP4 · 1920×1080 · 30 fps", which is two lies at once once a video can be
+  // vertical and rendered at 60.
+  it("names this video's own frame size and the rate about to be rendered", () => {
+    expect(renderSpecLabel("16x9", 60)).toBe("MP4 · 1920×1080 · 60 fps");
+    expect(renderSpecLabel("9x16", 30)).toBe("MP4 · 1080×1920 · 30 fps");
+    expect(renderSpecLabel(undefined, 30)).toBe("MP4 · 1920×1080 · 30 fps");
   });
 });
 
