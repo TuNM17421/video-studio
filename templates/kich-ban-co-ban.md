@@ -26,6 +26,8 @@ Video cần thêm năng lực nào (nhiều người nói, câu hỏi có khoả
 | Video có hội thoại | `templates/modules/dialogue.md` |
 | Video có quiz | `templates/modules/quiz.md` |
 | Video có linh vật Griffin | `templates/modules/mascot.md` |
+| Video có ảnh tư liệu | `templates/modules/images.md` |
+| Video có tiếng động | `templates/modules/sfx.md` |
 
 Viết đúng mẫu thì pipeline nhận được ngay. Viết sai thì `--dry-run` báo lỗi trước khi tốn một ký tự credit.
 
@@ -95,6 +97,8 @@ thiếu một mục bắt buộc thì bị chặn.
 | Câu | **Kiểu:** | không | bỏ trống là *giảng* |
 | Câu | **Nguồn:** | tuỳ pipeline | ví dụ `slide:4, c3` — xem dưới |
 | Câu | **Chuyển động:** | không | gợi ý nhịp, người dựng không bắt buộc theo |
+| Câu | **Tiếng:** | không | chỉ khi bật "Video có tiếng động" — xem `templates/modules/sfx.md` |
+| Phần | **Nền:** | không | chỉ khi bật "Video có tiếng động" — tiếng nền phủ cả phần |
 
 **Nguồn** — câu này dựa vào đâu: `slide:<số>` là ý của giảng viên, `c<số>` là một claim đã qua soát bằng
 chứng trong lượt đóng gói kịch bản. Kịch bản do pipeline đóng gói sinh ra thì **mọi câu đều phải có dòng
