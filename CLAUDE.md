@@ -196,10 +196,12 @@ cho phán đoán. `.claude/skills/research-script/SKILL.md` là nguồn chuẩn;
 Mọi video viết theo **`templates/kich-ban-co-ban.md`** (clip thường: một người dẫn, không hội thoại, không
 quiz). Mỗi năng lực chọn thêm là **một file `templates/modules/<id>.md`**, chỉ ghi phần thêm so với mẫu cơ
 bản — hiện có `dialogue.md`, `quiz.md`, `mascot.md` và `images.md`. Frontmatter của file (`name`, `summary`, `icon`, `preview`,
-`order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
+`default`, `order`) chính là card ở bước Kế hoạch: Studio đọc thẳng thư mục qua `studio/src/lib/server/modules.ts`, và
 `REQUEST.md` tự dặn agent đọc file của từng năng lực đã bật. **Thêm năng lực = thêm một file**, không sửa
 code; chỉ năng lực cần dữ liệu chèn vào REQUEST.md (danh sách nhân vật, mục Quiz) mới cần dev. Tên file là
-id lưu trong `state.json` — đừng đổi tên file đã có video dùng. Xem `templates/modules/README.md`.
+id lưu trong `state.json` — đừng đổi tên file đã có video dùng. `default: true` = **video mới tick sẵn**
+năng lực đó (hiện là `images` và `sfx` — hai năng lực chỉ *đề xuất* rồi chờ người dựng duyệt); bỏ tick vẫn
+bỏ được, và video đã tạo không bao giờ bị bật thêm. Xem `templates/modules/README.md`.
 
 Mẫu này là **chỗ bàn giao** giữa hai pipeline (đóng gói kịch bản sinh ra, dựng video nhận vào), nên nó được
 soát bằng code, **một lệnh cho cả hai bên**: `node tools/script-check.mjs <kịch bản .md>` (thêm
@@ -209,6 +211,22 @@ finding không). Bảng "mục nào bắt buộc" nằm trong chính `templates/
 hợp lệ của mẫu: bên dựng video **giữ nguyên, không đọc thành tiếng, không đưa vào `text` của cue**. Kịch bản
 đời trước (khối `**Lời đọc nguyên văn:**` kèm mốc giờ, như bộ Day 2) bị báo bằng **đúng một** dòng "không
 theo mẫu hiện tại" — chuyển cả file, đừng vá từng câu.
+
+## Khổ hình: ngang cho máy tính, dọc cho điện thoại
+Khổ là **cấu hình của video, chọn ở bước Kế hoạch**, không phải một cờ lúc render — vì nó đổi *cách bày
+cảnh*, không chỉ đổi cỡ khung. `vinuni-lesson-video-ds/lib/tokens.js` → `FORMATS` giữ hai khổ: `16x9`
+(1920×1080, mặc định) và `9x16` (1080×1920), mỗi khổ một bộ toạ độ đầy đủ trong `layout`. Cảnh đọc bằng
+`useLayout()` / `useFormat()`; hằng số `LAYOUT` **chính là** layout của khổ ngang nên mọi video cũ chạy y
+nguyên (đã kiểm: render trước/sau cho MP4 giống hệt từng pixel).
+- Video khai khổ ở `meta.format` trong `video.jsx`. Player phát ra `window.vkFormat`, `render.mjs` và
+  `shoot.mjs` tự mở cửa sổ đúng cỡ — **không có cờ `--format` nào**, và đó là chủ ý.
+- Khổ dọc **bày theo cột**: mũi tên đi xuống, so sánh A/B là hai thẻ chồng nhau, mỗi màn ít khối hơn vì bề
+  ngang chỉ còn 56 %. Phụ đề 46 ký tự một dòng thay vì 78. Vùng nội dung x 48–1032, y 360–1740. Chrome tự
+  xếp lại (watermark lên trên, eyebrow xuống dưới nó). Mẫu: `ui_kits/lesson-video/scenes/11-doc-cot-9x16.jsx`.
+- **Đừng cắt cảnh ngang vào khung dọc.** #62 đã đo: khung dọc chỉ lấy góc trái 1080×1080, mất một nhân vật,
+  nửa tiêu đề, 44 % khung trống. Đó là lý do khổ phải chọn trước khi dựng.
+- Thêm một khổ nữa = thêm một mục vào `FORMATS` (test `tools/lib/formats.test.mjs` bắt khổ nào khai thiếu
+  token — thiếu một cái thì SVG nhận `y="NaN"` mà build vẫn xanh, đã vấp thật).
 
 ## Video có hội thoại
 Nhiều người nói trong một video là **năng lực chọn thêm**, không phải style mới — vẫn Lesson hay Lesson Lab.
@@ -248,7 +266,7 @@ bước Kế hoạch): bật thì kịch bản chọn vai *Đi cùng* hoặc *D�
 ghi rõ không dùng `Griffin` / `GriffinBadge` — agent không tự thêm linh vật.
 
 ## Ảnh tư liệu (đề xuất ảnh)
-Năng lực chọn thêm `images` (`templates/modules/images.md`, card "Video có ảnh tư liệu"): animation vẫn là mặc
+Năng lực `images` (`templates/modules/images.md`, card "Video có ảnh tư liệu") — **bật sẵn cho video mới**: animation vẫn là mặc
 định, Studio chỉ **đề xuất** vài ảnh thật (người/sự kiện lịch sử, hiện vật, hình kinh điển) cho đúng những câu cần,
 **người dựng video duyệt**. Duyệt Lời & cue là tự chạy, song song với Giọng đọc, dưới job riêng `images:<id>`
 (`studio/src/lib/server/images.ts`) — không chặn bước nào; chỗ chưa quyết = animation. Luồng và định dạng file là
@@ -301,10 +319,39 @@ vào `music.json` kèm `lufs` đo bằng `ffmpeg -af ebur128`.
   mà mang cờ thì `npm run verify` báo problem, còn `render.mjs` bỏ câu đó khỏi đoạn nhạc quiz.
 - `quiz: true` phải đặt ở cuối phần khai của câu — `voice-timing.mjs --write-cues` ghi đè vùng ngay sau `n:`.
 
+## Tiếng động (SFX)
+Năng lực `sfx` (`templates/modules/sfx.md`, card "Video có tiếng động") — **bật sẵn cho video mới**.
+Bật năng lực không có nghĩa là có tiếng: chưa duyệt chỗ nào thì video vẫn **không có tiếng động nào**. Bật thì Studio **đề xuất** chỗ, người dựng nghe thử rồi mới duyệt — cùng nguyên tắc
+với ảnh tư liệu. Danh mục là `sfx.json` ở gốc repo, xem và nghe thử ở Studio → **Thư viện · Tiếng động**
+(`/library/sfx`); file nằm trên R2 (`sfx/<id>.wav`), tải về `assets/sfx/` bằng `tools/sfx-fetch.mjs`.
+- **Bốn lớp** (`sfx.json._layers`): `accent` kéo sự chú ý — **trần cứng 4 lần mỗi video**; `transition`
+  ranh giới phần; `foley` tiếng của chính chuyển động trên hình, ngân sách 12 sự kiện/phút (một chuỗi
+  `burst` là MỘT sự kiện); `ambience` bed theo cảnh. Mức khai bằng **đích** (`peakTargetDb`), không bằng
+  độ lợi, nên một master to hơn chỉ cần đo lại là xong — chuẩn theo ĐỈNH chứ không theo RMS.
+- **Chủ bucket** dựng file một lần: `node tools/sfx-fetch.mjs --prepare [thư mục bản thô]` chuẩn hoá từ
+  nguồn gốc vào `media/files/sfx/`, rồi `npm run media`, rồi `sfx-fetch --write` ghi số đo. Mọi máy khác
+  chỉ tải bản đã chuẩn hoá về, **không xử lý lại** — chạy lại chuỗi cắt trên file đã cắt là cắt phá
+  (`chisel` khai `startSec: 0.42` mà clip chỉ còn 0,5 giây). `startSec` cắt TỪ đâu, `trimSec` cắt dài bao
+  nhiêu kể từ đó; `silenceremove` không cứu được bản thu có tiếng phòng ở đầu.
+- **Luồng trong Studio**: chỗ đề xuất đến từ ba nguồn — Studio (mở màn, ranh giới mỗi phần), kịch bản
+  (dòng `- **Tiếng:** <id> @ "<cụm từ>"` của một câu → `sfx:` trong `cues.js`), và agent (nút "Đề xuất
+  bằng agent", skill `.claude/skills/sfx-suggest/`, job riêng `sfx:<id>`). Chỗ của agent được **code**
+  soát trước khi hiện ra (`agentSpots()` trong `studio/src/lib/sfx-plan.ts`): cụm từ phải có nguyên văn
+  trong lời đúng câu đó, tiếng phải có trong danh mục, câu lặng bị bỏ, trần 4 accent áp ngay ở đây.
+- **Duyệt ở bước Render**, cạnh nhạc nền — tiếng động cũng là quyết định lúc hoàn thiện, và chỉ đề xuất
+  được sau khi có giọng (tiếng căn theo mốc lời thật). Panel nghe thử **đúng đoạn đó của video**, có
+  tiếng và không tiếng, bằng chính `sfx-mix --window` nên mức/duck/limiter y hệt bản trộn thật.
+- **Trộn**: `tools/sfx-mix.mjs --plan <file>` nhận danh sách đã duyệt và **thay cho** cả ba nguồn tự động
+  của chính nó — cộng thêm thì tiếng người dùng vừa bỏ sẽ quay lại. Studio tự trộn ngay trước khi render
+  ra `projects/<id>/voice-sfx.wav`, và `tools/lib/render-audio.mjs` chọn file đó thay cho `voice.wav`.
+  Chưa duyệt chỗ nào thì bản trộn cũ bị xoá và render dùng lại giọng gốc.
+- Không đặt tiếng vào **khoảng chờ quiz** (cue `silent`): luật này cài trong code, không phải nhắc nhở.
+
 ## Media nặng (`media/`, Cloudflare R2)
 Video/audio minh hoạ không nằm trong git. Chúng ở một bucket R2 **đọc công khai**; `media/manifest.json`
 (được commit) giữ base URL + danh sách asset, nên ai clone repo về cũng xem được mà không cần cấu hình gì.
-Chủ bucket bỏ file vào `media/files/<key>` (quy ước `styles/<mã style>/sample.mp4` = video mẫu của style),
+Chủ bucket bỏ file vào `media/files/<key>` (quy ước `styles/<mã style>/sample.mp4` = video mẫu của style,
+`sfx/<id>.wav` = một tiếng động đã chuẩn hoá),
 `npm run media -- --dry-run` rồi `npm run media`, và commit manifest. Khoá nằm ở `media/.env` (không bao giờ
 commit/in ra) — xem `media/README.md`. Mất mạng thì studio hiện card "không khả dụng", không vỡ giao diện.
 

@@ -5,7 +5,7 @@ export type StageId = "cues" | "voice" | "scenes" | "render" | "deliver";
 export type StageStatus = "idle" | "running" | "review" | "done" | "error";
 import type { ImagesView } from "./images";
 
-export type JobKind = StageId | "research" | "images" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
+export type JobKind = StageId | "research" | "images" | "sfx" | "review" | "dry-run" | "voice-script" | "import-scan" | "omnivoice-setup" | "omnivoice-generate" | "align-setup" | "kaggle-setup" | "kaggle-generate" | "voice-retake" | "voice-retake-pick" | "cue-edit";
 export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface AgentConfig {
@@ -51,8 +51,16 @@ export interface Scope {
   chapters: boolean;
 }
 
+/**
+ * Khổ hình của video — chọn ở bước Kế hoạch, TRƯỚC khi dựng cảnh, vì nó đổi cách bày nội dung chứ không
+ * chỉ đổi cỡ khung. Xem `vinuni-lesson-video-ds/lib/tokens.js` → FORMATS.
+ */
+export type VideoFormat = "16x9" | "9x16";
+
 export interface VideoRequest {
   style: string;
+  /** Khổ hình; bỏ trống = "16x9" (video làm trước khi có lựa chọn này). */
+  format?: VideoFormat;
   /** Tính năng nội dung chọn thêm (lib/modules.ts), ví dụ "dialogue" hoặc "quiz". */
   modules: string[];
   day: string;
@@ -331,6 +339,8 @@ export interface Cue {
   silent: boolean;
   /** Part of a question the viewer is meant to answer — the quiz track plays over these cues. */
   quiz: boolean;
+  /** Tiếng động kịch bản đã khai cho câu này (dòng `- **Tiếng:**`), nếu có. */
+  sfx: { id: string; word: string | null } | null;
   start: number;
   end: number;
 }
@@ -610,7 +620,7 @@ export interface LibraryGroup {
 
 export interface Library {
   groups: LibraryGroup[];
-  videos: { id: string; player: string }[];
+  videos: { id: string; player: string; format?: string }[];
 }
 
 /**

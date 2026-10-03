@@ -194,6 +194,17 @@ const probe = await b.page();
 await probe('Page.navigate', { url });
 if (!(await waitReady(probe, 'typeof window.vkSetFrame === "function"'))) fail(`page not ready: ${url}`);
 const duration = (await probe('Runtime.evaluate', { expression: 'window.vkDuration', returnByValue: true })).result.value;
+/**
+ * Khổ hình do chính video khai (`meta.format` → `window.vkFormat`), không phải một cờ của lệnh này: chọn
+ * khổ là việc của bước Kế hoạch, và cảnh đã được dựng cho đúng khổ đó. Render chỉ việc mở cửa sổ đúng cỡ.
+ * Video cũ không khai gì thì về 1920×1080 như trước.
+ */
+const format = (await probe('Runtime.evaluate', { expression: 'window.vkFormat || null', returnByValue: true })).result.value || {
+  id: '16x9',
+  width: 1920,
+  height: 1080,
+};
+await probe('Emulation.setDeviceMetricsOverride', { width: format.width, height: format.height, deviceScaleFactor: 1, mobile: false });
 const from = Number(args.from || 0);
 const to = Math.min(duration, Number(args.to || duration));
 /**
@@ -207,8 +218,11 @@ const OUT_FPS = Number(args.fps || FPS);
 if (!Number.isFinite(OUT_FPS) || OUT_FPS < 1 || OUT_FPS > 240) fail('--fps: cần một số frame/giây trong khoảng 1…240, ví dụ --fps 60');
 // Output frames are indexed 0..shots-1; index i paints source frame sourceFrame(i).
 const { step, shots, sourceFrame } = frameSampling(from, to, OUT_FPS, FPS);
+const sizeNote = format.id === '16x9' ? '' : ` · khổ ${format.id} (${format.width}×${format.height})`;
 const fpsNote = OUT_FPS === FPS ? '' : ` · ${OUT_FPS} fps (bước ${step} frame, ${shots} ảnh)`;
-console.log(`▶ ${args.scene} · ${duration} f (${(duration / FPS).toFixed(2)} s) · rendering ${from}–${to - 1} with ${workers} tabs${fpsNote} → ${framesDir}`);
+console.log(
+  `▶ ${args.scene} · ${duration} f (${(duration / FPS).toFixed(2)} s)${sizeNote} · rendering ${from}–${to - 1} with ${workers} tabs${fpsNote} → ${framesDir}`,
+);
 
 if (args.audio) {
   const secs = wavSeconds(path.resolve(args.audio));
@@ -280,7 +294,7 @@ const errors = [];
 const attempts = new Map();
 
 const newTab = async () => {
-  const s = await b.page();
+  const s = await b.page(format.width, format.height);
   await s('Page.navigate', { url });
   if (!(await waitReady(s, 'typeof window.vkSetFrame === "function"'))) fail('capture tab not ready');
   return s;

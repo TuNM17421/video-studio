@@ -1,14 +1,16 @@
 import React from 'react';
 import { isHiddenIllustrativeLabel } from '../labels/IllustrativeStamp.jsx';
-import { BRAND, C, LAYOUT } from '../../lib/tokens.js';
+import { BRAND, C } from '../../lib/tokens.js';
+import { useFormat, useLayout } from '../../lib/player.jsx';
 import { CLAMP, interpolate } from '../../lib/motion.js';
 import { pillWidth } from '../../lib/geometry.js';
 import { SvgText } from '../text/Text.jsx';
 
 /** Red uppercase eyebrow, centered at the top (HTML): "NGÀY 05 · THIẾT KẾ SẢN PHẨM AI". */
-export function Eyebrow({ children, top = LAYOUT.eyebrowTop, opacity = 1 }) {
+export function Eyebrow({ children, top, opacity = 1 }) {
+  const L = useLayout();
   return (
-    <div className="vk-eyebrow" style={{ top, opacity: opacity < 1 ? opacity : undefined }}>
+    <div className="vk-eyebrow" style={{ top: top ?? L.eyebrowTop, opacity: opacity < 1 ? opacity : undefined }}>
       {children}
     </div>
   );
@@ -41,15 +43,17 @@ export function SceneFooter({ left, right }) {
 }
 
 /** Red-soft tag right-aligned under the divider (SVG): "MINH HỌA", "SO SÁNH", "GLASSBOX". */
-export function CornerTag({ label, opacity = 1, right = LAYOUT.tagRight, y = LAYOUT.tagTop }) {
+export function CornerTag({ label, opacity = 1, right, y }) {
+  const L = useLayout();
   // Lab: the "MINH HỌA" corner card is not drawn (see isHiddenIllustrativeLabel); other tags are.
   if (!label || opacity <= 0.001 || isHiddenIllustrativeLabel(label)) return null;
   const w = Math.max(184, pillWidth(label, 17) + 6);
-  const x = right - w;
+  const x = (right ?? L.tagRight) - w;
+  const top = y ?? L.tagTop;
   return (
     <g opacity={opacity < 1 ? opacity : undefined}>
-      <rect x={x} y={y} width={w} height={42} rx={21} fill={C.redSoft} stroke={C.red} strokeWidth={2} />
-      <SvgText x={x + w / 2} y={y + 27} size={17} weight={700} color={C.red}>
+      <rect x={x} y={top} width={w} height={42} rx={21} fill={C.redSoft} stroke={C.red} strokeWidth={2} />
+      <SvgText x={x + w / 2} y={top + 27} size={17} weight={700} color={C.red}>
         {label}
       </SvgText>
     </g>
@@ -57,15 +61,17 @@ export function CornerTag({ label, opacity = 1, right = LAYOUT.tagRight, y = LAY
 }
 
 /** Centered header drawn in the scene SVG: title (baseline 176) + divider (+ corner tag). */
-export function CenterHeader({ title, titleSize = LAYOUT.titleSize, tag }) {
+export function CenterHeader({ title, titleSize, tag }) {
+  const F = useFormat();
+  const L = F.layout;
   return (
     <g>
       {title ? (
-        <SvgText x={960} y={LAYOUT.titleBaseline} size={titleSize} weight={700}>
+        <SvgText x={F.width / 2} y={L.titleBaseline} size={titleSize ?? L.titleSize} weight={700}>
           {title}
         </SvgText>
       ) : null}
-      <path d={`M ${LAYOUT.dividerX0} ${LAYOUT.dividerY} H ${LAYOUT.dividerX1}`} fill="none" stroke={C.dotInactive} strokeWidth={3} />
+      <path d={`M ${L.dividerX0} ${L.dividerY} H ${L.dividerX1}`} fill="none" stroke={C.dotInactive} strokeWidth={3} />
       {tag ? <CornerTag label={tag} /> : null}
     </g>
   );
@@ -73,17 +79,19 @@ export function CenterHeader({ title, titleSize = LAYOUT.titleSize, tag }) {
 
 /** Editorial (Day28) background grid: 120 px step from 80 px, dotInactive 1 px at 38 %. */
 export function EditorialGrid() {
+  const F = useFormat();
+  const { gridStart, gridStep } = F.layout;
   const xs = [];
   const ys = [];
-  for (let x = LAYOUT.gridStart; x < 1920; x += LAYOUT.gridStep) xs.push(x);
-  for (let y = LAYOUT.gridStart; y < 1080; y += LAYOUT.gridStep) ys.push(y);
+  for (let x = gridStart; x < F.width; x += gridStep) xs.push(x);
+  for (let y = gridStart; y < F.height; y += gridStep) ys.push(y);
   return (
     <g opacity={0.38} stroke={C.dotInactive} strokeWidth={1}>
       {xs.map((x) => (
-        <line key={`x${x}`} x1={x} x2={x} y1={0} y2={1080} />
+        <line key={`x${x}`} x1={x} x2={x} y1={0} y2={F.height} />
       ))}
       {ys.map((y) => (
-        <line key={`y${y}`} x1={0} x2={1920} y1={y} y2={y} />
+        <line key={`y${y}`} x1={0} x2={F.width} y1={y} y2={y} />
       ))}
     </g>
   );

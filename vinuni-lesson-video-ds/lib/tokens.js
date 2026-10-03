@@ -5,8 +5,6 @@
  * may use. Tints and glows are these same colors at alpha (see `alpha`) — never a new hue.
  */
 export const FPS = 30;
-export const WIDTH = 1920;
-export const HEIGHT = 1080;
 
 export const C = Object.freeze({
   bg: '#ffffff', //           canvas
@@ -58,29 +56,99 @@ export const HAND = "'Playpen Sans', 'Comic Sans MS', cursive";
 export const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 export const BRAND = 'VinUni · AI in Action 20K';
 
-/** Fixed canvas geometry (px on the 1920×1080 canvas). */
-export const LAYOUT = Object.freeze({
-  eyebrowTop: 70,
-  titleBaseline: 176,
-  titleSize: 50,
-  dividerY: 220,
-  dividerX0: 96,
-  dividerX1: 1824,
-  tagTop: 228,
-  tagRight: 1792,
-  contentTop: 250,
-  contentBottom: 960,
-  captionTop: 984,
-  captionHeight: 96,
-  captionMaxChars: 78,
-  safeX: 120,
-  contentXMin: 80,
-  footerBottom: 48,
-  watermarkTop: 46,
-  watermarkRight: 56,
-  gridStart: 80,
-  gridStep: 120,
+/**
+ * Khổ hình (format) — chọn một lần cho cả video, ở bước Kế hoạch, TRƯỚC khi dựng cảnh.
+ *
+ * Đây không phải một phép cắt lúc render. Hai khổ là hai khung vẽ khác nhau, và cảnh được **dựng riêng**
+ * cho khổ nào thì hợp với khổ đó: khổ ngang bày theo hàng (trái → phải, nhân vật hai bên, sơ đồ nằm
+ * ngang), khổ dọc bày theo cột (trên → dưới, nhân vật xếp chồng, sơ đồ chảy xuống). Cắt một cảnh ngang
+ * vào khung dọc chỉ mất nửa nội dung — đã đo ở #62.
+ *
+ * Cảnh đọc toạ độ của khổ đang dựng bằng `useLayout()` (lib/player.jsx), không đọc hằng số `LAYOUT`.
+ * `LAYOUT` giữ nguyên là khổ ngang để mọi video đã dựng xong không đổi một pixel nào.
+ */
+export const FORMATS = Object.freeze({
+  '16x9': Object.freeze({
+    id: '16x9',
+    label: 'Ngang · máy tính',
+    aspect: '16:9',
+    width: 1920,
+    height: 1080,
+    /** Trục bày nội dung: cảnh ngang kể chuyện từ trái sang phải. */
+    flow: 'row',
+    layout: Object.freeze({
+      eyebrowTop: 70,
+      titleBaseline: 176,
+      titleSize: 50,
+      dividerY: 220,
+      dividerX0: 96,
+      dividerX1: 1824,
+      tagTop: 228,
+      tagRight: 1792,
+      contentTop: 250,
+      contentBottom: 960,
+      captionTop: 984,
+      captionHeight: 96,
+      captionMaxChars: 78,
+      captionPadX: 180,
+      safeX: 120,
+      contentXMin: 80,
+      footerBottom: 48,
+      watermarkTop: 46,
+      watermarkRight: 56,
+      gridStart: 80,
+      gridStep: 120,
+    }),
+  }),
+  '9x16': Object.freeze({
+    id: '9x16',
+    label: 'Dọc · điện thoại',
+    aspect: '9:16',
+    width: 1080,
+    height: 1920,
+    /** Trục bày nội dung: cảnh dọc kể chuyện từ trên xuống dưới. */
+    flow: 'column',
+    layout: Object.freeze({
+      // Watermark giữ góc phải trên; eyebrow phải xuống dưới nó vì 1080 px không đủ cho cả hai một hàng.
+      watermarkTop: 48,
+      watermarkRight: 48,
+      eyebrowTop: 128,
+      titleBaseline: 268,
+      titleSize: 54,
+      dividerY: 312,
+      dividerX0: 56,
+      dividerX1: 1024,
+      tagTop: 320,
+      tagRight: 1024,
+      // Vùng nội dung 1080 × 1380 — khung đứng, nên sơ đồ xếp theo cột.
+      contentTop: 360,
+      contentBottom: 1740,
+      captionTop: 1800,
+      captionHeight: 120,
+      // 1080 − 2×56 = 968 px dùng được, ~20 px mỗi ký tự ở cỡ chữ phụ đề → 46 ký tự một dòng.
+      captionMaxChars: 46,
+      captionPadX: 56,
+      safeX: 56,
+      contentXMin: 48,
+      footerBottom: 56,
+      gridStart: 60,
+      gridStep: 120,
+    }),
+  }),
 });
+
+export const DEFAULT_FORMAT = '16x9';
+
+/** Khổ theo id; id lạ hoặc bỏ trống thì về khổ ngang. */
+export const formatOf = (id) => FORMATS[id] || FORMATS[DEFAULT_FORMAT];
+
+/**
+ * Khổ ngang vẫn là mặc định của module, nên mọi cảnh đã dựng (`import { LAYOUT, WIDTH }`) chạy y nguyên.
+ * Cảnh dựng cho khổ dọc dùng `useLayout()` / `useFormat()` thay vì ba hằng số này.
+ */
+export const WIDTH = FORMATS[DEFAULT_FORMAT].width;
+export const HEIGHT = FORMATS[DEFAULT_FORMAT].height;
+export const LAYOUT = FORMATS[DEFAULT_FORMAT].layout;
 
 export const SHADOW = Object.freeze({
   hero: '0 12px 28px rgba(11,42,77,0.16)',

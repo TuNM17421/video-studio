@@ -113,6 +113,13 @@ timestamps. Cached per câu: changing one câu's text re-bills only that câu.
 ## Stage 3 · scenes
 Read the style guide `styles/<style>.md` (and its `extends` parent) first: it says how this style builds
 scenes, which reference video to copy and which mistakes to check for. The rules below hold for every style.
+- **Khổ hình trước toạ độ đầu tiên.** REQUEST.md ghi `- Khổ hình:`. Mặc định là ngang 16:9 (1920×1080) và
+  không cần làm gì. Khổ **dọc 9:16** (1080×1920) thì `video.jsx` phải khai `format: '9x16'` trong `meta`,
+  toạ độ lấy từ `useLayout()` chứ không phải hằng số `LAYOUT` (hằng số đó là khổ ngang), vùng nội dung là
+  x 48–1032 / y 360–1740, và phụ đề chỉ 46 ký tự một dòng. Quan trọng hơn cả mấy con số: khổ dọc **bày theo
+  cột** — mũi tên đi xuống, so sánh A/B là hai thẻ chồng lên nhau, mỗi màn ít khối hơn hẳn. Đừng dựng cảnh
+  ngang rồi thu nhỏ: cắt một cảnh ngang vào khung dọc mất hẳn cột phải (đo ở #62). Mẫu:
+  `ui_kits/lesson-video/scenes/11-doc-cot-9x16.jsx`.
 - Timing is final: every câu lasts exactly its cue's `frames`. Place beats with `spokenAt(n, 'cụm từ')`
   (real word start) a few frames early; hold the settled state through `speechEnd(n)` + pause.
 - Colors only from `styles/<style>.json` and lib/tokens.js; chrome (eyebrow, captions, footer) in Montserrat;
@@ -120,7 +127,8 @@ scenes, which reference video to copy and which mistakes to check for. The rules
 - No meaningless placeholders (grey bars, empty boxes, blank app windows) standing through a câu while the
   narration names the content: empty slots only when the script says "chưa biết / sẽ có" — otherwise fill
   them with the words being spoken.
-- Captions ≤ 78 chars (lib/captions.js): read each câu's pages with `paginate` (verify prints only the
+- Captions ≤ 78 chars ở khổ ngang, ≤ 46 ở khổ dọc (lib/captions.js; `cueCaptions(CUES, { max: L.captionMaxChars })`):
+  read each câu's pages with `paginate` (verify prints only the
   video's total) and re-read every break before "từ / cho / bên"; a break that changes the meaning goes back
   to Stage 1 — never edit the narration here.
 - `quiz: true` only on the `silent` cue (Stage 1 rule); `npm run verify` reports a problem when it sits on a

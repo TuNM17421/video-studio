@@ -1,6 +1,6 @@
 import React from 'react';
 import { C } from '../../lib/tokens.js';
-import { useCaptionsEnabled } from '../../lib/player.jsx';
+import { useCaptionsEnabled, useFormat } from '../../lib/player.jsx';
 import { CenterHeader, EditorialGrid, EditorialHeader, Eyebrow, SceneFooter, SubtitleBar, Watermark } from './Chrome.jsx';
 
 /** The caption { start, end, text } active at `frame` (scene-local frames), or null. */
@@ -14,10 +14,11 @@ export function activeCaption(captions, frame) {
 }
 
 /**
- * One 1920×1080 lesson scene with all the persistent chrome.
+ * One lesson scene with all the persistent chrome, on the canvas of the video's FORMAT
+ * (16x9 = 1920×1080 · 9x16 = 1080×1920 — see lib/tokens.js FORMATS).
  *   variant 'center'    (canonical rebuild-v1): red eyebrow · centered title · divider · corner tag
  *   variant 'editorial' (Day28): 120 px grid · left kicker · title + red accent phrase · subtitle
- * `children` are SVG elements in the 1920×1080 viewBox (cards, flows, bars…).
+ * `children` are SVG elements in that format's viewBox (cards, flows, bars…); read it with useLayout().
  * `overlay` is HTML drawn above the SVG (recap rows, question cards, hook overlay, title cards).
  * Captions are scene-local { start, end, text } in frames; the active one shows in the navy bar.
  * Layers: SVG → eyebrow/header → overlay → footer → watermark → subtitle bar.
@@ -41,6 +42,7 @@ export function SceneFrame({
   overlay,
   children,
 }) {
+  const F = useFormat();
   const captionsOn = useCaptionsEnabled();
   const active = caption !== undefined ? caption : activeCaption(captions, frame)?.text;
   const editorial = variant === 'editorial';
@@ -48,7 +50,7 @@ export function SceneFrame({
   const footerRight = footer && typeof footer === 'object' ? footer.right : undefined;
   return (
     <div className="vk-scene" style={{ background }}>
-      <svg className="vk-svg" viewBox="0 0 1920 1080" width={1920} height={1080} xmlns="http://www.w3.org/2000/svg">
+      <svg className="vk-svg" viewBox={`0 0 ${F.width} ${F.height}`} width={F.width} height={F.height} xmlns="http://www.w3.org/2000/svg">
         {header && editorial ? <EditorialGrid /> : null}
         {header && !editorial ? <CenterHeader title={title} titleSize={titleSize} tag={tag} /> : null}
         {children}
