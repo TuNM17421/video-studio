@@ -11,6 +11,7 @@ import { ConfirmDialog } from "../confirm-dialog";
 import { HarnessPanel } from "../harness-panel";
 import { MusicPicker } from "../music-picker";
 import { ProductionState } from "../production-state";
+import { SfxPanel } from "./sfx-panel";
 import { post, StepBar, type StepProps } from "./shared";
 
 export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProps) {
@@ -30,6 +31,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
   const [buildNo, setBuildNo] = useState<BuildNo>(detail.state.buildNo ?? DEFAULT_BUILD_NO);
   const [catalog, setCatalog] = useState<MusicCatalog>({ background: [], quiz: [] });
   const quizCues = detail.cues?.cues.filter((c) => c.quiz).length ?? 0;
+  const hasSfx = detail.state.request.modules.includes("sfx");
   useEffect(() => { api<MusicCatalog>("/api/music").then(setCatalog).catch(() => {}); }, []);
   const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic, captions, buildNo }));
   const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["Manifest QA", a.qaManifest], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
@@ -71,6 +73,11 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
     {quizCues === 0 && quizMusic !== NO_MUSIC && <p className="vs-music-note">
       Đã chọn nhạc quiz nhưng <code>cues.js</code> chưa câu nào đánh dấu <code>quiz: true</code> — nhạc quiz sẽ bị bỏ qua.
     </p>}
+    {/* Tiếng động quyết ở đây cùng nhạc: cả ba đều là quyết định lúc hoàn thiện, và đều cần giọng đã xong. */}
+    {hasSfx && <>
+      <div className="vs-section-title">Tiếng động</div>
+      <SfxPanel id={id} enabled={hasSfx} />
+    </>}
   </div>;
 
   return <>
