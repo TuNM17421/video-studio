@@ -322,7 +322,11 @@ async function work(seat, first) {
     try {
       await s('Runtime.evaluate', { expression: `window.vkSetFrame(${f})`, awaitPromise: true }, { timeout: FRAME_TIMEOUT });
       const shot = await s('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, { timeout: FRAME_TIMEOUT });
-      fs.writeFileSync(frameFile(i), Buffer.from(shot.data, 'base64'));
+      // Ghi ra file tạm rồi đổi tên: bị Dừng giữa lúc ghi thì chỉ còn file .part, không để lại một PNG
+      // cụt mà --keep-frames lần sau tưởng là frame đã chụp xong.
+      const file = frameFile(i);
+      fs.writeFileSync(`${file}.part`, Buffer.from(shot.data, 'base64'));
+      fs.renameSync(`${file}.part`, file);
       strikes = 0;
       done++;
       if (done % 150 === 0 || done === total) {

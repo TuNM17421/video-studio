@@ -6,8 +6,12 @@ import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
 import { mixApproved } from "./sfx-plan";
 import { finishJob, isRunning, jobHandled, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, qaManifestPath, REPO, rel, transcriptPath, voiceOut } from "./paths";
+import { DS, HttpError, mp4Path, projectDir, qaManifestPath, REPO, rel, transcriptPath, videoDir, voiceOut } from "./paths";
+import { clearFramesDir, frameFingerprint, prepareFramesDir } from "./render-frames";
 import { readState, setStage } from "./videos";
+
+/** Frame của lần render dở, giữ lại để lần sau chụp nốt (render-frames.ts). Nằm trong render/, đã gitignore. */
+export const framesDir = (id: string) => path.join(projectDir(id), "render", "frames");
 
 /** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
 export function renderPreflight(id: string) {
@@ -67,6 +71,16 @@ async function renderSteps(id: string, base: string) {
   };
 
   if (!(await step("Build design system", "npm", ["run", "build"]))) return fail("Build thất bại.");
+  // Sau build, vì vân tay đọc dist/vk.js vừa sinh: cảnh đã sửa thì bundle đổi và frame cũ bị bỏ.
+  const frames = framesDir(id);
+  const kept = prepareFramesDir(frames, frameFingerprint({
+    videoDir: videoDir(id),
+    shared: [path.join(DS, "dist/vk.js"), path.join(DS, "styles.css"), path.join(DS, "ui_kits/lesson-video/index.html")],
+    captions: state.captions,
+    fps: state.fps,
+  }));
+  if (kept.reusable) log(id, "system", `Dùng lại ${kept.reusable} frame của lần render trước (hình chưa đổi) — chỉ chụp phần còn thiếu.`);
+  else if (kept.discarded) log(id, "system", "Cảnh, giọng, phụ đề hoặc nhịp fps đã đổi từ lần render dở trước — bỏ frame cũ, chụp lại từ đầu.");
   // TODO: on Windows, 6-tab (default) capture hangs deterministically partway through — reproduced
   // twice at the exact same frame, but a single tab clears the same range fine. Forcing 1 worker
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
@@ -74,6 +88,7 @@ async function renderSteps(id: string, base: string) {
     "tools/render.mjs", "--scene", id, "--audio", audio, "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
     // always explicit: render.mjs falls back to the catalog's default bed when the flag is missing
     "--music-track", background,
+    "--keep-frames", rel(frames),
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),
     ...(state.captions ? [] : ["--no-captions"]),
     // Always explicit, like the music track: `--fps 30` is the same sampling as no flag, and a render log
@@ -88,6 +103,7 @@ async function renderSteps(id: string, base: string) {
     return true;
   });
   if (!renderOk) return fail("Render thất bại, xem nhật ký.");
+  clearFramesDir(frames);
   if (state.request.scope.transcript && day) {
     fs.mkdirSync(path.dirname(transcriptPath(day, id)), { recursive: true });
     const ok = await step("Transcript", process.execPath, ["tools/transcript.mjs", rel(path.join(voiceOut(id), "voice.cues.json")), rel(transcriptPath(day, id))]);
