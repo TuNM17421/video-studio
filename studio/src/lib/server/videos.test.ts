@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_RENDER_FPS, LEGACY_RENDER_FPS, renderSpecLabel } from "../render-spec";
 import type { VideoRequest } from "../types";
-import { isLedgerOnlyProject, normalizeVideoState, requestMarkdown, styleUnsupportedModules, unmanagedState } from "./videos";
+import { isLedgerOnlyProject, normalizeVideoState, requestMarkdown, styleUnsupportedModules, unmanagedState, videoRequestFromBody } from "./videos";
 
 const storedState = {
   id: "d2-01-lab",
@@ -79,6 +79,51 @@ describe("render spec line", () => {
     expect(renderSpecLabel("16x9", 60)).toBe("MP4 · 1920×1080 · 60 fps");
     expect(renderSpecLabel("9x16", 30)).toBe("MP4 · 1080×1920 · 30 fps");
     expect(renderSpecLabel(undefined, 30)).toBe("MP4 · 1920×1080 · 30 fps");
+  });
+});
+
+describe("VideoRequest của video mới", () => {
+  // Lỗi thật: route dựng lại `request` theo từng trường và bỏ sót `format`, nên chọn "Dọc 9:16" ở bước Kế
+  // hoạch không có tác dụng gì — state.json không lưu khổ, REQUEST.md dặn agent dựng ngang. requestMarkdown
+  // vốn đã xử lý đúng, nên chỉ test nó thì không bắt được gì; phải test chính chỗ dựng lại.
+  const body = {
+    style: "lesson", format: "9x16", modules: ["quiz"], day: "Day03", itemId: "  10.1  ", title: "Tên",
+    scriptName: "bị bỏ qua.md", feedbackDir: "/tmp/fb", oldVideoDir: "/tmp/old", notes: "ghi chú",
+    scope: { scenes: true, voice: true, render: true, transcript: false, chapters: true },
+  } as VideoRequest;
+  const opts = { modules: ["quiz"], scriptName: "that.md" };
+
+  it("giữ khổ hình người dùng chọn", () => {
+    expect(videoRequestFromBody(body, opts).format).toBe("9x16");
+    expect(videoRequestFromBody({ ...body, format: "16x9" }, opts).format).toBe("16x9");
+    expect(videoRequestFromBody({ ...body, format: undefined }, opts).format).toBe("16x9");
+  });
+
+  it("khổ lạ bị từ chối, không im lặng về 16:9", () => {
+    for (const bad of ["16:9", "9X16", "4x3", "", 0, null]) {
+      expect(() => videoRequestFromBody({ ...body, format: bad as never }, opts)).toThrow(/khổ hình/i);
+    }
+  });
+
+  // Chốt ngược lại cái lỗi gốc: liệt kê từng trường là dễ quên một trường, nên test đòi ĐỦ khoá của
+  // VideoRequest. Thêm trường mới vào type mà quên ở đây thì test này đỏ.
+  it("không đánh rơi trường nào của VideoRequest", () => {
+    const out = videoRequestFromBody(body, opts);
+    expect(Object.keys(out).sort()).toEqual(Object.keys(body).sort());
+    expect(out).toEqual({
+      style: "lesson", format: "9x16", modules: ["quiz"], day: "Day03", itemId: "10.1", title: "Tên",
+      scriptName: "that.md", feedbackDir: "/tmp/fb", oldVideoDir: "/tmp/old", notes: "ghi chú",
+      scope: { scenes: true, voice: true, render: true, transcript: false, chapters: true },
+    });
+  });
+
+  it("khổ dọc thành luật dựng cảnh trong REQUEST.md, khổ ngang thì không", () => {
+    const doc = requestMarkdown("zz-doc", videoRequestFromBody(body, opts), "Claude");
+    expect(doc).toContain("Dọc 9:16");
+    expect(doc).toContain("9x16");
+    const ngang = requestMarkdown("zz-ngang", videoRequestFromBody({ ...body, format: "16x9" }, opts), "Claude");
+    expect(ngang).toContain("Ngang 16:9");
+    expect(ngang).not.toContain("theo cột");
   });
 });
 
