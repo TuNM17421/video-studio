@@ -2,10 +2,10 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { Artifacts, CuesInfo, StageId, StageStatus, VideoRequest, VideoState, VideoSummary } from "../types";
+import type { Artifacts, CuesInfo, StageId, StageStatus, VideoFormat, VideoRequest, VideoState, VideoSummary } from "../types";
 import { isAgentProvider } from "../agent-providers";
 import { NO_MUSIC, SILENT, type MusicChoice } from "../music";
-import { DEFAULT_BUILD_NO, isBuildNo, itemIdFor } from "../qa-manifest";
+import { DEFAULT_BUILD_NO, isBuildNo, ITEM_ID_MAX, itemIdFor } from "../qa-manifest";
 import { BASE_TEMPLATE_PATH } from "../modules";
 import { DEFAULT_REVIEW, normalizeReview } from "../review";
 import { cleanModules, moduleById } from "./modules";
@@ -418,6 +418,40 @@ export const FORMAT_LABEL: Record<string, string> = {
   "16x9": "Ngang 16:9 · 1920×1080 (máy tính, LMS)",
   "9x16": "Dọc 9:16 · 1080×1920 (điện thoại)",
 };
+
+/**
+ * Khổ hình phải được soát như `isModuleId` soát năng lực, vì cùng một lý do: một giá trị lạ lọt qua thành
+ * "không khai" rồi im lặng về 16:9, mà REQUEST.md là thứ agent tuân theo khi đặt toạ độ đầu tiên.
+ */
+export const isVideoFormat = (value: unknown): value is VideoFormat => value === "16x9" || value === "9x16";
+
+/**
+ * `VideoRequest` của một video mới, dựng từ thân request của bước Kế hoạch — cắt độ dài, bỏ trường lạ, soát
+ * khổ hình. Tách khỏi route API vì chỗ này **đã** đánh rơi một trường: nó liệt kê từng trường một, nên
+ * `format` không bao giờ vào `state.json` và REQUEST.md luôn dặn agent dựng ngang dù người dùng chọn dọc.
+ * Là hàm thuần thì test giữ được đủ trường, và lần sau thêm trường mới mà quên ở đây thì test đỏ.
+ */
+export function videoRequestFromBody(
+  r: VideoRequest,
+  { modules, scriptName }: { modules: string[]; scriptName: string },
+): VideoRequest {
+  // Soát như `isModuleId` soát năng lực: một khổ lạ không được im lặng thành "không khai" rồi về 16:9, vì
+  // khung là luật dựng cảnh trong REQUEST.md chứ không phải một dòng ghi chú.
+  if (r.format !== undefined && !isVideoFormat(r.format)) throw new HttpError(400, `Không có khổ hình: ${String(r.format)}`);
+  return {
+    style: r.style,
+    format: r.format ?? "16x9",
+    modules,
+    day: r.day,
+    itemId: String(r.itemId || "").trim().slice(0, ITEM_ID_MAX),
+    title: String(r.title || "").slice(0, 200),
+    scriptName: String(scriptName || "").slice(0, 200),
+    feedbackDir: r.feedbackDir || "",
+    oldVideoDir: r.oldVideoDir || "",
+    notes: String(r.notes || "").slice(0, 5000),
+    scope: { scenes: true, voice: !!r.scope.voice, render: !!r.scope.render, transcript: !!r.scope.transcript, chapters: !!r.scope.chapters },
+  };
+}
 
 /**
  * Khổ hình đi vào REQUEST.md như một **luật dựng cảnh**, không phải một dòng ghi chú: agent phải biết nó
