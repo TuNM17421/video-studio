@@ -75,7 +75,14 @@ async function renderSteps(id: string, base: string) {
   const frames = framesDir(id);
   const kept = prepareFramesDir(frames, frameFingerprint({
     videoDir: videoDir(id),
-    shared: [path.join(DS, "dist/vk.js"), path.join(DS, "styles.css"), path.join(DS, "ui_kits/lesson-video/index.html")],
+    // styles.css chỉ @import tokens/ và components/vk.css, font nằm ở fonts/: cả ba phải vào vân tay, không thì
+    // sửa một màu giữa lúc Dừng và lúc Render lại cho ra video nửa màu cũ nửa màu mới. render.mjs có mặt vì
+    // nó đổi cách lấy mẫu (hay khoá trong stamp của nó) thì thư mục cũ không còn hợp lệ.
+    shared: [
+      path.join(DS, "dist/vk.js"), path.join(DS, "styles.css"), path.join(DS, "ui_kits/lesson-video/index.html"),
+      path.join(DS, "tokens"), path.join(DS, "components"), path.join(DS, "fonts"),
+      path.join(REPO, "tools/render.mjs"),
+    ],
     captions: state.captions,
     fps: state.fps,
   }));
@@ -84,6 +91,9 @@ async function renderSteps(id: string, base: string) {
   // TODO: on Windows, 6-tab (default) capture hangs deterministically partway through — reproduced
   // twice at the exact same frame, but a single tab clears the same range fine. Forcing 1 worker
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
+  // render.mjs tự giữ một stamp (render.json) và từ chối thư mục lệch stamp. Studio không bỏ thư mục đó thì
+  // vân tay của nó vẫn khớp, lần sau lại bị từ chối y như vậy — người dùng kẹt mà không có nút nào gỡ.
+  let refused = false;
   const renderOk = await step("Render MP4", process.execPath, [
     "tools/render.mjs", "--scene", id, "--audio", audio, "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
     // always explicit: render.mjs falls back to the catalog's default bed when the flag is missing
@@ -97,13 +107,25 @@ async function renderSteps(id: string, base: string) {
     "--fps", String(state.fps),
     ...(process.platform === "win32" ? ["--workers", "1"] : []),
   ], (line) => {
+    if (/là frame của một lượt render khác/.test(line)) refused = true;
     const m = line.match(/(\d+)\/(\d+) frames/);
     if (!m) return false;
     setProgress(id, (Number(m[1]) / Number(m[2])) * 100, `Render ${m[1]}/${m[2]} frame`);
     return true;
   });
-  if (!renderOk) return fail("Render thất bại, xem nhật ký.");
-  clearFramesDir(frames);
+  if (!renderOk) {
+    if (refused) {
+      clearFramesDir(frames);
+      return fail("Frame giữ lại không khớp lượt render này — đã bỏ, bấm Render lại để chụp từ đầu.");
+    }
+    return fail("Render thất bại, xem nhật ký.");
+  }
+  // MP4 đã ra: dọn frame không được làm hỏng bước render (Windows: antivirus giữ file → EBUSY/EPERM).
+  try {
+    clearFramesDir(frames);
+  } catch (error) {
+    log(id, "error", `Không xoá được thư mục frame ${rel(frames)}: ${error instanceof Error ? error.message : String(error)} — xoá tay để lấy lại dung lượng.`);
+  }
   if (state.request.scope.transcript && day) {
     fs.mkdirSync(path.dirname(transcriptPath(day, id)), { recursive: true });
     const ok = await step("Transcript", process.execPath, ["tools/transcript.mjs", rel(path.join(voiceOut(id), "voice.cues.json")), rel(transcriptPath(day, id))]);

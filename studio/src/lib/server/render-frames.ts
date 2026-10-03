@@ -12,7 +12,7 @@ import path from "node:path";
 export interface FrameInputs {
   /** Thư mục video trong design system: cảnh, cues.js, voice.js, video.jsx (khổ hình), ảnh tư liệu. */
   videoDir: string;
-  /** Những file chung của design system trang render nạp vào: dist/vk.js, styles.css, index.html. */
+  /** File hoặc thư mục chung quyết định hình: bundle, CSS và font của design system, chính render.mjs. */
   shared: string[];
   captions: boolean;
   /** Nhịp render: frame đánh số theo frame đầu ra, nên đổi 30 ↔ 60 thì `render.mjs` từ chối thư mục cũ. */
@@ -35,10 +35,11 @@ function hashTree(hash: ReturnType<typeof createHash>, root: string, dir = root)
 export function frameFingerprint(inputs: FrameInputs) {
   const hash = createHash("sha256");
   hash.update(`captions=${inputs.captions ? 1 : 0}\0fps=${inputs.fps}\0`);
-  for (const file of inputs.shared) {
-    hash.update(`${path.basename(file)}\0`);
-    hash.update(fs.existsSync(file) ? fs.readFileSync(file) : "(missing)");
-    hash.update("\0");
+  for (const entry of inputs.shared) {
+    hash.update(`${entry}\0`);
+    if (!fs.existsSync(entry)) hash.update("(missing)\0");
+    else if (fs.statSync(entry).isDirectory()) hashTree(hash, entry);
+    else hash.update(fs.readFileSync(entry)).update("\0");
   }
   hashTree(hash, inputs.videoDir);
   return hash.digest("hex");
@@ -66,5 +67,5 @@ export function prepareFramesDir(dir: string, fingerprint: string) {
 
 /** MP4 đã ra: frame không còn giá trị gì, mà một video 10 phút là vài GB PNG. */
 export function clearFramesDir(dir: string) {
-  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
 }

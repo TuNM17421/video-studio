@@ -57,8 +57,9 @@ style is `styles/<style>.json` (palette, showcase components, rules — they ove
    Bản mix có giọng được đưa về −16 LUFS qua limiter (giọng ElevenLabs gốc chỉ ~−21 LUFS); `--loudness <LUFS>`
    đổi mức, `--no-loudnorm` bỏ bước này.
    Studio render với `--keep-frames projects/<id>/render/frames`: bấm Dừng (hoặc render hỏng) rồi Render lại thì
-   chỉ chụp nốt frame còn thiếu. Vân tay ở `studio/src/lib/server/render-frames.ts` (bundle, thư mục video, phụ
-   đề, fps) lệch thì Studio tự bỏ frame cũ; render xong thì xoá thư mục frame.
+   chỉ chụp nốt frame còn thiếu. Vân tay (`studio/src/lib/server/render-frames.ts`: bundle, CSS/token/font của
+   design system, thư mục video, phụ đề, fps, chính `render.mjs`) lệch thì Studio tự bỏ frame cũ; `render.mjs` từ
+   chối thư mục (stamp `render.json` lệch) thì Studio cũng bỏ để lần sau chụp lại; render xong thì xoá thư mục frame.
 5. **deliver** — `chapters/DayNN/<id>-chương.txt` (`MM:SS: tên chương`, one per script section),
    `projects/<id>/PROMPTS.md`, final build + verify.
 Optional: `/design-sync` pushes `vinuni-lesson-video-ds/` to the Claude Design project in

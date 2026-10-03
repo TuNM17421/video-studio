@@ -15,10 +15,13 @@ function fixture() {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, text);
   }
-  const inputs = { videoDir, shared: [bundle], captions: true, fps: 60 };
+  const tokens = path.join(root, "tokens");
+  fs.mkdirSync(tokens, { recursive: true });
+  fs.writeFileSync(path.join(tokens, "colors.css"), ":root{--blue:#123}");
+  const inputs = { videoDir, shared: [bundle, tokens], captions: true, fps: 60 };
   const frames = path.join(root, "render", "frames");
   const shoot = (n: number) => { for (let i = 0; i < n; i++) fs.writeFileSync(path.join(frames, `f${String(i).padStart(6, "0")}.png`), "png"); };
-  return { videoDir, bundle, inputs, frames, shoot };
+  return { videoDir, bundle, tokens, inputs, frames, shoot };
 }
 
 afterEach(() => {
@@ -26,6 +29,13 @@ afterEach(() => {
 });
 
 describe("frameFingerprint", () => {
+  it("đổi khi một file CSS trong thư mục chung đổi (styles.css chỉ @import)", () => {
+    const { tokens, inputs } = fixture();
+    const base = frameFingerprint(inputs);
+    fs.writeFileSync(path.join(tokens, "colors.css"), ":root{--blue:#f00}");
+    expect(frameFingerprint(inputs)).not.toBe(base);
+  });
+
   it("đổi khi cảnh, ảnh trong thư mục con, bundle, phụ đề hoặc fps đổi", () => {
     const { videoDir, bundle, inputs } = fixture();
     const base = frameFingerprint(inputs);
