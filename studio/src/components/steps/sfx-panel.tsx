@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PauseCircleFilled, PlayCircleFilled } from "@ant-design/icons";
-import { Alert, Checkbox, Empty, Select, Tag } from "antd";
+import { LoadingOutlined, PauseCircleFilled, PlayCircleFilled, ThunderboltOutlined } from "@ant-design/icons";
+import { Alert, Button, Checkbox, Collapse, Empty, Select, Tag } from "antd";
 import { api } from "@/lib/client";
 import type { SfxCatalog, SfxLayer } from "@/lib/sfx";
 import { SFX_LAYER_LABEL } from "@/lib/sfx";
@@ -18,6 +18,9 @@ interface SfxView {
   catalog: SfxCatalog;
   sections: string[];
   mixStale: boolean;
+  dropped: string[];
+  hasAgentRun: boolean;
+  suggesting: boolean;
   mix: { hits: MixHit[]; beds: MixHit[] };
 }
 
@@ -57,6 +60,20 @@ export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
   }, [id]);
 
   useEffect(() => { if (enabled) load(); }, [enabled, load]);
+
+  // Lượt agent chạy ngoài job của video, nên trang không nhận được sự kiện của nó: hỏi lại tới khi xong.
+  useEffect(() => {
+    if (!view?.suggesting) return;
+    const timer = setInterval(load, 2500);
+    return () => clearInterval(timer);
+  }, [view?.suggesting, load]);
+
+  const suggest = () => {
+    setView((current) => (current ? { ...current, suggesting: true } : current));
+    api(`/api/videos/${id}/sfx/suggest`, { method: "POST", json: {} })
+      .then(() => setTimeout(load, 1200))
+      .catch((e) => { setError(e instanceof Error ? e.message : String(e)); load(); });
+  };
 
   const save = (next: SfxState) => {
     setView((current) => (current ? { ...current, state: next } : current));
@@ -107,6 +124,25 @@ export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
       {used === 0 && !bedCount && " — chưa duyệt chỗ nào thì video không có tiếng động."}
     </p>
     {error && <Alert className="vs-music-note" type="warning" showIcon title="Chưa lưu được" description={error} />}
+    <div className="vs-sfx-actions">
+      {/* Nút này tốn token nên chỉ chạy khi bạn bấm — Studio không tự gọi agent. */}
+      <Button
+        size="small"
+        icon={view.suggesting ? <LoadingOutlined spin /> : <ThunderboltOutlined />}
+        disabled={view.suggesting}
+        onClick={suggest}
+      >{view.suggesting ? "Agent đang đọc lời…" : view.hasAgentRun ? "Đề xuất lại bằng agent" : "Đề xuất bằng agent"}</Button>
+      <small>Agent đọc lời và mô tả hình rồi chỉ ra chỗ đáng có tiếng. Tốn token; những chỗ trên vẫn giữ nguyên quyền duyệt của bạn.</small>
+    </div>
+    {!!view.dropped.length && <Collapse
+      className="vs-sfx-dropped"
+      size="small"
+      items={[{
+        key: "dropped",
+        label: `${view.dropped.length} chỗ agent đề xuất bị soát loại`,
+        children: <ul>{view.dropped.map((line) => <li key={line}>{line}</li>)}</ul>,
+      }]}
+    />}
     {!view.spots.length && <Empty className="step-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có chỗ nào đáng đặt tiếng" />}
     <ul className="vs-sfx-list">
       {view.spots.map((spot) => {

@@ -66,7 +66,7 @@ export function sectionRange(cues: Cue[], section: number): { from: number; to: 
  * Câu `silent` bị bỏ qua hoàn toàn — khoảng chờ quiz nằm trong số đó, và luật là không đặt tiếng vào lúc
  * người xem đang nghĩ.
  */
-export function suggestSpots(cues: Cue[], sections: string[] = []): SfxSpot[] {
+export function suggestSpots(cues: Cue[], sections: string[] = [], fromAgent: SfxSpot[] = []): SfxSpot[] {
   const spots: SfxSpot[] = [];
   if (!cues.length) return spots;
   spots.push({ id: "open", kind: "open", soundId: "whoosh-long", cue: null, anchor: null, frame: 0, why: "Mở màn video" });
@@ -100,7 +100,68 @@ export function suggestSpots(cues: Cue[], sections: string[] = []): SfxSpot[] {
       });
     }
   }
-  return spots;
+  // Đề xuất của agent trộn vào theo mốc thời gian, không dồn xuống cuối: panel đọc theo thứ tự xem phim.
+  // Chỗ agent trùng đúng cue + cụm với một chỗ kịch bản đã khai thì bỏ — bản khai của kịch bản thắng.
+  const taken = new Set(spots.filter((s) => s.cue != null).map((s) => `${s.cue}\u0000${s.anchor ?? ""}`));
+  for (const spot of fromAgent) if (!taken.has(`${spot.cue}\u0000${spot.anchor ?? ""}`)) spots.push(spot);
+  return spots.sort((a, b) => a.frame - b.frame || a.id.localeCompare(b.id));
+}
+
+/**
+ * Đề xuất của agent (`projects/<id>/sfx/triage.json`), soát bằng CODE trước khi hiện ra.
+ *
+ * Không tin chữ agent viết: `anchor` phải có NGUYÊN VĂN trong lời của đúng câu đó (không thì `spokenAt`
+ * ném lúc trộn và hỏng cả bản trộn), `sound` phải có trong danh mục, câu lặng thì bỏ (khoảng chờ quiz nằm
+ * trong số đó), và trần 4 tiếng nhấn áp ngay ở đây chứ không để agent tự hứa là đã đếm.
+ *
+ * Mỗi chỗ bị bỏ đều kèm lý do và panel hiện ra: người dựng cần biết agent đã đề xuất gì mà không qua.
+ */
+export interface AgentSpotRaw { cue?: unknown; anchor?: unknown; sound?: unknown; why?: unknown }
+
+export const MAX_ACCENTS = 4;
+
+export function agentSpots(
+  raw: unknown,
+  cues: Cue[],
+  sounds: { id: string; layer: string }[],
+): { spots: SfxSpot[]; dropped: string[] } {
+  const list = Array.isArray((raw as { spots?: unknown })?.spots) ? (raw as { spots: AgentSpotRaw[] }).spots : [];
+  const byN = new Map(cues.map((c) => [c.n, c]));
+  const layerOf = new Map(sounds.map((s) => [s.id, s.layer]));
+  const spots: SfxSpot[] = [];
+  const dropped: string[] = [];
+  const seen = new Set<string>();
+  let accents = 0;
+
+  for (const item of list) {
+    const n = Number(item?.cue);
+    const anchor = typeof item?.anchor === "string" ? item.anchor.trim() : "";
+    const sound = typeof item?.sound === "string" ? item.sound.trim() : "";
+    const label = `câu ${Number.isFinite(n) ? n : "?"}${anchor ? ` · "${anchor}"` : ""}`;
+    const cue = byN.get(n);
+    if (!cue) { dropped.push(`${label}: không có câu này`); continue; }
+    if (cue.silent) { dropped.push(`${label}: câu lặng (khoảng chờ) — không đặt tiếng`); continue; }
+    if (!layerOf.has(sound)) { dropped.push(`${label}: danh mục không có tiếng "${sound}"`); continue; }
+    if (!anchor) { dropped.push(`${label}: thiếu cụm từ để neo`); continue; }
+    if (!cue.text.includes(anchor)) { dropped.push(`${label}: lời câu ${n} không có nguyên văn cụm này`); continue; }
+    const key = `${n}\u0000${anchor}`;
+    if (seen.has(key)) { dropped.push(`${label}: trùng một chỗ đã đề xuất`); continue; }
+    if (layerOf.get(sound) === "accent") {
+      if (accents >= MAX_ACCENTS) { dropped.push(`${label}: quá trần ${MAX_ACCENTS} tiếng nhấn mỗi video`); continue; }
+      accents += 1;
+    }
+    seen.add(key);
+    spots.push({
+      id: `agent:${n}:${anchor}`,
+      kind: "agent",
+      soundId: sound,
+      cue: n,
+      anchor,
+      frame: cue.start,
+      why: typeof item?.why === "string" && item.why.trim() ? item.why.trim() : `Agent đề xuất: "${anchor}"`,
+    });
+  }
+  return { spots, dropped };
 }
 
 /** Tiếng cuối cùng của một chỗ: người dựng đổi rồi thì lấy của họ, chưa đổi thì lấy đề xuất. */

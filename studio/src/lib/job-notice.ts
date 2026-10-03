@@ -15,6 +15,7 @@ export const JOB_LABEL: Record<JobKind, string> = {
   deliver: "Bàn giao",
   research: "Đóng gói kịch bản",
   images: "Đề xuất ảnh",
+  sfx: "Đề xuất tiếng động",
   "dry-run": "Kiểm tra giọng",
   "voice-script": "Xuất lời đọc",
   "import-scan": "Kiểm tra thư mục audio",

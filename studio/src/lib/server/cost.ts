@@ -30,13 +30,22 @@ function systemLog(id: string): string[] {
   return lines;
 }
 
+/**
+ * Lượt agent của các bước chạy NGOÀI job của video — đề xuất ảnh và đề xuất tiếng động. Chúng ghi lượt
+ * chạy vào `status.json` của riêng mình chứ không vào ledger của video, nên tiền của chúng chỉ vào bảng
+ * chi phí khi đọc ở đây. Thêm một bước cùng kiểu thì thêm tên thư mục vào đây.
+ */
+const SIDE_JOBS = ["images", "sfx"];
+
 function imageRuns(id: string): ImageRun[] {
-  try {
-    const status = JSON.parse(fs.readFileSync(path.join(projectDir(id), "images", "status.json"), "utf8")) as { runs?: unknown };
-    return Array.isArray(status.runs) ? status.runs as ImageRun[] : [];
-  } catch {
-    return [];
-  }
+  return SIDE_JOBS.flatMap((dir) => {
+    try {
+      const status = JSON.parse(fs.readFileSync(path.join(projectDir(id), dir, "status.json"), "utf8")) as { runs?: unknown };
+      return Array.isArray(status.runs) ? status.runs as ImageRun[] : [];
+    } catch {
+      return [];
+    }
+  });
 }
 
 export function videoCost(id: string): VideoCost {
