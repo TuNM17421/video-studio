@@ -16,18 +16,29 @@
  * renderer needs — live here, because they are a property of the hand-off, not of the style.
  */
 
-/** The capture contract `tools/render.mjs` drives: one tab, `vkSetFrame(n)` per frame, no page reload. */
-export const CAPTURE_CONTRACT = `## Chế độ chụp frame
+/**
+ * The capture contract `tools/render.mjs` drives: one tab, `vkSetFrame(n)` per frame, no page reload.
+ *
+ * Hai thứ ở đây đi theo video chứ không cố định: cỡ khung (khổ dọc là 1080×1920, và render chỉ mở đúng cỡ
+ * khi trang khai `window.vkFormat` — thiếu thì nó về 1920×1080 mà không báo), và frame lẻ (render 60 fps hỏi
+ * frame 40, 40,5, 41 trên cùng cái đồng hồ 30 fps; trang làm tròn thì mỗi hình bị ghi hai lần).
+ */
+export const captureContract = (format = LANDSCAPE) => `## Chế độ chụp frame
 
-Mình render bằng headless Chrome rồi ghép ffmpeg, nên trang phải phơi ra đúng ba thứ:
+Mình render bằng headless Chrome rồi ghép ffmpeg, nên trang phải phơi ra đúng những thứ sau:
 
 - \`window.vkDuration\` — tổng số frame.
-- \`window.vkSetFrame(n)\` — **trả về Promise**, resolve **sau khi** frame thứ n đã vẽ xong hẳn (chữ, ảnh, phông đều lên). Gọi liên tiếp trong cùng một tab phải chạy đúng, không rò trạng thái giữa các lần.
-- \`?frame=N\` đóng băng frame N ở **1920×1080 tỉ lệ 1:1**, sát mép trái trên, ẩn thanh điều khiển, không bo góc, không viền đen, audio im. \`?captions=0\` bỏ thanh phụ đề. Khi vẽ xong đặt \`window.__frameReady = true\`.
+- \`window.vkSetFrame(n)\` — **trả về Promise**, resolve **sau khi** frame thứ n đã vẽ xong hẳn (chữ, ảnh, phông đều lên). Gọi liên tiếp trong cùng một tab phải chạy đúng, không rò trạng thái giữa các lần. **\`n\` có thể là số lẻ** (40,5) khi mình xuất 60 hình mỗi giây: vẽ đúng hình ở giữa hai frame, đừng làm tròn.${format.id === '16x9' ? '' : `
+- \`window.vkFormat = { id: '${format.id}', width: ${format.width}, height: ${format.height} }\` — bộ chụp đọc cỡ khung từ đây. **Thiếu dòng này thì nó mở khung 1920×1080** và cảnh bị cắt.`}
+- \`?frame=N\` đóng băng frame N ở **${format.width}×${format.height} tỉ lệ 1:1**, sát mép trái trên, ẩn thanh điều khiển, không bo góc, không viền đen, audio im. \`?captions=0\` bỏ thanh phụ đề. Khi vẽ xong đặt \`window.__frameReady = true\`.
 
 Bộ chụp mở vài tab **một lần** rồi gọi \`vkSetFrame\` trong chính tab đó — **không tải lại trang cho mỗi frame**. Mở trang mới mỗi frame là nhân số lần nạp script lên bằng số frame.
 
 Và **đừng nạp gì từ CDN ngoài**: React lấy từ \`../../_vendor/react.js\` và \`../../_vendor/react-dom.js\` (đúng bản design system được build cùng), JSX biên dịch sẵn thành JavaScript thường để trang không cần Babel. Chụp hàng chục nghìn frame mà mỗi frame phụ thuộc một CDN thì mạng chớp một nhịp là hỏng cả mẻ.`;
+
+/** Khổ ngang — mặc định của design system (`FORMATS['16x9']` trong lib/tokens.js), khi người gọi không truyền khổ. */
+const LANDSCAPE = { id: '16x9', width: 1920, height: 1080, layout: { contentTop: 250, contentBottom: 960, captionTop: 984 } };
+export const CAPTURE_CONTRACT = captureContract();
 
 /** True for every style: use the real components, drive everything from the frame, keep to the nine colours. */
 export const CORE_RULES = `## Ràng buộc bắt buộc
@@ -72,7 +83,9 @@ export function durationWords(frames) {
  * scene must show, never a description of how to draw it — art direction belongs to whoever builds the scene.
  */
 function cueLines(cue, measured) {
-  const out = [`${cue.n}. [${measured ? '' : '~'}${cue.frames} frame]  ${cue.text}`];
+  const said = cue.silent ? '(im lặng — không có lời, khoảng chờ người xem suy nghĩ)' : cue.text;
+  const out = [`${cue.n}. [${measured ? '' : '~'}${cue.frames} frame]  ${cue.tag ? `[${cue.tag}] ` : ''}${said}`];
+  if (cue.speaker) out.push(`    người nói: ${cue.speaker}`);
   if (cue.visual) out.push(`    trên màn hình: ${cue.visual}`);
   if (cue.title) out.push(`    tiêu đề cảnh: ${cue.title}`);
   return out.join('\n');
@@ -82,7 +95,66 @@ function cueLines(cue, measured) {
  * The whole brief. `cues` carry `{ n, section, text, title, visual, frames }`; `measured` says whether those
  * frames came from `voice.cues.json` (real) or from the script's estimate (the voice is not recorded yet).
  */
-export function buildPrompt({ id, title, sections = [], cues, measured, styleName, styleBlock }) {
+/**
+ * Sân khấu theo khổ. Khổ ngang giữ nguyên câu cũ; khổ dọc phải nói cả *cách bày* chứ không chỉ cỡ khung —
+ * dựng ngang rồi cắt vào khung dọc mất gần nửa hình (#62 đã đo), và người dựng bên kia không có REQUEST.md.
+ */
+function stageLine(format) {
+  const l = format.layout || {};
+  if (format.id === '16x9') {
+    return `**Sân khấu.** 1920×1080 ở ${FPS} hình mỗi giây. Vùng nội dung an toàn là y từ 250 đến 960; dưới y 984 là thanh phụ đề, đừng để gì quan trọng ở đó.`;
+  }
+  const x0 = l.contentXMin ?? 48;
+  return [
+    `**Sân khấu.** Khổ **dọc ${format.aspect || '9:16'}**, ${format.width}×${format.height} ở ${FPS} hình mỗi giây.`,
+    `Vùng nội dung an toàn là x từ ${x0} đến ${format.width - x0}, y từ ${l.contentTop} đến ${l.contentBottom}; dưới y ${l.captionTop} là thanh phụ đề${l.captionMaxChars ? ` (mỗi dòng tối đa ${l.captionMaxChars} ký tự)` : ''}, đừng để gì quan trọng ở đó.`,
+    `**Bày theo cột, từ trên xuống**: mũi tên đi xuống, so sánh là hai thẻ chồng nhau, mỗi màn ít khối hơn khổ ngang vì bề ngang chỉ còn hơn một nửa. **Đừng dựng ngang rồi thu hay cắt vào khung dọc.**`,
+    `Design system có sẵn khổ này (\`FORMATS['${format.id}']\`, \`useLayout()\`) thì lấy toạ độ từ đó thay vì tự đặt số.`,
+  ].join(' ');
+}
+
+/** Tên năng lực như Studio gọi; `sfx` trộn vào tiếng lúc render nên không có gì để nói với người dựng hình. */
+function capabilityLines(modules, cues) {
+  if (!Array.isArray(modules)) return [];
+  const has = (id) => modules.includes(id);
+  const out = [];
+  if (has('dialogue') || cues.some((c) => c.speaker)) {
+    out.push('- **Hội thoại.** Câu nào có dòng `người nói` là lời của nhân vật đó. Dùng thẻ thoại của design system, mỗi nhân vật giữ một phía suốt video; đừng đổi tên hay thêm nhân vật.');
+  }
+  if (has('quiz') || cues.some((c) => c.quiz)) {
+    out.push('- **Quiz.** Câu gắn `[CÂU HỎI]` là câu hỏi; câu `im lặng` ngay sau là khoảng chờ — giữ câu hỏi trên màn hình cùng đồng hồ đếm, **chưa hiện đáp án**. Đáp án chỉ xuất hiện ở câu kế tiếp.');
+  }
+  out.push(has('mascot')
+    ? '- **Linh vật Griffin.** Video có Griffin: dùng `Griffin` / `GriffinBadge` của design system ở những câu Griffin nói hoặc dòng `trên màn hình` nhắc tới Griffin; câu khác thì không vẽ.'
+    : '- **Không có linh vật.** Đừng dùng `Griffin` / `GriffinBadge` ở bất kỳ cảnh nào.');
+  return out;
+}
+
+/**
+ * Ảnh người dựng video đã duyệt. Bên kia không thấy máy này, nên brief phải nói đủ ba thứ: file nào, câu nào,
+ * dòng ghi nguồn nào — và rằng không được tự thêm ảnh. `src` dựng từ vị trí trang để chạy được cả ở project
+ * bên đó lẫn sau khi chép về (PhotoCard để nguyên một URL tuyệt đối).
+ */
+function imageLines(images) {
+  const list = (images || []).filter((i) => i && i.file);
+  if (!list.length) return '';
+  const row = (i) => {
+    const where = i.cues?.length ? `câu ${i.cues.join(', ')}` : 'chưa gắn câu';
+    const size = i.width && i.height ? ` (${i.width}×${i.height})` : '';
+    return i.kind === 'use'
+      ? `- ${where}: \`img/${i.file}\`${size} — ${i.subject || 'ảnh tư liệu'}. Ghi nguồn, chép nguyên: «${i.credit || ''}»${i.caption ? `. Chú thích: «${i.caption}»` : ''}`
+      : `- ${where}: \`img/${i.file}\` — ${i.subject || 'ảnh tham khảo'}. **Chỉ để xem rồi vẽ lại** bằng component, không đưa ảnh này vào cảnh.`;
+  };
+  return [
+    `## Ảnh tư liệu`,
+    '',
+    `Người dựng video đã duyệt ${list.length} ảnh. Mình tải các file này vào thư mục \`img/\` cạnh trang; nạp bằng \`new URL('img/<tên file>', location.href).href\` rồi truyền vào \`src\` của \`PhotoCard\`. Ảnh chỉ xuất hiện ở đúng câu ghi dưới đây, dòng ghi nguồn phải đọc được, và **không thêm ảnh nào khác** — kể cả ảnh minh hoạ tự tìm.`,
+    '',
+    ...list.map(row),
+  ].join('\n');
+}
+
+export function buildPrompt({ id, title, sections = [], cues, measured, styleName, styleBlock, format = LANDSCAPE, modules = null, images = [] }) {
   if (!cues?.length) throw new Error('không có câu nào');
   const total = cues.reduce((sum, c) => sum + c.frames, 0);
   // Gom theo số phần của chính các câu, không theo danh sách tên: hai video trong repo có `section:` trên
@@ -99,10 +171,12 @@ export function buildPrompt({ id, title, sections = [], cues, measured, styleNam
       ? `**Thời lượng từng cảnh là số đo thật** từ file giọng đã thu, **không được đổi** — cảnh phải vừa đúng khung giờ của câu đang đọc.`
       : `**Giọng đọc chưa thu, nên thời lượng dưới đây là ước lượng** (khoảng 2,9 tiếng mỗi giây cộng nhịp nghỉ). Số thật sẽ khác, nên **đừng neo nhịp vào frame tuyệt đối** — neo vào *câu nào, cụm từ nào*, để khi có giọng thật chỉ cần thay bảng thời lượng là khớp lại.`,
     '',
-    `**Sân khấu.** 1920×1080 ở ${FPS} hình mỗi giây. Vùng nội dung an toàn là y từ 250 đến 960; dưới y 984 là thanh phụ đề, đừng để gì quan trọng ở đó.`,
+    stageLine(format),
     '',
     `**Phần hình là của bạn.** Mình chỉ đưa ba thứ đã khoá: lời đang đọc, thời lượng cảnh, và chữ bắt buộc phải xuất hiện. Còn bố cục, chọn component, cách chuyển cảnh, có hay không một mạch hình xuyên suốt — bạn tự quyết. Đừng hỏi lại mình từng cảnh.`,
   ].join('\n');
+
+  const capabilities = capabilityLines(modules, cues);
 
   const body = groups.map(({ n, name, cues: group }) => {
     const frames = group.reduce((sum, c) => sum + c.frames, 0);
@@ -116,7 +190,9 @@ export function buildPrompt({ id, title, sections = [], cues, measured, styleNam
     head,
     CORE_RULES,
     styleBlock ? `## Style: ${styleName}\n\n${styleBlock.trim()}` : '',
-    CAPTURE_CONTRACT,
+    capabilities.length ? `## Năng lực của video\n\n${capabilities.join('\n')}` : '',
+    imageLines(images),
+    captureContract(format),
     WORKING,
     `## Danh sách ${cues.length} cảnh\n\nĐịnh dạng: \`số thứ tự. [thời lượng]  lời đang đọc\`, rồi \`trên màn hình:\` là thứ cảnh phải cho thấy, và \`tiêu đề cảnh:\` là chữ truyền vào \`title\`.\n${body}`,
     REPORT_ASKS,
@@ -135,7 +211,7 @@ export function buildPrompt({ id, title, sections = [], cues, measured, styleNam
  *
  * Trả về danh sách kiểm, không ném lỗi: người gọi quyết định cái nào là chặn, cái nào là cảnh báo.
  */
-export function inspectBundle({ files, page, pageHtml, scripts }) {
+export function inspectBundle({ files, page, pageHtml, scripts, format = null }) {
   const checks = [];
   const add = (name, ok, detail, level = 'problem') => checks.push({ name, ok, detail, level: ok ? 'ok' : level });
 
@@ -157,6 +233,13 @@ export function inspectBundle({ files, page, pageHtml, scripts }) {
   const js = scripts.join('\n');
   for (const [name, needle] of [['vkSetFrame', 'vkSetFrame'], ['vkDuration', 'vkDuration'], ['__frameReady', '__frameReady']]) {
     add(`phơi ${name}`, js.includes(needle), js.includes(needle) ? 'có' : 'không tìm thấy trong mã trang');
+  }
+  // Khổ dọc: render lấy cỡ khung từ `window.vkFormat`. Trang không khai thì khung mở 1920×1080 và MP4 ra
+  // ngang với cảnh dọc bị cắt — vẫn đủ frame, không lỗi nào báo.
+  if (format && format.id !== '16x9') {
+    const declared = new RegExp(`vkFormat[\\s\\S]{0,200}?${format.width}[\\s\\S]{0,80}?${format.height}`).test(js + pageHtml);
+    add(`khai khổ ${format.id}`, declared,
+      declared ? `window.vkFormat ${format.width}×${format.height}` : `trang không khai window.vkFormat ${format.width}×${format.height} — render sẽ mở khung 1920×1080 và cắt cảnh`);
   }
   add('chế độ ?frame=N', /[?&]frame=|['"]frame['"]/.test(js + pageHtml), 'tham số đóng băng frame', 'warning');
 

@@ -134,3 +134,78 @@ test('đọc được tổng frame bên kia khai', () => {
   assert.equal(bundleFrames(['window.PARTS = [{ n: 1, frames: 884 }, { n: 2, frames: 1565 }];']), 2449);
   assert.equal(bundleFrames(['không có PARTS']), null);
 });
+
+// ── Khổ hình, năng lực, ảnh tư liệu: ba thứ người dựng bên kia không thể tự biết ──────────────────────────
+const PORTRAIT = {
+  id: '9x16', aspect: '9:16', width: 1080, height: 1920,
+  layout: { contentXMin: 48, contentTop: 360, contentBottom: 1740, captionTop: 1800, captionMaxChars: 46 },
+};
+
+test('khổ ngang giữ nguyên câu sân khấu cũ và không đòi vkFormat', () => {
+  const out = buildPrompt(base);
+  assert.match(out, /\*\*Sân khấu\.\*\* 1920×1080 ở 30 hình mỗi giây\. Vùng nội dung an toàn là y từ 250 đến 960/);
+  assert.match(out, /1920×1080 tỉ lệ 1:1/);
+  assert.doesNotMatch(out, /vkFormat/);
+});
+
+test('khổ dọc: brief nói đúng cỡ khung, vùng nội dung, cách bày — và đòi trang khai vkFormat', () => {
+  // Lỗi thật: brief in cứng "1920×1080" nên video chọn Dọc 9:16 vẫn được bảo dựng ngang.
+  const out = buildPrompt({ ...base, format: PORTRAIT });
+  assert.doesNotMatch(out, /1920×1080 ở 30 hình/);
+  assert.match(out, /Khổ \*\*dọc 9:16\*\*, 1080×1920/);
+  assert.match(out, /x từ 48 đến 1032, y từ 360 đến 1740/);
+  assert.match(out, /tối đa 46 ký tự/);
+  assert.match(out, /Bày theo cột/);
+  assert.match(out, /window\.vkFormat = \{ id: '9x16', width: 1080, height: 1920 \}/);
+  assert.match(out, /1080×1920 tỉ lệ 1:1/);
+});
+
+test('hợp đồng chụp nói trước về frame lẻ — render 60 fps hỏi frame 40,5', () => {
+  assert.match(buildPrompt(base), /`n` có thể là số lẻ/);
+});
+
+test('không truyền năng lực thì brief không khẳng định điều nó không biết', () => {
+  assert.doesNotMatch(buildPrompt(base), /## Năng lực của video/);
+});
+
+test('năng lực: tắt linh vật thì cấm Griffin, bật thì cho; hội thoại và quiz hiện trên từng câu', () => {
+  const off = buildPrompt({ ...base, modules: [] });
+  assert.match(off, /Không có linh vật.*Đừng dùng `Griffin`/);
+  const cues = [
+    cue(1, 1, { speaker: 'Tú', tag: 'CÂU HỎI' }),
+    cue(2, 1, { text: '', silent: true, quiz: true }),
+    cue(3, 1, { speaker: 'Tới' }),
+  ];
+  const on = buildPrompt({ ...base, cues, modules: ['dialogue', 'quiz', 'mascot'] });
+  assert.match(on, /\*\*Hội thoại\.\*\*/);
+  assert.match(on, /\*\*Quiz\.\*\*/);
+  assert.match(on, /\*\*Linh vật Griffin\.\*\*/);
+  assert.match(on, /^1\. \[100 frame\] {2}\[CÂU HỎI\] Lời của câu 1\.\n {4}người nói: Tú/m);
+  assert.match(on, /^2\. \[100 frame\] {2}\(im lặng/m);
+});
+
+test('ảnh tư liệu đã duyệt vào brief kèm câu, file và dòng ghi nguồn; ảnh tham khảo không được đưa vào cảnh', () => {
+  const images = [
+    { file: 's4.jpg', kind: 'use', cues: [4], subject: 'Deep Blue', credit: 'Ảnh: A · CC BY 2.0', width: 1067, height: 1600 },
+    { file: 's9.png', kind: 'reference', cues: [9], subject: 'Sơ đồ' },
+  ];
+  const out = buildPrompt({ ...base, images });
+  assert.match(out, /## Ảnh tư liệu/);
+  assert.match(out, /câu 4: `img\/s4\.jpg` \(1067×1600\) — Deep Blue\. Ghi nguồn, chép nguyên: «Ảnh: A · CC BY 2\.0»/);
+  assert.match(out, /câu 9: `img\/s9\.png` — Sơ đồ\. \*\*Chỉ để xem rồi vẽ lại\*\*/);
+  assert.match(out, /không thêm ảnh nào khác/);
+  assert.doesNotMatch(buildPrompt(base), /## Ảnh tư liệu/);
+});
+
+test('nhập về: video dọc mà trang không khai vkFormat thì chặn — render sẽ mở khung ngang', () => {
+  const bundle = {
+    files: ['index.html', 'app.js'], page: 'index.html', pageHtml: '<script src="./app.js"></script>',
+    scripts: ['window.vkDuration = 10; window.vkSetFrame = n => {}; window.__frameReady = true; params.get("frame");'],
+  };
+  assert.equal(inspectBundle({ ...bundle, format: PORTRAIT }).ok, false);
+  assert.equal(inspectBundle({ ...bundle, format: PORTRAIT }).checks.find((c) => c.name === 'khai khổ 9x16').ok, false);
+  const declared = { ...bundle, scripts: [`${bundle.scripts[0]} window.vkFormat = { id: '9x16', width: 1080, height: 1920 };`] };
+  assert.equal(inspectBundle({ ...declared, format: PORTRAIT }).ok, true);
+  // Khổ ngang không đòi gì thêm: render mặc định đã là 1920×1080.
+  assert.equal(inspectBundle(bundle).ok, true);
+});
