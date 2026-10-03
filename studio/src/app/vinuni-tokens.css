@@ -172,6 +172,9 @@
   --vu-style-grid-columns: 3;
   --vu-style-card-padding: 12px;
   --vu-style-specimen-height: 128px;
+  --vu-style-thumb-width: 88px;
+  --vu-capability-row-min-width: 260px;
+  --vu-plan-who-column-min-width: 232px;
   --vu-page-agent-width: 440px;
   --vu-page-agent-min-height: 84px;
   --vu-page-agent-control-width: 224px;

@@ -48,21 +48,19 @@ export function SystemStatusPanel({ provider }: { provider: AgentProvider }) {
     return () => { cancelled = true; };
   }, []);
 
-  const telemetryBadge = loading
-    ? <Badge tone="default">Hệ thống log: đang kiểm tra…</Badge>
-    : !telemetry?.url
-      ? <Badge tone="default">Hệ thống log: chưa cấu hình</Badge>
-      : telemetry.ok
-        ? <Badge tone="success">Hệ thống log: đã kết nối</Badge>
-        : <Badge tone="error">Hệ thống log: không phản hồi</Badge>;
+  // Một nút kín tiếng cạnh tiêu đề trang: đây là cài đặt của máy, không của video, nên nó không được nặng
+  // hơn tiêu đề. Chấm màu chỉ "lên tiếng" khi có chuyện (đỏ = không phản hồi); xám là chưa cấu hình.
+  const tone: Tone = loading || !telemetry?.url ? "default" : telemetry.ok ? "success" : "error";
+  const logText = loading ? "đang kiểm tra…" : !telemetry?.url ? "log chưa cấu hình" : telemetry.ok ? "log đã kết nối" : "log không phản hồi";
 
   return <>
     <div className="vs-system-status" aria-label="Trạng thái log & chi phí">
-      {telemetryBadge}
       {provider === "codex" && gateway && <Badge tone={gatewayTone(gateway.status)}>{gateway.status === "ok" ? "9router: đã kết nối" : gateway.status === "disabled" ? "9router: đang tắt" : gateway.status === "unreachable" ? "9router: không phản hồi" : "9router: thiếu API key"}</Badge>}
       {/* The modal seeds its fields from what was fetched. Opened before that (or after a failed fetch) it would start
           empty, and Save would overwrite the real URL with "" and switch the gateway off. */}
-      <Button type="link" size="small" icon={<SettingOutlined />} disabled={loading || !telemetry || !gateway} title={loading ? "Đang kiểm tra trạng thái…" : !telemetry || !gateway ? "Chưa đọc được cài đặt hiện tại — tải lại trang" : undefined} onClick={() => setOpen(true)}>Cài đặt</Button>
+      <Button className={`vs-system-button is-${tone}`} icon={<SettingOutlined />} disabled={loading || !telemetry || !gateway} title={loading ? "Đang kiểm tra trạng thái…" : !telemetry || !gateway ? "Chưa đọc được cài đặt hiện tại — tải lại trang" : "Cài đặt log & chi phí"} onClick={() => setOpen(true)}>
+        Hệ thống<span className="vs-system-dot" aria-hidden="true" /><small>{logText}</small>
+      </Button>
     </div>
     {open && <SystemSettingsModal telemetry={telemetry} gateway={gateway} onRefetched={(g, t) => { setGateway(g); setTelemetry(t); }} onClose={() => setOpen(false)} />}
   </>;

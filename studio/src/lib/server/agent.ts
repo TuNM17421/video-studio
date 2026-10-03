@@ -13,6 +13,7 @@ import { runCuesGate, runFinalGate, runSceneQa } from "./qa";
 import { styleGuideLine } from "./style-guides";
 import { scenesImagesLine } from "./images";
 import { readState, setStage, styleName, updateState } from "./videos";
+import { forgetVoiceChecks } from "./voice";
 import { readFeedback, readRuns, recordFeedback, updateFeedback, updateFeedbackWhere } from "./workflow";
 
 export type AgentStage = Extract<StageId, "cues" | "scenes" | "deliver">;
@@ -304,6 +305,10 @@ async function agentStage(id: string, stage: AgentStage, base: string, message: 
   startJob(id, stage, { actor: provider, mode: "agent", label: fixing ? `${stage} feedback` : stage, trigger, feedbackIds });
   try {
     setStage(id, stage, "running");
+    // Agent sắp viết lại lời: kết quả "Kiểm tra" của ElevenLabs đếm ký tự của lời cũ, bảng quét thư mục audio
+    // khớp với câu cũ. Giữ lại thì nút "Tạo giọng · N ký tự" hiện con số cũ trong khi lượt thật tính tiền theo
+    // lời mới — đường sửa tay một câu đã xoá chúng, đường agent thì chưa.
+    if (stage === "cues") forgetVoiceChecks(id);
     beginHarness(id, stage, "agent", HARNESS_STEPS[stage]);
     stepStart(id, "agent", fixing ? `${providerLabel} · ${fixing}` : providerLabel);
     setProgress(id, null, fixing ? `${providerLabel} đang ${fixing}…` : `${providerLabel} đang làm việc…`);

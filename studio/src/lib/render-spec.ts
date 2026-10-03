@@ -35,7 +35,7 @@ export const FPS_OPTIONS: { value: RenderFps; label: string; hint: string }[] = 
   {
     value: 30,
     label: "30 fps",
-    hint: "Nhịp cũ, nhanh hơn. Dùng cho bản gửi soát QA: manifest.json luôn khai fps 30.",
+    hint: "Nhịp cũ, render nhanh hơn. manifest.json khai đúng nhịp đã chọn, nên chỉ hạ về 30 khi platform QA không nhận 60.",
   },
 ];
 

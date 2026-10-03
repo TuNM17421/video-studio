@@ -1,5 +1,6 @@
 ---
 name: Video có tiếng động
+short: Tiếng động
 summary: Studio đề xuất những chỗ đáng có tiếng nhấn, người dựng nghe thử từng chỗ rồi mới duyệt.
 icon: audio
 default: true

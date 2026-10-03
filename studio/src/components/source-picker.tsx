@@ -11,7 +11,7 @@ import { api } from "@/lib/client";
  * video, and the folder of per-câu narration audio. It opens the desktop file dialog, falls back to a
  * typed path when there is no dialog to open, and keeps saying whether what is selected actually exists.
  */
-export type SourcePurpose = "feedback" | "video" | "voice";
+export type SourcePurpose = "feedback" | "video" | "voice" | "scenes";
 export type SourceCheck = { exists: boolean; dir?: boolean; files?: number; name?: string; size?: number };
 type PickerResult = { cancelled: true } | ({ cancelled: false; path: string } & Omit<SourceCheck, "exists">);
 
@@ -58,7 +58,8 @@ export function SourcePickerField({ label, purpose, value, onChange, disabled }:
     };
   }, [value]);
   // A folder of per-câu audio is the only shape the import understands, so a file is wrong here.
-  const notAFolder = purpose === "voice" && check?.exists === true && check.dir === false;
+  const folderOnly = purpose === "voice" || purpose === "scenes";
+  const notAFolder = folderOnly && check?.exists === true && check.dir === false;
   const invalid = !!value.trim() && (check?.exists === false || notAFolder);
   const selectedName = check?.name || sourceName(value);
   const selectedMeta = checking
@@ -70,14 +71,19 @@ export function SourcePickerField({ label, purpose, value, onChange, disabled }:
         : check?.exists
           ? check.dir ? `${check.files ?? 0} mục trong thư mục` : sourceSize(check.size)
           : "Đường dẫn trên máy";
-  const idleTitle = purpose === "video" ? "Chọn video trên máy" : purpose === "voice" ? "Chọn thư mục audio trên máy" : "Chọn feedback trên máy";
+  const idleTitle = purpose === "video" ? "Chọn video trên máy"
+    : purpose === "voice" ? "Chọn thư mục audio trên máy"
+      : purpose === "scenes" ? "Chọn thư mục tải về từ Claude Design"
+        : "Chọn feedback trên máy";
   const idleHint = purpose === "video"
     ? "Tệp MP4, MOV, WEBM, MKV hoặc thư mục nguồn"
     : purpose === "voice"
       ? "Thư mục chứa 01.wav, 02.wav … mỗi câu một tệp"
-      : "Tệp ghi chú, ảnh hoặc thư mục của bản trước";
+      : purpose === "scenes"
+        ? "Thư mục chứa trang .html, mã cảnh và cues.js"
+        : "Tệp ghi chú, ảnh hoặc thư mục của bản trước";
   const help = issue || invalid
-    ? <span id={messageId} className="vs-validation-message is-error" role="alert"><WarningFilled />{issue || (notAFolder ? "Hãy chọn thư mục chứa các tệp audio, không phải một tệp lẻ." : "Không tìm thấy tệp hoặc thư mục. Chọn lại nguồn hoặc sửa đường dẫn đầy đủ.")}</span>
+    ? <span id={messageId} className="vs-validation-message is-error" role="alert"><WarningFilled />{issue || (notAFolder ? (purpose === "scenes" ? "Hãy chọn thư mục tải về, không phải một tệp lẻ." : "Hãy chọn thư mục chứa các tệp audio, không phải một tệp lẻ.") : "Không tìm thấy tệp hoặc thư mục. Chọn lại nguồn hoặc sửa đường dẫn đầy đủ.")}</span>
     : undefined;
 
   function updatePath(next: string) {

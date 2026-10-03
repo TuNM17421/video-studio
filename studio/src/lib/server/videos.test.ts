@@ -89,6 +89,7 @@ describe("VideoRequest của video mới", () => {
   const body = {
     style: "lesson", format: "9x16", modules: ["quiz"], day: "Day03", itemId: "  10.1  ", title: "Tên",
     scriptName: "bị bỏ qua.md", feedbackDir: "/tmp/fb", oldVideoDir: "/tmp/old", notes: "ghi chú",
+    sceneBuilder: "claude-design",
     scope: { scenes: true, voice: true, render: true, transcript: false, chapters: true },
   } as VideoRequest;
   const opts = { modules: ["quiz"], scriptName: "that.md" };
@@ -113,6 +114,7 @@ describe("VideoRequest của video mới", () => {
     expect(out).toEqual({
       style: "lesson", format: "9x16", modules: ["quiz"], day: "Day03", itemId: "10.1", title: "Tên",
       scriptName: "that.md", feedbackDir: "/tmp/fb", oldVideoDir: "/tmp/old", notes: "ghi chú",
+      sceneBuilder: "claude-design",
       scope: { scenes: true, voice: true, render: true, transcript: false, chapters: true },
     });
   });
@@ -177,6 +179,27 @@ describe("style guides", () => {
     const md = requestMarkdown("wb", { ...state.request, style: "whiteboard" }, "Claude");
     expect(md).toContain("`styles/whiteboard.md`");
     expect(md).not.toContain("styles/lesson.md");
+  });
+});
+
+describe("chỗ dựng cảnh", () => {
+  it("state cũ không có sceneBuilder thì hiểu là agent ở máy", () => {
+    const state = normalizeVideoState(storedState);
+    expect(state.request.sceneBuilder).toBe("agent");
+    expect(requestMarkdown("d2-01-lab", state.request, "Claude")).toContain("Dựng cảnh: agent chạy ở máy");
+  });
+
+  it("chọn Claude Design thì REQUEST.md nói rõ, vì đó là thứ agent đọc", () => {
+    const state = normalizeVideoState({ ...storedState, request: { ...storedState.request, sceneBuilder: "claude-design" } });
+    expect(state.request.sceneBuilder).toBe("claude-design");
+    const md = requestMarkdown("d3-02", state.request, "Claude");
+    expect(md).toContain("Dựng cảnh: Claude Design");
+    expect(md).toContain("mang kết quả về");
+  });
+
+  it("giá trị lạ không được lọt qua — rơi về agent chứ không giữ nguyên", () => {
+    const state = normalizeVideoState({ ...storedState, request: { ...storedState.request, sceneBuilder: "cursor" } });
+    expect(state.request.sceneBuilder).toBe("agent");
   });
 });
 

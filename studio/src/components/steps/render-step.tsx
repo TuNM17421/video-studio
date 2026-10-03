@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircleFilled, ExportOutlined, PlayCircleFilled, RedoOutlined } from "@ant-design/icons";
 import { Button, Collapse, Empty, Segmented, Select } from "antd";
-import { api, dsUrl, fileUrl, formatFrames } from "@/lib/client";
+import { api, fileUrl, formatFrames, scenePages } from "@/lib/client";
 import { NO_MUSIC, type MusicCatalog } from "@/lib/music";
 import { BUILD_OPTIONS, buildLabel, DEFAULT_BUILD_NO, type BuildNo } from "@/lib/qa-manifest";
 import { FPS_OPTIONS, fpsHint, LEGACY_RENDER_FPS, renderSpecLabel } from "@/lib/render-spec";
@@ -23,6 +23,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
   const a = detail.artifacts;
   const runLogs = stageLogs(logs, ["render", "deliver"]);
   const ready = detail.state.stages.scenes === "done";
+  const pages = scenePages(detail);
   const [confirmRender, setConfirmRender] = useState(false);
   // both tracks are finishing decisions: they are chosen only here and sent with the render request
   const [music, setMusic] = useState(detail.state.music.background);
@@ -37,7 +38,10 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
   const [catalog, setCatalog] = useState<MusicCatalog>({ background: [], quiz: [] });
   const quizCues = detail.cues?.cues.filter((c) => c.quiz).length ?? 0;
   const hasSfx = detail.state.request.modules.includes("sfx");
-  useEffect(() => { api<MusicCatalog>("/api/music").then(setCatalog).catch(() => {}); }, []);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  useEffect(() => {
+    api<MusicCatalog>("/api/music").then(setCatalog).catch((e: unknown) => setCatalogError(e instanceof Error ? e.message : String(e)));
+  }, []);
   const startRender = () => act(() => post(`/api/videos/${id}/render`, { music, quizMusic, captions, buildNo, fps }));
   const files: [string, string | null][] = [["Video MP4", a.mp4], ["Transcript", a.transcript], ["Manifest QA", a.qaManifest], ["File chương", a.chapters], ["Ghi chú dựng", a.prompts]];
   const complete = status === "done" && deliver === "done";
@@ -79,6 +83,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
       <small>{BUILD_OPTIONS.find((o) => o.value === buildNo)?.hint} · ghi vào <code>manifest.json</code> cạnh MP4.</small>
     </div>
     <div className="vs-section-title">Nhạc nền</div>
+    {catalogError && <p className="vs-music-note">Không tải được danh mục nhạc ({catalogError}). Lựa chọn đã lưu vẫn được dùng khi render; tải lại trang để chọn bản khác.</p>}
     <MusicPicker tracks={catalog.background} value={music} disabled={busy} label="Chọn nhạc nền" noneLabel="Không có nhạc nền" noneHint="Video chỉ có giọng đọc." onChange={setMusic} />
     {/* Which câu the question covers was settled in cues.js; only the track is still open here. */}
     {quizCues > 0 && <>
@@ -92,7 +97,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
     {/* Tiếng động quyết ở đây cùng nhạc: cả ba đều là quyết định lúc hoàn thiện, và đều cần giọng đã xong. */}
     {hasSfx && <>
       <div className="vs-section-title">Tiếng động</div>
-      <SfxPanel id={id} enabled={hasSfx} />
+      <SfxPanel id={id} enabled={hasSfx} locked={busy} lockedWhy={running ? "Đang render — bản trộn của lượt này đã chốt. Đổi tiếng sau khi render xong." : !detail.managed ? "Video chỉ xem." : null} />
     </>}
   </div>;
 
@@ -103,9 +108,11 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
       {status === "error" && <ProductionState className="vs-production-state" status="error" title="Chưa xong" detail={detail.state.lastError || "Xem nhật ký."} />}
       {a.mp4 && <video className="video-player" src={fileUrl(a.mp4)} controls preload="metadata" />}
       {ready && <div className="render-specs">
-        <div><span>Định dạng</span><strong>{renderSpecLabel(detail.state.request.format, fps)}</strong></div>
-        <div><span>Phụ đề</span><strong>{detail.state.captions ? "Có" : "Không"}</strong></div>
-        <div><span>Bản dựng</span><strong>{buildLabel(detail.state.buildNo ?? DEFAULT_BUILD_NO)}</strong></div>
+        {/* Cạnh một MP4 thì ba dòng này tả chính file đó (giá trị đã lưu ở lượt render). Lựa chọn cho lượt
+            sau nằm ở phần cài đặt — trộn hai thứ thì dòng ghi "30 fps" dưới một file 60 fps đang phát. */}
+        <div><span>Định dạng</span><strong>{renderSpecLabel(detail.state.request.format, a.mp4 ? detail.state.fps ?? LEGACY_RENDER_FPS : fps)}</strong></div>
+        <div><span>Phụ đề</span><strong>{(a.mp4 ? detail.state.captions : captions) ? "Có" : "Không"}</strong></div>
+        <div><span>Bản dựng</span><strong>{buildLabel(a.mp4 ? detail.state.buildNo ?? DEFAULT_BUILD_NO : buildNo)}</strong></div>
         <div><span>Thời lượng</span><strong className="mono">{formatFrames(detail.cues?.voiceDuration ?? detail.cues?.duration)}</strong></div>
       </div>}
       {ready && a.mp4 && <ul className="vs-deliverables">{files.map(([label, path]) => <li key={label}>
@@ -131,7 +138,7 @@ export function RenderStep({ detail, logs, job, busy, act, stop, nav }: StepProp
         : ready ? "Chưa render" : "Chờ duyệt dựng cảnh"}
     >
       {status === "done" && ["idle", "error"].includes(deliver) && <Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => act(() => post(`/api/videos/${id}/agent`, { stage: "deliver" }))}>Chạy bàn giao</Button>}
-      {a.mp4 && <Button icon={<ExportOutlined />} href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank">Mở trình phát</Button>}
+      {a.mp4 && pages && <Button icon={<ExportOutlined />} href={pages.player} target="_blank">Mở trình phát</Button>}
       {ready && (a.mp4
         ? <Button disabled={busy} icon={<RedoOutlined />} onClick={() => setConfirmRender(true)}>Render lại</Button>
         : <Button type="primary" disabled={busy} icon={<PlayCircleFilled />} onClick={() => { void startRender(); }}>Render video</Button>)}

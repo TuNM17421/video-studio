@@ -6,12 +6,18 @@ import { itemIdFor } from "../qa-manifest";
 import { runAgent } from "./agent";
 import { mixApproved } from "./sfx-plan";
 import { finishJob, isRunning, jobHandled, log, ownJob, recordJobMetrics, run, setProgress, startJob, wasStopped } from "./jobs";
-import { HttpError, mp4Path, qaManifestPath, REPO, rel, transcriptPath, voiceOut } from "./paths";
+import { HttpError, importedPage, mp4Path, qaManifestPath, REPO, rel, transcriptPath, voiceOut } from "./paths";
 import { readState, setStage } from "./videos";
 
 /** What a render needs before it can start — checked while the request is still open, so it shows on screen. */
 export function renderPreflight(id: string) {
   if (!fs.existsSync(path.join(voiceOut(id), "voice.wav"))) throw new HttpError(400, "Chưa có voice.wav. Tạo giọng đọc trước.");
+  // Chọn Claude Design mà chưa nhập gì thì render sẽ lặng lẽ chụp bản cảnh dựng ở máy (nếu có) và ra một
+  // MP4 trông bình thường nhưng không phải bản người dùng tưởng. Dừng ở đây, nói rõ còn thiếu gì.
+  const { state } = readState(id);
+  if (state.request.sceneBuilder === "claude-design" && !importedPage(id)) {
+    throw new HttpError(400, "Video này đặt dựng cảnh bằng Claude Design nhưng chưa nhập kết quả về. Vào bước Dựng cảnh, chọn thư mục tải về rồi bấm Chép vào Studio.");
+  }
 }
 
 /**
@@ -70,8 +76,14 @@ async function renderSteps(id: string, base: string) {
   // TODO: on Windows, 6-tab (default) capture hangs deterministically partway through — reproduced
   // twice at the exact same frame, but a single tab clears the same range fine. Forcing 1 worker
   // avoids the hang there; root cause (Chrome/CDP concurrency) not yet found, not confirmed elsewhere.
+  // Chỉ dùng bản nhập khi người dùng đã chọn Claude Design, không phải cứ thấy thư mục là lấy: một video
+  // dựng bằng agent ở máy rồi nhập thêm bản của Claude Design để so sẽ bị render nhầm bản, không một lời báo.
+  const imported = state.request.sceneBuilder === "claude-design" ? importedPage(id) : null;
   const renderOk = await step("Render MP4", process.execPath, [
-    "tools/render.mjs", "--scene", id, "--audio", audio, "--out", rel(mp4Path(id)), "--base", `${base}/ds`,
+    "tools/render.mjs", "--scene", id, "--audio", audio, "--out", rel(mp4Path(id)),
+    // Cảnh dựng bên Claude Design không nằm trong khuôn videos/<id>/ của repo, nên chụp thẳng trang của nó.
+    // `--scene` vẫn giữ: render.mjs đọc cues.js của video để lấy mốc nhạc quiz và đối chiếu độ dài giọng.
+    ...(imported ? ["--url", `${base}/ds-bundle/cd/${id}/${imported}`] : ["--base", `${base}/ds`]),
     // always explicit: render.mjs falls back to the catalog's default bed when the flag is missing
     "--music-track", background,
     ...(quiz !== NO_MUSIC ? ["--quiz-track", quiz] : []),

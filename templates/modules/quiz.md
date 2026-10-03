@@ -1,5 +1,6 @@
 ---
 name: Video có quiz
+short: Quiz
 summary: Đặt câu hỏi, dành thời gian suy nghĩ và tách rõ phần hỏi khỏi phần chữa bài.
 icon: quiz
 preview: modules/quiz-mau.mp4

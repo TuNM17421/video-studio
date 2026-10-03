@@ -44,6 +44,7 @@ export function listModules(): ModuleDef[] {
     list.push({
       id,
       name: meta.name,
+      short: meta.short || undefined,
       summary: meta.summary ?? "",
       icon: meta.icon ?? "",
       template: `templates/modules/${file}`,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircleFilled, DownloadOutlined, ExportOutlined, FolderOpenOutlined, ImportOutlined, PlayCircleFilled, SearchOutlined, SoundOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Tag } from "antd";
 import { api } from "@/lib/client";
@@ -49,9 +49,17 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
   const { cast, castKey } = useLocalCast(id, settings);
   // Lúc người dùng đổi giọng gần nhất: một lượt sinh thất bại TRƯỚC đó nói về thiết lập cũ, không còn
   // đáng treo trên màn hình — dàn vai đã nói lý do hiện tại rồi. 0 = chưa đo (frame đầu), không hiện gì.
+  // 0 = chưa đổi gì từ lúc mở panel. Effect này từng chạy cả lúc mount, nên chỉ cần đổi bước hay tải lại
+  // trang là mốc này vượt qua giờ bắt đầu của lượt vừa hỏng và khối báo lỗi biến mất — sau một lượt sinh
+  // mười, hai mươi phút, người dùng quay lại chỉ thấy một nút "Sinh giọng" bình thường.
   const [settingsChangedAt, setSettingsChangedAt] = useState(0);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setSettingsChangedAt(Date.now()); }, [castKey]);
+  const seenCast = useRef(castKey);
+  useEffect(() => {
+    if (seenCast.current === castKey) return;
+    seenCast.current = castKey;
+    setSettingsChangedAt(Date.now());
+  }, [castKey]);
+  const [confirmAgain, setConfirmAgain] = useState(false);
 
   const server = (action: "start" | "stop") => act(async () => {
     setWorking(true);
@@ -144,11 +152,18 @@ export function LocalModelPanel({ detail, settings, setSettings, busy, act }: {
             icon={<SoundOutlined />}
             loading={generating}
             disabled={busy || generating || !installed || !voiceReady}
-            onClick={() => act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-generate", settings }))}
+            onClick={() => (generated ? setConfirmAgain(true) : void act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-generate", settings })))}
           >{generated ? "Sinh lại" : "Sinh giọng bằng model local"}</Button>
+          {confirmAgain && <ConfirmDialog
+            title="Sinh lại giọng cho cả video?"
+            description={'Mọi file wav trong thư mục vừa sinh bị ghi đè, kể cả những câu bạn đã nghe và chọn "Dùng bản này". Giọng đang gắn vào video không đổi cho tới khi bạn nhập lại.'}
+            confirmLabel="Sinh lại"
+            onCancel={() => setConfirmAgain(false)}
+            onConfirm={() => { setConfirmAgain(false); void act(() => post(`/api/videos/${id}/voice`, { action: "omnivoice-generate", settings })); }}
+          />}
           {/* Lượt sinh thất bại chỉ được ghi vào nhật ký (hành động này cố ý không đụng trạng thái bước), nên
               thanh tiến trình biến mất mà không nói gì — đã thấy thật với một file mẫu không có tiếng nói. */}
-          {job?.kind === "omnivoice-generate" && job.status === "error" && settingsChangedAt > 0 && job.startedAt >= settingsChangedAt && (() => {
+          {job?.kind === "omnivoice-generate" && job.status === "error" && job.startedAt >= settingsChangedAt && (() => {
             const last = [...detail.logs].reverse().find((l) => l.kind === "error");
             return <ProductionState
               className="vs-production-state"

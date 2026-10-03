@@ -1953,7 +1953,8 @@ details.vs-flow-more > summary:focus-visible {
 }
 .vs-qa img {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  /* the frame's own shape: a 9:16 still cropped into a 16:9 tile shows only its middle third */
+  aspect-ratio: var(--vs-qa-ratio, 16 / 9);
   object-fit: cover;
   border-radius: 3px;
 }
@@ -2173,8 +2174,7 @@ details.vs-flow-more > summary:focus-visible {
   overflow: hidden;
 }
 .vs-frame-box iframe {
-  width: 1920px;
-  height: 1080px;
+  /* width/height come from the video's format (FramePreview) */
   border: 0;
   transform-origin: 0 0;
   pointer-events: none;
@@ -6325,3 +6325,355 @@ details.vs-flow-more[open] > summary {
     white-space: normal;
   }
 }
+
+/* Bàn giao sang Claude Design: cùng khuôn với khối Ảnh đề xuất, chỉ khác tiêu đề và bộ nút. */
+.vs-cd {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vu-neutral-0);
+}
+.vs-cd-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vs-cd-head > .anticon { color: var(--vu-lesson-data); }
+.vs-cd-head h3 { margin: 0; font-size: 14px; }
+.vs-cd-head .ant-tag { margin-inline-end: 0; }
+.vs-cd-tools { display: flex; gap: 8px; margin-left: auto; }
+.vs-cd-lede {
+  margin: 8px 0 12px;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-cd .ant-alert { margin-bottom: 10px; }
+.vs-cd .mono { color: var(--vu-neutral-600); font-family: var(--vu-font-utility); font-size: var(--vu-text-xs); }
+.vs-cd-preview {
+  margin: 0;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--vu-neutral-50);
+  color: var(--vu-neutral-800);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-xs);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vs-cd-switch { margin: 6px 0 0; }
+.vs-cd-switch .ant-btn { padding-inline: 0; font-size: var(--vu-text-xs); }
+.vs-cd-import {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.vs-cd-import .vs-field-label { display: flex; align-items: center; gap: 6px; }
+.vs-cd-import .vs-cd-tools { margin: 10px 0; }
+.vs-cd-checks { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.vs-cd-checks li {
+  display: grid;
+  grid-template-columns: 16px minmax(140px, max-content) 1fr;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--vu-text-xs);
+}
+.vs-cd-checks li span { color: var(--vu-neutral-600); }
+.vs-cd-checks li.is-ok > .anticon { color: var(--vu-lesson-ok); }
+.vs-cd-checks li.is-warning > .anticon { color: var(--vu-amber-600); }
+.vs-cd-checks li.is-problem > .anticon { color: var(--vu-red-700); }
+
+/* ── Bước Kế hoạch, bản gọn ───────────────────────────────────────────────
+   Agent rời thẻ nổi cạnh tiêu đề vào mục "Ai làm"; trạng thái hệ thống còn một nút; vùng thả tệp, thẻ style
+   và năng lực đều xuống một hàng. Lớp mới đặt tên riêng (vs-drop-slim, vs-style-row, vs-cap, vs-who) để
+   không phải gỡ từng lớp ghi đè của bản cũ. */
+.vs-page-heading > .vs-system-status {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin: 0;
+}
+.vs-system-button.ant-btn {
+  gap: var(--vu-space-2);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-system-button small {
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+  font-weight: var(--vu-font-regular);
+}
+.vs-system-dot {
+  width: var(--vu-space-2);
+  height: var(--vu-space-2);
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--vu-neutral-400);
+}
+.vs-system-button.is-success .vs-system-dot { background: var(--vu-green-700); }
+.vs-system-button.is-error .vs-system-dot { background: var(--vu-red-700); }
+
+.vs-script-slim .ant-upload-wrapper { display: block; }
+.vs-drop-slim.ant-upload-drag,
+.vs-drop-slim .ant-upload-drag {
+  border: 1px dashed var(--vu-blue-300);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-blue-50);
+}
+.vs-drop-slim.is-invalid.ant-upload-drag,
+.vs-drop-slim.is-invalid .ant-upload-drag {
+  border-color: var(--vu-red-700);
+  background: var(--vu-red-50);
+}
+.vs-drop-slim.ant-upload-drag .ant-upload-btn,
+.vs-drop-slim .ant-upload-drag .ant-upload-btn {
+  padding: var(--vu-space-3) var(--vu-space-4);
+}
+.vs-drop-slim-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-3) var(--vu-space-4);
+  text-align: left;
+}
+.vs-drop-slim-row > .anticon {
+  color: var(--vu-blue-700);
+  font-size: var(--vu-text-2xl);
+}
+.vs-drop-slim-copy {
+  display: grid;
+  flex: 1 1 220px;
+  min-width: 0;
+  gap: 2px;
+}
+.vs-drop-slim-copy strong {
+  color: var(--vu-blue-900);
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-drop-slim-copy small {
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+
+.vs-style-rows.ant-radio-group {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(var(--vu-style-card-min-width), 1fr));
+  gap: var(--vu-space-2);
+}
+.vs-style-row.ant-radio-wrapper {
+  min-width: 0;
+  margin: 0;
+  padding: var(--vu-space-2);
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--vu-radius-md);
+  background: var(--surface);
+  transition: border-color var(--vu-duration-fast) var(--vu-ease-standard), background-color var(--vu-duration-fast) var(--vu-ease-standard);
+}
+.vs-style-row.ant-radio-wrapper.is-selected {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-lesson-surface);
+  box-shadow: inset 0 0 0 1px var(--vu-blue-700);
+}
+.vs-style-row.ant-radio-wrapper:focus-within { box-shadow: var(--vu-shadow-focus); }
+.vs-style-row.ant-radio-wrapper > .ant-radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.vs-style-row.ant-radio-wrapper > span:last-child {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: var(--vu-style-thumb-width) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--vu-space-3);
+}
+.vs-style-row-thumb {
+  width: var(--vu-style-thumb-width);
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border: 1px solid var(--vu-media-chip-border);
+  border-radius: var(--vu-radius-sm);
+  background: var(--vu-media-surface);
+}
+.vs-style-row-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.vs-style-row-copy strong {
+  color: var(--vu-blue-900);
+  font-family: var(--vu-font-brand);
+  font-size: var(--vu-text-sm);
+  line-height: var(--vu-leading-snug);
+}
+.vs-style-row-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-snug);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.vs-style-detail {
+  margin-top: var(--vu-space-2);
+  padding: var(--vu-space-2) var(--vu-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-3);
+  border-radius: var(--vu-radius-md);
+  background: var(--vu-lesson-surface);
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-style-detail > strong {
+  color: var(--vu-blue-900);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-style-detail-palette {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  font-family: var(--vu-font-utility);
+  font-size: var(--vu-text-2xs);
+}
+.vs-style-detail .vs-module-play {
+  margin: 0 0 0 auto;
+}
+
+.vs-plan-form .vs-format { margin-bottom: var(--vu-space-4); }
+.vs-format-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vu-space-2) var(--vu-space-4);
+}
+.vs-format-row small {
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-format-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+}
+.vs-format-glyph {
+  display: inline-block;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+}
+.vs-format-glyph.is-16x9 { width: 16px; height: 9px; }
+.vs-format-glyph.is-9x16 { width: 9px; height: 16px; }
+
+.vs-cap {
+  display: grid;
+  gap: var(--vu-space-2);
+}
+.vs-cap-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--vu-space-1) var(--vu-space-3);
+}
+.vs-cap-head h4 { margin: 0; }
+.vs-cap-head > span {
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+}
+.vs-cap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--vu-capability-row-min-width), 1fr));
+  gap: var(--vu-space-2);
+}
+.vs-cap-row {
+  min-width: 0;
+  padding: var(--vu-space-2) var(--vu-space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--vu-space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--vu-radius-md);
+  background: var(--surface);
+}
+.vs-cap-row.is-on {
+  border-color: var(--vu-blue-700);
+  background: var(--vu-lesson-surface);
+}
+.vs-cap-row.is-disabled { opacity: 0.6; }
+.vs-cap-toggle.ant-checkbox-wrapper {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+}
+.vs-cap-toggle.ant-checkbox-wrapper > span:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.vs-cap-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.vs-cap-copy strong {
+  color: var(--vu-blue-900);
+  font-size: var(--vu-text-sm);
+  font-weight: var(--vu-font-semibold);
+}
+.vs-cap-copy small {
+  overflow: hidden;
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vs-cap-row .vs-module-play {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.vs-cap-summary {
+  margin: 0 0 var(--vu-space-3);
+  color: var(--vu-neutral-700);
+}
+.vs-cap-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vu-space-2);
+  margin: var(--vu-space-2) 0 0;
+}
+.vs-cap-links:empty { display: none; }
+.vs-cap-links .vs-module-play { margin: 0; }
+
+.vs-who {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--vu-plan-who-column-min-width), 1fr));
+  align-items: start;
+  gap: var(--vu-space-3) var(--vu-space-4);
+}
+.vs-who .ant-form-item { margin-bottom: 0; }
+.vs-who .ant-select { width: 100%; }
+.vs-who-notes {
+  margin: var(--vu-space-3) 0 0;
+  padding: 0 0 0 var(--vu-space-3);
+  display: grid;
+  gap: var(--vu-space-1);
+  border-left: 2px solid var(--vu-blue-300);
+  color: var(--vu-neutral-600);
+  font-size: var(--vu-text-xs);
+  line-height: var(--vu-leading-normal);
+  list-style: none;
+}
+.vs-who-notes .anticon { margin-right: var(--vu-space-1); }
+.vs-who-notes li.is-warn { color: var(--vu-amber-700); }
+.vs-who-notes li.is-problem { color: var(--vu-text-danger); }

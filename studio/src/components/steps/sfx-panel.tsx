@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LoadingOutlined, PauseCircleFilled, PlayCircleFilled, ThunderboltOutlined } from "@ant-design/icons";
-import { Alert, Button, Checkbox, Collapse, Empty, Select, Tag } from "antd";
+import { LoadingOutlined, PauseCircleFilled, PlayCircleFilled, StopOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { Alert, Button, Checkbox, Collapse, Empty, Popconfirm, Select, Tag } from "antd";
 import { api } from "@/lib/client";
 import type { SfxCatalog, SfxLayer } from "@/lib/sfx";
 import { SFX_LAYER_LABEL } from "@/lib/sfx";
 import type { SfxSpot, SfxState } from "@/lib/sfx-plan";
-import { timecode } from "@/lib/sfx-plan";
+import { MAX_ACCENTS, timecode } from "@/lib/sfx-plan";
 
 interface MixHit { id: string; frame: number; db: number; layer: string; onSpeech: boolean; why: string }
 
@@ -47,7 +47,7 @@ function PlayPair({ label, onPlay, playing }: { label: string; onPlay: (withSfx:
  * bản không tiếng để so. Hai tiếng Studio tự đề xuất (mở màn, ranh giới phần) nằm trong danh sách như
  * mọi chỗ khác, nên bỏ được.
  */
-export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
+export function SfxPanel({ id, enabled, locked = false, lockedWhy = null }: { id: string; enabled: boolean; locked?: boolean; lockedWhy?: string | null }) {
   const [view, setView] = useState<SfxView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<{ spot: string; side: "on" | "off" } | null>(null);
@@ -72,6 +72,12 @@ export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
     setView((current) => (current ? { ...current, suggesting: true } : current));
     api(`/api/videos/${id}/sfx/suggest`, { method: "POST", json: {} })
       .then(() => setTimeout(load, 1200))
+      .catch((e) => { setError(e instanceof Error ? e.message : String(e)); load(); });
+  };
+
+  const stopSuggest = () => {
+    api(`/api/videos/${id}/sfx/suggest`, { method: "DELETE" })
+      .then(() => setTimeout(load, 600))
       .catch((e) => { setError(e instanceof Error ? e.message : String(e)); load(); });
   };
 
@@ -120,18 +126,26 @@ export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
   return <div className="vs-sfx">
     <p className="vs-music-note">
       {used}/{view.spots.length} chỗ được duyệt{bedCount ? ` · ${bedCount} phần có tiếng nền` : ""}
-      {accents > 0 && <> · tiếng nhấn {accents}/4</>}
+      {accents > 0 && <> · tiếng nhấn {accents}/{MAX_ACCENTS}</>}
       {used === 0 && !bedCount && " — chưa duyệt chỗ nào thì video không có tiếng động."}
     </p>
     {error && <Alert className="vs-music-note" type="warning" showIcon title="Chưa lưu được" description={error} />}
+    {locked && lockedWhy && <p className="vs-music-note">{lockedWhy}</p>}
     <div className="vs-sfx-actions">
       {/* Nút này tốn token nên chỉ chạy khi bạn bấm — Studio không tự gọi agent. */}
-      <Button
-        size="small"
-        icon={view.suggesting ? <LoadingOutlined spin /> : <ThunderboltOutlined />}
-        disabled={view.suggesting}
-        onClick={suggest}
-      >{view.suggesting ? "Agent đang đọc lời…" : view.hasAgentRun ? "Đề xuất lại bằng agent" : "Đề xuất bằng agent"}</Button>
+      {/* Hỏi trước như panel ảnh: một lượt là một lần gọi agent, và lượt mới thay các chỗ lượt trước đề xuất. */}
+      <Popconfirm
+        title={view.hasAgentRun ? "Đề xuất lại bằng agent?" : "Chạy agent đề xuất tiếng động?"}
+        description={view.hasAgentRun ? "Tốn token. Các chỗ agent đề xuất lần trước bị thay bằng kết quả mới." : "Tốn token. Agent đọc lời và mô tả hình rồi chỉ ra chỗ đáng có tiếng."}
+        okText="Chạy" cancelText="Thôi" disabled={view.suggesting || locked} onConfirm={suggest}
+      >
+        <Button
+          size="small"
+          icon={view.suggesting ? <LoadingOutlined spin /> : <ThunderboltOutlined />}
+          disabled={view.suggesting || locked}
+        >{view.suggesting ? "Agent đang đọc lời…" : view.hasAgentRun ? "Đề xuất lại bằng agent" : "Đề xuất bằng agent"}</Button>
+      </Popconfirm>
+      {view.suggesting && <Button size="small" icon={<StopOutlined />} onClick={stopSuggest}>Dừng</Button>}
       <small>Agent đọc lời và mô tả hình rồi chỉ ra chỗ đáng có tiếng. Tốn token; những chỗ trên vẫn giữ nguyên quyền duyệt của bạn.</small>
     </div>
     {!!view.dropped.length && <Collapse
@@ -154,6 +168,7 @@ export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
           <Checkbox
             className="vs-sfx-use"
             checked={decision?.use === true}
+            disabled={locked}
             onChange={(e) => save({ ...view.state, decisions: { ...view.state.decisions, [spot.id]: { ...decision, use: e.target.checked } } })}
           >
             <span className="vs-sfx-when">{timecode(spot.frame)}</span>
@@ -164,7 +179,9 @@ export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
             className="vs-sfx-sound"
             size="small"
             value={sound}
-            onChange={(value) => save({ ...view.state, decisions: { ...view.state.decisions, [spot.id]: { use: decision?.use ?? true, soundId: value } } })}
+            disabled={locked}
+            // Đổi tiếng để nghe thử không phải là duyệt: chỗ chưa quyết vẫn chưa được dùng cho tới khi tick.
+            onChange={(value) => save({ ...view.state, decisions: { ...view.state.decisions, [spot.id]: { use: decision?.use ?? false, soundId: value } } })}
             options={options.map((o) => ({ value: o.id, label: o.label }))}
             aria-label={`Tiếng cho mốc ${timecode(spot.frame)}`}
           />
@@ -188,6 +205,7 @@ export function SfxPanel({ id, enabled }: { id: string; enabled: boolean }) {
               allowClear
               placeholder="Không có"
               value={value || undefined}
+              disabled={locked}
               onChange={(next) => save({ ...view.state, beds: { ...view.state.beds, [section]: next || "" } })}
               options={(byLayer.ambience ?? []).map((o) => ({ value: o.id, label: o.label }))}
               aria-label={`Tiếng nền cho phần ${name}`}

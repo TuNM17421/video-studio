@@ -26,6 +26,7 @@ dùng bỏ tick lúc nào cũng được, và video đã tạo không bao giờ 
 | Trường | Bắt buộc | Ý nghĩa |
 |---|---|---|
 | `name` | có | tên card, cũng là tên ghi vào `REQUEST.md` |
+| `short` | không | tên ngắn trên hàng bật tắt ở bước Kế hoạch (đứng dưới nhãn "Video có thêm", nên bỏ "Video có"); thiếu thì dùng `name` |
 | `summary` | có | một câu mô tả trên card |
 | `icon` | không | `dialogue` · `quiz` · `mascot` · `image` · `audio` có glyph riêng; giá trị khác dùng glyph chung |
 | `preview` | không | key video xem thử trên kho media (`media/manifest.json`); thiếu thì card không có nút xem thử |

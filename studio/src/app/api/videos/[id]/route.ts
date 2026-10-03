@@ -10,6 +10,7 @@ import { harnessRuns } from "@/lib/server/harness";
 import { videoCost } from "@/lib/server/cost";
 import { installedAgents } from "@/lib/server/agent-config";
 import { imagesKey, imagesView } from "@/lib/server/images";
+import { byClaudeDesign, importedBundle } from "@/lib/server/claude-design";
 
 export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
@@ -33,6 +34,7 @@ export const GET = handle(async (_req: Request, ctx: { params: Promise<{ id: str
     blocking: { cues: blockersFor(id, "cues", state).length, scenes: blockersFor(id, "scenes", state).length },
     images: imagesView(id, state.request.modules, cues?.cues),
     cost: videoCost(id),
+    claudeDesign: byClaudeDesign(state) ? { imported: importedBundle(id) } : null,
   };
   return Response.json(detail);
 });

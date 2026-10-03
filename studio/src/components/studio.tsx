@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CloseOutlined, ExportOutlined, LockOutlined } from "@ant-design/icons";
 import { Button, Collapse, Empty, Steps, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
-import { api, dsUrl, fileUrl, formatFrames, useKeyStatus, useVideo } from "@/lib/client";
+import { api, fileUrl, formatFrames, formatSize, scenePages, useKeyStatus, useVideo } from "@/lib/client";
 import { inferDay } from "@/lib/day";
-import type { AgentConfig, AgentProvider, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
+import type { AgentConfig, AgentProvider, JobKind, StageId, StageStatus, StyleDef, VideoDetail, VoiceSource } from "@/lib/types";
 import { agentProviderLabel } from "@/lib/agent-providers";
 import { resolveReviewer } from "@/lib/review";
 import { costLabels } from "@/lib/video-cost";
@@ -16,7 +16,7 @@ import { AgentName } from "./agent-mark";
 import { Shell } from "./shell";
 import { emptyDraft, PlanForm, PlanSummary, useModules, type PlanDraft } from "./plan-step";
 import { moduleNamesFrom } from "@/lib/modules";
-import { PageAgentBinding } from "./page-agent-binding";
+import { SystemStatusPanel } from "./system-settings";
 import { ProductionState } from "./production-state";
 import { StageBadge } from "./agent-panel";
 import { CuesStep } from "./steps/cues-step";
@@ -27,8 +27,19 @@ import { VoiceStep } from "./steps/voice-step";
 
 
 /** Nhãn và tỉ lệ khung của từng khổ — bản xem trước phải khớp khổ video thật sự dựng. */
-const FORMAT_ASPECT: Record<string, string> = { "16x9": "16:9", "9x16": "9:16" };
-const FORMAT_RATIO: Record<string, string> = { "16x9": "16 / 9", "9x16": "9 / 16" };
+/**
+ * Bước chứa thanh tiến độ và nút Dừng của từng loại job. Dùng để nói ra khi một job của bước KHÁC đang chạy:
+ * lúc đó mọi nút ở bước đang xem bị khoá, và trước đây không dòng nào trên màn hình cho biết vì sao.
+ */
+const JOB_STEP: Partial<Record<JobKind, Step>> = {
+  cues: "cues", "cue-edit": "cues",
+  voice: "voice", "dry-run": "voice", "voice-script": "voice", "import-scan": "voice", "omnivoice-setup": "voice", "omnivoice-generate": "voice",
+  "align-setup": "voice", "kaggle-setup": "voice", "kaggle-generate": "voice", "voice-retake": "voice", "voice-retake-pick": "voice",
+  scenes: "scenes", review: "scenes",
+  render: "render", deliver: "render",
+};
+
+const FORMAT_NAME: Record<string, string> = { "16x9": "Ngang 16:9", "9x16": "Dọc 9:16" };
 
 
 /** Bốn nguồn giọng, gọi đúng tên ở thẻ tóm tắt — "ElevenLabs" cho cả bốn là sai với ba cái kia. */
@@ -108,19 +119,23 @@ function applySetupToDraft(current: PlanDraft, list: StyleDef[], config: AgentCo
   return { ...next, agentProvider: config.defaultProvider, review: { ...config.review.defaults } };
 }
 
-/** One exact 1920×1080 frame (the scene kit's ?frame= capture mode), scaled down to the panel width. */
-function FramePreview({ src }: { src: string }) {
+/**
+ * One exact frame (the scene kit's ?frame= capture mode) at the format's real size, scaled down to the panel
+ * width. The iframe must be the format's own viewport: a 1080×1920 scene in a 1920×1080 iframe is cut at
+ * 1080 px and drawn at half the box width.
+ */
+function FramePreview({ src, width, height }: { src: string; width: number; height: number }) {
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const observer = new ResizeObserver(() => setScale(el.clientWidth / 1920));
+    const observer = new ResizeObserver(() => setScale(el.clientWidth / width));
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [width]);
   return <div ref={box} className="vs-frame-box">
-    {scale > 0 && <iframe title="Xem trước cảnh" src={src} tabIndex={-1} style={{ transform: `scale(${scale})` }} />}
+    {scale > 0 && <iframe title="Xem trước cảnh" src={src} tabIndex={-1} style={{ width, height, transform: `scale(${scale})` }} />}
   </div>;
 }
 
@@ -129,7 +144,10 @@ function Preview({ detail, styles, draft, hasKey, installed }: { detail: VideoDe
   const request = detail?.state.request ?? draft.request;
   const style = styles.find((s) => s.id === request.style);
   const id = detail?.state.id || draft.id;
-  const scenes = detail?.artifacts.scenes;
+  // Trang mà bước Render sẽ chụp: cảnh của agent ở máy, hoặc trang nhập về từ Claude Design.
+  const pages = detail ? scenePages(detail) : null;
+  const awaitingImport = Boolean(detail?.claudeDesign && !pages);
+  const size = formatSize(request.format);
   const cues = detail?.cues;
   const stages = detail ? Object.entries(detail.state.stages) as [StageId, StageStatus][] : [];
   const running = stages.find(([, v]) => v === "running");
@@ -143,16 +161,17 @@ function Preview({ detail, styles, draft, hasKey, installed }: { detail: VideoDe
   const cover = style && [...(style.base?.showcase || []), ...style.showcase][style.base ? style.base.showcase.length : 0];
   return <aside className="preview-panel">
     <div className="panel-heading">
-      <h2>Video preview</h2>
-      <span className="quiet-label">{FORMAT_ASPECT[request.format || "16x9"] || "16:9"}</span>
+      <h2>Xem trước</h2>
+      <span className="quiet-label">{size.aspect}</span>
     </div>
     {/* Khung xem trước phải đúng tỉ lệ của khổ: ép một cảnh dọc vào hộp 16:9 thì bản xem trước nói dối. */}
-    <div className="slide-visual vs-preview-frame" style={{ aspectRatio: FORMAT_RATIO[request.format || "16x9"] || "16 / 9" }}>
-      {scenes && id
-        ? <FramePreview src={dsUrl(`ui_kits/lesson-video/index.html?scene=${encodeURIComponent(id)}&frame=${previewFrame}`)} />
+    <div className="slide-visual vs-preview-frame" style={{ aspectRatio: size.ratio }}>
+      {pages
+        ? <FramePreview src={pages.frame(previewFrame)} width={size.width} height={size.height} />
+        : awaitingImport ? <Empty className="preview-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa nhập cảnh từ Claude Design" />
         : cover ? <img src={fileUrl(`styles/previews/${cover.image}`)} alt="" /> : <Empty className="preview-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có bản xem trước" />}
     </div>
-    {scenes && id && <div className="preview-caption"><Button type="link" href={dsUrl(`ui_kits/lesson-video/videos/${id}/player.html`)} target="_blank" icon={<ExportOutlined />} iconPlacement="end">Mở trình phát</Button></div>}
+    {pages && <div className="preview-caption"><Button type="link" href={pages.player} target="_blank" icon={<ExportOutlined />} iconPlacement="end">Mở trình phát</Button></div>}
     <div className="project-summary">
       <h3>{request.title || id || "Chưa đặt tên"}</h3>
       <p>{request.day || "Chưa chọn ngày"} · {style?.name || "Chưa chọn style"}</p>
@@ -173,7 +192,7 @@ function Preview({ detail, styles, draft, hasKey, installed }: { detail: VideoDe
             <WorkflowHealth detail={detail} />
           </>,
         }]} />
-      : <PlanChecklist draft={draft} provider={provider} modules={moduleNamesFrom(modules, draft.request.modules)} installed={installed} />}
+      : <PlanChecklist draft={draft} provider={provider} modules={moduleNamesFrom(modules.map((m) => ({ id: m.id, name: m.short || m.name })), draft.request.modules)} installed={installed} />}
   </aside>;
 }
 
@@ -184,7 +203,10 @@ function PlanChecklist({ draft, provider, modules, installed }: { draft: PlanDra
   return <dl className="project-facts">
     <div><dt>Kịch bản</dt><dd>{draft.script ? <span className="vs-preview-file">{draft.script.name}</span> : missing}</dd></div>
     <div><dt>Mã video</dt><dd>{draft.id ? <span className="mono">{draft.id}</span> : missing}</dd></div>
-    <div><dt>Tính năng</dt><dd>{modules.length ? modules.join(", ") : "Clip một người dẫn"}</dd></div>
+    {/* Hai lựa chọn đổi cả cách dựng — khổ đổi cách bày cảnh, chỗ dựng đổi cả bước Dựng cảnh — nên phải đọc được trước khi bấm Tạo video. */}
+    <div><dt>Khổ hình</dt><dd>{FORMAT_NAME[draft.request.format || "16x9"] || draft.request.format}</dd></div>
+    <div><dt>Dựng cảnh</dt><dd>{draft.request.sceneBuilder === "claude-design" ? "Claude Design" : "Agent ở máy"}</dd></div>
+    <div><dt>Có thêm</dt><dd>{modules.length ? modules.join(", ") : "Clip một người dẫn"}</dd></div>
     <div><dt>Agent</dt><dd><AgentName provider={provider} /></dd></div>
     <div><dt>Review chéo</dt><dd>{!draft.review.enabled ? "Tắt" : reviewer.ok ? agentProviderLabel(reviewer.provider) : "Chưa chọn được"}</dd></div>
   </dl>;
@@ -333,6 +355,9 @@ export default function Studio() {
   }
   const stop = () => { if (id) void act(() => api(`/api/videos/${id}/stop`, { method: "POST", json: {} })); };
   const running = job?.status === "running";
+  // Job đang chạy thuộc bước khác với bước đang xem (ví dụ đang render mà mở Giọng đọc).
+  const jobStep = running && job ? JOB_STEP[job.kind] : undefined;
+  const elsewhere = jobStep && jobStep !== step ? STEPS.find((s) => s.id === jobStep) ?? null : null;
   const { previous, next } = neighbours(step);
   // Tiếp only appears once this step is complete — until then the step's own action is the primary one.
   const nav: StepNav = {
@@ -371,14 +396,9 @@ export default function Studio() {
         <h1>{detail?.state.request.title || id || "Video mới"}</h1>
         {detail && <AgentLine detail={detail} />}
       </div>
-      {!id && <PageAgentBinding
-        provider={pageProvider}
-        selectionLocked={agentConfig.selectionLocked}
-        immutable={Boolean(id)}
-        loading={setupLoading || Boolean(id && !detail && !loadError)}
-        disabled={busy || setupLoading || !setupReady}
-        onChange={(agentProvider) => setDraft((current) => ({ ...current, agentProvider }))}
-      />}
+      {/* Cài đặt của máy (log, chi phí), không của video: một nút kín tiếng cạnh tiêu đề. Agent thì đã vào
+          mục "Ai làm" của form Kế hoạch. */}
+      {!id && <SystemStatusPanel provider={pageProvider} />}
     </div>
     <div className="vs-production-rail" data-tour="studio.rail">
       <div className="vs-production-rail-head"><span>LUỒNG SẢN XUẤT</span><strong>{detail ? `${completed}/5 cổng hoàn tất` : "Thiết lập video đầu tiên"}</strong></div>
@@ -403,10 +423,14 @@ export default function Studio() {
     {detail && !detail.managed && (detail.state.sample
       ? <ProductionState className="vs-production-state" tour="studio.sample" status="idle" title="Video mẫu của chế độ tập" detail="Một video đã đi đủ năm bước, để bạn xem từng bước trông thế nào khi xong. Chỉ xem — không chạy lại được bước nào." />
       : <ProductionState className="vs-production-state" status="idle" title="Video được làm ngoài Video Studio" detail="Bạn chỉ có thể xem tệp và kết quả của video này." />)}
+    {elsewhere && <ProductionState className="vs-production-state" status="running"
+      title={`Đang chạy ở bước ${elsewhere.title}`}
+      detail={`${job?.progress?.message || "Một tác vụ của video này đang chạy"} — các nút ở bước này tạm khoá cho tới khi xong. Tiến độ và nút Dừng nằm ở bước ${elsewhere.title}.`}
+      action={<Button size="small" onClick={() => goToStep(elsewhere.id)}>Mở bước {elsewhere.title}</Button>} />}
     <div className="editor-layout">
       <section ref={editorPanel} className="editor-panel" data-tour="studio.editor" aria-label={current.title}>
         <div className="panel-heading vs-step-heading"><div><h2>{current.title}</h2></div>{detail && stepStatus(step, detail) && <StageBadge status={stepStatus(step, detail)!} />}</div>
-        {step === "plan" && (detail ? <><PlanSummary state={detail.state} styles={styles} /><StepBar nav={nav} tone="done" status="Kế hoạch đã chốt khi tạo video" /></> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} />)}
+        {step === "plan" && (detail ? <><PlanSummary state={detail.state} styles={styles} /><StepBar nav={nav} tone="done" status="Kế hoạch đã chốt khi tạo video" /></> : <PlanForm styles={styles} draft={draft} setDraft={setDraft} onCreate={create} busy={busy || setupLoading || !setupReady} loading={setupLoading} unavailable={!setupReady} installedAgents={agentConfig.review.installed} selectionLocked={agentConfig.selectionLocked} />)}
         {step === "cues" && stepProps && <CuesStep {...stepProps} />}
         {step === "voice" && stepProps && <VoiceStep {...stepProps} hasKey={hasKey} setHasKey={setHasKey} />}
         {step === "scenes" && stepProps && <ScenesStep {...stepProps} />}

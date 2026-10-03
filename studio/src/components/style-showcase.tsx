@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CaretRightFilled, CheckOutlined } from "@ant-design/icons";
+import { CaretRightFilled } from "@ant-design/icons";
 import { Collapse, Modal, Radio } from "antd";
 import { SampleMedia } from "@/components/sample-media";
 import { fileUrl } from "@/lib/client";
@@ -15,8 +15,6 @@ const SIGNATURE_COMPONENTS = {
   whiteboard: ["Whiteboard"],
 } as const;
 
-const EYEBROWS = { lesson: "Học liệu cốt lõi", lab: "Hệ thống tác tử", whiteboard: "Bảng trắng vẽ tay" } as const;
-
 const SIGNATURE_LABELS: Record<string, string> = {
   cards: "Thẻ kiến thức",
   code: "Mã & công cụ",
@@ -28,7 +26,7 @@ const SIGNATURE_LABELS: Record<string, string> = {
 };
 
 function signatureOf(style: StyleDef) {
-  const variant: keyof typeof EYEBROWS = style.showcase.some((item) => item.group === "whiteboard")
+  const variant: keyof typeof SIGNATURE_COMPONENTS = style.showcase.some((item) => item.group === "whiteboard")
     ? "whiteboard"
     : style.showcase.some((item) => LAB_GROUPS.has(item.group)) ? "lab" : "lesson";
   const candidates = [...style.showcase, ...(style.base?.showcase || [])];
@@ -39,28 +37,10 @@ function signatureOf(style: StyleDef) {
   const items = [...preferred, ...remaining].slice(0, 3);
 
   return {
-    variant,
-    eyebrow: EYEBROWS[variant],
     items,
     // two components of one group share a label — list it once (it is also the React key)
     tags: [...new Set(items.map((item) => SIGNATURE_LABELS[item.group] || item.component))],
   };
-}
-
-function StyleSpecimen({ style }: { style: StyleDef }) {
-  const signature = signatureOf(style);
-  return <span className={`vs-style-specimen is-${signature.variant}`} aria-hidden="true">
-    <span className="vs-style-specimen-heading">
-      <span>{signature.eyebrow}</span>
-      <span>{signature.items.length} nét đặc trưng</span>
-    </span>
-    <span className="vs-style-scene">
-      {signature.items.map((item, index) => <span key={item.image} className={`vs-style-scene-frame ${index === 0 ? "is-primary" : ""}`}>
-        <img src={fileUrl(`styles/previews/${item.image}`)} alt="" />
-        <span>{item.component}</span>
-      </span>)}
-    </span>
-  </span>;
 }
 
 function Palette({ colors }: { colors: PaletteColor[] }) {
@@ -130,34 +110,40 @@ export function StyleSampleButton({ style }: { style: StyleDef }) {
   </>;
 }
 
+/**
+ * Chọn style ở bước Kế hoạch: mỗi style một hàng thấp (ảnh, tên, một dòng mô tả). Nhãn nhóm component, bảng
+ * màu và nút xem video mẫu chỉ hiện cho style ĐANG CHỌN, ở dải bên dưới — ba thẻ đầy đủ từng cao khoảng
+ * 350 px để bày chi tiết của cả hai style không được chọn.
+ */
 export function StylePicker({ styles, value, onChange, disabled, labelledBy }: { styles: StyleDef[]; value: string; onChange: (id: string) => void; disabled?: boolean; labelledBy?: string }) {
   const [sample, setSample] = useState<StyleDef | null>(null);
+  const current = styles.find((s) => s.id === value);
+  const colors = current ? [...(current.base?.palette || []), ...current.palette] : [];
+  const palette = current ? (current.base ? [...current.palette, ...current.base.palette] : current.palette) : [];
   return <>
-  <Radio.Group className="vs-style-picker" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} aria-required="true" aria-labelledby={labelledBy}>
+  <Radio.Group className="vs-style-rows" value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled} aria-required="true" aria-labelledby={labelledBy}>
     {styles.map((s) => {
-      const colors = [...(s.base?.palette || []), ...s.palette];
-      const palette = s.base ? [...s.palette, ...s.base.palette] : s.palette;
-      const signature = signatureOf(s);
-      return <Radio key={s.id} value={s.id} className={`visual-style-option vs-style-option ${value === s.id ? "is-selected" : ""}`}>
-        <StyleSpecimen style={s} />
-        <span className="vs-style-copy">
-          <strong>{s.name}{value === s.id && <span className="vs-style-selected"><CheckOutlined aria-hidden="true" /><span className="sr-only">Đã chọn</span></span>}</strong>
-          <small>{s.summary}</small>
+      const thumb = signatureOf(s).items[0];
+      return <Radio key={s.id} value={s.id} className={`vs-style-row ${value === s.id ? "is-selected" : ""}`}>
+        {thumb && <img className="vs-style-row-thumb" src={fileUrl(`styles/previews/${thumb.image}`)} alt="" />}
+        <span className="vs-style-row-copy">
+          <strong>{s.name}{value === s.id && <span className="sr-only"> (đã chọn)</span>}</strong>
+          <small title={s.summary}>{s.summary}</small>
         </span>
-        <span className="vs-style-footer">
-          <span className="vs-style-tags">{signature.tags.map((tag) => <span key={tag}>{tag}</span>)}</span>
-          <span className="vs-style-palette" title={colors.map((color) => color.name).join(" · ")}>
-            <span className="vs-style-dots" aria-hidden="true">{palette.slice(0, 6).map((color, index) => <span key={`${color.hex}-${index}`} style={{ background: color.hex }} />)}</span>
-            <span>{colors.length} màu</span>
-          </span>
-        </span>
-        {/* Inside the card's label: preventDefault keeps a look at the sample from also picking the style. */}
-        {s.sampleVideo && <button type="button" className="vs-module-play vs-style-sample" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setSample(s); }}>
-          <CaretRightFilled /><span>Xem video mẫu</span>
-        </button>}
       </Radio>;
     })}
   </Radio.Group>
+  {current && <div className="vs-style-detail" aria-live="polite">
+    <strong>{current.name}</strong>
+    <span className="vs-style-tags">{signatureOf(current).tags.map((tag) => <span key={tag}>{tag}</span>)}</span>
+    <span className="vs-style-detail-palette" title={colors.map((color) => color.name).join(" · ")}>
+      <span className="vs-style-dots" aria-hidden="true">{palette.slice(0, 6).map((color, index) => <span key={`${color.hex}-${index}`} style={{ background: color.hex }} />)}</span>
+      <span>{colors.length} màu</span>
+    </span>
+    {current.sampleVideo && <button type="button" className="vs-module-play vs-style-detail-sample" onClick={() => setSample(current)}>
+      <CaretRightFilled /><span>Xem video mẫu</span>
+    </button>}
+  </div>}
   <SampleModal style={sample} onClose={() => setSample(null)} />
   </>;
 }

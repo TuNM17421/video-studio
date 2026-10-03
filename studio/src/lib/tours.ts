@@ -106,7 +106,7 @@ export const TOURS: TourDef[] = [
   },
   {
     id: "plan",
-    version: 2,
+    version: 3,
     label: "Trang Kế hoạch — tạo video mới",
     routes: ["/"],
     auto: true,
@@ -128,15 +128,22 @@ export const TOURS: TourDef[] = [
       {
         target: "plan.style",
         title: "Chọn style hình ảnh",
-        body: "Style quyết định bảng màu và bộ component agent được dùng. Bấm Xem video mẫu trên thẻ để thấy cảnh thật của style đó.",
+        body: "Style quyết định bảng màu và bộ component agent được dùng. Chọn một style rồi bấm Xem video mẫu ở dải bên dưới để thấy cảnh thật của style đó.",
         mascot: { pose: "stand", mood: "thinking" },
         placement: "top",
       },
       {
         target: "plan.modules",
-        title: "Tính năng nội dung",
-        body: "Chỉ bật khi kịch bản cần: hội thoại nhiều người nói, hay quiz có khoảng chờ. Không bật gì là clip một người dẫn.",
+        title: "Video có thêm gì",
+        body: "Chỉ bật khi kịch bản cần: hội thoại nhiều người nói, hay quiz có khoảng chờ. Bấm Mẫu để xem video mẫu của từng năng lực. Không bật gì là clip một người dẫn.",
         mascot: { pose: "stand", mood: "neutral", prop: "lightbulb" },
+        placement: "top",
+      },
+      {
+        target: "plan.who",
+        title: "Ai làm",
+        body: "Agent nào chạy các bước, cảnh dựng ngay ở máy hay bên Claude Design, và ai review chéo ảnh cảnh. Chọn Claude Design thì bước Dựng cảnh đổi hẳn cách làm.",
+        mascot: { pose: "stand", mood: "thinking" },
         placement: "top",
       },
       {

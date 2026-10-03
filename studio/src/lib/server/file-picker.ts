@@ -9,12 +9,15 @@ const ZENITY = "/usr/bin/zenity";
 const POWERSHELL = "powershell.exe";
 
 export type FilePickerKind = "file" | "directory";
-export type FilePickerPurpose = "feedback" | "video" | "voice";
+export type FilePickerPurpose = "feedback" | "video" | "voice" | "scenes";
 
 const VIDEO_EXT = ["mp4", "mov", "webm", "mkv", "avi"];
 
 function pickerTitle(purpose: FilePickerPurpose) {
-  return purpose === "video" ? "Chọn video cũ" : purpose === "voice" ? "Chọn thư mục audio giọng đọc" : "Chọn feedback bản cũ";
+  if (purpose === "video") return "Chọn video cũ";
+  if (purpose === "voice") return "Chọn thư mục audio giọng đọc";
+  if (purpose === "scenes") return "Chọn thư mục tải về từ Claude Design";
+  return "Chọn feedback bản cũ";
 }
 
 /** Zenity (Linux): the desktop's GTK dialog. */

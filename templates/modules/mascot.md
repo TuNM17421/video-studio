@@ -1,5 +1,6 @@
 ---
 name: Video có linh vật Griffin
+short: Linh vật Griffin
 summary: Griffin xuất hiện trên màn hình để chào, gợi câu hỏi, reo vui — hoặc tự dẫn cả video bằng giọng của mình.
 icon: mascot
 preview: samples/mau-huong-dan/mau-huong-dan.mp4

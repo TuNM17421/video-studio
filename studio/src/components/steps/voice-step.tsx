@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { CheckCircleFilled, CloseOutlined, DeleteOutlined, KeyOutlined, LockOutlined, PauseOutlined, CaretRightFilled, RedoOutlined, SearchOutlined, SoundOutlined, TeamOutlined } from "@ant-design/icons";
-import { Button, Collapse, Form, Input, InputNumber, Segmented, Select, Tag } from "antd";
+import { Alert, Button, Collapse, Form, Input, InputNumber, Segmented, Select, Tag } from "antd";
 import { api, fileUrl, formatFrames } from "@/lib/client";
 import type { DryRun, VideoDetail, VoiceSettings, VoiceSource } from "@/lib/types";
 import { AgentLog, JobProgress, stageLogs } from "../agent-panel";
@@ -163,9 +163,9 @@ function ElevenLabsPanel({ detail, settings, setSettings, busy, act, hasKey, set
           label: <span>Tuỳ chỉnh <span className="quiet-label">{tuned}</span></span>,
           children: <div className="vs-tune">
             <div className="field-grid vs-grid-3">
-              <Form.Item className="field" label="Model"><Select value={settings.model} onChange={(model) => setSettings({ ...settings, model })} options={MODELS.map((model) => ({ value: model.id, label: model.label }))} /></Form.Item>
-              <Form.Item className="field" label="Ngôn ngữ"><Select value={settings.language} onChange={(language) => setSettings({ ...settings, language })} options={[{ value: "vi", label: "Tiếng Việt" }, { value: "auto", label: "Tự nhận (v3)" }]} /></Form.Item>
-              <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
+              <Form.Item className="field" label="Model"><Select disabled={busy} value={settings.model} onChange={(model) => setSettings({ ...settings, model })} options={MODELS.map((model) => ({ value: model.id, label: model.label }))} /></Form.Item>
+              <Form.Item className="field" label="Ngôn ngữ"><Select disabled={busy} value={settings.language} onChange={(language) => setSettings({ ...settings, language })} options={[{ value: "vi", label: "Tiếng Việt" }, { value: "auto", label: "Tự nhận (v3)" }]} /></Form.Item>
+              <Form.Item className="field" label="Nghỉ giữa câu (giây)"><InputNumber disabled={busy} min={0} max={5} step={0.1} value={settings.pause} onChange={(pause) => setSettings({ ...settings, pause: pause ?? 0 })} /></Form.Item>
             </div>
             <Form.Item className="field" label="Voice ID khác" extra="Giọng chưa có trong voices.json — dán voice id lấy từ ElevenLabs.">
               <Input value={customId ? settings.voiceId : ""} onChange={(e) => setSettings({ ...settings, voiceId: e.target.value.trim() })} disabled={busy} placeholder="Ví dụ 6adFm46eyy74snVn6YrT" spellCheck={false} autoComplete="off" />
@@ -227,6 +227,11 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, nav, refresh, ha
   const hasVoice = Boolean(detail.artifacts.voiceWav && detail.artifacts.voice);
   const configOpen = !hasVoice || redo || status === "running" || status === "error";
   const runLogs = stageLogs(logs, ["voice"]);
+  // Những bước đã làm trên giọng đang gắn — làm lại giọng thì chúng mở lại (lib/server/voice.ts → reopenAfterVoice).
+  const builtOnVoice = [
+    ["review", "done"].includes(detail.state.stages.scenes) ? "Cảnh đã dựng" : null,
+    detail.state.stages.render === "done" ? "MP4 đã render" : null,
+  ].filter((x): x is string => x !== null);
   const panel = { detail, settings: { ...settings, source: view }, setSettings, busy, act };
 
   return <>
@@ -234,6 +239,9 @@ export function VoiceStep({ detail, logs, job, busy, act, stop, nav, refresh, ha
       {!cuesApproved && <div className="step-empty"><h3>Duyệt lời & cue trước</h3></div>}
       {cuesApproved && <>
         {hasVoice && <VoiceResult detail={detail} redo={redo} onRedo={() => setRedo((open) => !open)} />}
+        {configOpen && hasVoice && builtOnVoice.length > 0 && <Alert type="warning" showIcon
+          title={`${builtOnVoice.join(" và ")} đang theo giọng hiện tại.`}
+          description="Gắn giọng mới là ghi lại mốc của từng câu. Khi giọng mới gắn xong, bước Dựng cảnh mở lại để soát theo nhịp mới và video phải render lại. Giọng cũ vẫn được dùng cho tới lúc đó." />}
         {configOpen && <>
           <div className="vs-source-row">
             <span className="quiet-label">Nguồn giọng</span>

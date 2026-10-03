@@ -3,6 +3,7 @@ import { normalizeReview } from "@/lib/review";
 import { baseUrl, handle } from "@/lib/server/http";
 import { emit, isRunning, jobHandled, log } from "@/lib/server/jobs";
 import { assertId, HttpError } from "@/lib/server/paths";
+import { assertLocalScenes } from "@/lib/server/claude-design";
 import { runReviewJob } from "@/lib/server/qa";
 import { readState, updateState } from "@/lib/server/videos";
 
@@ -18,6 +19,7 @@ export const POST = handle(async (req: Request, ctx: { params: Promise<{ id: str
   if (!managed) throw new HttpError(400, "Video này được làm ngoài Video Studio.");
 
   if (body.action === "run") {
+    assertLocalScenes(state);
     if (isRunning(id)) throw new HttpError(409, "Video này đang có một tác vụ chạy.");
     if (!["review", "error"].includes(state.stages.scenes)) throw new HttpError(400, "Chỉ review lại được khi dựng cảnh đang chờ duyệt hoặc vừa lỗi.");
     if (state.stages.voice !== "done") throw new HttpError(400, "Tạo giọng đọc trước khi dựng cảnh.");

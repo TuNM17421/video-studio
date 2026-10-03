@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, RetakeEntry, RetakeResult, VoiceBound, VoiceScript, VoiceSettings } from "../types";
+import type { DryRun, ImportReport, KaggleStatus, LocalCast, OmnivoiceStatus, RetakeEntry, RetakeResult, VideoState, VoiceBound, VoiceScript, VoiceSettings } from "../types";
 import { finishJob, gpuJobElsewhere, isRunning, log, ownJob, recordJobMetrics, registry, run, setProgress, startJob, wasStopped } from "./jobs";
 import { beginCreditRun, billedCharacters, elevenCreditsUsed, elevenLabsCost, endCreditRun, freeVoiceCost } from "./voice-cost";
 import { hasKaggleCreds, kaggleEnv, kaggleUsername, redactKaggle } from "./kaggle-creds";
@@ -179,6 +179,19 @@ async function generateEleven(id: string) {
   setStage(id, "voice", bind ? "done" : "error", bind ? null : "Không gắn được giọng vào video.");
   finishJob(id, bind ? "done" : "error");
   return bind;
+}
+
+/**
+ * Những bước dựng trên giọng cũ, đưa về trạng thái nói thật sau khi giọng đổi: cảnh đã dựng thì về "chờ
+ * duyệt" (soát lại theo nhịp mới rồi duyệt lần nữa), MP4 và phần bàn giao thì về "chưa làm". Sửa tại chỗ,
+ * trả về tên các bước vừa mở lại để ghi nhật ký; rỗng khi đây là lần gắn giọng đầu tiên.
+ */
+export function reopenAfterVoice(stages: VideoState["stages"]): string[] {
+  const reopened: string[] = [];
+  if (stages.scenes === "done") { stages.scenes = "review"; reopened.push("Dựng cảnh (chờ duyệt lại)"); }
+  if (stages.render === "done" || stages.render === "error") { stages.render = "idle"; reopened.push("Render"); }
+  if (stages.deliver === "done" || stages.deliver === "error") { stages.deliver = "idle"; }
+  return reopened;
 }
 
 /** voice.cues.json → voice.js + measured frames back into cues.js, so scenes are authored at real length. */
@@ -634,7 +647,7 @@ export function lastImportReport(id: string): ImportReport | null {
 }
 
 /**
- * The narration changed (a câu edited by hand): the dry-run counted the old words and the folder scan matched
+ * The narration changed (a câu edited by hand, or the cues agent ran again): the dry-run counted the old words and the folder scan matched
  * recordings against them. Kept, the scan would still say "khớp" and the import would bind a recording of the
  * old sentence. Dropped, the voice step asks for both again.
  */
@@ -837,7 +850,15 @@ export async function scanImport(id: string, dir: string, v: VoiceSettings) {
 }
 
 function recordBound(id: string, source: VoiceBound["source"], v: VoiceSettings) {
-  updateState(id, (s) => { s.voiceBound = { source, voiceId: v.voiceId, model: v.model, at: new Date().toISOString() }; });
+  // Gắn giọng là ghi lại mốc frame của mọi câu trong cues.js. Lần đầu thì chưa có gì dựng trên mốc cũ; làm
+  // lại giọng khi cảnh đã dựng thì có: cảnh được soát và MP4 được render trên một nhịp không còn tồn tại.
+  // Để hai bước ấy đứng ở "Xong" là để người dùng bàn giao một MP4 mang giọng cũ mà không một lời báo.
+  let reopened: string[] = [];
+  updateState(id, (s) => {
+    s.voiceBound = { source, voiceId: v.voiceId, model: v.model, at: new Date().toISOString() };
+    reopened = reopenAfterVoice(s.stages);
+  });
+  if (reopened.length) log(id, "system", `Giọng mới đã gắn, mốc từng câu trong cues.js đã đổi — mở lại: ${reopened.join(", ")}.`);
 }
 
 /** Assemble the master from the folder and bind it to the video, exactly as the ElevenLabs path does. */

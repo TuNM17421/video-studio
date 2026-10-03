@@ -5,7 +5,7 @@
  *
  *   node tools/render.mjs --scene n2-00-gioi-thieu-ngay-2 --out video.mp4 [--audio voice.wav]
  *        [--music-track bg-02] [--quiz-track quiz-timer] [--workers 4] [--from 0] [--to N] [--crf 18]
- *        [--base http://127.0.0.1:8765] [--keep-frames dir] [--frame-timeout 15000]
+ *        [--base http://127.0.0.1:8765 | --url http://…/index.html] [--keep-frames dir] [--frame-timeout 15000]
  *        [--music-db -3] [--quiz-db -2] [--no-captions] [--loudness -16] [--no-loudnorm] [--fps 60]
  *
  * --fps raises the output frame rate without touching the authoring unit: scenes stay written in whole
@@ -184,7 +184,17 @@ const LIMIT_DB = -2; // the limiter's sample-peak ceiling: AAC adds up to ~1 dB 
 
 // ── capture ───────────────────────────────────────────────────────────────────
 const base = String(args.base || 'http://127.0.0.1:8765').replace(/\/$/, '');
-const url = `${base}/ui_kits/lesson-video/index.html?scene=${encodeURIComponent(args.scene)}&frame=0${args['no-captions'] ? '&captions=0' : ''}`;
+// --url: render một trang bất kỳ có phơi vkSetFrame/vkDuration, không phải trang của repo. Dùng cho cảnh
+// dựng nơi khác rồi mang về (tools/claude-design.mjs import chép vào ds-bundle/cd/<id>/).
+const url = (() => {
+  if (args.url) {
+    const u = new URL(args.url);
+    u.searchParams.set('frame', '0');
+    if (args['no-captions']) u.searchParams.set('captions', '0');
+    return u.toString();
+  }
+  return `${base}/ui_kits/lesson-video/index.html?scene=${encodeURIComponent(args.scene)}&frame=0${args['no-captions'] ? '&captions=0' : ''}`;
+})();
 const workers = Math.max(1, Number(args.workers || Math.min(6, Math.max(2, os.cpus().length - 2))));
 const framesDir = path.resolve(args['keep-frames'] || fs.mkdtempSync(path.join(os.tmpdir(), 'vk-render-')));
 fs.mkdirSync(framesDir, { recursive: true });
